@@ -9,6 +9,11 @@
 {%   from 'docker/docker.map.jinja' import DOCKER %}
 {%   from 'logstash/map.jinja' import LOGSTASH_MERGED %}
 {%   from 'logstash/map.jinja' import REDIS_NODES %}
+{#   we append the manager here so that it is added to extra_hosts so the heavynode can resolve it #}
+{#   we cannont append in the logstash/map.jinja because then it would be added to the 0900_input_redis.conf #}
+{%   if GLOBALS.role == 'so-heavynode' %}
+{%     do REDIS_NODES.append({GLOBALS.manager:GLOBALS.manager_ip}) %}
+{%   endif %}
 {%   set lsheap = LOGSTASH_MERGED.settings.lsheap %}
 
 include:
@@ -17,6 +22,7 @@ include:
 {%   endif %}
   - logstash.config
   - logstash.sostatus
+  - ssl
 
 so-logstash:
   docker_container.running:
@@ -67,7 +73,7 @@ so-logstash:
       {% if GLOBALS.role in ['so-manager', 'so-managersearch', 'so-standalone', 'so-import'] %}
       - /etc/pki/ca.crt:/usr/share/filebeat/ca.crt:ro
       {% else %}
-      - /etc/ssl/certs/intca.crt:/usr/share/filebeat/ca.crt:ro
+      - /etc/pki/tls/certs/intca.crt:/usr/share/filebeat/ca.crt:ro
       {% endif %}
       {% if GLOBALS.role in ['so-manager', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-searchnode'] %}
       - /opt/so/conf/ca/cacerts:/etc/pki/ca-trust/extracted/java/cacerts:ro
@@ -85,6 +91,10 @@ so-logstash:
         {% endfor %}
       {% endif %}
     - watch:
+      {% if grains['role'] in ['so-manager', 'so-eval', 'so-managersearch', 'so-standalone', 'so-import', 'so-fleet', 'so-receiver'] %}
+      - x509: etc_elasticfleet_logstash_key
+      - x509: etc_elasticfleet_logstash_crt
+      {% endif %}
       - file: lsetcsync
       {% for assigned_pipeline in LOGSTASH_MERGED.assigned_pipelines.roles[GLOBALS.role.split('-')[1]] %}
       - file: ls_pipeline_{{assigned_pipeline}}

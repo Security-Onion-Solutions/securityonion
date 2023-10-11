@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0; you may not use
+# this file except in compliance with the Elastic License 2.0.
+{%- import_yaml 'elasticfleet/defaults.yaml' as ELASTICFLEETDEFAULTS %}
+{%- set SUPPORTED_PACKAGES = salt['pillar.get']('elasticfleet:packages', default=ELASTICFLEETDEFAULTS.elasticfleet.packages, merge=True) %}
+
+. /usr/sbin/so-elastic-fleet-common
+
+{%- for PACKAGE in SUPPORTED_PACKAGES %}
+echo "Upgrading {{ PACKAGE }} package..."
+VERSION=$(elastic_fleet_package_latest_version_check "{{ PACKAGE }}")
+elastic_fleet_package_install "{{ PACKAGE }}" "$VERSION"
+echo
+{%- endfor %}
+echo
+/usr/sbin/so-elasticsearch-templates-load

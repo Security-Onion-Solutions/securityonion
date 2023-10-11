@@ -7,7 +7,7 @@
 {% if sls in allowed_states %}
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 
-{% set CUSTOMFQDN = salt['pillar.get']('elasticfleet:config:server:custom_fqdn') %}
+{%   from 'elasticfleet/map.jinja' import ELASTICFLEETMERGED %}
 
 {% set global_ca_text = [] %}
 {% set global_ca_server = [] %}
@@ -36,13 +36,23 @@ include:
     {% set ca_server = global_ca_server[0] %}
 {% endif %}
 
-
+cacertdir:
+  file.directory:
+    - name: /etc/pki/tls/certs
+    - makedirs: True
 
 # Trust the CA
 trusttheca:
   x509.pem_managed:
-    - name: /etc/ssl/certs/intca.crt
+    - name: /etc/pki/tls/certs/intca.crt
     - text:  {{ trusttheca_text }}
+
+{% if GLOBALS.os_family == 'Debian' %}
+symlinkca:
+  file.symlink:
+    - target: /etc/pki/tls/certs/intca.crt
+    - name: /etc/ssl/certs/intca.crt
+{% endif %}
 
 # Install packages needed for the sensor
 m2cryptopkgs:
@@ -153,8 +163,8 @@ etc_elasticfleet_crt:
     - ca_server: {{ ca_server }}
     - signing_policy: elasticfleet
     - private_key: /etc/pki/elasticfleet-server.key
-    - CN: {{ GLOBALS.url_base }}
-    - subjectAltName: DNS:{{ GLOBALS.hostname }},IP:{{ GLOBALS.node_ip }} {% if CUSTOMFQDN != "" %},DNS:{{ CUSTOMFQDN }}{% endif %}
+    - CN: {{ GLOBALS.hostname }}
+    - subjectAltName: DNS:{{ GLOBALS.hostname }},DNS:{{ GLOBALS.url_base }},IP:{{ GLOBALS.node_ip }}{% if ELASTICFLEETMERGED.config.server.custom_fqdn | length > 0 %},DNS:{{ ELASTICFLEETMERGED.config.server.custom_fqdn | join(',DNS:') }}{% endif %}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
@@ -198,7 +208,7 @@ etc_elasticfleet_logstash_key:
     - new: True
     {% if salt['file.file_exists']('/etc/pki/elasticfleet-logstash.key') -%}
     - prereq:
-      - x509: etc_elasticfleet_crt
+      - x509: etc_elasticfleet_logstash_crt
     {%- endif %}
     - retry:
         attempts: 5
@@ -210,8 +220,8 @@ etc_elasticfleet_logstash_crt:
     - ca_server: {{ ca_server }}
     - signing_policy: elasticfleet
     - private_key: /etc/pki/elasticfleet-logstash.key
-    - CN: {{ GLOBALS.url_base }}
-    - subjectAltName: DNS:{{ GLOBALS.hostname }},IP:{{ GLOBALS.node_ip }} {% if CUSTOMFQDN != "" %},DNS:{{ CUSTOMFQDN }}{% endif %}
+    - CN: {{ GLOBALS.hostname }}
+    - subjectAltName: DNS:{{ GLOBALS.hostname }},DNS:{{ GLOBALS.url_base }},IP:{{ GLOBALS.node_ip }}{% if ELASTICFLEETMERGED.config.server.custom_fqdn | length > 0 %},DNS:{{ ELASTICFLEETMERGED.config.server.custom_fqdn | join(',DNS:') }}{% endif %}
     - days_remaining: 0
     - days_valid: 820
     - backup: True
@@ -259,7 +269,7 @@ etc_elasticfleetlumberjack_key:
     - new: True
     {% if salt['file.file_exists']('/etc/pki/elasticfleet-lumberjack.key') -%}
     - prereq:
-      - x509: etc_elasticfleet_crt
+      - x509: etc_elasticfleetlumberjack_crt
     {%- endif %}
     - retry:
         attempts: 5
@@ -283,7 +293,7 @@ etc_elasticfleetlumberjack_crt:
   cmd.run:
     - name: "/usr/bin/openssl pkcs8 -in /etc/pki/elasticfleet-lumberjack.key -topk8 -out /etc/pki/elasticfleet-lumberjack.p8 -nocrypt"
     - onchanges:
-      - x509: etc_elasticfleet_key
+      - x509: etc_elasticfleetlumberjack_key
 
 eflogstashlumberjackperms:
   file.managed:
@@ -327,7 +337,7 @@ etc_elasticfleet_agent_key:
     - new: True
     {% if salt['file.file_exists']('/etc/pki/elasticfleet-agent.key') -%}
     - prereq:
-      - x509: etc_elasticfleet_crt
+      - x509: etc_elasticfleet_agent_crt
     {%- endif %}
     - retry:
         attempts: 5
@@ -350,7 +360,7 @@ etc_elasticfleet_agent_crt:
   cmd.run:
     - name: "/usr/bin/openssl pkcs8 -in /etc/pki/elasticfleet-agent.key -topk8 -out /etc/pki/elasticfleet-agent.p8 -nocrypt"
     - onchanges:
-      - x509: etc_elasticfleet_key
+      - x509: etc_elasticfleet_agent_key
 
 efagentperms:
   file.managed:

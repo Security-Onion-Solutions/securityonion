@@ -7,6 +7,7 @@
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 {%   from 'docker/docker.map.jinja' import DOCKER %}
+{%   from 'telegraf/map.jinja' import TELEGRAFMERGED %}
 
 
 include:
@@ -45,7 +46,7 @@ so-telegraf:
       {% if GLOBALS.role in ['so-manager', 'so-eval', 'so-managersearch' ] %}
       - /etc/pki/ca.crt:/etc/telegraf/ca.crt:ro
       {% else %}
-      - /etc/ssl/certs/intca.crt:/etc/telegraf/ca.crt:ro
+      - /etc/pki/tls/certs/intca.crt:/etc/telegraf/ca.crt:ro
       {% endif %}
       - /etc/pki/influxdb.crt:/etc/telegraf/telegraf.crt:ro
       - /etc/pki/influxdb.key:/etc/telegraf/telegraf.key:ro
@@ -67,8 +68,10 @@ so-telegraf:
     {% endif %}
     - watch:
       - file: tgrafconf
-      - file: tgrafsyncscripts
       - file: node_config
+    {% for script in TELEGRAFMERGED.scripts[GLOBALS.role.split('-')[1]] %}
+      - file: tgraf_sync_script_{{script}}
+    {% endfor %}
     - require: 
       - file: tgrafconf
       - file: node_config

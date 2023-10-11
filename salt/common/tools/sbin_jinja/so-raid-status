@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
-# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
@@ -9,25 +9,26 @@
 
 . /usr/sbin/so-common
 
-appliance_check() {
-  {%- if salt['grains.get']('sosmodel', '') %}
-  APPLIANCE=1
-  {%- if grains['sosmodel'] in ['SO2AMI01', 'SO2GCI01', 'SO2AZI01'] %}
-  exit 0
-  {%- endif %}
-  DUDEYOUGOTADELL=$(dmidecode |grep Dell)
-  if [[ -n $DUDEYOUGOTADELL ]]; then
-  APPTYPE=dell
-  else
-  APPTYPE=sm
-  fi
-  mkdir -p /opt/so/log/raid
-
-  {%- else %}
-  echo "This is not an appliance"
-  exit 0
-  {%- endif %}
-}
+{%- if salt['grains.get']('sosmodel', '') %}
+{%- set model = salt['grains.get']('sosmodel') %}
+model={{ model }}
+# Don't need cloud images to use this
+if [[ $model =~ ^(SO2AMI01|SO2AZI01|SO2GCI01)$ ]]; then
+    exit 0
+fi
+{%- else %}
+echo "This is not an appliance"
+exit 0
+{%- endif %}
+if [[ $model =~ ^(SOS10K|SOS500|SOS1000|SOS1000F|SOS4000|SOSSN7200|SOSSNNV|SOSMN)$ ]]; then
+	is_bossraid=true
+fi
+if [[ $model =~ ^(SOSSNNV|SOSMN)$ ]]; then
+	is_swraid=true
+fi
+if [[ $model =~ ^(SOS10K|SOS500|SOS1000|SOS1000F|SOS4000|SOSSN7200)$ ]]; then
+	is_hwraid=true
+fi
 
 check_nsm_raid() {
   PERCCLI=$(/opt/raidtools/perccli/perccli64 /c0/v0 show|grep RAID|grep Optl)
@@ -49,61 +50,44 @@ check_nsm_raid() {
 check_boss_raid() {
   MVCLI=$(/usr/local/bin/mvcli info -o vd |grep status |grep functional)
 
-  if [[ -n $DUDEYOUGOTADELL ]]; then
-    if [[ -n $MVCLI ]]; then
-      BOSSRAID=0
-    else
-      BOSSRAID=1
-    fi
+  if [[ -n $MVCLI ]]; then
+    BOSSRAID=0
+  else
+    BOSSRAID=1
   fi
 }
 
 check_software_raid() {
-  if [[ -n $DUDEYOUGOTADELL ]]; then
-    SWRC=$(grep "_" /proc/mdstat)
-
-    if [[ -n $SWRC ]]; then
-        # RAID is failed in some way
-        SWRAID=1
-    else
-        SWRAID=0
-    fi
+  SWRC=$(grep "_" /proc/mdstat)
+  if [[ -n $SWRC ]]; then
+      # RAID is failed in some way
+      SWRAID=1
+  else
+      SWRAID=0
   fi
 }
 
-# This script checks raid status if you use SO appliances
+# Set everything to 0
+SWRAID=0
+BOSSRAID=0
+HWRAID=0
 
-# See if this is an appliance
+if [[ $is_hwraid ]]; then
+	check_nsm_raid
+fi
+if [[ $is_bossraid ]]; then
+	check_boss_raid
+fi
+if [[ $is_swraid ]]; then
+	check_software_raid
+fi
 
-appliance_check
-check_nsm_raid
-check_boss_raid
-{%- if salt['grains.get']('sosmodel', '') %}
-{%- if grains['sosmodel'] in ['SOSMN', 'SOSSNNV'] %}
-check_software_raid
-{%- endif %}
-{%- endif %}
+sum=$(($SWRAID + $BOSSRAID + $HWRAID))
 
-if [[ -n $SWRAID ]]; then
-  if [[ $SWRAID == '0' && $BOSSRAID == '0' ]]; then
-    RAIDSTATUS=0
-  else
-    RAIDSTATUS=1
-  fi
-elif [[ -n $DUDEYOUGOTADELL ]]; then
-  if [[ $BOSSRAID == '0' && $HWRAID == '0' ]]; then
-    RAIDSTATUS=0
-  else
-    RAIDSTATUS=1
-  fi
-elif [[ "$APPTYPE" == 'sm' ]]; then
-  if [[ -n "$HWRAID" ]]; then
-    RAIDSTATUS=0
-  else
-    RAIDSTATUS=1
-  fi
+if [[ $sum == "0" ]]; then
+  RAIDSTATUS=0
+else
+  RAIDSTATUS=1
 fi
 
 echo "nsmraid=$RAIDSTATUS" > /opt/so/log/raid/status.log
-
-

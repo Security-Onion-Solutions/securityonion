@@ -15,12 +15,14 @@
 include:
   - elasticfleet.config
   - elasticfleet.sostatus
+  - ssl
 
 # If enabled, automatically update Fleet Logstash Outputs
 {% if ELASTICFLEETMERGED.config.server.enable_auto_configuration and grains.role not in ['so-import', 'so-eval', 'so-fleet'] %}
 so-elastic-fleet-auto-configure-logstash-outputs:
   cmd.run:
     - name: /usr/sbin/so-elastic-fleet-outputs-update
+    - retry: True
 {% endif %}
 
 # If enabled, automatically update Fleet Server URLs & ES Connection
@@ -28,6 +30,7 @@ so-elastic-fleet-auto-configure-logstash-outputs:
 so-elastic-fleet-auto-configure-server-urls:
   cmd.run:
     - name: /usr/sbin/so-elastic-fleet-urls-update
+    - retry: True
 {% endif %}
 
 # Automatically update Fleet Server Elasticsearch URLs
@@ -35,6 +38,7 @@ so-elastic-fleet-auto-configure-server-urls:
 so-elastic-fleet-auto-configure-elasticsearch-urls:
   cmd.run:
     - name: /usr/sbin/so-elastic-fleet-es-url-update
+    - retry: True
 {% endif %}
 
 {%   if SERVICETOKEN != '' %}
@@ -61,11 +65,9 @@ so-elastic-fleet:
       - {{ BINDING }}
       {% endfor %}
     - binds:
-      - /etc/pki:/etc/pki:ro
-      {% if GLOBALS.os_family == 'Debian' %}
-      - /etc/ssl:/etc/ssl:ro
-      {% endif %}
-      #- /opt/so/conf/elastic-fleet/state:/usr/share/elastic-agent/state:rw
+      - /etc/pki/elasticfleet-server.crt:/etc/pki/elasticfleet-server.crt:ro
+      - /etc/pki/elasticfleet-server.key:/etc/pki/elasticfleet-server.key:ro
+      - /etc/pki/tls/certs/intca.crt:/etc/pki/tls/certs/intca.crt:ro
       - /opt/so/log/elasticfleet:/usr/share/elastic-agent/logs 
      {% if DOCKER.containers['so-elastic-fleet'].custom_bind_mounts %}
         {% for BIND in DOCKER.containers['so-elastic-fleet'].custom_bind_mounts %}
@@ -80,25 +82,28 @@ so-elastic-fleet:
       - FLEET_SERVER_POLICY_ID=FleetServer_{{ GLOBALS.hostname }}
       - FLEET_SERVER_CERT=/etc/pki/elasticfleet-server.crt
       - FLEET_SERVER_CERT_KEY=/etc/pki/elasticfleet-server.key
-      {% if GLOBALS.os_family == 'Debian' %}
-      - FLEET_CA=/etc/ssl/certs/intca.crt     
-      - FLEET_SERVER_ELASTICSEARCH_CA=/etc/ssl/certs/intca.crt
-      {% else %}
-      - FLEET_CA=/etc/pki/tls/certs/intca.crt
+      - FLEET_CA=/etc/pki/tls/certs/intca.crt     
       - FLEET_SERVER_ELASTICSEARCH_CA=/etc/pki/tls/certs/intca.crt
-      {% endif %}
       - LOGS_PATH=logs
       {% if DOCKER.containers['so-elastic-fleet'].extra_env %}
         {% for XTRAENV in DOCKER.containers['so-elastic-fleet'].extra_env %}
       - {{ XTRAENV }}
         {% endfor %}
       {% endif %}
+    - watch:
+      - x509: etc_elasticfleet_key
+      - x509: etc_elasticfleet_crt
 {%   endif %}
 
 {%  if GLOBALS.role != "so-fleet" %}
 so-elastic-fleet-integrations:
   cmd.run:
     - name: /usr/sbin/so-elastic-fleet-integration-policy-load
+
+so-elastic-agent-grid-upgrade:
+  cmd.run:
+    - name: /usr/sbin/so-elastic-agent-grid-upgrade
+    - retry: True
 {%  endif %}
 
 delete_so-elastic-fleet_so-status.disabled:

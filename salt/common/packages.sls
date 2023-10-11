@@ -17,10 +17,10 @@ commonpkgs:
       - netcat-openbsd
       - sqlite3
       - libssl-dev
+      - procps
       - python3-dateutil
       - python3-docker
       - python3-packaging
-      - python3-watchdog
       - python3-lxml
       - git
       - rsync
@@ -46,10 +46,16 @@ python-rich:
 {% endif %}
 
 {% if GLOBALS.os_family == 'RedHat' %}
+
+remove_mariadb:
+  pkg.removed:
+    - name: mariadb-devel
+
 commonpkgs:
   pkg.installed:
     - skip_suggestions: True
     - pkgs:
+      - python3-dnf-plugin-versionlock
       - curl
       - device-mapper-persistent-data
       - fuse
@@ -62,25 +68,19 @@ commonpkgs:
       - httpd-tools
       - jq
       - lvm2
-      {% if GLOBALS.os == 'CentOS Stream' %}
-      - MariaDB-devel
-      {% else %}
-      - mariadb-devel
-      {% endif %}
       - net-tools
       - nmap-ncat
-      - openssl
-      - python3-dnf-plugin-versionlock
+      - procps-ng
       - python3-docker
       - python3-m2crypto
       - python3-packaging
       - python3-pyyaml
       - python3-rich
-      - python3-watchdog
       - rsync
       - sqlite
       - tcpdump
       - unzip
       - wget
       - yum-utils
+
 {% endif %}

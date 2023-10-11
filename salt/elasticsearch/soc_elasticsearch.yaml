@@ -46,28 +46,37 @@ elasticsearch:
             description: Max number of boolean clauses per query.
             global: True
             helpLink: elasticsearch.html
-  index_settings: 
-    so-elasticsearch: &indexSettings
-      warm: 
-        description: Age (in days) of this index before it will move to warm storage, if warm nodes are present. Once moved, events on this index can take longer to fetch.
-        global: True
-        helpLink: elasticsearch.html
-      close: 
-        description: Age (in days) of this index before it will be closed. Once closed, events on this index cannot be retrieved without first re-opening the index.
-        global: True
-        helpLink: elasticsearch.html
-      delete: 
-        description: Age (in days) of this index before it will be deleted. Once deleted, events are permanently unrecoverable.
-        global: True
-        helpLink: elasticsearch.html
+  index_settings:
+    global_overrides:
+      index_template:
+        template:
+          settings:
+            index:
+              number_of_replicas:
+                description: Number of replicas required for all indices. Multiple replicas protects against data loss, but also increases storage costs. This setting will be applied to all indices.
+                forcedType: int
+                global: True
+                helpLink: elasticsearch.html
+    so-logs: &indexSettings
       index_sorting: 
         description: Sorts the index by event time, at the cost of additional processing resource consumption.
         global: True
         helpLink: elasticsearch.html
       index_template:
+        index_patterns:
+          description: Patterns for matching multiple indices or tables.
+          forceType: "[]string"
+          multiline: True
+          global: True
+          helpLink: elasticsearch.html
         template:
           settings:
             index:
+              number_of_replicas: 
+                description: Number of replicas required for this index. Multiple replicas protects against data loss, but also increases storage costs.
+                forcedType: int
+                global: True
+                helpLink: elasticsearch.html
               mapping:
                 total_fields:
                   limit:
@@ -75,17 +84,59 @@ elasticsearch:
                     global: True
                     helpLink: elasticsearch.html
               refresh_interval: 
-                  description: Seconds between index refreshes. Shorter intervals can cause query performance to suffer since this is a synchronous and resource-intensive operation.
-                  global: True
-                  helpLink: elasticsearch.html
+                description: Seconds between index refreshes. Shorter intervals can cause query performance to suffer since this is a synchronous and resource-intensive operation.
+                global: True
+                helpLink: elasticsearch.html
               number_of_shards: 
-                  description: Number of shards required for this index. Using multiple shards increases fault tolerance, but also increases storage and network costs.
+                description: Number of shards required for this index. Using multiple shards increases fault tolerance, but also increases storage and network costs.
+                global: True
+                helpLink: elasticsearch.html
+              sort:
+                field:
+                  description: The field to sort by. Must set index_sorting to True.
                   global: True
                   helpLink: elasticsearch.html
-              number_of_replicas: 
-                  description: Number of replicas required for this index. Multiple replicas protects against data loss, but also increases storage costs.
+                order:
+                  description: The order to sort by. Must set index_sorting to True.
                   global: True
                   helpLink: elasticsearch.html
+          mappings:
+            _meta:
+              package:
+                name:
+                  description: Meta settings for the mapping.
+                  global: True
+                  helpLink: elasticsearch.html
+              managed_by:
+                  description: Meta settings for the mapping.
+                  global: True
+                  helpLink: elasticsearch.html
+              managed:
+                  description: Meta settings for the mapping.
+                  forcedType: bool
+                  global: True
+                  helpLink: elasticsearch.html
+        composed_of:
+          description: The index template is composed of these component templates.
+          forcedType: "[]string"
+          global: True
+          helpLink: elasticsearch.html
+        priority:
+          description: The priority of the index template.
+          forcedType: int
+          global: True
+          helpLink: elasticsearch.html
+        data_stream:
+          hidden:
+            description: Hide the data stream.
+            forcedType: bool
+            global: True
+            helpLink: elasticsearch.html
+          allow_custom_routing:
+            description: Allow custom routing for the data stream.
+            forcedType: bool
+            global: True
+            helpLink: elasticsearch.html
       policy:
         phases:
           hot:
@@ -97,6 +148,7 @@ elasticsearch:
               set_priority:
                 priority:
                   description: Priority of index. This is used for recovery after a node restart. Indices with higher priorities are recovered before indices with lower priorities.
+                  forcedType: int
                   global: True
                   helpLink: elasticsearch.html
               rollover:
@@ -117,19 +169,178 @@ elasticsearch:
               set_priority:
                 priority:
                   description: Used for index recovery after a node restart. Indices with higher priorities are recovered before indices with lower priorities.
+                  forcedType: int
                   global: True
                   helpLink: elasticsearch.html
           delete:
             min_age:
               description: Minimum age of index. This determines when the index should be deleted.
               global: True
-              helpLink: elastic
+              helpLink: elasticsearch.html
+        _meta:
+          package:
+            name:
+              description: Meta settings for the mapping.
+              global: True
+              helpLink: elasticsearch.html
+          managed_by:
+            description: Meta settings for the mapping.
+            global: True
+            helpLink: elasticsearch.html
+          managed:
+            description: Meta settings for the mapping.
+            forcedType: bool
+            global: True
+            helpLink: elasticsearch.html
+    so-logs-system_x_auth: *indexSettings
+    so-logs-system_x_syslog: *indexSettings
+    so-logs-system_x_system: *indexSettings
+    so-logs-system_x_application: *indexSettings
+    so-logs-system_x_security: *indexSettings
+    so-logs-windows_x_forwarded: *indexSettings
+    so-logs-windows_x_powershell: *indexSettings
+    so-logs-windows_x_powershell_operational: *indexSettings
+    so-logs-windows_x_sysmon_operational: *indexSettings
+    so-logs-apache_x_access: *indexSettings
+    so-logs-apache_x_error: *indexSettings
+    so-logs-auditd_x_log: *indexSettings
+    so-logs-aws_x_cloudtrail: *indexSettings
+    so-logs-aws_x_cloudwatch_logs: *indexSettings
+    so-logs-aws_x_ec2_logs: *indexSettings
+    so-logs-aws_x_elb_logs: *indexSettings
+    so-logs-aws_x_firewall_logs: *indexSettings
+    so-logs-aws_x_route53_public_logs: *indexSettings
+    so-logs-aws_x_route53_resolver_logs: *indexSettings
+    so-logs-aws_x_s3access: *indexSettings
+    so-logs-aws_x_vpcflow: *indexSettings
+    so-logs-aws_x_waf: *indexSettings
+    so-logs-azure_x_activitylogs: *indexSettings
+    so-logs-azure_x_application_gateway: *indexSettings
+    so-logs-azure_x_auditlogs: *indexSettings
+    so-logs-azure_x_eventhub: *indexSettings
+    so-logs-azure_x_firewall_logs: *indexSettings
+    so-logs-azure_x_identity_protection: *indexSettings
+    so-logs-azure_x_platformlogs: *indexSettings
+    so-logs-azure_x_provisioning: *indexSettings
+    so-logs-azure_x_signinlogs: *indexSettings
+    so-logs-azure_x_springcloudlogs: *indexSettings
+    so-logs-barracuda_x_waf: *indexSettings
+    so-logs-cisco_asa_x_log: *indexSettings
+    so-logs-cloudflare_x_audit: *indexSettings
+    so-logs-cloudflare_x_logpull: *indexSettings
+    so-logs-crowdstrike_x_falcon: *indexSettings
+    so-logs-crowdstrike_x_fdr: *indexSettings
+    so-logs-darktrace_x_ai_analyst_alert: *indexSettings
+    so-logs-darktrace_x_model_breach_alert: *indexSettings
+    so-logs-darktrace_x_system_status_alert: *indexSettings
+    so-logs-f5_bigip_x_log: *indexSettings
+    so-logs-fim_x_event: *indexSettings
+    so-logs-fortinet_x_clientendpoint: *indexSettings
+    so-logs-fortinet_x_firewall: *indexSettings
+    so-logs-fortinet_x_fortimail: *indexSettings
+    so-logs-fortinet_x_fortimanager: *indexSettings
+    so-logs-fortinet_x_fortigate: *indexSettings
+    so-logs-gcp_x_audit: *indexSettings
+    so-logs-gcp_x_dns: *indexSettings
+    so-logs-gcp_x_firewall: *indexSettings
+    so-logs-gcp_x_loadbalancing_logs: *indexSettings
+    so-logs-gcp_x_vpcflow: *indexSettings
+    so-logs-github_x_audit: *indexSettings
+    so-logs-github_x_code_scanning: *indexSettings
+    so-logs-github_x_dependabot: *indexSettings
+    so-logs-github_x_issues: *indexSettings
+    so-logs-github_x_secret_scanning: *indexSettings
+    so-logs-google_workspace_x_access_transparency: *indexSettings
+    so-logs-google_workspace_x_admin: *indexSettings
+    so-logs-google_workspace_x_alert: *indexSettings
+    so-logs-google_workspace_x_context_aware_access: *indexSettings
+    so-logs-google_workspace_x_device: *indexSettings
+    so-logs-google_workspace_x_drive: *indexSettings
+    so-logs-google_workspace_x_gcp: *indexSettings
+    so-logs-google_workspace_x_group_enterprise: *indexSettings
+    so-logs-google_workspace_x_groups: *indexSettings
+    so-logs-google_workspace_x_login: *indexSettings
+    so-logs-google_workspace_x_rules: *indexSettings
+    so-logs-google_workspace_x_saml: *indexSettings
+    so-logs-google_workspace_x_token: *indexSettings
+    so-logs-google_workspace_x_user_accounts: *indexSettings
+    so-logs-http_endpoint_x_generic: *indexSettings
+    so-logs-httpjson_x_generic: *indexSettings
+    so-logs-juniper_x_junos: *indexSettings
+    so-logs-juniper_x_netscreen: *indexSettings
+    so-logs-juniper_x_srx: *indexSettings
+    so-logs-juniper_srx_x_log: *indexSettings
+    so-logs-kafka_log_x_generic: *indexSettings
+    so-logs-lastpass_x_detailed_shared_folder: *indexSettings
+    so-logs-lastpass_x_event_report: *indexSettings
+    so-logs-lastpass_x_user: *indexSettings
+    so-logs-m365_defender_x_event: *indexSettings
+    so-logs-m365_defender_x_incident: *indexSettings
+    so-logs-m365_defender_x_log: *indexSettings
+    so-logs-microsoft_defender_endpoint_x_log: *indexSettings
+    so-logs-microsoft_dhcp_x_log: *indexSettings
+    so-logs-netflow_x_log: *indexSettings
+    so-logs-o365_x_audit: *indexSettings
+    so-logs-okta_x_system: *indexSettings
+    so-logs-panw_x_panos: *indexSettings
+    so-logs-pfsense_x_log: *indexSettings
+    so-logs-sentinel_one_x_activity: *indexSettings
+    so-logs-sentinel_one_x_agent: *indexSettings
+    so-logs-sentinel_one_x_alert: *indexSettings
+    so-logs-sentinel_one_x_group: *indexSettings
+    so-logs-sentinel_one_x_threat: *indexSettings
+    so-logs-sonicwall_firewall_x_log: *indexSettings
+    so-logs-symantec_endpoint_x_log: *indexSettings
+    so-logs-ti_abusech_x_malware: *indexSettings
+    so-logs-ti_abusech_x_malwarebazaar: *indexSettings
+    so-logs-ti_abusech_x_threatfox: *indexSettings
+    so-logs-ti_abusech_x_url: *indexSettings
+    so-logs-ti_misp_x_threat: *indexSettings
+    so-logs-ti_misp_x_threat_attributes: *indexSettings
+    so-logs-ti_otx_x_threat: *indexSettings
+    so-logs-ti_recordedfuture_x_latest_ioc-template: *indexSettings
+    so-logs-ti_recordedfuture_x_threat: *indexSettings
+    so-logs-zscaler_zia_x_alerts: *indexSettings
+    so-logs-zscaler_zia_x_dns: *indexSettings
+    so-logs-zscaler_zia_x_firewall: *indexSettings
+    so-logs-zscaler_zia_x_tunnel: *indexSettings
+    so-logs-zscaler_zia_x_web: *indexSettings
+    so-logs-zscaler_zpa_x_app_connector_status: *indexSettings
+    so-logs-zscaler_zpa_x_audit: *indexSettings
+    so-logs-zscaler_zpa_x_browser_access: *indexSettings
+    so-logs-zscaler_zpa_x_user_activity: *indexSettings
+    so-logs-zscaler_zpa_x_user_status: *indexSettings
+    so-logs-1password_x_item_usages: *indexSettings
+    so-logs-1password_x_signin_attempts: *indexSettings
+    so-logs-osquery-manager-actions: *indexSettings
+    so-logs-osquery-manager-action_x_responses: *indexSettings
+    so-logs-elastic_agent_x_apm_server: *indexSettings
+    so-logs-elastic_agent_x_auditbeat: *indexSettings
+    so-logs-elastic_agent_x_cloudbeat: *indexSettings
+    so-logs-elastic_agent_x_endpoint_security: *indexSettings
+    so-logs-endpoint_x_alerts: *indexSettings
+    so-logs-endpoint_x_events_x_api: *indexSettings
+    so-logs-endpoint_x_events_x_file: *indexSettings
+    so-logs-endpoint_x_events_x_library: *indexSettings
+    so-logs-endpoint_x_events_x_network: *indexSettings
+    so-logs-endpoint_x_events_x_process: *indexSettings
+    so-logs-endpoint_x_events_x_registry: *indexSettings
+    so-logs-endpoint_x_events_x_security: *indexSettings
+    so-logs-elastic_agent_x_filebeat: *indexSettings
+    so-logs-elastic_agent_x_fleet_server: *indexSettings
+    so-logs-elastic_agent_x_heartbeat: *indexSettings
+    so-logs-elastic_agent: *indexSettings
+    so-logs-elastic_agent_x_metricbeat: *indexSettings
+    so-logs-elastic_agent_x_osquerybeat: *indexSettings
+    so-logs-elastic_agent_x_packetbeat: *indexSettings
+    so-case: *indexSettings
+    so-common: *indexSettings
     so-endgame: *indexSettings
-    so-firewall: *indexSettings
+    so-idh: *indexSettings
+    so-suricata: *indexSettings
     so-import: *indexSettings
-    so-kibana: *indexSettings
+    so-kratos: *indexSettings
     so-logstash: *indexSettings
-    so-osquery: *indexSettings
     so-redis: *indexSettings
     so-strelka: *indexSettings
     so-syslog: *indexSettings

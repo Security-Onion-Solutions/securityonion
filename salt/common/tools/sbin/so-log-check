@@ -1,0 +1,233 @@
+#!/bin/bash
+#
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+. /usr/sbin/so-common
+
+RECENT_LOG_LINES=200
+EXCLUDE_STARTUP_ERRORS=N
+EXCLUDE_FALSE_POSITIVE_ERRORS=N
+EXCLUDE_KNOWN_ERRORS=N
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --exclude-connection-errors)
+            EXCLUDE_STARTUP_ERRORS=Y
+            ;;
+        --exclude-false-positives)
+            EXCLUDE_FALSE_POSITIVE_ERRORS=Y
+            ;;
+        --exclude-known-errors)
+            EXCLUDE_KNOWN_ERRORS=Y
+            ;;
+        --unknown)
+            EXCLUDE_STARTUP_ERRORS=Y
+            EXCLUDE_FALSE_POSITIVE_ERRORS=Y
+            EXCLUDE_KNOWN_ERRORS=Y
+            ;;
+        --recent-log-lines)
+            shift
+            RECENT_LOG_LINES=$1
+            ;;
+        *)
+            echo "Usage: $0 [options]"
+            echo ""
+            echo "where options are:"
+            echo "  --recent-log-lines N            looks at the most recent N log lines per file or container; defaults to 200"
+            echo "  --exclude-connection-errors     exclude errors caused by a recent server or container restart"
+            echo "  --exclude-false-positives       exclude logs that are known false positives"
+            echo "  --exclude-known-errors          exclude errors that are known and non-critical issues"
+            echo "  --unknown                       exclude everything mentioned above; only show unknown errors"
+            echo ""
+            echo "A non-zero return value indicates errors were found"
+            exit 1
+            ;;
+    esac
+    shift
+done
+
+echo "Security Onion Log Check - $(date)"
+echo "-------------------------------------------"
+echo ""
+echo "- RECENT_LOG_LINES:                $RECENT_LOG_LINES"
+echo "- EXCLUDE_STARTUP_ERRORS:          $EXCLUDE_STARTUP_ERRORS"
+echo "- EXCLUDE_FALSE_POSITIVE_ERRORS:   $EXCLUDE_FALSE_POSITIVE_ERRORS"
+echo "- EXCLUDE_KNOWN_ERRORS:            $EXCLUDE_KNOWN_ERRORS"
+echo ""
+
+function status() {
+    header "$1"
+}
+
+function exclude_container() {
+    name=$1
+
+    exclude_id=$(docker ps | grep "$name" | awk '{print $1}')
+    if [[ -n "$exclude_id" ]]; then
+        CONTAINER_IDS=$(echo $CONTAINER_IDS | sed -e "s/$exclude_id//g")
+        return $?
+    fi
+    return $?
+}
+
+function exclude_log() {
+    name=$1
+
+    cat /tmp/log_check_files | grep -v $name > /tmp/log_check_files.new
+    mv /tmp/log_check_files.new /tmp/log_check_files
+}
+
+function check_for_errors() {
+    if cat /tmp/log_check | grep -i error | grep -vEi "$EXCLUDED_ERRORS"; then
+        RESULT=1
+    fi
+}
+
+EXCLUDED_ERRORS="__LOG_CHECK_PLACEHOLDER_EXCLUSION__"
+
+if [[ $EXCLUDE_STARTUP_ERRORS == 'Y' ]]; then
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|database is locked"           # server not yet ready
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|econnreset"                   # server not yet ready
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|unreachable"                  # server not yet ready (logstash waiting on elastic)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|shutdown process"             # server not yet ready (logstash waiting on elastic)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|contain valid certificates"   # server not yet ready (logstash waiting on elastic)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|failedaction"                 # server not yet ready (logstash waiting on elastic)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|no route to host"             # server not yet ready
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|not running"                  # server not yet ready
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|unavailable"                  # server not yet ready
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|request.py"                   # server not yet ready (python stack output)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|httperror"                    # server not yet ready
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|servfail"                     # server not yet ready
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|connect"                      # server not yet ready
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|missing shards"               # server not yet ready
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|failed to send metrics"       # server not yet ready
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|broken pipe"                  # server not yet ready
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|status: 502"                  # server not yet ready (nginx waiting on upstream)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|timeout exceeded"             # server not yet ready (telegraf waiting on elasticsearch)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|influxsize kbytes"            # server not yet ready (telegraf waiting on influx)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|expected field at"            # server not yet ready (telegraf waiting on health data)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|cached the public key"        # server not yet ready (salt minion waiting on key acceptance)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|no ingest nodes"              # server not yet ready (logstash waiting on elastic)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|failed to poll"               # server not yet ready (sensoroni waiting on soc)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|minions returned with non"    # server not yet ready (salt waiting on minions)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|so_long_term"                 # server not yet ready (influxdb not yet setup)
+fi
+
+if [[ $EXCLUDE_FALSE_POSITIVE_ERRORS == 'Y' ]]; then
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|elastalert_status_error"      # false positive
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|elastalert_error"             # false positive
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|error: '0'"                   # false positive
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|errors_index"                 # false positive
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|noerror"                      # false positive
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|outofmemoryerror"             # false positive (elastic command line)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|adding component template"    # false positive (elastic security)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|adding index template"        # false positive (elastic security)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|fs_errors"                    # false positive (suricata stats)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|error-template"               # false positive (elastic templates)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|deprecated"                   # false positive (playbook)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|windows"                      # false positive (playbook)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|could cause errors"           # false positive (playbook)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|_error.yml"                   # false positive (playbook)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|id.orig_h"                    # false positive (zeek test data)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|emerging-all.rules"           # false positive (error in rulename)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|invalid query input"          # false positive (Invalid user input in hunt query)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|example"                      # false positive (example test data)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|status 200"                   # false positive (request successful, contained error string in content)
+fi
+
+if [[ $EXCLUDE_KNOWN_ERRORS == 'Y' ]]; then
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|eof"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|raise"                        # redis/python generic stack line, rely on other lines for actual error
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|fail\\(error\\)"              # redis/python generic stack line, rely on other lines for actual error
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|urlerror"                     # idstools connection timeout
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|timeouterror"                 # idstools connection timeout
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|forbidden"                    # playbook
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|_ml"                          # Elastic ML errors 
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|context canceled"             # elastic agent during shutdown
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|exited with code 128"         # soctopus errors during forced restart by highstate
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|geoip databases update"       # airgap can't update GeoIP DB
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|filenotfounderror"            # bug in 2.4.10 filecheck salt state caused duplicate cronjobs
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|salt-minion-check"            # bug in early 2.4 place Jinja script in non-jinja salt dir causing cron output errors
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|generating elastalert config" # playbook expected error
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|activerecord"                 # playbook expected error
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|monitoring.metrics"           # known issue with elastic agent casting the field incorrectly if an integer value shows up before a float
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|repodownload.conf"            # known issue with reposync on pre-2.4.20 
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|missing versions record"      # stenographer corrupt index
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|soc.field."                   # known ingest type collisions issue with earlier versions of SO
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|iteration"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|communication packets"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|use of closed"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|bookkeeper"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|noindices"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|failed to start transient scope"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|so-user.lock exists"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|systemd-run"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|retcode: 1"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|telemetry-task"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|redisqueue"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|fleet_detail_query"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|num errors=0"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|provisioning/alerting"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|provisioning/notifiers"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|provisoning/plugins"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|active-responses.log"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|scanentropy"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|integration policy"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|blob unknown"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|token required"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|zeekcaptureloss"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|unable to create detection"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|error installing new prebuilt rules"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|parent.error"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|req.LocalMeta.host.ip"        # known issue in GH
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|sendmail"                     # zeek
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|stats.log"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|context deadline exceeded"
+fi
+
+RESULT=0
+
+# Check Security Onion container stdout/stderr logs
+CONTAINER_IDS=$(docker ps -q)
+exclude_container so-kibana   # kibana error logs are too verbose with large varieties of errors most of which are temporary
+exclude_container so-idstools # ignore due to known issues and noisy logging
+exclude_container so-playbook # ignore due to several playbook known issues
+
+for container_id in $CONTAINER_IDS; do
+    container_name=$(docker ps --format json | jq ". | select(.ID==\"$container_id\")|.Names")
+    status "Checking container $container_name"
+    docker logs -n $RECENT_LOG_LINES $container_id > /tmp/log_check 2>&1
+    check_for_errors
+done
+
+# Check Security Onion related log files
+find /opt/so/log/ /nsm -name \*.log > /tmp/log_check_files
+if [[ -f /var/log/cron ]]; then
+    echo "/var/log/cron" >> /tmp/log_check_files
+fi
+exclude_log "kibana.log"   # kibana error logs are too verbose with large varieties of errors most of which are temporary
+exclude_log "spool"        # disregard zeek analyze logs as this is data specific
+exclude_log "import"       # disregard imported test data the contains error strings
+exclude_log "update.log"   # ignore playbook updates due to several known issues
+exclude_log "playbook.log" # ignore due to several playbook known issues
+
+for log_file in $(cat /tmp/log_check_files); do
+    status "Checking log file $log_file"
+    tail -n $RECENT_LOG_LINES $log_file > /tmp/log_check
+    check_for_errors
+done
+
+# Cleanup temp files
+rm -f /tmp/log_check_files
+rm -f /tmp/log_check
+
+if [[ $RESULT -eq 0 ]]; then
+    echo -e "\nResult: No errors found"
+else
+    echo -e "\nResult: One or more errors found"
+fi
+
+exit $RESULT

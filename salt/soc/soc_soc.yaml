@@ -45,9 +45,10 @@ soc:
     actions:
       description: A list of actions a user can take from the SOC UI against a hunt, alert, and other records. The action must be defined in JSON object format, and contain a "name" key and "links" key. The links is a list of URLs, where the most suitable URL in the list will be the selected URL when the user clicks the action.
       global: True
+      forcedType: "[]{}"
     eventFields:
       default:
-        description: The list of fields to show as columns in the Hunt/Dashboards event table, when no other specific mapping applies. Mappings are defined by the format ":event.module:event.dataset".
+        description: Event fields mappings are defined by the format ":event.module:event.dataset". For example, to customize which fields show for 'syslog' events originating from 'zeek', find the eventField item in the left panel that looks like ':zeek:syslog'. This 'default' entry is used for all events that do not match an existing mapping defined in the list to the left.
         global: True
         advanced: True
     server:
@@ -110,6 +111,15 @@ soc:
             description: Duration (in milliseconds) that must elapse after a grid node fails to check-in before the node will be marked offline (fault).
             global: True
             advanced: True
+        salt:
+          longRelayTimeoutMs:
+            description: Duration (in milliseconds) to wait for a response from the Salt API when executing tasks known for being long running before giving up and showing an error on the SOC UI.
+            global: True
+            advanced: True
+          relayTimeoutMs:
+            description: Duration (in milliseconds) to wait for a response from the Salt API when executing common grid management tasks before giving up and showing an error on the SOC UI.
+            global: True
+            advanced: True
       client:
         enableReverseLookup:
           description: Set to true to enable reverse DNS lookups for IP addresses in the SOC UI.
@@ -139,6 +149,7 @@ soc:
           description: List of available external tools visible in the SOC UI. Each tool is defined in JSON object notation, and must include the "name" key and "link" key, where the link is the tool's URL.
           global: True
           advanced: True
+          forcedType: "[]{}"
         hunt: &appSettings
           groupItemsPerPage:
             description: Default number of aggregations to show per page. Larger values consume more vertical area in the SOC UI.
@@ -164,6 +175,12 @@ soc:
           queries:
             description: List of default queries to show in the query list. Each query is represented in JSON object notation, and must include the "name" key and "query" key.
             global: True
+            forcedType: "[]{}"
+          queryToggleFilters:
+            description: Customize togglable query filters that apply to all queries. Exclusive toggles will invert the filter if toggled off rather than omitting the filter from the query.
+            global: True
+            advanced: True
+            forcedType: "[]{}"
         alerts: *appSettings
         cases: *appSettings
         dashboards: *appSettings

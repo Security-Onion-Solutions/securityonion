@@ -59,7 +59,7 @@ so-elasticsearch:
       {% if GLOBALS.is_manager %}
       - /etc/pki/ca.crt:/usr/share/elasticsearch/config/ca.crt:ro
       {% else %}
-      - /etc/ssl/certs/intca.crt:/usr/share/elasticsearch/config/ca.crt:ro
+      - /etc/pki/tls/certs/intca.crt:/usr/share/elasticsearch/config/ca.crt:ro
       {% endif %}
       - /etc/pki/elasticsearch.crt:/usr/share/elasticsearch/config/elasticsearch.crt:ro
       - /etc/pki/elasticsearch.key:/usr/share/elasticsearch/config/elasticsearch.key:ro
@@ -108,6 +108,7 @@ escomponenttemplates:
     - source: salt://elasticsearch/templates/component
     - user: 930
     - group: 939
+    - clean: True
     - onchanges_in:
       - cmd: so-elasticsearch-templates
       

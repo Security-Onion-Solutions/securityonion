@@ -32,17 +32,16 @@ tgrafetsdir:
     - name: /opt/so/conf/telegraf/scripts
     - makedirs: True
 
-tgrafsyncscripts:
-  file.recurse:
-    - name: /opt/so/conf/telegraf/scripts
+{% for script in TELEGRAFMERGED.scripts[GLOBALS.role.split('-')[1]] %}
+tgraf_sync_script_{{script}}:
+  file.managed:
+    - name: /opt/so/conf/telegraf/scripts/{{script}}
     - user: root
     - group: 939
-    - file_mode: 770
+    - mode: 770
     - template: jinja
-    - source: salt://telegraf/scripts
-    {% if GLOBALS.md_engine == 'SURICATA' %}
-    - exclude_pat: zeekcaptureloss.sh
-    {% endif %}
+    - source: salt://telegraf/scripts/{{script}}
+{% endfor %}
 
 telegraf_sbin:
   file.recurse:

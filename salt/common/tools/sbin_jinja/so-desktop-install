@@ -5,15 +5,15 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
+source /usr/sbin/so-common
+doc_desktop_url="$DOC_BASE_URL/desktop.html"
 
-{# we only want the script to install the desktop if it is Rocky -#}
-{% if grains.os == 'Rocky' -%}
+{# we only want the script to install the desktop if it is OEL -#}
+{% if grains.os == 'OEL' -%}
 {#   if this is a manager -#}
 {%   if grains.master == grains.id.split('_')|first -%}
 
-source /usr/sbin/so-common
-doc_desktop_url="$DOC_BASE_URL/desktop.html"
-pillar_file="/opt/so/saltstack/local/pillar/minions/{{grains.id}}.sls"
+pillar_file="/opt/so/saltstack/local/pillar/minions/adv_{{grains.id}}.sls"
 
 if [ -f "$pillar_file" ]; then
   if ! grep -q "^desktop:$" "$pillar_file"; then
@@ -65,7 +65,7 @@ if [ -f "$pillar_file" ]; then
     fi
   else # desktop is already added
     echo "The desktop pillar already exists in $pillar_file."
-    echo "To enable/disable the gui, set 'desktop:gui:enabled' to true or false in $pillar_file."
+    echo "To enable/disable the gui, set 'desktop:gui:enabled' to true or false in $pillar_file. Alternatively, this can be set in the SOC UI under advanced."
     echo "Additional documentation can be found at $doc_desktop_url."
   fi
 else # if the pillar file doesn't exist
@@ -75,17 +75,22 @@ fi
 {#-  if this is not a manager #}
 {%   else -%}
 
-echo "Since this is not a manager, the pillar values to enable Security Onion Desktop must be set manually. Please view the documentation at $doc_desktop_url."
+echo "Since this is not a manager, the pillar values to enable Security Onion Desktop must be set manually. This can be enabled in the SOC UI under advanced by adding the following:"
+echo "desktop:"
+echo "  gui:"
+echo "    enabled: true"
+echo ""
+echo "Please view the documentation at $doc_desktop_url."
 
 {#- endif if this is a manager #}
 {%   endif -%}
 
-{#- if not Rocky #}
+{#- if not OEL #}
 {%- else %}
 
-echo "The Security Onion Desktop can only be installed on Rocky Linux. Please view the documentation at $doc_desktop_url."
+echo "The Security Onion Desktop can only be installed on Oracle Linux. Please view the documentation at $doc_desktop_url."
 
-{#- endif grains.os == Rocky #}
+{#- endif grains.os == OEL #}
 {% endif -%}
 
 exit 0

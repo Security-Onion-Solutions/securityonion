@@ -27,6 +27,8 @@ Imports one or more evtx files into Security Onion. The evtx files will be analy
 Options:
   --json      Outputs summary in JSON format. Implies --quiet.
   --quiet     Silences progress information to stdout.
+  --shift     Adds a time shift. Accepts a single argument that is intended to be the date of the last record, and shifts the dates of the previous records accordingly.
+              Ex. sudo so-import-evtx --shift "2023-08-01 01:01:01" example.evtx 
 EOF
 }
 
@@ -43,6 +45,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --quiet)
       quiet=1
+      ;;
+    --shift)
+      SHIFTDATE=$1
+      shift
       ;;
     -*) 
       echo "Encountered unexpected parameter: $param"
@@ -68,12 +74,14 @@ function status {
 function evtx2es() {
   EVTX=$1
   HASH=$2
+  SHIFTDATE=$3
   
   docker run --rm \
+    -e "SHIFTTS=$SHIFTDATE" \
     -v "$EVTX:/tmp/data.evtx" \
     -v "/nsm/import/$HASH/evtx/:/tmp/evtx/" \
-    -v "/nsm/import/evtx-end_newest:/tmp/newest" \
-    -v "/nsm/import/evtx-start_oldest:/tmp/oldest" \
+    -v "/nsm/import/$HASH/evtx-end_newest:/tmp/newest" \
+    -v "/nsm/import/$HASH/evtx-start_oldest:/tmp/oldest" \
     --entrypoint "/evtx_calc_timestamps.sh" \
     {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-pcaptools:{{ VERSION }} >> $LOG_FILE 2>&1
 }
@@ -103,17 +111,13 @@ INVALID_EVTXS_COUNT=0
 VALID_EVTXS_COUNT=0
 SKIPPED_EVTXS_COUNT=0
 
-touch /nsm/import/evtx-start_oldest
-touch /nsm/import/evtx-end_newest
-
-echo $START_OLDEST > /nsm/import/evtx-start_oldest
-echo $END_NEWEST > /nsm/import/evtx-end_newest
-
 # paths must be quoted in case they include spaces
 for EVTX in $INPUT_FILES; do
   EVTX=$(/usr/bin/realpath "$EVTX")
   status "Processing Import: ${EVTX}"
-
+  if ! [ -z "$SHIFTDATE" ]; then
+    status "- timeshifting logs to end date of $SHIFTDATE"
+  fi
   # generate a unique hash to assist with dedupe checks
   HASH=$(md5sum "${EVTX}" | awk '{ print $1 }')
   HASH_DIR=/nsm/import/${HASH}
@@ -131,12 +135,19 @@ for EVTX in $INPUT_FILES; do
     status "- this EVTX has already been imported; skipping"
     SKIPPED_EVTXS_COUNT=$((SKIPPED_EVTXS_COUNT + 1))
   else
+    # create EVTX directory
     EVTX_DIR=$HASH_DIR/evtx
     mkdir -p $EVTX_DIR
+    # create import timestamp files
+    for i in evtx-start_oldest evtx-end_newest; do
+      if ! [ -f "$i" ]; then
+        touch /nsm/import/$HASH/$i
+      fi
+    done
 
     # import evtx and write them to import ingest pipeline
     status "- importing logs to Elasticsearch..."
-    evtx2es "${EVTX}" $HASH
+    evtx2es "${EVTX}" $HASH "$SHIFTDATE"
     if [[ $? -ne 0 ]]; then
       INVALID_EVTXS_COUNT=$((INVALID_EVTXS_COUNT + 1))
       status "- WARNING: This evtx file may not have fully imported successfully"
@@ -144,27 +155,36 @@ for EVTX in $INPUT_FILES; do
       VALID_EVTXS_COUNT=$((VALID_EVTXS_COUNT + 1))
     fi
 
-    # compare $START to $START_OLDEST
-    START=$(cat /nsm/import/evtx-start_oldest)
-    START_COMPARE=$(date -d $START +%s)
-    START_OLDEST_COMPARE=$(date -d $START_OLDEST +%s)
-    if [ $START_COMPARE -lt $START_OLDEST_COMPARE ]; then
-      START_OLDEST=$START
-    fi  
-
-    # compare $ENDNEXT to $END_NEWEST
-    END=$(cat /nsm/import/evtx-end_newest)
-    ENDNEXT=`date +%Y-%m-%d --date="$END 1 day"`
-    ENDNEXT_COMPARE=$(date -d $ENDNEXT +%s)
-    END_NEWEST_COMPARE=$(date -d $END_NEWEST +%s)
-    if [ $ENDNEXT_COMPARE -gt $END_NEWEST_COMPARE ]; then
-      END_NEWEST=$ENDNEXT
-    fi  
-
     cp -f "${EVTX}" "${EVTX_DIR}"/data.evtx
     chmod 644 "${EVTX_DIR}"/data.evtx
 
   fi # end of valid evtx
+
+  # determine start and end and make sure they aren't reversed
+  START=$(cat /nsm/import/$HASH/evtx-start_oldest)
+  END=$(cat /nsm/import/$HASH/evtx-end_newest)
+  START_EPOCH=`date -d "$START" +"%s"`
+  END_EPOCH=`date -d "$END" +"%s"`
+  if [ "$START_EPOCH" -gt "$END_EPOCH" ]; then
+    TEMP=$START
+    START=$END
+    END=$TEMP
+  fi
+
+  # compare $START to $START_OLDEST
+  START_COMPARE=$(date -d $START +%s)
+  START_OLDEST_COMPARE=$(date -d $START_OLDEST +%s)
+  if [ $START_COMPARE -lt $START_OLDEST_COMPARE ]; then
+    START_OLDEST=$START
+  fi
+
+  # compare $ENDNEXT to $END_NEWEST
+  ENDNEXT=`date +%Y-%m-%d --date="$END 1 day"`
+  ENDNEXT_COMPARE=$(date -d $ENDNEXT +%s)
+  END_NEWEST_COMPARE=$(date -d $END_NEWEST +%s)
+  if [ $ENDNEXT_COMPARE -gt $END_NEWEST_COMPARE ]; then
+    END_NEWEST=$ENDNEXT
+  fi
 
   status
 

@@ -1,32 +1,42 @@
 #!/bin/bash
-. /usr/sbin/so-common
+
+# if this script isn't already running
+if [[ ! "`pidof -x $(basename $0) -o %PPID`" ]]; then
+
+    . /usr/sbin/so-common
 
 {%- from 'vars/globals.map.jinja' import GLOBALS %}
 {%- from 'idstools/map.jinja' import IDSTOOLSMERGED %}
-{%-   set proxy = salt['pillar.get']('manager:proxy') %}
 
-mkdir -p /nsm/rules/suricata
-chown -R socore:socore /nsm/rules/suricata
+{%- set proxy = salt['pillar.get']('manager:proxy') %}
+{%- set noproxy = salt['pillar.get']('manager:no_proxy', '') %}
+
+# Download the rules from the internet
+{%- if proxy %}
+    export http_proxy={{ proxy }}
+    export https_proxy={{ proxy }}
+    export no_proxy="{{ noproxy }}"
+{%- endif %}
+
+    mkdir -p /nsm/rules/suricata
+    chown -R socore:socore /nsm/rules/suricata
 # Download the rules from the internet
 {%- if GLOBALS.airgap != 'True' %}
-{%- if proxy %}
-export http_proxy={{ proxy }} 
-export https_proxy={{ proxy }} 
-export no_proxy=salt['pillar.get']('manager:no_proxy') 
-{%- endif %}
 {%-   if IDSTOOLSMERGED.config.ruleset == 'ETOPEN' %}
-docker exec so-idstools idstools-rulecat -v --suricata-version 6.0 -o /nsm/rules/suricata/ --merged=/nsm/rules/suricata/emerging-all.rules --force
+    docker exec so-idstools idstools-rulecat -v --suricata-version 6.0 -o /nsm/rules/suricata/ --merged=/nsm/rules/suricata/emerging-all.rules --force
 {%-   elif IDSTOOLSMERGED.config.ruleset == 'ETPRO' %}
-docker exec so-idstools idstools-rulecat -v --suricata-version 6.0 -o /nsm/rules/suricata/ --merged=/nsm/rules/suricata/emerging-all.rules --force --etpro={{ IDSTOOLSMERGED.config.oinkcode }}
+    docker exec so-idstools idstools-rulecat -v --suricata-version 6.0 -o /nsm/rules/suricata/ --merged=/nsm/rules/suricata/emerging-all.rules --force --etpro={{ IDSTOOLSMERGED.config.oinkcode }}
 {%-   elif IDSTOOLSMERGED.config.ruleset == 'TALOS' %}
-docker exec so-idstools idstools-rulecat -v --suricata-version 6.0 -o /nsm/rules/suricata/ --merged=/nsm/rules/suricata/emerging-all.rules --force --url=https://www.snort.org/rules/snortrules-snapshot-2983.tar.gz?oinkcode={{ IDSTOOLSMERGED.config.oinkcode }}
+    docker exec so-idstools idstools-rulecat -v --suricata-version 6.0 -o /nsm/rules/suricata/ --merged=/nsm/rules/suricata/emerging-all.rules --force --url=https://www.snort.org/rules/snortrules-snapshot-2983.tar.gz?oinkcode={{ IDSTOOLSMERGED.config.oinkcode }}
 {%-   endif %}
 {%- endif %}
 
 
-argstr=""
-for arg in "$@"; do
-    argstr="${argstr} \"${arg}\""
-done
+    argstr=""
+    for arg in "$@"; do
+        argstr="${argstr} \"${arg}\""
+    done
 
-docker exec so-idstools /bin/bash -c "cd /opt/so/idstools/etc && idstools-rulecat --force ${argstr}"
+    docker exec so-idstools /bin/bash -c "cd /opt/so/idstools/etc && idstools-rulecat --force ${argstr}"
+
+fi

@@ -85,13 +85,17 @@ analyze_system() {
 
 desktop_salt_local() {
 
+	SALTVERSION=$(egrep 'version: [0-9]{4}' ../salt/salt/master.defaults.yaml | sed 's/^.*version: //')
 	# Install everything using local salt
 	# Set the repo
 	securityonion_repo
 	gpg_rpm_import
 	# Install salt
-	logCmd "yum -y install salt-minion-3004.1 httpd-tools python3 python36-docker python36-dateutil python36-m2crypto python36-mysql python36-packaging python36-lxml yum-utils device-mapper-persistent-data lvm2 openssl jq"
+	logCmd "yum -y install salt-minion-$SALTVERSION httpd-tools python3 python3-dateutil yum-utils device-mapper-persistent-data lvm2 openssl jq"
 	logCmd "yum -y update --exclude=salt*"
+
+	salt_install_module_deps
+	salt_patch_x509_v2
 
 	logCmd "salt-call state.apply desktop --local --file-root=../salt/ -l info"
 	read -r -d '' message <<- EOM
@@ -100,8 +104,10 @@ desktop_salt_local() {
 		Press the Enter key to reboot.
 	EOM
 
-	whiptail --title "$whiptail_title" --msgbox "$message" 12 75
-	reboot
+	if [[ -z "$TESTING" ]]; then
+		whiptail --title "$whiptail_title" --msgbox "$message" 12 75
+		reboot
+	fi
 	exit 0 
 
 }
@@ -116,7 +122,7 @@ desktop_pillar() {
 		"  mainint: '$MNIC'"\
 		"desktop:"\
 		"  gui:"\
-		"    enabled: true" >> "$pillar_file"\
+		"    enabled: true"\
 		"sensoroni:"\
 		"  config:"\
 		"    node_description: '${NODE_DESCRIPTION//\'/''}'" > $pillar_file
@@ -392,20 +398,22 @@ collect_mngr_hostname() {
 		sed -i "/$MSRV/d" /etc/hosts
 	fi
 
-	if ! getent hosts "$MSRV"; then
-		whiptail_manager_ip
+	if [[ -z "$MSRVIP" ]]; then
+		if ! getent hosts "$MSRV"; then
+			whiptail_manager_ip
 
-		while ! valid_ip4 "$MSRVIP" || [[ $MSRVIP == "$MAINIP" || $MSRVIP == "127.0.0.1" ]]; do
-			whiptail_invalid_input
+			while ! valid_ip4 "$MSRVIP" || [[ $MSRVIP == "$MAINIP" || $MSRVIP == "127.0.0.1" ]]; do
+				whiptail_invalid_input
+				whiptail_manager_ip "$MSRVIP"
+			done
+		else
+			MSRVIP=$(getent hosts "$MSRV" | awk 'NR==1{print $1}')
 			whiptail_manager_ip "$MSRVIP"
-		done
-	else
-		MSRVIP=$(getent hosts "$MSRV" | awk 'NR==1{print $1}')
-		whiptail_manager_ip "$MSRVIP"
-		while ! valid_ip4 "$MSRVIP" || [[ $MSRVIP == "$MAINIP" || $MSRVIP == "127.0.0.1" ]]; do
-			whiptail_invalid_input
-			whiptail_manager_ip "$MSRVIP"
-		done
+			while ! valid_ip4 "$MSRVIP" || [[ $MSRVIP == "$MAINIP" || $MSRVIP == "127.0.0.1" ]]; do
+				whiptail_invalid_input
+				whiptail_manager_ip "$MSRVIP"
+			done
+		fi
 	fi
 }
 
@@ -641,8 +649,8 @@ configure_minion() {
 		"log_level_logfile: info"\
 		"log_file: /opt/so/log/salt/minion" >> "$minion_config"
 
-	cp -f ../salt/salt/etc/minion.d/mine_functions.conf.jinja /etc/salt/minion.d/mine_functions.conf
-	sed -i "s/{{ GLOBALS.main_interface }}/$MNIC/" /etc/salt/minion.d/mine_functions.conf
+	info "Running: salt-call state.apply salt.mine_functions --local --file-root=../salt/ -l info pillar='{"host": {"mainint": "$MNIC"}}'"
+	salt-call state.apply salt.mine_functions --local --file-root=../salt/ -l info pillar="{'host': {'mainint': $MNIC}}"
 
 	{
 		logCmd "systemctl enable salt-minion";
@@ -699,8 +707,6 @@ checkin_at_boot() {
 }
 
 check_requirements() {
-	local standalone_or_dist=$1
-	local node_type=$2 # optional
 	local req_mem
 	local req_cores
 	local req_storage
@@ -708,27 +714,57 @@ check_requirements() {
 	readarray -t nic_list <<< "$(ip link| awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2}' | grep -vwe "bond0"  | sed 's/ //g' | sed -r 's/(.*)(\.[0-9]+)@\1/\1\2/g')"
 	local num_nics=${#nic_list[@]}
 	
-	if [[ "$standalone_or_dist" == 'standalone' ]]; then
+	if [[ $is_eval ]]; then
 		req_mem=12
 		req_cores=4
 		req_nics=2
-	elif [[ "$standalone_or_dist" == 'dist' ]]; then
-		req_mem=8
+	elif [[ $is_standalone ]]; then
+		req_mem=24
 		req_cores=4
-		if [[ "$node_type" == 'sensor' ]]; then req_nics=2; else req_nics=1; fi
-		if [[ "$node_type" == 'fleet' ]]; then req_mem=4; fi
-		if [[ "$node_type" == 'idh' ]]; then req_mem=1 req_cores=2; fi
-	elif [[ "$standalone_or_dist" == 'import' ]]; then
+		req_nics=2
+	elif [[ $is_manager ]]; then
+		req_mem=16
+		req_cores=4
+		req_nics=1
+	elif [[ $is_managersearch ]]; then
+		req_mem=16
+		req_cores=8
+		req_nics=1
+	elif [[ $is_sensor ]]; then
+		req_mem=12
+		req_cores=4
+		req_nics=2
+	elif [[ $is_fleet ]]; then
 		req_mem=4
+		req_cores=4
+		req_nics=1
+	elif [[ $is_searchnode ]]; then
+		req_mem=16
+		req_cores=4
+		req_nics=1
+	elif [[ $is_heavynode ]]; then
+		req_mem=24
+		req_cores=4
+		req_nics=2
+	elif [[ $is_idh ]]; then
+		req_mem=1
+		req_cores=2
+		req_nics=1
+	elif [[ $is_import ]]; then
+		req_mem=4
+		req_cores=2
+		req_nics=1
+	elif [[ $is_receiver ]]; then
+		req_mem=8
 		req_cores=2
 		req_nics=1
 	fi
 
 	if [[ $setup_type == 'network' ]] ; then
-		if [[ -n $nsm_mount ]]; then
-			if [[ "$standalone_or_dist" == 'import' ]]; then
+		if [[ -n $nsm_mount ]]; then # does a /nsm mount exist
+			if [[ $is_import ]]; then
 				req_storage=50
-			elif [[ "$node_type" == 'idh' ]]; then
+			elif [[ $is_idh ]]; then
 			    req_storage=12
 			else
 				req_storage=100
@@ -740,10 +776,10 @@ check_requirements() {
 				whiptail_storage_requirements "/nsm" "${free_space_nsm} GB" "${req_storage} GB"
 			fi
 		else
-			if [[ "$standalone_or_dist" == 'import' ]]; then
+			if [[ $is_import ]]; then
 				req_storage=50
-			elif [[ "$node_type" == 'idh' ]]; then
-			        req_storage=12
+			elif [[ $is_idh ]]; then
+			    req_storage=12
 			else
 				req_storage=200
 			fi
@@ -1014,25 +1050,9 @@ detect_os() {
 }
 
 download_elastic_agent_artifacts() {
-	agentArchive=/nsm/elastic-fleet/artifacts/elastic-agent_SO-$ELASTIC_AGENT_TARBALL_VERSION.tar.gz
-	agentMd5=/nsm/elastic-fleet/artifacts/elastic-agent_SO-$ELASTIC_AGENT_TARBALL_VERSION.md5
-	beatsDir=/nsm/elastic-fleet/artifacts/beats/elastic-agent
-	logCmd "mkdir -p $beatsDir"
-	if [[ ! -f "$agentArchive" ]]; then
-		retry 15 10 "curl --fail --retry 5 --retry-delay 15 -L https://repo.securityonion.net/file/so-repo/prod/2.4/elasticagent/elastic-agent_SO-$ELASTIC_AGENT_TARBALL_VERSION.tar.gz --output $agentArchive"  "" ""
-		retry 15 10 "curl --fail --retry 5 --retry-delay 15 -L https://repo.securityonion.net/file/so-repo/prod/2.4/elasticagent/elastic-agent_SO-$ELASTIC_AGENT_TARBALL_VERSION.md5 --output $agentMd5"  "" ""
-			
-		SOURCEHASH=$(md5sum $agentArchive | awk '{ print $1 }')
-		HASH=$(cat $agentMd5)
-
-		if [[ "$HASH" == "$SOURCEHASH" ]]; then
-		  info "Elastic Agent source hash is good."
-		else
-		  info "Unable to download the Elastic Agent source files."
-		  fail_setup
-		fi
+	if ! update_elastic_agent 2>&1 | tee -a "$setup_log"; then
+		fail_setup
 	fi
-	logCmd "tar -xf $agentArchive -C $beatsDir"
 }
 
 installer_progress_loop() {
@@ -1284,7 +1304,7 @@ get_redirect() {
 get_minion_type() {
 	local minion_type
 	case "$install_type" in
-		'EVAL' | 'MANAGERSEARCH' | 'MANAGER' | 'SENSOR' | 'HEAVYNODE' | 'SEARCHNODE' | 'FLEET' | 'IDH' | 'STANDALONE' | 'IMPORT' | 'RECEIVER')
+		'EVAL' | 'MANAGERSEARCH' | 'MANAGER' | 'SENSOR' | 'HEAVYNODE' | 'SEARCHNODE' | 'FLEET' | 'IDH' | 'STANDALONE' | 'IMPORT' | 'RECEIVER' | 'DESKTOP')
 			minion_type=$(echo "$install_type" | tr '[:upper:]' '[:lower:]')
 			;;
 	esac
@@ -1679,9 +1699,7 @@ process_installtype() {
 	elif [ "$install_type" = 'RECEIVER' ]; then
 		is_receiver=true
 	elif [ "$install_type" = 'DESKTOP' ]; then
-		if [ "$setup_type" != 'desktop' ]; then
-			exec bash so-setup desktop
-		fi
+		is_desktop=true
 	fi
 
 }
@@ -1897,8 +1915,10 @@ securityonion_repo() {
 	if [[ $is_oracle ]]; then
 		logCmd "dnf -v clean all"
 		logCmd "mkdir -vp /root/oldrepos"
-		logCmd "mv -v /etc/yum.repos.d/* /root/oldrepos/"
-		if [[ $is_desktop_iso ]]; then
+		if [ -n "$(ls -A /etc/yum.repos.d/ 2>/dev/null)" ]; then
+			logCmd "mv -v /etc/yum.repos.d/* /root/oldrepos/"
+		fi
+		if ! $is_desktop_grid; then
 			gpg_rpm_import
 			if [[ ! $is_airgap ]]; then
 				echo "https://repo.securityonion.net/file/so-repo/prod/2.4/oracle/9" > /etc/yum/mirror.txt
@@ -1943,12 +1963,10 @@ securityonion_repo() {
 	fi
 	if [[ $is_rpm ]]; then logCmd "dnf repolist all"; fi
 	if [[ $waitforstate ]]; then
-		if [[ ! $is_airgap ]]; then
-			if [[ $is_rpm ]]; then
+		if [[ $is_rpm ]]; then
 				# Build the repo locally so we can use it
 				echo "Syncing Repos"
 				repo_sync_local
-			fi
 		fi
 	fi
 }
@@ -1958,7 +1976,7 @@ repo_sync_local() {
 	if [[ $is_supported ]]; then
 		# Sync the repo from the the SO repo locally.
 		# Check for reposync
-		info "Backing up old repos"
+		info "Adding Repo Download Configuration"
 		mkdir -p /nsm/repo
 		mkdir -p /opt/so/conf/reposync/cache
 		echo "https://repo.securityonion.net/file/so-repo/prod/2.4/oracle/9" > /opt/so/conf/reposync/mirror.txt
@@ -1982,10 +2000,10 @@ repo_sync_local() {
 		if [[ ! $is_airgap ]]; then
         	curl --retry 5 --retry-delay 60 -A "netinstall/$SOVERSION/$OS/$(uname -r)/1" https://sigs.securityonion.net/checkup --output /tmp/install
 			logCmd "dnf reposync --norepopath -g --delete -m -c /opt/so/conf/reposync/repodownload.conf --repoid=securityonionsync --download-metadata -p /nsm/repo/"
+			# After the download is complete run createrepo
+			create_repo
 		fi
 
-	# After the download is complete run createrepo
-	create_repo
 	else
 		# Add the proper repos for unsupported stuff
 		echo "Adding Repos"
@@ -2070,7 +2088,7 @@ saltify() {
 		if [[ $waitforstate ]]; then
 			retry 150 20 "apt-get -y install salt-common=$SALTVERSION salt-minion=$SALTVERSION salt-master=$SALTVERSION" || fail_setup
 			retry 150 20 "apt-mark hold salt-minion salt-common salt-master" || fail_setup
-			retry 150 20 "apt-get -y install python3-pip python3-dateutil python3-m2crypto python3-mysqldb python3-packaging python3-influxdb python3-lxml" || exit 1
+			retry 150 20 "apt-get -y install python3-pip python3-dateutil python3-m2crypto python3-packaging python3-influxdb python3-lxml" || exit 1
 		else
 			retry 150 20 "apt-get -y install salt-common=$SALTVERSION salt-minion=$SALTVERSION" || fail_setup
 			retry 150 20 "apt-mark hold salt-minion salt-common" || fail_setup
@@ -2088,21 +2106,27 @@ saltify() {
 	fi
 
 	logCmd "mkdir -p /etc/salt/minion.d"
+	salt_install_module_deps
+	salt_patch_x509_v2
+
+}
+
+# Run a salt command to generate the minion key
+salt_firstcheckin() {
+	salt-call state.show_top >> /dev/null 2>&1 # send output to /dev/null because we don't actually care about the ouput
+}
+
+salt_install_module_deps() {
     logCmd "salt-pip install docker --no-index --only-binary=:all: --find-links files/salt_module_deps/docker/"
     logCmd "salt-pip install pymysql --no-index --only-binary=:all: --find-links files/salt_module_deps/pymysql/"
+}
 
+salt_patch_x509_v2() {
 	# this can be removed when https://github.com/saltstack/salt/issues/64195 is resolved
 	if [ $SALTVERSION == "3006.1" ]; then
 		info "Salt version 3006.1 found. Patching /opt/saltstack/salt/lib/python3.10/site-packages/salt/states/x509_v2.py"
 		\cp -v ./files/patch/states/x509_v2.py /opt/saltstack/salt/lib/python3.10/site-packages/salt/states/x509_v2.py
 	fi
-
-}
-
-
-# Run a salt command to generate the minion key
-salt_firstcheckin() {
-	salt-call state.show_top >> /dev/null 2>&1 # send output to /dev/null because we don't actually care about the ouput
 }
 
 # Create an secrets pillar so that passwords survive re-install
@@ -2315,6 +2339,15 @@ set_default_log_size() {
 	log_size_limit=$( echo "$disk_size_gb" "$percentage" | awk '{printf("%.0f", $1 * ($2/100))}')
 }
 
+set_desktop_background() {
+
+	logCmd "mkdir /usr/local/share/backgrounds"
+	logCmd "cp ../salt/desktop/files/so-wallpaper.jpg /usr/local/share/backgrounds/so-wallpaper.jpg"
+	logCmd "cp ../salt/desktop/files/00-background /etc/dconf/db/local.d/00-background"
+	logCmd "dconf update"
+
+}
+
 set_hostname() {
 
 	logCmd "hostnamectl set-hostname --static $HOSTNAME"
@@ -2376,6 +2409,13 @@ set_redirect() {
 			;;
 	esac
 }
+
+set_timezone() {
+
+	logCmd "timedatectl set-timezone Etc/UTC"
+
+}
+
 so_add_user() {
 	local username=$1
 	local uid=$2

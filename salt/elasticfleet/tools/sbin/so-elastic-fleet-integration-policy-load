@@ -9,16 +9,17 @@
 RETURN_CODE=0
 
 if [ ! -f /opt/so/state/eaintegrations.txt ]; then
+  # First, check for any package upgrades
+  /usr/sbin/so-elastic-fleet-package-upgrade
+
   # Initial Endpoints
   for INTEGRATION in /opt/so/conf/elastic-fleet/integrations/endpoints-initial/*.json
   do
     printf "\n\nInitial Endpoints Policy - Loading $INTEGRATION\n"
     elastic_fleet_integration_check "endpoints-initial" "$INTEGRATION"
     if [ -n "$INTEGRATION_ID" ]; then
-      if [ "$NAME" != "elastic-defend-endpoints" ]; then
-        printf "\n\nIntegration $NAME exists - Updating integration\n"
-        elastic_fleet_integration_update "$INTEGRATION_ID" "@$INTEGRATION"
-      fi
+      printf "\n\nIntegration $NAME exists - Updating integration\n"
+      elastic_fleet_integration_update "$INTEGRATION_ID" "@$INTEGRATION"
     else
       printf "\n\nIntegration does not exist - Creating integration\n"
       elastic_fleet_integration_create "@$INTEGRATION"

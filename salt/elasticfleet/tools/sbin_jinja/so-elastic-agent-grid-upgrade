@@ -1,0 +1,38 @@
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0; you may not use
+# this file except in compliance with the Elastic License 2.0.
+
+. /usr/sbin/so-common
+
+# Only run on Managers
+if ! is_manager_node; then
+    printf "Not a Manager Node... Exiting"
+    exit 0
+fi
+
+# Get current list of Grid Node Agents that need to be upgraded
+RAW_JSON=$(curl -K /opt/so/conf/elasticsearch/curl.config -L "http://localhost:5601/api/fleet/agents?perPage=20&page=1&kuery=policy_id%20%3A%20so-grid-nodes_%2A&showInactive=false&showUpgradeable=true&getStatusSummary=true")
+
+# Check to make sure that the server responded with good data - else, bail from script
+CHECKSUM=$(jq -r '.page' <<< "$RAW_JSON")
+if [ "$CHECKSUM" -ne 1 ]; then
+ printf "Failed to query for current Grid Agents...\n"
+ exit 1
+fi
+
+# Generate list of Node Agents that need updates
+OUTDATED_LIST=$(jq -r '.items | map(.id) | (tojson)'  <<<  "$RAW_JSON")
+
+if [ "$OUTDATED_LIST" != '[]' ]; then
+   AGENTNUMBERS=$(jq -r '.total' <<< "$RAW_JSON")
+   printf "Initiating upgrades for $AGENTNUMBERS Agents to Elastic $ELASTIC_AGENT_TARBALL_VERSION...\n\n"
+
+   # Generate updated JSON payload
+   JSON_STRING=$(jq -n --arg ELASTICVERSION $ELASTIC_AGENT_TARBALL_VERSION --arg UPDATELIST $OUTDATED_LIST '{"version": $ELASTICVERSION,"agents": $UPDATELIST }')
+
+   # Update Node Agents
+   curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "http://localhost:5601/api/fleet/agents/bulk_upgrade" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
+else
+    printf "No Agents need updates... Exiting\n\n"
+    exit 0
+fi

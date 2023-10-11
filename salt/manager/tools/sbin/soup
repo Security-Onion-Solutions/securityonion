@@ -171,6 +171,13 @@ airgap_update_dockers() {
   fi
 }
 
+backup_old_states_pillars() {
+
+	tar czf /nsm/backup/$(echo $INSTALLEDVERSION)_$(date +%Y%m%d-%H%M%S)_soup_default_states_pillars.tar.gz /opt/so/saltstack/default/
+	tar czf /nsm/backup/$(echo $INSTALLEDVERSION)_$(date +%Y%m%d-%H%M%S)_soup_local_states_pillars.tar.gz /opt/so/saltstack/local/
+
+}
+
 update_registry() {
   docker stop so-dockerregistry
   docker rm so-dockerregistry
@@ -179,12 +186,12 @@ update_registry() {
 
 check_airgap() {
   # See if this is an airgap install
-  AIRGAP=$(cat /opt/so/saltstack/local/pillar/global/soc_global.sls | grep airgap: | awk '{print $2}')
-  if [[ "$AIRGAP" == "True" ]]; then
+  AIRGAP=$(cat /opt/so/saltstack/local/pillar/global/soc_global.sls | grep airgap: | awk '{print $2}' | tr '[:upper:]' '[:lower:]')
+  if [[ "$AIRGAP" == "true" ]]; then
       is_airgap=0
       UPDATE_DIR=/tmp/soagupdate/SecurityOnion
       AGDOCKER=/tmp/soagupdate/docker
-      AGREPO=/tmp/soagupdate/Packages
+      AGREPO=/tmp/soagupdate/minimal/Packages
   else 
       is_airgap=1
   fi
@@ -303,6 +310,7 @@ check_log_size_limit() {
 
 check_os_updates() {
   # Check to see if there are OS updates
+  echo "Checking for OS updates."
   NEEDUPDATES="We have detected missing operating system (OS) updates. Do you want to install these OS updates now? This could take a while depending on the size of your grid and how many packages are missing, but it is recommended to keep your system updated."
   OSUPDATES=$(dnf -q list updates | grep -v docker | grep -v containerd | grep -v salt | grep -v Available | wc -l)
   if [[ "$OSUPDATES" -gt 0 ]]; then
@@ -393,6 +401,8 @@ preupgrade_changes() {
     [[ "$INSTALLEDVERSION" == 2.4.2 ]] && up_to_2.4.3
     [[ "$INSTALLEDVERSION" == 2.4.3 ]] && up_to_2.4.4
     [[ "$INSTALLEDVERSION" == 2.4.4 ]] && up_to_2.4.5
+    [[ "$INSTALLEDVERSION" == 2.4.5 ]] && up_to_2.4.10
+    [[ "$INSTALLEDVERSION" == 2.4.10 ]] && up_to_2.4.20
     true
 }
 
@@ -402,9 +412,9 @@ postupgrade_changes() {
     
     [[ "$POSTVERSION" == 2.4.2 ]] && post_to_2.4.3
     [[ "$POSTVERSION" == 2.4.3 ]] && post_to_2.4.4
-    [[ "$POSTVERSION" == 2.4.4 ]] && post_to_2.4.5
-    
-
+    [[ "$POSTVERSION" == 2.4.4 ]] && post_to_2.4.5 
+    [[ "$POSTVERSION" == 2.4.5 ]] && post_to_2.4.10 
+    [[ "$POSTVERSION" == 2.4.10 ]] && post_to_2.4.20 
     true
 }
 
@@ -419,8 +429,26 @@ post_to_2.4.4() {
 }
 
 post_to_2.4.5() {
-  echo "Nothing to apply"
+  echo "Regenerating Elastic Agent Installers"
+  /sbin/so-elastic-agent-gen-installers
   POSTVERSION=2.4.5
+}
+
+post_to_2.4.10() {
+  echo "Updating Elastic Fleet ES URLs...."
+  /sbin/so-elastic-fleet-es-url-update --force
+  POSTVERSION=2.4.10
+}
+
+post_to_2.4.20() {
+  echo "Pruning unused docker volumes on all nodes - This process will run in the background."
+  salt --async \* cmd.run "docker volume prune -f"
+  POSTVERSION=2.4.20
+}
+
+repo_sync() {
+  echo "Sync the local repo."
+  su socore -c '/usr/sbin/so-repo-sync' || fail "Unable to complete so-repo-sync."
 }
 
 stop_salt_master() {
@@ -436,7 +464,7 @@ stop_salt_master() {
 
     echo ""
     echo "Storing salt-master pid."
-    MASTERPID=$(pgrep salt-master | head -1)
+    MASTERPID=$(pgrep -f '/opt/saltstack/salt/bin/python3.10 /usr/bin/salt-master MainProcess')
     echo "Found salt-master PID $MASTERPID"
     systemctl_func "stop" "salt-master"
     timeout 30 tail --pid=$MASTERPID -f /dev/null || echo "salt-master still running at $(date +"%T.%6N") after waiting 30s. We cannot kill due to systemd restart option."
@@ -455,7 +483,7 @@ stop_salt_minion() {
     set -e
 
     echo "Storing salt-minion pid."
-    MINIONPID=$(pgrep salt-minion | head -1)
+    MINIONPID=$(pgrep -f '/opt/saltstack/salt/bin/python3.10 /usr/bin/salt-minion' | head -1)
     echo "Found salt-minion PID $MINIONPID"
     systemctl_func "stop" "salt-minion"
 
@@ -466,21 +494,46 @@ stop_salt_minion() {
 
 
 up_to_2.4.3() {
-   echo "Nothing to do for 2.4.3"
-   ##
-   INSTALLEDVERSION=2.4.3
+  echo "Nothing to do for 2.4.3"
+
+  INSTALLEDVERSION=2.4.3
 }
 
 up_to_2.4.4() {
-   echo "Nothing to do for 2.4.4"
-   ##
-   INSTALLEDVERSION=2.4.4
+  echo "Nothing to do for 2.4.4"
+
+  INSTALLEDVERSION=2.4.4
 }
 
 up_to_2.4.5() {
-   echo "Nothing to do for 2.4.5"
-   ##
-   INSTALLEDVERSION=2.4.5
+  determine_elastic_agent_upgrade
+
+  INSTALLEDVERSION=2.4.5
+}
+
+up_to_2.4.10() {
+  echo "Nothing to do for 2.4.10"
+  
+  INSTALLEDVERSION=2.4.10
+}
+
+up_to_2.4.20() {
+  echo "Nothing to do for 2.4.20"
+  
+  INSTALLEDVERSION=2.4.20
+}
+
+determine_elastic_agent_upgrade() {
+  if [[ $is_airgap -eq 0 ]]; then
+    update_elastic_agent_airgap
+  else
+    update_elastic_agent
+  fi
+}
+
+update_elastic_agent_airgap() {
+  rsync -av /tmp/soagupdate/fleet/* /nsm/elastic-fleet/artifacts/
+  tar -xf "$ELASTIC_AGENT_FILE" -C "$ELASTIC_AGENT_EXPANSION_DIR"
 }
 
 verify_upgradespace() {
@@ -520,13 +573,14 @@ update_centos_repo() {
   echo "Syncing new updates to /nsm/repo"
   rsync -av $AGREPO/* /nsm/repo/
   echo "Creating repo"
+  dnf -y install yum-utils createrepo
   createrepo /nsm/repo
 }
 
 update_salt_mine() {
     echo "Populating the mine with network.ip_addrs pillar.host.mainint for each host."
     set +e
-    salt \* cmd.run cmd='MAININT=$(salt-call pillar.get host:mainint --out=newline_values_only) && salt-call mine.send name=network.ip_addrs interface="$MAININT"'
+    salt \* mine.update -b 50
     set -e
 }
 
@@ -535,13 +589,16 @@ update_version() {
   echo "Updating the Security Onion version file."
   echo $NEWVERSION > /etc/soversion
   echo $HOTFIXVERSION > /etc/sohotfix
-  sed -i "/  soversion:/c\  soversion: $NEWVERSION" /opt/so/saltstack/local/pillar/global/soc_global.sls
+  sed -i "s/soversion:.*/soversion: $NEWVERSION/" /opt/so/saltstack/local/pillar/global/soc_global.sls
 }
 
 upgrade_check() {
   # Let's make sure we actually need to update.
   NEWVERSION=$(cat $UPDATE_DIR/VERSION)
   HOTFIXVERSION=$(cat $UPDATE_DIR/HOTFIX)
+  if [ ! -f /etc/sohotfix ]; then
+    touch /etc/sohotfix
+  fi
   [[ -f /etc/sohotfix ]] && CURRENTHOTFIX=$(cat /etc/sohotfix)
   if [ "$INSTALLEDVERSION" == "$NEWVERSION" ]; then
     echo "Checking to see if there are hotfixes needed"
@@ -633,15 +690,15 @@ verify_latest_update_script() {
 }
 
 # Keeping this block in case we need to do a hotfix that requires salt update
-#apply_hotfix() {
+apply_hotfix() {
 #  if [[ "$INSTALLEDVERSION" == "2.3.90" ]] ; then
 #    fix_wazuh
 #  elif [[ "$INSTALLEDVERSION" == "2.3.110" ]] ; then
 #    2_3_10_hotfix_1
 #  else
-#    echo "No actions required. ($INSTALLEDVERSION/$HOTFIXVERSION)"
+   echo "No actions required. ($INSTALLEDVERSION/$HOTFIXVERSION)"
 #  fi
-#}
+}
 
 
 #upgrade salt to 3004.1
@@ -719,9 +776,7 @@ main() {
   fi
   echo "Verifying we have the latest soup script."
   verify_latest_update_script
-  echo "Checking for OS updates."
-  check_os_updates
-  
+
   echo "Let's see if we need to update Security Onion."
   upgrade_check
   upgrade_space
@@ -733,10 +788,18 @@ main() {
   if [[ $is_airgap -eq 0 ]]; then
     yum clean all
     check_os_updates
+  elif [[ $OS == 'oel' ]]; then
+    # sync remote repo down to local if not airgap
+    repo_sync
+    check_os_updates
   fi
 
   if [ "$is_hotfix" == "true" ]; then
     echo "Applying $HOTFIXVERSION hotfix"
+    # since we don't run the backup.config_backup state on import we wont snapshot previous version states and pillars
+    if [[ ! "$MINIONID" =~ "_import" ]]; then
+      backup_old_states_pillars
+    fi
     copy_new_files
     apply_hotfix
     echo "Hotfix applied"
@@ -763,7 +826,7 @@ main() {
     else
       update_registry
       set +e
-      update_docker_containers "soup"
+      update_docker_containers "soup" "" "" "$SOUP_LOG"
       set -e
     fi
 
@@ -791,6 +854,13 @@ main() {
     # Only update the repo if its airgap
     if [[ $is_airgap -eq 0 && $UPGRADESALT -ne 1 ]]; then
       update_centos_repo
+    fi
+
+    # since we don't run the backup.config_backup state on import we wont snapshot previous version states and pillars
+    if [[ ! "$MINIONID" =~ "_import" ]]; then
+      echo ""
+      echo "Creating snapshots of default and local Salt states and pillars and saving to /nsm/backup/"
+      backup_old_states_pillars
     fi
 
     echo ""
@@ -859,7 +929,7 @@ main() {
     set +e
 
     echo "Checking the number of minions."
-    NUM_MINIONS=$(ls /opt/so/saltstack/local/pillar/minions/*_*.sls | wc -l)
+    NUM_MINIONS=$(ls /opt/so/saltstack/local/pillar/minions/*_*.sls | grep -v adv_ | wc -l)
     if [[ $UPGRADESALT -eq 1 ]] && [[ $NUM_MINIONS -gt 1 ]]; then
       if [[ $is_airgap -eq 0 ]]; then
         echo ""
@@ -874,9 +944,6 @@ main() {
 
     echo "Checking sudoers file."
     check_sudoers
-
-    echo "Checking for necessary user migrations."
-    so-user migrate
 
     systemctl_func "start" "$cron_service_name"
 
@@ -962,6 +1029,11 @@ while getopts ":b:f:y" opt; do
   esac
 done
 shift $((OPTIND - 1))
+
+if [ -f $SOUP_LOG ]; then
+  CURRENT_TIME=$(date +%Y%m%d.%H%M%S)
+  mv $SOUP_LOG $SOUP_LOG.$INSTALLEDVERSION.$CURRENT_TIME
+fi
 
 if [[ -z $UNATTENDED ]]; then
   cat << EOF

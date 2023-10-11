@@ -1,8 +1,5 @@
-{% from 'vars/globals.map.jinja' import GLOBALS %}
-
 {# we only want this state to run it is CentOS #}
-{% if GLOBALS.os == 'OEL' %}
-
+{% if grains.os == 'OEL' %}
 
 desktop_packages:
   pkg.installed:
@@ -181,6 +178,7 @@ desktop_packages:
       - gstreamer1-plugins-good-gtk
       - gstreamer1-plugins-ugly-free
       - gtk-update-icon-cache
+      - gtk2
       - gtk3
       - gtk4
       - gtkmm30
@@ -295,6 +293,7 @@ desktop_packages:
       - mesa-vulkan-drivers
       - microcode_ctl
       - mobile-broadband-provider-info
+      - mono-devel
       - mpfr
       - mpg123-libs
       - mtdev
@@ -347,6 +346,7 @@ desktop_packages:
       - snappy
       - sound-theme-freedesktop
       - soundtouch
+      - securityonion-networkminer
       - speech-dispatcher
       - speech-dispatcher-espeak-ng
       - speex
