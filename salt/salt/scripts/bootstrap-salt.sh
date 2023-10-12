@@ -613,7 +613,7 @@ fi
 
 # Due to our modifications to install_centos_onedir it is easiest to just lock down to only allowing stable install
 if [ "$(echo "$ITYPE" | grep stable)" = "" ]; then
-    echoerror "This script has been modified to only support stable installation type..."
+    echoerror "This script has been modified to only support stable installation type. Installation type \"$ITYPE\" is not allowed..."
     exit 1
 fi
 
