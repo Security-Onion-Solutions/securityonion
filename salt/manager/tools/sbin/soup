@@ -691,13 +691,16 @@ verify_latest_update_script() {
 
 # Keeping this block in case we need to do a hotfix that requires salt update
 apply_hotfix() {
-#  if [[ "$INSTALLEDVERSION" == "2.3.90" ]] ; then
-#    fix_wazuh
+  if [[ "$INSTALLEDVERSION" == "2.4.20" ]] ; then
+    salt-call state.apply elasticfleet -l info queue=True
+    . /usr/sbin/so-elastic-fleet-common
+    elastic_fleet_integration_remove endpoints-initial elastic-defend-endpoints
+    /usr/sbin/so-elastic-fleet-integration-policy-elastic-defend
 #  elif [[ "$INSTALLEDVERSION" == "2.3.110" ]] ; then
 #    2_3_10_hotfix_1
-#  else
+  else
    echo "No actions required. ($INSTALLEDVERSION/$HOTFIXVERSION)"
-#  fi
+  fi
 }
 
 
