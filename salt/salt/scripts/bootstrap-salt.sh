@@ -611,6 +611,19 @@ if [ "$(echo "$ITYPE" | grep -E '(stable|testing|git|onedir|onedir_rc|old-stable
     exit 1
 fi
 
+# Due to our modifications to install_centos_onedir it is easiest to just lock down to only allowing stable install
+if [ "$(echo "$ITYPE" | grep stable)" = "" ]; then
+    echoerror "This script has been modified to only support stable installation type..."
+    exit 1
+fi
+
+# We want to require this script to only run with -r. We dont want to accidentally try to install from another repo
+# and we dont want to put salt.repo in /etc/yum.repos.d/
+if [ "$_DISABLE_REPOS" -eq $BS_FALSE ];then
+    echoerror "This script has been modified to required the usage of the -r flag which disables this script from using its own repos..."
+    exit 1
+fi
+
 # If doing a git install, check what branch/tag/sha will be checked out
 if [ "$ITYPE" = "git" ]; then
     if [ "$#" -eq 0 ];then
@@ -5123,6 +5136,8 @@ install_centos_onedir_deps() {
     return 0
 }
 
+# This function has been modified to allow for specific versions to be installed
+# when not using the salt repo
 install_centos_onedir() {
     __PACKAGES=""
 
@@ -5130,11 +5145,7 @@ install_centos_onedir() {
     local master='salt-master'
     local minion='salt-minion'
     local syndic='salt-syndic'
-    if [ "$ITYPE" = "stable" ]; then
-        local ver="$_ONEDIR_REV"
-    elif [ "$ITYPE" = "onedir" ]; then
-        local ver="${ONEDIR_REV##*/}"
-    fi
+    local ver="$_ONEDIR_REV"
 
     if [ ! -z $ver ]; then
         cloud+="-$ver"
