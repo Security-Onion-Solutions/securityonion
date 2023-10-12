@@ -5130,7 +5130,11 @@ install_centos_onedir() {
     local master='salt-master'
     local minion='salt-minion'
     local syndic='salt-syndic'
-    local ver="$_ONEDIR_REV"
+    if [ "$ITYPE" = "stable" ]; then
+        local ver="$_ONEDIR_REV"
+    elif [ "$ITYPE" = "onedir" ]; then
+        local ver="${ONEDIR_REV##*/}"
+    fi
 
     if [ ! -z $ver ]; then
         cloud+="-$ver"
