@@ -8,7 +8,7 @@ import salt.client
 log = logging.getLogger(__name__)
 local = salt.client.LocalClient()
 
-def start(interval=10):
+def start(interval=60):
     def mine_flush(minion):
         log.warning('checkmine engine: flushing mine cache for %s' % minion)
         local.cmd(minion, 'mine.flush')
