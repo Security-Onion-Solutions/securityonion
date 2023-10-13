@@ -2,27 +2,47 @@
 
 import logging
 from time import sleep
-from os import remove
+import os
+import salt.client
 
 log = logging.getLogger(__name__)
+local = salt.client.LocalClient()
 
-def start(interval=30):
-  log.info("checkmine engine started")
-  minionid = __grains__['id']
-  while True:
-    try:
-      ca_crt = __salt__['saltutil.runner']('mine.get', tgt=minionid, fun='x509.get_pem_entries')[minionid]['/etc/pki/ca.crt']
-      log.info('Successfully queried Salt mine for the CA.')
-    except:
-      log.error('Could not pull CA from the Salt mine.')
-      log.info('Removing /var/cache/salt/master/minions/%s/mine.p to force Salt mine to be repopulated.' % minionid)
-      try:
-        remove('/var/cache/salt/master/minions/%s/mine.p' % minionid)
-        log.info('Removed /var/cache/salt/master/minions/%s/mine.p' % minionid)
-      except FileNotFoundError:
-        log.error('/var/cache/salt/master/minions/%s/mine.p does not exist' % minionid)
+def start(interval=10):
+    def mine_flush(minion):
+        log.warning('checkmine engine: flushing mine cache for %s' % minion)
+        local.cmd(minion, 'mine.flush')
 
-      __salt__['mine.send'](name='x509.get_pem_entries', glob_path='/etc/pki/ca.crt')
-      log.warning('Salt mine repopulated with /etc/pki/ca.crt')
+    def mine_update(minion):
+        log.warning('checkmine engine: updating mine cache for %s' % minion)
+        local.cmd(minion, 'mine.update')
 
-    sleep(interval)
+    log.info("checkmine engine: started")
+    cachedir = __opts__['cachedir']
+    while True:
+        log.debug('checkmine engine: checking which minions are alive')
+        manage_alived = __salt__['saltutil.runner']('manage.alived', show_ip=True)
+        log.debug('checkmine engine: alive minions: %s' % ' , '.join(manage_alived))
+
+        for minion in manage_alived:
+            mine_path = os.path.join(cachedir, 'minions', minion, 'mine.p')
+            mine_size = os.path.getsize(mine_path)
+            log.debug('checkmine engine: minion: %s mine_size: %i' % (minion, mine_size))
+            # For some reason the mine file can be corrupt and only be 1 byte in size
+            if mine_size == 1:
+                log.error('checkmine engine: found %s to be 1 byte' % mine_path)
+                mine_flush(minion)
+                mine_update(minion)
+            # Update the mine if the ip in the mine doesn't match returned from manage.alived
+            else:
+                network_ip_addrs = __salt__['saltutil.runner']('mine.get', tgt=minion, fun='network.ip_addrs')
+                mine_ip = network_ip_addrs[minion][0]
+                log.debug('checkmine engine: minion: %s mine_ip: %s' % (minion, mine_ip))
+                manage_alived_ip = manage_alived[minion]
+                log.debug('checkmine engine: minion: %s managed_alived_ip: %s' % (minion, manage_alived_ip))
+                if mine_ip != manage_alived_ip:
+                    log.error('checkmine engine: found minion %s has manage_alived_ip %s but a mine_ip of %s' % (minion, manage_alived_ip, mine_ip))
+                    mine_flush(minion)
+                    mine_update(minion)
+
+        sleep(interval)
