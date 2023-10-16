@@ -133,11 +133,23 @@ check_elastic_license() {
 }
 
 check_salt_master_status() {
-	local timeout=$1
-	echo "Checking if we can talk to the salt master"
-	salt-call state.show_top concurrent=true
-
-	return
+	local count=0
+    local attempts="${1:- 10}"
+	current_time="$(date '+%b %d %H:%M:%S')"
+	echo "Checking if we can access the salt master and that it is ready at: ${current_time}"
+    while ! salt-call state.show_top -l error concurrent=true 1> /dev/null; do
+        current_time="$(date '+%b %d %H:%M:%S')"
+        echo "Can't access salt master or it is not ready at: ${current_time}"
+        ((count+=1))
+        if [[ $count -eq $attempts ]]; then
+			# 10 attempts takes about 5.5 minutes
+            echo "Gave up trying to access salt-master"
+            return 1
+        fi
+    done
+	current_time="$(date '+%b %d %H:%M:%S')"
+	echo "Successfully accessed and salt master ready at: ${current_time}"
+    return 0
 }
 
 check_salt_minion_status() {

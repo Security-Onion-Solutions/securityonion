@@ -714,6 +714,12 @@ if ! [[ -f $install_opt_file ]]; then
 
 		logCmd "salt-call state.apply common.packages"
 		logCmd "salt-call state.apply common"
+		logCmd "salt-call state.apply salt.master"
+
+		# wait here until we get a response from the salt-master since it may have just restarted
+		# exit setup after 5-6 minutes of trying
+		check_salt_master_status || fail  "Can't access salt master or it is not ready"
+
 		logCmd "salt-call state.apply docker"
 		firewall_generate_templates
 		set_initial_firewall_policy
@@ -768,8 +774,6 @@ if ! [[ -f $install_opt_file ]]; then
 		checkin_at_boot
 		set_initial_firewall_access
 		logCmd "salt-call schedule.enable -linfo --local"
-		systemctl restart salt-master
-		systemctl restart salt-minion
 		verify_setup
 	else
 		touch /root/accept_changes
