@@ -20,17 +20,28 @@ salt_master_service:
 checkmine_engine:
   file.managed:
     - name: /etc/salt/engines/checkmine.py
-    - source: salt://salt/engines/checkmine.py
+    - source: salt://salt/engines/master/checkmine.py
     - makedirs: True
     - watch_in:
-        - service: salt_minion_service
+        - service: salt_master_service
 
-engines_config:
-  file.managed:
+# prior to 2.4.30 this engine ran on the manager with salt-minion
+# this has changed to running with the salt-master in 2.4.30
+remove_engines_config:
+  file.absent:
     - name: /etc/salt/minion.d/engines.conf
     - source: salt://salt/files/engines.conf
     - watch_in:
         - service: salt_minion_service
+    - order: last
+
+engines_config:
+  file.managed:
+    - name: /etc/salt/master.d/engines.conf
+    - source: salt://salt/files/engines.conf
+    - watch_in:
+        - service: salt_master_service
+    - order: last
 
 {% else %}
 
