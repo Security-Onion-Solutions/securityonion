@@ -67,6 +67,9 @@ set_log_levels:
       - "log_level: info"
       - "log_level_logfile: info"
 
+# prior to 2.4.30 this managed file would restart the salt-minion service when updated
+# since this file is currently only adding a sleep timer on service start
+# it is not required to restart the service
 salt_minion_service_unit_file:
   file.managed:
     - name: {{ SYSTEMD_UNIT_FILE }}
@@ -89,6 +92,5 @@ salt_minion_service:
       - file: mine_functions
 {% if INSTALLEDSALTVERSION|string == SALTVERSION|string %}
       - file: set_log_levels
-      - file: salt_minion_service_unit_file
 {% endif %}
     - order: last
