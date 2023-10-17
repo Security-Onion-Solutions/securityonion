@@ -44,5 +44,4 @@ class TestEchoTrailMethods(unittest.TestCase):
                 results = echotrail.analyze(helpers.loadConfig, input)
                 self.assertEqual(results["summary"], "inconclusive")
 
-if __name__ == '__main__':
-    unittest.main()
+
