@@ -8,7 +8,7 @@
 %}
 
 # only add a node to the pillar if it returned an ip from the mine
-{%   if ip[0] | length > 0%}
+{%   if ip | length > 0%}
 {%     set hostname = cached_grains[minionid]['host'] %}
 {%     set node_type = minionid.split('_')[1] %}
 {%     if node_type not in node_types.keys() %}
@@ -20,7 +20,7 @@
 {%         do node_types[node_type][hostname].update(ip[0]) %}
 {%       endif %}
 {%     endif %}
-{%   fi %}
+{%   endif %}
 {% endfor %}
 
 
