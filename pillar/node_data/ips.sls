@@ -4,18 +4,22 @@
 {%   set hostname = minionid.split('_')[0] %}
 {%   set node_type = minionid.split('_')[1] %}
 {%   set is_alive = False %}
-{%   if minionid in manage_alived.keys() %}
-{%     if ip[0] == manage_alived[minionid] %}
-{%       set is_alive = True %}
+
+# only add a node to the pillar if it returned an ip from the mine
+{%   if ip | length > 0%}
+{%     if minionid in manage_alived.keys() %}
+{%       if ip[0] == manage_alived[minionid] %}
+{%         set is_alive = True %}
+{%       endif %}
 {%     endif %}
-{%   endif %}
-{%   if node_type not in node_types.keys() %}
-{%     do node_types.update({node_type: {hostname: {'ip':ip[0], 'alive':is_alive }}}) %}
-{%   else %}
-{%     if hostname not in node_types[node_type] %}
-{%       do node_types[node_type].update({hostname: {'ip':ip[0], 'alive':is_alive}}) %}
+{%     if node_type not in node_types.keys() %}
+{%       do node_types.update({node_type: {hostname: {'ip':ip[0], 'alive':is_alive }}}) %}
 {%     else %}
-{%       do node_types[node_type][hostname].update({'ip':ip[0], 'alive':is_alive}) %}
+{%       if hostname not in node_types[node_type] %}
+{%         do node_types[node_type].update({hostname: {'ip':ip[0], 'alive':is_alive}}) %}
+{%       else %}
+{%         do node_types[node_type][hostname].update({'ip':ip[0], 'alive':is_alive}) %}
+{%       endif %}
 {%     endif %}
 {%   endif %}
 {% endfor %}
