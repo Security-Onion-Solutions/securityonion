@@ -15,6 +15,11 @@ class TestEchoTrailMethods(unittest.TestCase):
                 expected = '{"test": "val"}\n'
                 self.assertEqual(mock_cmd.getvalue(), expected)
                 mock.assert_called_once()
+    def test_checkConfigRequirements(self):
+        conf = {"not_a_key":"abcd12345"}
+        with self.assertRaises(SystemExit) as cm:
+            echotrail.checkConfigRequirements(conf)
+        self.assertEqual(cm.exception.code, 126)
 
     def test_sendReq(self):
         with patch('requests.request', new=MagicMock(return_value=MagicMock())) as mock:
