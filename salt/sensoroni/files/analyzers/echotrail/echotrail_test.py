@@ -43,10 +43,11 @@ class TestEchoTrailMethods(unittest.TestCase):
         sendReqOutput = {'threat': 'no_result'}
         input = '{"artifactType":"hash", "value":"1234"}'
         prepareResultOutput = {'response': '', 'summary': 'inconclusive', 'status': 'info'}
+        conf = {"api_key": "xyz"}
 
         with patch('echotrail.sendReq', new=MagicMock(return_value=sendReqOutput)) as mock:
             with patch('echotrail.prepareResults', new=MagicMock(return_value=prepareResultOutput)) as mock2:
-                results = echotrail.analyze(helpers.loadConfig, input)
+                results = echotrail.analyze(conf, input)
                 self.assertEqual(results["summary"], "inconclusive")
 
 
