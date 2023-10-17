@@ -26,8 +26,16 @@ def start(interval=60):
 
         for minion in manage_alived:
             mine_path = os.path.join(cachedir, 'minions', minion, 'mine.p')
-            mine_size = os.path.getsize(mine_path)
-            log.debug('checkmine engine: minion: %s mine_size: %i' % (minion, mine_size))
+            # it is possible that a minion is alive, but there isn't a mine.p file
+            try:
+                mine_size = os.path.getsize(mine_path)
+                log.debug('checkmine engine: minion: %s mine_size: %i' % (minion, mine_size))
+            except FileNotFoundError:
+                log.warning('checkmine engine: minion: %s %s does not exist' % (minion, mine_path))
+                mine_flush(minion)
+                mine_update(minion)
+                continue
+
             # For some reason the mine file can be corrupt and only be 1 byte in size
             if mine_size == 1:
                 log.error('checkmine engine: found %s to be 1 byte' % mine_path)
