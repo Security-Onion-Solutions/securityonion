@@ -54,7 +54,7 @@ mine_update_ca_crt:
   module.run:
     - mine.update: []
     - onchanges:
-      - file: pki_public_ca_crt
+      - x509: pki_public_ca_crt
 
 cakeyperms:
   file.managed:
