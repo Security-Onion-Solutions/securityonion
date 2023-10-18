@@ -2495,6 +2495,16 @@ wait_for_file() {
 
 wait_for_salt_minion() {
 	retry 60 5 "journalctl -u salt-minion.service | grep 'Minion is ready to receive requests'" >> "$setup_log" 2>&1 || fail_setup
+	local attempt=0
+	# each attempts would take about 15 seconds
+	local maxAttempts=20
+	until check_salt_minion_status; do
+		attempt=$((attempt+1))
+		if [[ $attempt -gt $maxAttempts ]]; then
+			fail_setup
+		fi
+		sleep 10
+	done
 }
 
 verify_setup() {

@@ -46,6 +46,28 @@ def start(interval=60):
                 mine_update(minion)
                 continue
 
+            # if a manager check that the ca in in the mine and it is correct
+            if minion.split('_')[-1] in ['manager', 'managersearch', 'eval', 'standalone', 'import']:
+                x509 = __salt__['saltutil.runner']('mine.get', tgt=minion, fun='x509.get_pem_entries')
+                try:
+                    ca_crt = x509[minion]['/etc/pki/ca.crt']
+                    log.debug('checkmine engine: found minion %s has ca_crt: %s' % (minion, ca_crt))
+                    # since the cert is defined, make sure it is valid
+                    import salt.modules.x509_v2 as x509_v2
+                    if not x509_v2.verify_private_key('/etc/pki/ca.key', '/etc/pki/ca.crt'):
+                        log.error('checkmine engine: found minion %s does\'t have a valid ca_crt in the mine' % (minion))
+                        log.error('checkmine engine: %s: ca_crt: %s' % (minion, ca_crt))
+                        mine_delete(minion, 'x509.get_pem_entries')
+                        mine_update(minion)
+                        continue
+                    else:
+                        log.debug('checkmine engine: found minion %s has a valid ca_crt in the mine' % (minion))
+                except IndexError:
+                    log.error('checkmine engine: found minion %s does\'t have a ca_crt in the mine' % (minion))
+                    mine_delete(minion, 'x509.get_pem_entries')
+                    mine_update(minion)
+                    continue
+
             # Update the mine if the ip in the mine doesn't match returned from manage.alived
             network_ip_addrs = __salt__['saltutil.runner']('mine.get', tgt=minion, fun='network.ip_addrs')
             try:

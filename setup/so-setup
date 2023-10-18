@@ -714,12 +714,17 @@ if ! [[ -f $install_opt_file ]]; then
 
 		logCmd "salt-call state.apply common.packages"
 		logCmd "salt-call state.apply common"
+		# this will apply the salt.minion state first since salt.master includes salt.minion
 		logCmd "salt-call state.apply salt.master"
-
 		# wait here until we get a response from the salt-master since it may have just restarted
 		# exit setup after 5-6 minutes of trying
 		check_salt_master_status || fail  "Can't access salt master or it is not ready"
-
+		# apply the ca state to create the ca and put it in the mine early in the install
+		# the minion ip will already be in the mine from configure_minion function in so-functions
+		generate_ca
+		# this will also call the ssl state since docker requires the intca
+		# the salt-minion service will need to be up on the manager to sign requests
+		generate_ssl
 		logCmd "salt-call state.apply docker"
 		firewall_generate_templates
 		set_initial_firewall_policy
@@ -727,8 +732,6 @@ if ! [[ -f $install_opt_file ]]; then
 		title "Downloading Elastic Agent Artifacts"
 		download_elastic_agent_artifacts
 
-		generate_ca
-		generate_ssl
 		logCmd "salt-call state.apply -l info firewall"
 
 		# create these so the registry state can add so-registry to /opt/so/conf/so-status/so-status.conf
