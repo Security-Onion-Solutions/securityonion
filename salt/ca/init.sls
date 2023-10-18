@@ -51,7 +51,7 @@ pki_public_ca_crt:
         interval: 30
 
 mine_update_ca_crt:
-  - module.run:
+  module.run:
     - mine.update: []
     - onchanges:
       - file: pki_public_ca_crt
