@@ -714,17 +714,14 @@ if ! [[ -f $install_opt_file ]]; then
 
 		logCmd "salt-call state.apply common.packages"
 		logCmd "salt-call state.apply common"
-		# apply the ca state to create the ca and put it in the mine early in the install
-		# this is done before the salt.master state puts the checkmine engine in place and starts
-		# checking for a valid ca in the mine for the manager
-		# the minion ip will already be in the mine from configure_minion function in so-functions
-		generate_ca
 		# this will apply the salt.minion state first since salt.master includes salt.minion
 		logCmd "salt-call state.apply salt.master"
 		# wait here until we get a response from the salt-master since it may have just restarted
 		# exit setup after 5-6 minutes of trying
 		check_salt_master_status || fail  "Can't access salt master or it is not ready"
-
+		# apply the ca state to create the ca and put it in the mine early in the install
+		# the minion ip will already be in the mine from configure_minion function in so-functions
+		generate_ca
 		# this will also call the ssl state since docker requires the intca
 		# the salt-minion service will need to be up on the manager to sign requests
 		generate_ssl
