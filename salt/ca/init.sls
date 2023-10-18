@@ -50,6 +50,12 @@ pki_public_ca_crt:
         attempts: 5
         interval: 30
 
+mine_update_ca_crt:
+  - module.run:
+    - mine.update: []
+    - onchanges:
+      - file: pki_public_ca_crt
+
 cakeyperms:
   file.managed:
     - replace: False
