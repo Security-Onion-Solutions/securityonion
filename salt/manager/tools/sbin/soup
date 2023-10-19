@@ -629,19 +629,20 @@ upgrade_salt() {
   SALTUPGRADED=True
   echo "Performing upgrade of Salt from $INSTALLEDSALTVERSION to $NEWSALTVERSION."
   echo ""
-  # If Oracle Linux
-  if [[ $OS == 'oel' || $OS == 'centos' || $OS == 'rocky' ]]; then
+  # If rhel family
+  if [[ $is_rpm ]]; then
     echo "Removing yum versionlock for Salt."
     echo ""
     yum versionlock delete "salt-*"
     echo "Updating Salt packages."
     echo ""
     set +e
-    if [[ $OS == 'oel' ]]; then
+    # if oracle run with -r to ignore repos set by bootstrap
+    if [[ $OS == 'oracle' ]]; then
       run_check_net_err \
       "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -X -r -F -M -x python3 stable \"$NEWSALTVERSION\"" \
       "Could not update salt, please check $SOUP_LOG for details."
-    # if rocky or centos we want to run without -r to allow the bootstrap script to manage repos
+    # if another rhel family variant we want to run without -r to allow the bootstrap script to manage repos
     else
       run_check_net_err \
       "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -X -F -M -x python3 stable \"$NEWSALTVERSION\"" \
@@ -652,6 +653,24 @@ upgrade_salt() {
     echo ""
     yum versionlock add "salt-*"
   # Else do Ubuntu things
+  elif [[ $is_deb ]]; then
+    echo "Removing apt hold for Salt."
+    echo ""
+    apt-mark unhold "salt-common"
+    apt-mark unhold "salt-master"
+    apt-mark unhold "salt-minion"
+    echo "Updating Salt packages."
+    echo ""
+    set +e
+    run_check_net_err \
+    "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -X -F -M -x python3 stable \"$NEWSALTVERSION\"" \
+    "Could not update salt, please check $SOUP_LOG for details."
+    set -e
+    echo "Applying apt hold for Salt."
+    echo ""
+    apt-mark hold "salt-common"
+    apt-mark hold "salt-master"
+    apt-mark hold "salt-minion"
   fi
 
   echo "Checking if Salt was upgraded."
@@ -663,7 +682,7 @@ upgrade_salt() {
     echo "Once the issue is resolved, run soup again."
     echo "Exiting."
     echo ""
-    exit 0
+    exit 1
   else
     echo "Salt upgrade success."
     echo ""
@@ -793,7 +812,7 @@ main() {
   if [[ $is_airgap -eq 0 ]]; then
     yum clean all
     check_os_updates
-  elif [[ $OS == 'oel' ]]; then
+  elif [[ $OS == 'oracle' ]]; then
     # sync remote repo down to local if not airgap
     repo_sync
     check_os_updates
