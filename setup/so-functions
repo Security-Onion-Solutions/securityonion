@@ -1258,7 +1258,7 @@ generate_ssl() {
 	# if the install type is a manager then we need to wait for the minion to be ready before trying
 	# to run the ssl state since we need the minion to sign the certs
 	if [[ "$install_type" =~ ^(EVAL|MANAGER|MANAGERSEARCH|STANDALONE|IMPORT|HELIXSENSOR)$ ]]; then
-		wait_for_salt_minion
+		wait_for_salt_minion "$MINION_ID" "5" "$setup_log" || fail_setup
 	fi
 	info "Applying SSL state"
 	logCmd "salt-call state.apply ssl -l info"
@@ -2492,20 +2492,6 @@ wait_for_file() {
 	done
 	info "Could not find $filename after waiting ${total_time}s"
 	return 1
-}
-
-wait_for_salt_minion() {
-	retry 60 5 "journalctl -u salt-minion.service | grep 'Minion is ready to receive requests'" >> "$setup_log" 2>&1 || fail_setup
-	local attempt=0
-	# each attempts would take about 15 seconds
-	local maxAttempts=20
-	until check_salt_minion_status; do
-		attempt=$((attempt+1))
-		if [[ $attempt -gt $maxAttempts ]]; then
-			fail_setup
-		fi
-		sleep 10
-	done
 }
 
 verify_setup() {
