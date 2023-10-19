@@ -617,13 +617,6 @@ if [ "$(echo "$ITYPE" | grep stable)" = "" ]; then
     exit 1
 fi
 
-# We want to require this script to only run with -r. We dont want to accidentally try to install from another repo
-# and we dont want to put salt.repo in /etc/yum.repos.d/
-if [ "$_DISABLE_REPOS" -eq $BS_FALSE ];then
-    echoerror "This script has been modified to required the usage of the -r flag which disables this script from using its own repos..."
-    exit 1
-fi
-
 # If doing a git install, check what branch/tag/sha will be checked out
 if [ "$ITYPE" = "git" ]; then
     if [ "$#" -eq 0 ];then

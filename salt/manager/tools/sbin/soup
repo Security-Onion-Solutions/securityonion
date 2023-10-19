@@ -620,6 +620,7 @@ upgrade_check_salt() {
   if [ "$INSTALLEDSALTVERSION" == "$NEWSALTVERSION" ]; then
     echo "You are already running the correct version of Salt for Security Onion."
   else
+    echo "Salt needs to be upgraded to $NEWSALTVERSION."
     UPGRADESALT=1
   fi
 }   
@@ -629,16 +630,23 @@ upgrade_salt() {
   echo "Performing upgrade of Salt from $INSTALLEDSALTVERSION to $NEWSALTVERSION."
   echo ""
   # If Oracle Linux
-  if [[ $OS == 'oel' ]]; then
+  if [[ $OS == 'oel' || $OS == 'centos' || $OS == 'rocky' ||]]; then
     echo "Removing yum versionlock for Salt."
     echo ""
     yum versionlock delete "salt-*"
     echo "Updating Salt packages."
     echo ""
     set +e
-    run_check_net_err \
-    "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -X -r -F -M -x python3 stable \"$NEWSALTVERSION\"" \
-    "Could not update salt, please check $SOUP_LOG for details."
+    if [[ $OS == 'oel' ]]; then
+      run_check_net_err \
+      "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -X -r -F -M -x python3 stable \"$NEWSALTVERSION\"" \
+      "Could not update salt, please check $SOUP_LOG for details."
+    # if rocky or centos we want to run without -r to allow the bootstrap script to manage repos
+    else
+      run_check_net_err \
+      "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -X -F -M -x python3 stable \"$NEWSALTVERSION\"" \
+      "Could not update salt, please check $SOUP_LOG for details."
+    fi
     set -e
     echo "Applying yum versionlock for Salt."
     echo ""
