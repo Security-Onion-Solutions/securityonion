@@ -114,6 +114,13 @@ socuploaddir:
     - group: 939
     - makedirs: True
 
+socsigmarepo:
+  file.directory:
+    - name: /opt/so/rules
+    - user: 939
+    - group: 939
+    - mode: 775
+
 {% else %}
 
 {{sls}}_state_not_allowed:
