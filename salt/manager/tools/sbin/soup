@@ -829,7 +829,8 @@ main() {
     echo "Hotfix applied"
     update_version
     enable_highstate
-    salt-call state.highstate -l info queue=True
+    wait_for_salt_minion "$MINIONID" "5" "$SOUP_LOG" || fail "Salt minion was not running or ready."
+    highstate
   else
     echo ""
     echo "Performing upgrade from Security Onion $INSTALLEDVERSION to Security Onion $NEWVERSION."
@@ -927,7 +928,8 @@ main() {
     echo ""
     echo "Running a highstate. This could take several minutes."
     set +e
-    salt-call state.highstate -l info queue=True
+    wait_for_salt_minion "$MINIONID" "5" "$SOUP_LOG" || fail "Salt minion was not running or ready."
+    highstate
     set -e
 
     stop_salt_master
@@ -942,7 +944,8 @@ main() {
     set -e
     
     echo "Running a highstate to complete the Security Onion upgrade on this manager. This could take several minutes."
-    salt-call state.highstate -l info queue=True
+    wait_for_salt_minion "$MINIONID" "5" "$SOUP_LOG" || fail "Salt minion was not running or ready."
+    highstate
     postupgrade_changes
     [[ $is_airgap -eq 0 ]] && unmount_update
 
