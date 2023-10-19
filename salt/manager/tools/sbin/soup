@@ -578,7 +578,7 @@ update_centos_repo() {
 }
 
 update_salt_mine() {
-    echo "Populating the mine with network.ip_addrs pillar.host.mainint for each host."
+    echo "Populating the mine with mine_functions for each host."
     set +e
     salt \* mine.update -b 50
     set -e
@@ -691,13 +691,16 @@ verify_latest_update_script() {
 
 # Keeping this block in case we need to do a hotfix that requires salt update
 apply_hotfix() {
-#  if [[ "$INSTALLEDVERSION" == "2.3.90" ]] ; then
-#    fix_wazuh
+  if [[ "$INSTALLEDVERSION" == "2.4.20" ]] ; then
+    salt-call state.apply elasticfleet -l info queue=True
+    . /usr/sbin/so-elastic-fleet-common
+    elastic_fleet_integration_remove endpoints-initial elastic-defend-endpoints
+    /usr/sbin/so-elastic-fleet-integration-policy-elastic-defend
 #  elif [[ "$INSTALLEDVERSION" == "2.3.110" ]] ; then
 #    2_3_10_hotfix_1
-#  else
+  else
    echo "No actions required. ($INSTALLEDVERSION/$HOTFIXVERSION)"
-#  fi
+  fi
 }
 
 
@@ -733,14 +736,8 @@ main() {
   echo ""
 
   set_os
-  if ! check_salt_master_status; then
-  	echo "Could not talk to salt master"
-    echo "Please run 'systemctl status salt-master' to ensure the salt-master service is running and check the log at /opt/so/log/salt/master."
-    echo "SOUP will now attempt to start the salt-master service and exit."
-    exit 1
-  fi
 
-  echo "This node can communicate with the salt-master."
+  check_salt_master_status 1 || fail  "Could not talk to salt master: Please run 'systemctl status salt-master' to ensure the salt-master service is running and check the log at /opt/so/log/salt/master."
 
   echo "Checking to see if this is a manager."
   echo ""
@@ -826,7 +823,7 @@ main() {
     else
       update_registry
       set +e
-      update_docker_containers "soup" "" "" "$SOUP_LOG"
+      update_docker_containers 'soup' '' '' '/dev/stdout' 2>&1 | tee -a "$SOUP_LOG"
       set -e
     fi
 
@@ -878,7 +875,7 @@ main() {
     # Testing that salt-master is up by checking that is it connected to itself
     set +e
     echo "Waiting on the Salt Master service to be ready."
-    salt-call state.show_top -l error queue=True || fail "salt-master could not be reached. Check $SOUP_LOG for details."
+    check_salt_master_status || fail  "Can't access salt master or it is not ready. Check $SOUP_LOG for details."
     set -e
 
     # update the salt-minion configs here and start the minion
@@ -914,7 +911,7 @@ main() {
 
     set +e
     echo "Waiting on the Salt Master service to be ready."
-    salt-call state.show_top -l error queue=True || fail "salt-master could not be reached. Check $SOUP_LOG for details."
+    check_salt_master_status || fail  "Can't access salt master or it is not ready. Check $SOUP_LOG for details."
     set -e
     
     echo "Running a highstate to complete the Security Onion upgrade on this manager. This could take several minutes."

@@ -2111,11 +2111,6 @@ saltify() {
 
 }
 
-# Run a salt command to generate the minion key
-salt_firstcheckin() {
-	salt-call state.show_top >> /dev/null 2>&1 # send output to /dev/null because we don't actually care about the ouput
-}
-
 salt_install_module_deps() {
     logCmd "salt-pip install docker --no-index --only-binary=:all: --find-links files/salt_module_deps/docker/"
     logCmd "salt-pip install pymysql --no-index --only-binary=:all: --find-links files/salt_module_deps/pymysql/"
@@ -2500,6 +2495,16 @@ wait_for_file() {
 
 wait_for_salt_minion() {
 	retry 60 5 "journalctl -u salt-minion.service | grep 'Minion is ready to receive requests'" >> "$setup_log" 2>&1 || fail_setup
+	local attempt=0
+	# each attempts would take about 15 seconds
+	local maxAttempts=20
+	until check_salt_minion_status; do
+		attempt=$((attempt+1))
+		if [[ $attempt -gt $maxAttempts ]]; then
+			fail_setup
+		fi
+		sleep 10
+	done
 }
 
 verify_setup() {
