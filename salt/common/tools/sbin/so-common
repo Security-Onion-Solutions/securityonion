@@ -152,15 +152,18 @@ check_salt_master_status() {
     return 0
 }
 
+# this is only intended to be used to check the status of the minion
 check_salt_minion_status() {
-	local timeout="${1:-5}"
-	echo "Checking if the salt minion will respond to jobs" >> "$setup_log" 2>&1
-	salt "$MINION_ID" test.ping -t $timeout > /dev/null 2>&1
+	local minion="$1"
+	local timeout="${2:-5}"
+	local logfile="${3:-'/dev/stdout'}"
+	echo "Checking if the salt minion will respond to jobs" >> "$logfile" 2>&1
+	salt "$minion" test.ping -t $timeout > /dev/null 2>&1
 	local status=$?
 	if [ $status -gt 0 ]; then
-		echo "  Minion did not respond" >> "$setup_log" 2>&1
+		echo "  Minion did not respond" >> "$logfile" 2>&1
 	else
-		echo "  Received job response from salt minion" >> "$setup_log" 2>&1
+		echo "  Received job response from salt minion" >> "$logfile" 2>&1
 	fi
 
 	return $status
@@ -438,6 +441,24 @@ run_check_net_err() {
 		echo "$err_msg"
 		exit $exit_code
 	fi
+}
+
+wait_for_salt_minion() {
+	local minion="$1"
+	local timeout="${2:-5}"
+	local logfile="${3:-'/dev/stdout'}"
+	retry 60 5 "journalctl -u salt-minion.service | grep 'Minion is ready to receive requests'" >> "$logfile" 2>&1 || fail
+	local attempt=0
+	# each attempts would take about 15 seconds
+	local maxAttempts=20
+	until check_salt_minion_status "$minion" "$timeout" "$logfile"; do
+		attempt=$((attempt+1))
+		if [[ $attempt -gt $maxAttempts ]]; then
+			return 1
+		fi
+		sleep 10
+	done
+	return 0
 }
 
 salt_minion_count() {
