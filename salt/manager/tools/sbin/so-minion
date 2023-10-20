@@ -407,8 +407,9 @@ function update_logstash_outputs() {
 }
 
 function checkMine() {
-	func = $1
-	retry 20 1 "salt-run '$MINION_ID' mine.get '$func'" "$MINION_ID"
+	local func=$1
+	# make sure the minion sees itself in the mine since it needs to see itself for states as opposed to using salt-run
+	retry 20 1 "salt '$MINION_ID' mine.get '\*' '$func'" "$MINION_ID"
 
 }
 
