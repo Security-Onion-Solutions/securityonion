@@ -67,6 +67,10 @@ def start(interval=60):
                     mine_delete(minion, 'x509.get_pem_entries')
                     mine_update(minion)
                     continue
+                except KeyError:
+                    log.error('checkmine engine: found minion %s is not in the mine' % (minion))
+                    mine_flush(minion)
+                    mine_update(minion)
 
             # Update the mine if the ip in the mine doesn't match returned from manage.alived
             network_ip_addrs = __salt__['saltutil.runner']('mine.get', tgt=minion, fun='network.ip_addrs')
@@ -77,5 +81,8 @@ def start(interval=60):
                 log.error('checkmine engine: found minion %s does\'t have a mine_ip' % (minion))
                 mine_delete(minion, 'network.ip_addrs')
                 mine_update(minion)
-
+            except KeyError:
+                log.error('checkmine engine: found minion %s is not in the mine' % (minion))
+                mine_flush(minion)
+                mine_update(minion)
         sleep(interval)
