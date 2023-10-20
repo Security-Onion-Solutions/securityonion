@@ -406,8 +406,14 @@ function update_logstash_outputs() {
     curl -K /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fleet/outputs/so-manager_logstash" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
 }
 
+function checkMine() {
+	func = $1
+	retry 20 1 "salt-run '$MINION_ID' mine.get '$func'" "$MINION_ID"
+
+}
+
 function updateMine() {
-	retry 10 2 "salt '$MINION_ID' mine.update" True
+	retry 20 1 "salt '$MINION_ID' mine.update" True
 }
 
 function createEVAL() {
@@ -623,6 +629,7 @@ if [[ "$OPERATION" == 'add' || "$OPERATION" == 'setup' ]]; then
 		# this only needs to happen on non managers since they handle this during setup
 		# and they need to wait for ca creation to update the mine
 		updateMine
+		checkMine "network.ip_addrs"
 		# run this async so the cli doesn't wait for a return
 		salt "$MINION_ID" state.highstate --async
 	fi
