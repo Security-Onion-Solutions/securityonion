@@ -71,6 +71,7 @@ def start(interval=60):
                     log.error('checkmine engine: found minion %s is not in the mine' % (minion))
                     mine_flush(minion)
                     mine_update(minion)
+                    continue
 
             # Update the mine if the ip in the mine doesn't match returned from manage.alived
             network_ip_addrs = __salt__['saltutil.runner']('mine.get', tgt=minion, fun='network.ip_addrs')
@@ -85,4 +86,5 @@ def start(interval=60):
                 log.error('checkmine engine: found minion %s is not in the mine' % (minion))
                 mine_flush(minion)
                 mine_update(minion)
+
         sleep(interval)
