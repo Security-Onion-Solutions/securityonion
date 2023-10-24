@@ -866,6 +866,16 @@ main() {
       echo "Upgrading Salt"
       # Update the repo files so it can actually upgrade
       upgrade_salt
+
+      # for Debian based distro, we need to stop salt again after upgrade output below is from bootstrap-salt
+      # *  WARN: Not starting daemons on Debian based distributions
+      #    is not working mostly because starting them is the default behaviour.
+      if [[ $is_deb ]]; then
+        systemctl status salt-master
+        systemctl status salt-minion
+        stop_salt_master
+        stop_salt_minion
+      fi
     fi
 
     preupgrade_changes
