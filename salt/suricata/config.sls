@@ -129,7 +129,7 @@ surithresholding:
 
 # BPF compilation and configuration
 {% if SURICATABPF %}
-   {% set BPF_CALC = salt['cmd.script']('/usr/sbin/so-bpf-compile', GLOBALS.sensor.interface + ' ' + SURICATABPF|join(" "),cwd='/root') %}
+   {% set BPF_CALC = salt['cmd.script']('salt://common/tools/sbin/so-bpf-compile', GLOBALS.sensor.interface + ' ' + SURICATABPF|join(" "),cwd='/root') %}
    {% if BPF_CALC['stderr'] == "" %}
       {% set BPF_STATUS = 1  %}
    {% else  %}

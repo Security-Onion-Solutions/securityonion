@@ -13,11 +13,13 @@
 {%   do SOCDEFAULTS.soc.config.server.modules[module].update({'hostUrl': application_url}) %}
 {% endfor %}
 
-{# add nodes from the logstash:nodes pillar to soc.server.modules.elastic.remoteHostUrls #}
+{# add all grid heavy nodes to soc.server.modules.elastic.remoteHostUrls #}
 {% for node_type, minions in salt['pillar.get']('logstash:nodes', {}).items() %}
-{%   for m in minions.keys() %}
-{%     do SOCDEFAULTS.soc.config.server.modules.elastic.remoteHostUrls.append('https://' ~ m ~ ':9200') %}
-{%   endfor %}
+{%   if node_type in ['heavynode'] %}
+{%     for m in minions.keys() %}
+{%       do SOCDEFAULTS.soc.config.server.modules.elastic.remoteHostUrls.append('https://' ~ m ~ ':9200') %}
+{%     endfor %}
+{%   endif %}
 {% endfor %}
 
 {% do SOCDEFAULTS.soc.config.server.modules.elastic.update({'username': GLOBALS.elasticsearch.auth.users.so_elastic_user.user, 'password': GLOBALS.elasticsearch.auth.users.so_elastic_user.pass}) %}

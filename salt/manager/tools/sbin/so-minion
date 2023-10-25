@@ -406,12 +406,17 @@ function update_logstash_outputs() {
     curl -K /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fleet/outputs/so-manager_logstash" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
 }
 
+function checkMine() {
+	local func=$1
+	# make sure the minion sees itself in the mine since it needs to see itself for states as opposed to using salt-run
+	retry 20 1 "salt '$MINION_ID' mine.get '\*' '$func'" "$MINION_ID"
+
+}
+
 function updateMine() {
-	salt "$MINION_ID" mine.send network.ip_addrs interface="$MNIC"
+	retry 20 1 "salt '$MINION_ID' mine.update" True
 }
-function apply_ES_state() {
-	salt-call state.apply elasticsearch concurrent=True
-}
+
 function createEVAL() {
 	is_pcaplimit=true
 	add_elasticsearch_to_minion
@@ -547,8 +552,6 @@ function createSEARCHNODE() {
 	add_elasticsearch_to_minion
 	add_logstash_to_minion
 	add_telegraf_to_minion
-	updateMine
-	apply_ES_state
 }
 
 function createRECEIVER() {
@@ -563,6 +566,19 @@ function createDESKTOP() {
 }
 
 function testConnection() {
+	# the minion should be trying to auth every 10 seconds so 15 seconds should be more than enough time to see this in the log
+	# this retry was put in because it is possible that a minion is attempted to be pinged before it has authenticated and connected to the Salt master
+	# causing the first ping to fail and typically wouldn't be successful until the second ping
+	# this check may pass without the minion being authenticated if it was previously connected and the line exists in the log
+	retry 15 1 "grep 'Authentication accepted from $MINION_ID' /opt/so/log/salt/master"
+	local retauth=$?
+	if [[ $retauth != 0 ]]; then
+		echo "The Minion did not authenticate with the Salt master in the allotted time"
+		echo "Deleting the key"
+		deleteminion
+		exit 1
+	fi
+
 	retry 15 3 "salt '$MINION_ID' test.ping" True
 	local ret=$?
 	if [[ $ret != 0 ]]; then
@@ -582,9 +598,9 @@ if [[ "$OPERATION" = 'delete' ]]; then
 	deleteminion
 fi
 
-if [[ "$OPERATION" = 'add' || "$OPERATION" = 'setup' ]]; then
+if [[ "$OPERATION" == 'add' || "$OPERATION" == 'setup' ]]; then
 	# Skip this if its setup
-	if [ $OPERATION != 'setup' ]; then
+	if [[ $OPERATION == 'add' ]]; then
 		# Accept the salt key
 		acceptminion
 		# Test to see if the minion was accepted
@@ -605,8 +621,19 @@ if [[ "$OPERATION" = 'add' || "$OPERATION" = 'setup' ]]; then
 	else
 		add_sensoroni_to_minion
 	fi
+
 	create$NODETYPE
 	echo "Minion file created for $MINION_ID"	
+
+	if [[ "$OPERATION" == 'add' ]]; then
+		# tell the minion to populate the mine with data from mine_functions which is populated during setup
+		# this only needs to happen on non managers since they handle this during setup
+		# and they need to wait for ca creation to update the mine
+		updateMine
+		checkMine "network.ip_addrs"
+		# run this async so the cli doesn't wait for a return
+		salt "$MINION_ID" state.highstate --async
+	fi
 fi
 
 if [[ "$OPERATION" = 'test' ]]; then
