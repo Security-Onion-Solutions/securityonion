@@ -33,8 +33,8 @@ def checkConfigRequirements(conf):
     
 def sendReq(conf, observ_value):
     url = conf['base_url'] + observ_value
-    #headers = {'x-api-key': conf['api_key']}
-    headers = {'x-api-key': 'I7TXsJcq6p2TVwxnsFKcO5rflwLlhjewarRkUPq7'}
+    headers = {'x-api-key': conf['api_key']}
+    #headers = {'x-api-key': 'I7TXsJcq6p2TVwxnsFKcO5rflwLlhjewarRkUPq7'}
     response = requests.request('GET', url=url, headers=headers)
     return response.json()
 
