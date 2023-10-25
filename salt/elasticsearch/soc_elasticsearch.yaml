@@ -33,7 +33,6 @@ elasticsearch:
               flood_stage: 
                 description: The max percentage of used disk space that will cause the node to take protective actions, such as blocking incoming events.
                 helpLink: elasticsearch.html
-
     script:
       max_compilations_rate: 
         description: Max rate of script compilations permitted in the Elasticsearch cluster. Larger values will consume more resources.
@@ -48,6 +47,11 @@ elasticsearch:
             helpLink: elasticsearch.html
   index_settings:
     global_overrides:
+      index_sorting:
+        description: Sorts the index by event time, at the cost of additional processing resource consumption.
+        global: True
+        advanced: True
+        helpLink: elasticsearch.html
       index_template:
         template:
           settings:
@@ -57,32 +61,6 @@ elasticsearch:
                 forcedType: int
                 global: True
                 helpLink: elasticsearch.html
-    so-logs: &indexSettings
-      index_sorting: 
-        description: Sorts the index by event time, at the cost of additional processing resource consumption.
-        global: True
-        helpLink: elasticsearch.html
-      index_template:
-        index_patterns:
-          description: Patterns for matching multiple indices or tables.
-          forceType: "[]string"
-          multiline: True
-          global: True
-          helpLink: elasticsearch.html
-        template:
-          settings:
-            index:
-              number_of_replicas: 
-                description: Number of replicas required for this index. Multiple replicas protects against data loss, but also increases storage costs.
-                forcedType: int
-                global: True
-                helpLink: elasticsearch.html
-              mapping:
-                total_fields:
-                  limit:
-                    description: Max number of fields that can exist on a single index. Larger values will consume more resources.
-                    global: True
-                    helpLink: elasticsearch.html
               refresh_interval: 
                 description: Seconds between index refreshes. Shorter intervals can cause query performance to suffer since this is a synchronous and resource-intensive operation.
                 global: True
@@ -100,48 +78,32 @@ elasticsearch:
                   description: The order to sort by. Must set index_sorting to True.
                   global: True
                   helpLink: elasticsearch.html
-          mappings:
-            _meta:
-              package:
-                name:
-                  description: Meta settings for the mapping.
-                  global: True
-                  helpLink: elasticsearch.html
-              managed_by:
-                  description: Meta settings for the mapping.
-                  global: True
-                  helpLink: elasticsearch.html
-              managed:
-                  description: Meta settings for the mapping.
-                  forcedType: bool
-                  global: True
-                  helpLink: elasticsearch.html
-        composed_of:
-          description: The index template is composed of these component templates.
-          forcedType: "[]string"
-          global: True
-          helpLink: elasticsearch.html
-        priority:
-          description: The priority of the index template.
-          forcedType: int
-          global: True
-          helpLink: elasticsearch.html
-        data_stream:
-          hidden:
-            description: Hide the data stream.
-            forcedType: bool
-            global: True
-            helpLink: elasticsearch.html
-          allow_custom_routing:
-            description: Allow custom routing for the data stream.
-            forcedType: bool
-            global: True
-            helpLink: elasticsearch.html
-      policy:
+            policy:
         phases:
           hot:
             min_age:
               description: Minimum age of index. This determines when the index should be moved to the hot tier.
+              global: True
+              helpLink: elasticsearch.html
+            actions:
+              set_priority:
+                priority:
+                  description: Priority of index. This is used for recovery after a node restart. Indices with higher priorities are recovered before indices with lower priorities.
+                  forcedType: int
+                  global: True
+                  helpLink: elasticsearch.html
+              rollover:
+                max_age:
+                  description: Maximum age of index.  Once an index reaches this limit, it will be rolled over into a new index.
+                  global: True
+                  helpLink: elasticsearch.html
+                max_primary_shard_size:
+                  description: Maximum primary shard size. Once an index reaches this limit, it will be rolled over into a new index.
+                  global: True
+                  helpLink: elasticsearch.html
+          warm:
+            min_age:
+              description: Minimum age of index. This determines when the index should be moved to the warm tier.
               global: True
               helpLink: elasticsearch.html
             actions:
@@ -177,20 +139,190 @@ elasticsearch:
               description: Minimum age of index. This determines when the index should be deleted.
               global: True
               helpLink: elasticsearch.html
+    so-logs: &indexSettings
+      index_sorting: 
+        description: Sorts the index by event time, at the cost of additional processing resource consumption.
+        global: True
+        advanced: True
+        helpLink: elasticsearch.html
+      index_template:
+        index_patterns:
+          description: Patterns for matching multiple indices or tables.
+          forceType: "[]string"
+          multiline: True
+          global: True
+          advanced: True
+          helpLink: elasticsearch.html
+        template:
+          settings:
+            index:
+              number_of_replicas: 
+                description: Number of replicas required for this index. Multiple replicas protects against data loss, but also increases storage costs.
+                forcedType: int
+                global: True
+                advanced: True
+                helpLink: elasticsearch.html
+              mapping:
+                total_fields:
+                  limit:
+                    description: Max number of fields that can exist on a single index. Larger values will consume more resources.
+                    global: True
+                    advanced: True
+                    helpLink: elasticsearch.html
+              refresh_interval: 
+                description: Seconds between index refreshes. Shorter intervals can cause query performance to suffer since this is a synchronous and resource-intensive operation.
+                global: True
+                advanced: True
+                helpLink: elasticsearch.html
+              number_of_shards: 
+                description: Number of shards required for this index. Using multiple shards increases fault tolerance, but also increases storage and network costs.
+                global: True
+                advanced: True
+                helpLink: elasticsearch.html
+              sort:
+                field:
+                  description: The field to sort by. Must set index_sorting to True.
+                  global: True
+                  advanced: True
+                  helpLink: elasticsearch.html
+                order:
+                  description: The order to sort by. Must set index_sorting to True.
+                  global: True
+                  advanced: True
+                  helpLink: elasticsearch.html
+          mappings:
+            _meta:
+              package:
+                name:
+                  description: Meta settings for the mapping.
+                  global: True
+                  advanced: True
+                  helpLink: elasticsearch.html
+              managed_by:
+                  description: Meta settings for the mapping.
+                  global: True
+                  advanced: True
+                  helpLink: elasticsearch.html
+              managed:
+                  description: Meta settings for the mapping.
+                  forcedType: bool
+                  global: True
+                  advanced: True
+                  helpLink: elasticsearch.html
+        composed_of:
+          description: The index template is composed of these component templates.
+          forcedType: "[]string"
+          global: True
+          advanced: True
+          helpLink: elasticsearch.html
+        priority:
+          description: The priority of the index template.
+          forcedType: int
+          global: True
+          advanced: True
+          helpLink: elasticsearch.html
+        data_stream:
+          hidden:
+            description: Hide the data stream.
+            forcedType: bool
+            global: True
+            advanced: True
+            helpLink: elasticsearch.html
+          allow_custom_routing:
+            description: Allow custom routing for the data stream.
+            forcedType: bool
+            global: True
+            advanced: True
+            helpLink: elasticsearch.html
+      policy:
+        phases:
+          hot:
+            min_age:
+              description: Minimum age of index. This determines when the index should be moved to the hot tier.
+              global: True
+              advanced: True
+              helpLink: elasticsearch.html
+            actions:
+              set_priority:
+                priority:
+                  description: Priority of index. This is used for recovery after a node restart. Indices with higher priorities are recovered before indices with lower priorities.
+                  forcedType: int
+                  global: True
+                  advanced: True
+                  helpLink: elasticsearch.html
+              rollover:
+                max_age:
+                  description: Maximum age of index.  Once an index reaches this limit, it will be rolled over into a new index.
+                  global: True
+                  advanced: True
+                  helpLink: elasticsearch.html
+                max_primary_shard_size:
+                  description: Maximum primary shard size. Once an index reaches this limit, it will be rolled over into a new index.
+                  global: True
+                  advanced: True
+                  helpLink: elasticsearch.html
+          warm:
+            min_age:
+              description: Minimum age of index. This determines when the index should be moved to the hot tier.
+              global: True
+              advanced: True
+              helpLink: elasticsearch.html
+            actions:
+              set_priority:
+                priority:
+                  description: Priority of index. This is used for recovery after a node restart. Indices with higher priorities are recovered before indices with lower priorities.
+                  forcedType: int
+                  global: True
+                  advanced: True
+                  helpLink: elasticsearch.html
+              rollover:
+                max_age:
+                  description: Maximum age of index.  Once an index reaches this limit, it will be rolled over into a new index.
+                  global: True
+                  advanced: True
+                  helpLink: elasticsearch.html
+                max_primary_shard_size:
+                  description: Maximum primary shard size. Once an index reaches this limit, it will be rolled over into a new index.
+                  global: True
+                  advanced: True
+                  helpLink: elasticsearch.html
+          cold:
+            min_age:
+              description: Minimum age of index.  This determines when the index should be moved to the cold tier.  While still searchable, this tier is typically optimized for lower storage costs rather than search speed.
+              global: True
+              advanced: True
+              helpLink: elasticsearch.html
+            actions:
+              set_priority:
+                priority:
+                  description: Used for index recovery after a node restart. Indices with higher priorities are recovered before indices with lower priorities.
+                  forcedType: int
+                  global: True
+                  advanced: True
+                  helpLink: elasticsearch.html
+          delete:
+            min_age:
+              description: Minimum age of index. This determines when the index should be deleted.
+              global: True
+              advanced: True
+              helpLink: elasticsearch.html
         _meta:
           package:
             name:
               description: Meta settings for the mapping.
               global: True
+              advanced: True
               helpLink: elasticsearch.html
           managed_by:
             description: Meta settings for the mapping.
             global: True
+            advanced: True
             helpLink: elasticsearch.html
           managed:
             description: Meta settings for the mapping.
             forcedType: bool
             global: True
+            advanced: True
             helpLink: elasticsearch.html
     so-logs-system_x_auth: *indexSettings
     so-logs-system_x_syslog: *indexSettings
