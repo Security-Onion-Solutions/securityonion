@@ -1,4 +1,4 @@
-elastic_curl_config_distributed:
+kibana_curl_config_distributed:
   file.managed:
     - name: /opt/so/conf/kibana/curl.config
     - source: salt://kibana/files/curl.config.template
