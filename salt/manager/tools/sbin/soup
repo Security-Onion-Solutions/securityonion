@@ -460,6 +460,7 @@ stop_salt_master() {
     echo ""
     echo "Killing any queued Salt jobs on the manager."
     pkill -9 -ef "/usr/bin/python3 /bin/salt" >> $SOUP_LOG 2>&1
+    set -e
 
     echo ""
     echo "Storing salt-master pid."
@@ -467,7 +468,6 @@ stop_salt_master() {
     echo "Found salt-master PID $MASTERPID"
     systemctl_func "stop" "salt-master"
     timeout 30 tail --pid=$MASTERPID -f /dev/null || echo "salt-master still running at $(date +"%T.%6N") after waiting 30s. We cannot kill due to systemd restart option."
-    set -e
 }
 
 stop_salt_minion() {
@@ -480,12 +480,14 @@ stop_salt_minion() {
     echo ""
     echo "Killing Salt jobs on this node."
     salt-call saltutil.kill_all_jobs --local
+    set -e
 
     echo "Storing salt-minion pid."
     MINIONPID=$(pgrep -f '/opt/saltstack/salt/bin/python3.10 /usr/bin/salt-minion' | head -1)
     echo "Found salt-minion PID $MINIONPID"
     systemctl_func "stop" "salt-minion"
 
+    set +e
     timeout 30 tail --pid=$MINIONPID -f /dev/null || echo "Killing salt-minion at $(date +"%T.%6N") after waiting 30s" && pkill -9 -ef /usr/bin/salt-minion
     set -e
 }
@@ -618,7 +620,6 @@ upgrade_check_salt() {
   if [ "$INSTALLEDSALTVERSION" == "$NEWSALTVERSION" ]; then
     echo "You are already running the correct version of Salt for Security Onion."
   else
-    echo "Salt needs to be upgraded to $NEWSALTVERSION."
     UPGRADESALT=1
   fi
 }   
@@ -627,48 +628,22 @@ upgrade_salt() {
   SALTUPGRADED=True
   echo "Performing upgrade of Salt from $INSTALLEDSALTVERSION to $NEWSALTVERSION."
   echo ""
-  # If rhel family
-  if [[ $is_rpm ]]; then
+  # If CentOS
+  if [[ $OS == 'centos' ]]; then
     echo "Removing yum versionlock for Salt."
     echo ""
     yum versionlock delete "salt-*"
     echo "Updating Salt packages."
     echo ""
     set +e
-    # if oracle run with -r to ignore repos set by bootstrap
-    if [[ $OS == 'oracle' ]]; then
-      run_check_net_err \
-      "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -X -r -F -M -x python3 stable \"$NEWSALTVERSION\"" \
-      "Could not update salt, please check $SOUP_LOG for details."
-    # if another rhel family variant we want to run without -r to allow the bootstrap script to manage repos
-    else
-      run_check_net_err \
-      "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -X -F -M -x python3 stable \"$NEWSALTVERSION\"" \
-      "Could not update salt, please check $SOUP_LOG for details."
-    fi
+    run_check_net_err \
+    "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -X -r -F -M -x python3 stable \"$NEWSALTVERSION\"" \
+    "Could not update salt, please check $SOUP_LOG for details."
     set -e
     echo "Applying yum versionlock for Salt."
     echo ""
     yum versionlock add "salt-*"
   # Else do Ubuntu things
-  elif [[ $is_deb ]]; then
-    echo "Removing apt hold for Salt."
-    echo ""
-    apt-mark unhold "salt-common"
-    apt-mark unhold "salt-master"
-    apt-mark unhold "salt-minion"
-    echo "Updating Salt packages."
-    echo ""
-    set +e
-    run_check_net_err \
-    "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -X -F -M -x python3 stable \"$NEWSALTVERSION\"" \
-    "Could not update salt, please check $SOUP_LOG for details."
-    set -e
-    echo "Applying apt hold for Salt."
-    echo ""
-    apt-mark hold "salt-common"
-    apt-mark hold "salt-master"
-    apt-mark hold "salt-minion"
   fi
 
   echo "Checking if Salt was upgraded."
@@ -680,7 +655,7 @@ upgrade_salt() {
     echo "Once the issue is resolved, run soup again."
     echo "Exiting."
     echo ""
-    exit 1
+    exit 0
   else
     echo "Salt upgrade success."
     echo ""
@@ -810,7 +785,7 @@ main() {
   if [[ $is_airgap -eq 0 ]]; then
     yum clean all
     check_os_updates
-  elif [[ $OS == 'oracle' ]]; then
+  elif [[ $OS == 'oel' ]]; then
     # sync remote repo down to local if not airgap
     repo_sync
     check_os_updates
@@ -827,8 +802,7 @@ main() {
     echo "Hotfix applied"
     update_version
     enable_highstate
-    (wait_for_salt_minion "$MINIONID" "5" '/dev/stdout' || fail "Salt minion was not running or ready.") 2>&1 | tee -a "$SOUP_LOG"
-    highstate
+    salt-call state.highstate -l info queue=True
   else
     echo ""
     echo "Performing upgrade from Security Onion $INSTALLEDVERSION to Security Onion $NEWVERSION."
@@ -864,14 +838,6 @@ main() {
       echo "Upgrading Salt"
       # Update the repo files so it can actually upgrade
       upgrade_salt
-
-      # for Debian based distro, we need to stop salt again after upgrade output below is from bootstrap-salt
-      # *  WARN: Not starting daemons on Debian based distributions
-      #    is not working mostly because starting them is the default behaviour.
-      if [[ $is_deb ]]; then
-        stop_salt_minion
-        stop_salt_master
-      fi
     fi
 
     preupgrade_changes
@@ -934,8 +900,7 @@ main() {
     echo ""
     echo "Running a highstate. This could take several minutes."
     set +e
-    (wait_for_salt_minion "$MINIONID" "5" '/dev/stdout' || fail "Salt minion was not running or ready.") 2>&1 | tee -a "$SOUP_LOG"
-    highstate
+    salt-call state.highstate -l info queue=True
     set -e
 
     stop_salt_master
@@ -950,8 +915,7 @@ main() {
     set -e
     
     echo "Running a highstate to complete the Security Onion upgrade on this manager. This could take several minutes."
-    (wait_for_salt_minion "$MINIONID" "5" '/dev/stdout' || fail "Salt minion was not running or ready.") 2>&1 | tee -a "$SOUP_LOG"
-    highstate
+    salt-call state.highstate -l info queue=True
     postupgrade_changes
     [[ $is_airgap -eq 0 ]] && unmount_update
 
