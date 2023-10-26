@@ -28,10 +28,15 @@ def prepareResults(raw):
     if raw != {} and raw['query_status'] == 'ok':
         parsed = raw['data'][0]
 
-        if parsed['threat_type_desc'] != '':
-            summary = parsed['threat_type_desc']
-        else:
+        # if parsed['threat_type_desc'] != '':
+        #     summary = parsed['threat_type_desc']
+        # else:
+        #     summary = parsed['threat_type']
+
+        if parsed['threat_type'] != '':
             summary = parsed['threat_type']
+        else:
+            summary = parsed['threat_type_desc']
 
         if parsed['confidence_level'] > 75:
             status = 'threat'
