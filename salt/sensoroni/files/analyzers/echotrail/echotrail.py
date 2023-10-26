@@ -26,7 +26,7 @@ def analyze(conf, input):
     return prepareResults(response)
 
 def checkConfigRequirements(conf):
-    if "api_key" not in conf:
+    if "api_key" not in conf or len(conf['api_key']) == 0:
         sys.exit(126)
     else:
         return True
