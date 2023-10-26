@@ -3,6 +3,90 @@ kratos:
     description: You can enable or disable Kratos.
     advanced: True
     helpLink: kratos.html
+
+  oidc:
+    enabled: 
+      description: Set to True to enable OIDC / Single Sign-On (SSO) to SOC. Requires a valid Security Onion license key.
+      global: True
+      helpLink: oidc.html
+    config:
+      id: 
+        description: Customize the OIDC provider name. This name appears on the login page. Required.
+        global: True
+        forcedType: string
+        helpLink: oidc.html
+      provider:
+        description: "Specify the provider type. Required. Valid values are: auth0, generic, github, google, microsoft"
+        global: True
+        forcedType: string
+        regex: "auth0|generic|github|google|microsoft"
+        regexFailureMessage: "Valid values are: auth0, generic, github, google, microsoft"
+        helpLink: oidc.html
+      client_id: 
+        description: Specify the client ID, also referenced as the application ID. Required.
+        global: True
+        forcedType: string
+        helpLink: oidc.html
+      client_secret: 
+        description: Specify the client secret. Required.
+        global: True
+        forcedType: string
+        helpLink: oidc.html
+      microsoft_tenant:
+        description: Specify the Microsoft Active Directory Tenant ID. Required when provider is 'microsoft'.
+        global: True
+        forcedType: string
+        helpLink: oidc.html
+      subject_source: 
+        description: The source of the subject identifier. Typically 'userinfo'. Only used when provider is 'microsoft'.
+        global: True
+        forcedType: string
+        regex: me|userinfo
+        regexFailureMessage: "Valid values are: me, userinfo"
+        helpLink: oidc.html
+      auth_url: 
+        description: Provider's auth URL. Required when provider is 'generic'.
+        global: True
+        forcedType: string
+        helpLink: oidc.html
+      issuer_url: 
+        description: Provider's issuer URL. Required when provider is 'auth0' or 'generic'.
+        global: True
+        forcedType: string
+        helpLink: oidc.html
+      mapper_url: 
+        description: A file path or URL in Jsonnet format, used to map OIDC claims to the Kratos schema. Defaults to an included file that maps the email claim. Note that the contents of the included file can be customized via the "OIDC Claims Mapping" setting.
+        advanced: True
+        global: True
+        forcedType: string
+        helpLink: oidc.html
+      token_url: 
+        description: Provider's token URL. Required when provider is 'generic'.
+        global: True
+        forcedType: string
+        helpLink: oidc.html
+      scope: 
+        description: List of scoped data categories to request in the authentication response. Typically 'email' and 'profile' are the minimum required scopes. However, GitHub requires `user:email', instead and Auth0 requires 'profile', 'email', and 'openid'.
+        global: True
+        forcedType: "[]string"
+        helpLink: oidc.html
+      requested_claims: 
+        id_token:
+          email:
+            essential:
+              description: Specifies whether the email claim is necessary. Typically leave this value set to true.
+              advanced: True
+              global: True
+              helpLink: oidc.html
+  files:
+    oidc__jsonnet:
+      title: OIDC Claims Mapping
+      description: Customize the OIDC claim mappings to the Kratos schema. The default mappings include the minimum required for login functionality, so this typically does not need to be customized. Visit https://jsonnet.org for more information about this file format.
+      advanced: True
+      file: True
+      global: True
+      helpLink: oidc.html
+
   config:
     session:
       lifespan: 
@@ -19,10 +103,10 @@ kratos:
       methods:
         password:
           enabled: 
-            description: Set to True to enable traditional password authentication. Leave as default to ensure proper security protections remain in place.
+            description: Set to True to enable traditional password authentication to SOC. Typically set to true, except when exclusively using OIDC authentication. Some external tool interfaces may not be accessible if local password authentication is disabled.
             global: True
             advanced: True
-            helpLink: kratos.html
+            helpLink: oidc.html
           config:
             haveibeenpwned_enabled:
               description: Set to True to check if a newly chosen password has ever been found in a published list of previously-compromised passwords. Requires outbound Internet connectivity when enabled.
@@ -30,7 +114,7 @@ kratos:
               helpLink: kratos.html
         totp:
           enabled: 
-            description: Set to True to enable Time-based One-Time Password (TOTP) multi-factor authentication (MFA). Enable to ensure proper security protections remain in place. Be aware that disabling this setting, after users have already setup TOTP, may prevent users from logging in.
+            description: Set to True to enable Time-based One-Time Password (TOTP) multi-factor authentication (MFA) to SOC. Enable to ensure proper security protections remain in place. Be aware that disabling this setting, after users have already setup TOTP, may prevent users from logging in.
             global: True
             helpLink: kratos.html
           config:
@@ -41,7 +125,7 @@ kratos:
               helpLink: kratos.html
         webauthn:
           enabled:
-            description: Set to True to enable Security Keys (WebAuthn / PassKeys) for passwordless or multi-factor authentication (MFA) logins. Security Keys are a Public-Key Infrastructure (PKI) based authentication method, typically involving biometric hardware devices, such as laptop fingerprint scanners and USB hardware keys. Be aware that disabling this setting, after users have already setup their accounts with Security Keys, may prevent users from logging in.
+            description: Set to True to enable Security Keys (WebAuthn / PassKeys) for passwordless or multi-factor authentication (MFA) SOC logins. Security Keys are a Public-Key Infrastructure (PKI) based authentication method, typically involving biometric hardware devices, such as laptop fingerprint scanners and USB hardware keys. Be aware that disabling this setting, after users have already setup their accounts with Security Keys, may prevent users from logging in.
             global: True
             helpLink: kratos.html
           config:
@@ -65,6 +149,7 @@ kratos:
                 global: True
                 advanced: True
                 helpLink: kratos.html
+
       flows:
         settings:
           privileged_session_max_age:
