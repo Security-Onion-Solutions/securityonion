@@ -5,3 +5,4 @@ kibana_curl_config_distributed:
     - template: jinja
     - mode: 600
     - show_changes: False
+    - makedirs: True
