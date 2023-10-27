@@ -75,8 +75,8 @@ elasticsearch:
                   helpLink: elasticsearch.html
         phases:
           hot:
-            min_age:
-              description: Minimum age of index. This determines when the index should be moved to the hot tier.
+            max_age:
+              description: Maximum age of index. ex. 7d - This determines when the index should be moved out of the hot tier.
               global: True
               helpLink: elasticsearch.html
             actions:
@@ -97,19 +97,29 @@ elasticsearch:
                   helpLink: elasticsearch.html
           cold:
             min_age:
-              description: Minimum age of index.  This determines when the index should be moved to the cold tier.  While still searchable, this tier is typically optimized for lower storage costs rather than search speed.
+              description: Minimum age of index. ex. 30d - This determines when the index should be moved to the cold tier.  While still searchable, this tier is typically optimized for lower storage costs rather than search speed.
               global: True
               helpLink: elasticsearch.html
             actions:
               set_priority:
                 priority:
                   description: Used for index recovery after a node restart. Indices with higher priorities are recovered before indices with lower priorities.
+                  global: True
+                  helpLink: elasticsearch.html
+          warm:
+            min_age: 
+              description: Minimum age of index. ex. 30d - This determines when the index should be moved to the cold tier.  While still searchable, this tier is typically optimized for lower storage costs rather than search speed.
+              regex: ^[0-9]d$
+            actions:
+              set_priority:
+                priority:
+                  description: Priority of index. This is used for recovery after a node restart. Indices with higher priorities are recovered before indices with lower priorities.
                   forcedType: int
                   global: True
                   helpLink: elasticsearch.html
           delete:
             min_age:
-              description: Minimum age of index. This determines when the index should be deleted.
+              description: Minimum age of index. ex. 90d - This determines when the index should be deleted.
               global: True
               helpLink: elasticsearch.html
     so-logs: &indexSettings
