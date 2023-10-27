@@ -51,6 +51,14 @@ kratosschema:
     - group: 928
     - mode: 600
 
+kratosoidc:
+  file.managed:
+    - name: /opt/so/conf/kratos/oidc.jsonnet
+    - source: salt://kratos/files/oidc.jsonnet
+    - user: 928
+    - group: 928
+    - mode: 600
+
 kratosconfig:
   file.managed:
     - name: /opt/so/conf/kratos/kratos.yaml
