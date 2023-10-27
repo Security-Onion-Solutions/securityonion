@@ -152,15 +152,18 @@ check_salt_master_status() {
     return 0
 }
 
+# this is only intended to be used to check the status of the minion from a salt master
 check_salt_minion_status() {
-	local timeout="${1:-5}"
-	echo "Checking if the salt minion will respond to jobs" >> "$setup_log" 2>&1
-	salt "$MINION_ID" test.ping -t $timeout > /dev/null 2>&1
+	local minion="$1"
+	local timeout="${2:-5}"
+	local logfile="${3:-'/dev/stdout'}"
+	echo "Checking if the salt minion: $minion will respond to jobs" >> "$logfile" 2>&1
+	salt "$minion" test.ping -t $timeout > /dev/null 2>&1
 	local status=$?
 	if [ $status -gt 0 ]; then
-		echo "  Minion did not respond" >> "$setup_log" 2>&1
+		echo "  Minion did not respond" >> "$logfile" 2>&1
 	else
-		echo "  Received job response from salt minion" >> "$setup_log" 2>&1
+		echo "  Received job response from salt minion" >> "$logfile" 2>&1
 	fi
 
 	return $status
@@ -440,6 +443,24 @@ run_check_net_err() {
 	fi
 }
 
+wait_for_salt_minion() {
+	local minion="$1"
+	local timeout="${2:-5}"
+	local logfile="${3:-'/dev/stdout'}"
+	retry 60 5 "journalctl -u salt-minion.service | grep 'Minion is ready to receive requests'" >> "$logfile" 2>&1 || fail
+	local attempt=0
+	# each attempts would take about 15 seconds
+	local maxAttempts=20
+	until check_salt_minion_status "$minion" "$timeout" "$logfile"; do
+		attempt=$((attempt+1))
+		if [[ $attempt -eq $maxAttempts ]]; then
+			return 1
+		fi
+		sleep 10
+	done
+	return 0
+}
+
 salt_minion_count() {
 	local MINIONDIR="/opt/so/saltstack/local/pillar/minions"
 	MINIONCOUNT=$(ls -la $MINIONDIR/*.sls | grep -v adv_ | wc -l)
@@ -452,19 +473,51 @@ set_os() {
 			OS=rocky
 			OSVER=9
 			is_rocky=true
+			is_rpm=true
 		elif grep -q "CentOS Stream release 9" /etc/redhat-release; then
 			OS=centos
 			OSVER=9
 			is_centos=true
-		elif grep -q "Oracle Linux Server release 9" /etc/system-release; then
-			OS=oel
+			is_rpm=true
+		elif grep -q "AlmaLinux release 9" /etc/redhat-release; then
+			OS=alma
 			OSVER=9
-			is_oracle=true
+			is_alma=true
+			is_rpm=true
+		elif grep -q "Red Hat Enterprise Linux release 9" /etc/redhat-release; then
+			if [ -f /etc/oracle-release ]; then
+				OS=oracle
+				OSVER=9
+				is_oracle=true
+				is_rpm=true
+			else
+				OS=rhel
+				OSVER=9
+				is_rhel=true
+				is_rpm=true
+			fi
 		fi
 		cron_service_name="crond"
-	else
-		OS=ubuntu
-		is_ubuntu=true
+	elif [ -f /etc/os-release ]; then
+		if grep -q "UBUNTU_CODENAME=focal" /etc/os-release; then
+			OSVER=focal
+			UBVER=20.04
+			OS=ubuntu
+			is_ubuntu=true
+			is_deb=true
+		elif grep -q "UBUNTU_CODENAME=jammy" /etc/os-release; then
+			OSVER=jammy
+			UBVER=22.04
+			OS=ubuntu
+			is_ubuntu=true
+			is_deb=true
+		elif grep -q "VERSION_CODENAME=bookworm" /etc/os-release; then
+			OSVER=bookworm
+			DEBVER=12
+			is_debian=true
+			OS=debian
+			is_deb=true
+		fi
 		cron_service_name="cron"
 	fi
 }
