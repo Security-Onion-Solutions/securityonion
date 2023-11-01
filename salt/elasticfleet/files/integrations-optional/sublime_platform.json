@@ -1,0 +1,44 @@
+{%- from 'elasticfleet/map.jinja' import ELASTICFLEETMERGED -%}
+{%- from 'sensoroni/map.jinja' import SENSORONIMERGED -%}
+{%- from 'vars/globals.map.jinja' import GLOBALS -%}
+{%- raw -%}
+{
+  "package": {
+    "name": "httpjson",
+    "version": ""
+  },
+  "name": "sublime-platform",
+  "namespace": "default",
+  "description": "",
+  "policy_id": "FleetServer_{%- endraw -%}{{ NAME }}{%- raw -%}",
+  "vars": {},
+  "inputs": {
+    "generic-httpjson": {
+      "enabled": true,
+      "streams": {
+        "httpjson.generic": {
+          "enabled": true,
+          "vars": {
+            "request_method": "GET",
+            "processors": "- drop_event:\n    when:\n        not:\n            contains: \n                message: \"flagged_rules\"\n- decode_json_fields:\n    fields: [\"message\"]\n    document_id: id\n    target: \"\"",
+            "enable_request_tracer": false,
+            "oauth_scopes": [],
+            "request_transforms": "- set:\n    target: header.Authorization\n    value: 'Bearer {% endraw -%}{{ ELASTICFLEETMERGED.optional_integrations.sublime_platform.api_key }}{%- raw -%}'\n- set:\n    target: header.accept\n    value: application/json\n- set:\n    target: url.params.last_message_created_at[gte]\n    value: '[[formatDate (now (parseDuration \"-{%- endraw -%}{{ ELASTICFLEETMERGED.optional_integrations.sublime_platform.poll_interval }}{%- raw -%}\")) \"2006-01-02T15:04:05Z\"]]'\n- set:\n    target: url.params.reviewed\n    value: false\n- set:\n    target: url.params.flagged\n    value: true\n- set:\n    target: url.params.limit\n    value: {% endraw %}{{ ELASTICFLEETMERGED.optional_integrations.sublime_platform.limit }}{%- raw -%}",
+            "response_transforms": "",
+            "request_redirect_headers_ban_list": [],
+            "request_encode_as": "application/x-www-form-urlencoded",
+            "request_url": "{%- endraw -%}{{ ELASTICFLEETMERGED.optional_integrations.sublime_platform.base_url }}{%- raw -%}/v0/message-groups",
+            "response_split": "target: body.message_groups\ntype: array\nkeep_parent: false\ntransforms:\n    - set:\n        target: body.sublime.request_url\n        value : '[[ .last_response.url.value ]]'",
+            "tags": [
+              "forwarded"
+            ],
+            "pipeline": "sublime",
+            "data_stream.dataset": "sublime",
+            "request_interval": "1m"
+          }
+        }
+      }
+    }
+  }
+}
+{%- endraw -%}
