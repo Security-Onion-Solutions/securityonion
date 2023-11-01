@@ -1,0 +1,65 @@
+#!/bin/bash
+#
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+{% from 'vars/globals.map.jinja' import GLOBALS %}
+
+
+. /usr/sbin/so-common
+
+require_manager
+
+
+# Inform user we are about to remove Elastic Fleet data
+echo
+echo "This script will remove the current Elastic Fleet install & all of its data and rerun Elastic Fleet setup."
+echo
+echo "If you would like to proceed, please type "AGREE" and hit ENTER."
+echo
+# Read user input
+read INPUT
+if [ "$INPUT" != "AGREE" ] ; then exit 0; fi
+
+
+printf  "\nUninstalling all Elastic Agents on all Grid Nodes...\n\n"
+salt \* cmd.run "elastic-agent uninstall -f" queue=True
+
+printf  "\nStopping Fleet Container...\n"
+so-elastic-fleet-stop --force
+
+printf "\nDeleting Fleet Data from Pillars...\n"
+sed -i -z "s/elasticfleet:.*grid_enrollment_heavy.*'//" /opt/so/saltstack/local/pillar/minions/{{ GLOBALS.minion_id }}.sls
+sed -i "/fleet_grid_enrollment_token_general.*/d" /opt/so/saltstack/local/pillar/global/soc_global.sls
+sed -i "/fleet_grid_enrollment_token_heavy.*/d" /opt/so/saltstack/local/pillar/global/soc_global.sls
+
+printf "\n\nDeleting Elastic Fleet data...\n\n"
+
+ALIASES=".fleet-servers .fleet-policies-leader .fleet-agents .fleet-artifacts .fleet-enrollment-api-keys .kibana_ingest"
+for ALIAS in ${ALIASES}
+do
+    # Get all concrete indices from alias
+    INDXS=$(curl -K /opt/so/conf/kibana/curl.config -s -k -L -H "Content-Type: application/json" "https://localhost:9200/_resolve/index/${ALIAS}"  | jq -r '.aliases[].indices[]')
+
+    # Delete all resolved indices
+    for INDX in ${INDXS}
+    do
+            printf "\nDeleting $INDX \n"
+            curl -K /opt/so/conf/kibana/curl.config -s -k -L -H "Content-Type: application/json" "https://localhost:9200/${INDX}" -XDELETE
+    done
+done
+
+printf "\n\nRestarting Kibana..\n"
+so-kibana-restart --force
+
+wait_for_web_response "http://localhost:5601/app/kibana" "Elastic" 300 "curl -K /opt/so/conf/elasticsearch/curl.config"
+
+printf "\nStarting Elastic Fleet Setup...\n"
+so-elastic-fleet-setup
+
+
+printf  "\nRe-installing Elastic Agent on all Grid Nodes...\n\n"
+salt \* state.apply elasticfleet.install_agent_grid queue=True
+
+printf "\nElastic Fleet Reset complete....\n"
