@@ -579,7 +579,7 @@ update_airgap_rules() {
   rsync -av $UPDATE_DIR/agrules/* /nsm/repo/rules/
 }
 
-update_centos_repo() {
+update_airgap_repo() {
   # Update the files in the repo
   echo "Syncing new updates to /nsm/repo"
   rsync -av $AGREPO/* /nsm/repo/
@@ -821,6 +821,7 @@ main() {
   set -e
 
   if [[ $is_airgap -eq 0 ]]; then
+    update_airgap_repo
     yum clean all
     check_os_updates
   elif [[ $OS == 'oracle' ]]; then
@@ -893,11 +894,6 @@ main() {
     if [[ $is_airgap -eq 0 ]]; then
       echo "Updating Rule Files to the Latest."
       update_airgap_rules
-    fi
-
-    # Only update the repo if its airgap
-    if [[ $is_airgap -eq 0 && $UPGRADESALT -ne 1 ]]; then
-      update_centos_repo
     fi
 
     # since we don't run the backup.config_backup state on import we wont snapshot previous version states and pillars
