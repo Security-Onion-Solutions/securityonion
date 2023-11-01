@@ -6,6 +6,7 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 {% if sls.split('.')[0] in allowed_states %}
+{% set node_data = salt['pillar.get']('node_data') %}
 
 # Add EA Group
 elasticfleetgroup:
@@ -92,6 +93,34 @@ eaintegration:
     - user: 947
     - group: 939
 
+{% for minion in node_data %}
+{% set role = node_data[minion]["role"] %}
+{% if role in [ "fleet","heavynode", "manager","managersearch","standalone" ] %}
+{% set optional_integrations = salt['pillar.get']('elasticfleet:optional_integrations', {}) %}
+{% set integration_keys = salt['pillar.get']('elasticfleet:optional_integrations', {}).keys() %}
+fleet_server_integrations_{{ minion }}:
+  file.directory:
+    - name: /opt/so/conf/elastic-fleet/integrations/FleetServer_{{ minion }}
+    - user: 947
+    - group: 939
+    - makedirs: True
+{% for integration in integration_keys %}
+{% set enabled_nodes = optional_integrations[integration]["enabled_nodes"] %}
+{% if minion in enabled_nodes %}
+optional_integrations_dynamic_{{ minion }}:
+  file.managed:
+    - name: /opt/so/conf/elastic-fleet/integrations/FleetServer_{{ minion }}/{{ integration }}.json
+    - source: salt://elasticfleet/files/integrations-optional/{{ integration }}.json
+    - user: 947
+    - group: 939
+    - template: jinja
+    - defaults:
+        NAME: {{ minion }}
+{% endif %}
+{% endfor %}
+{% endif %}
+{% endfor %}
+
 ea-integrations-load:
   file.absent:
     - name: /opt/so/state/eaintegrations.txt
@@ -99,6 +128,9 @@ ea-integrations-load:
       - file: eaintegration
       - file: eadynamicintegration
       - file: eapackageupgrade
+      {% for minion in node_data %}
+      - file: optional_integrations_dynamic_{{ minion }}
+      {% endfor %}
 {% endif %}
 {% else %}
 
