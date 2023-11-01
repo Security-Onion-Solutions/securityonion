@@ -124,6 +124,10 @@ optional_integrations_dynamic_{{ minion }}_{{ integration }}:
     - template: jinja
     - defaults:
         NAME: {{ minion }}
+{% else %}
+optional_integrations_dynamic_{{ minion }}_{{ integration }}_delete:
+  file.absent:
+    - name: /opt/so/conf/elastic-fleet/integrations-optional/FleetServer_{{ minion }}/{{ integration }}.json
 {% endif %}
 {% endif %}
 {% endfor %}
