@@ -112,6 +112,7 @@ fleet_server_integrations_{{ minion }}:
     - group: 939
     - makedirs: True
 {% for integration in integration_keys %}
+{% if 'enabled_nodes' in optional_integrations[integration]%}
 {% set enabled_nodes = optional_integrations[integration]["enabled_nodes"] %}
 {% if minion in enabled_nodes %}
 optional_integrations_dynamic_{{ minion }}_{{ integration }}:
@@ -123,6 +124,7 @@ optional_integrations_dynamic_{{ minion }}_{{ integration }}:
     - template: jinja
     - defaults:
         NAME: {{ minion }}
+{% endif %}
 {% endif %}
 {% endfor %}
 {% endif %}
