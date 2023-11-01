@@ -268,15 +268,6 @@ collect_dockernet() {
 	fi
 }
 
-collect_es_space_limit() {
-	whiptail_log_size_limit "$log_size_limit"
-
-	while ! valid_int "$log_size_limit"; do # Upper/lower bounds?
-		whiptail_invalid_input
-		whiptail_log_size_limit "$log_size_limit"
-	done
-}
-
 collect_gateway() {
 	whiptail_management_interface_gateway
 
@@ -284,28 +275,6 @@ collect_gateway() {
 		whiptail_invalid_input
 		whiptail_management_interface_gateway "$MGATEWAY"
 	done
-}
-
-collect_homenet_mngr() {
-	whiptail_homenet_manager "10.0.0.0/8,192.168.0.0/16,172.16.0.0/12"
-	
-	while ! valid_cidr_list "$HNMANAGER"; do
-		whiptail_invalid_input
-		whiptail_homenet_manager "$HNMANAGER"
-	done
-}
-
-collect_homenet_snsr() {
-	if whiptail_homenet_sensor_inherit; then
-		export HNSENSOR=inherit
-	else
-		whiptail_homenet_sensor "10.0.0.0/8,192.168.0.0/16,172.16.0.0/12"
-		
-		while ! valid_cidr_list "$HNSENSOR"; do
-			whiptail_invalid_input
-			whiptail_homenet_sensor "$HNSENSOR"
-		done
-	fi
 }
 
 collect_hostname() {
@@ -344,26 +313,6 @@ collect_idh_preferences() {
 	whiptail_idh_preferences
 
 	if [[ "$idh_preferences" != "" ]]; then IDH_MGTRESTRICT='True'; fi
-}
-
-collect_idh_services() {
-	whiptail_idh_services
-
-	case "$IDH_SERVICES" in
-		'Linux Webserver (NAS Skin)')
-			IDH_SERVICES='"HTTP","FTP","SSH"'
-		;;
-		'MySQL Server')
-			IDH_SERVICES='"MYSQL","SSH"'
-		;;
-		'MSSQL Server')
-			IDH_SERVICES='"MSSQL","VNC'
-		;;
-		'Custom')
-			whiptail_idh_services_custom
-			IDH_SERVICES=$(echo "$IDH_SERVICES" | tr '[:blank:]' ',' )
-		;;
-	esac
 }
 
 collect_int_ip_mask() {
@@ -423,71 +372,6 @@ collect_net_method() {
 		collect_proxy no_ask
 		needs_proxy=true
 	fi
-}
-
-collect_ntp_servers() {
-	if whiptail_ntp_ask; then
-		[[ $is_airgap ]] && ntp_string=""
-		whiptail_ntp_servers "$ntp_string"
-
-		while ! valid_ntp_list "$ntp_string"; do
-			whiptail_invalid_input
-			whiptail_ntp_servers "$ntp_string"
-		done
-
-		IFS="," read -r -a ntp_servers <<< "$ntp_string" # Split string on commas into array
-	else
-		ntp_servers=()
-	fi
-}
-
-collect_oinkcode() {
-	whiptail_oinkcode
-
-	while ! valid_string "$OINKCODE" "" "128"; do
-		whiptail_invalid_input
-		whiptail_oinkcode "$OINKCODE"
-	done
-}
-
-collect_patch_schedule() {
-	whiptail_patch_schedule
-
-	case "$patch_schedule" in
-		'New Schedule')
-			whiptail_patch_schedule_select_days
-			whiptail_patch_schedule_select_hours
-			collect_patch_schedule_name_new
-			patch_schedule_os_new
-		;;
-		'Import Schedule')
-			collect_patch_schedule_name_import
-		;;
-		'Automatic')
-			PATCHSCHEDULENAME='auto'
-		;;
-		'Manual')
-			PATCHSCHEDULENAME='manual'
-		;;
-	esac
-}
-
-collect_patch_schedule_name_new() {
-	whiptail_patch_name_new_schedule
-
-	while ! valid_string "$PATCHSCHEDULENAME"; do
-		whiptail_invalid_string "schedule name"
-		whiptail_patch_name_new_schedule "$PATCHSCHEDULENAME"
-	done
-}
-
-collect_patch_schedule_name_import() {
-	whiptail_patch_schedule_import
-
-	while ! valid_string "$PATCHSCHEDULENAME"; do
-		whiptail_invalid_string "schedule name"
-		whiptail_patch_schedule_import "$PATCHSCHEDULENAME"
-	done
 }
 
 collect_proxy() {
@@ -656,47 +540,6 @@ configure_minion() {
 		logCmd "systemctl enable salt-minion";
 		logCmd "systemctl restart salt-minion";
 	} >> "$setup_log" 2>&1
-}
-
-configure_ntp() {
-	local chrony_conf=/etc/chrony.conf
-
-	# Install chrony if it isn't already installed
-	if ! command -v chronyc &> /dev/null; then
-		logCmd "dnf -y install chrony"
-	fi
-
-	[[ -f $chrony_conf ]] && mv $chrony_conf "$chrony_conf.bak"
-
-	printf '%s\n' "# NTP server list" > $chrony_conf
-
-	# Build list of servers
-	for addr in "${ntp_servers[@]}"; do
-		echo "server $addr iburst" >> $chrony_conf
-	done
-
-	printf '\n%s\n' "# Config options" >> $chrony_conf
-
-	printf '%s\n' \
-		'driftfile /var/lib/chrony/drift' \
-		'makestep 1.0 3' \
-		'rtcsync' \
-		'logdir /var/log/chrony' >> $chrony_conf
-
-	if [[ $is_rpm ]]; then
-		systemctl enable chronyd
-		systemctl restart chronyd
-	else 
-		systemctl enable chrony
-		systemctl restart chrony
-	fi
-
-	# Tell the chrony daemon to sync time & update the system time
-	# Since these commands only make a call to chronyd, wait after each command to make sure the changes are made
-	printf "Syncing chrony time to server: "
-	chronyc -a 'burst 4/4' && sleep 30
-	printf "Forcing chrony to update the time: "
-	chronyc -a makestep && sleep 30
 }
 
 checkin_at_boot() {
@@ -1053,16 +896,6 @@ download_elastic_agent_artifacts() {
 	if ! update_elastic_agent 2>&1 | tee -a "$setup_log"; then
 		fail_setup
 	fi
-}
-
-installer_progress_loop() {
-	local i=0
-	local msg="${1:-Performing background actions...}"
-	while true; do
-		[[ $i -lt 98 ]] && ((i++))
-		set_progress_str "$i" "$msg" nolog
-		[[ $i -gt 0 ]] && sleep 5s
-	done
 }
 
 installer_prereq_packages() {	
@@ -1646,21 +1479,6 @@ network_setup() {
 	logCmd "cp ./install_scripts/99-so-checksum-offload-disable /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable"
 	info "... Modifying 99-so-checksum-offload-disable";
 	logCmd "sed -i '/\$MNIC/${INTERFACE}/g' /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable"
-}
-
-ntp_pillar_entries() {
-
-	local pillar_file=$local_salt_dir/pillar/minions/$MINION_ID.sls
-
-	
-	if [[ ${#ntp_servers[@]} -gt 0 ]]; then
-		printf '%s\n'\
-			"ntp:"\
-			"  servers:" > "$pillar_file"
-			for addr in "${ntp_servers[@]}"; do
-				printf '%s\n' "    - '$addr'" >> "$pillar_file"
-			done
-	fi
 }
 
 parse_install_username() {
