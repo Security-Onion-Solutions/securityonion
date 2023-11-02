@@ -8,6 +8,7 @@ include:
   - common.packages
 {% if GLOBALS.manager == GLOBALS.hostname %}
   - manager.elasticsearch # needed for elastic_curl_config state
+  - manager.kibana
 {% endif %}
 
 net.core.wmem_default:

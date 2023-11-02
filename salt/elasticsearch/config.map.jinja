@@ -20,20 +20,12 @@
       {% for NODE in ES_LOGSTASH_NODES %}
         {% do ELASTICSEARCHDEFAULTS.elasticsearch.config.discovery.seed_hosts.append(NODE.keys()|first) %}
       {% endfor %}
-      {% if grains.id.split('_') | last == 'manager' %}
-        {% do ELASTICSEARCHDEFAULTS.elasticsearch.config.node.update({'roles': ['master','data','remote_cluster_client','transform']}) %}
-      {% else %}
-        {% do ELASTICSEARCHDEFAULTS.elasticsearch.config.node.update({'roles': ['master', 'data_hot', 'remote_cluster_client']}) %}
-      {% endif %}
     {% endif %}
 {% elif grains.id.split('_') | last == 'searchnode' %}
-  {% do ELASTICSEARCHDEFAULTS.elasticsearch.config.node.update({'roles': ['data_hot', 'ingest']}) %}
   {% if HIGHLANDER %}
         {% do ELASTICSEARCHDEFAULTS.elasticsearch.config.node.roles.extend(['ml', 'master', 'transform']) %}
   {% endif %}
   {% do ELASTICSEARCHDEFAULTS.elasticsearch.config.update({'discovery': {'seed_hosts': [GLOBALS.manager]}}) %}
-{% elif grains.id.split('_') | last == 'heavynode' %}
-  {% do ELASTICSEARCHDEFAULTS.elasticsearch.config.node.update({'roles': ['master', 'data', 'remote_cluster_client', 'ingest']}) %}
 {% endif %}
 {% if HIGHLANDER %}
       {% do ELASTICSEARCHDEFAULTS.elasticsearch.config.xpack.ml.update({'enabled': true}) %}
@@ -53,3 +45,5 @@
     {% endif %}
   {% endfor %}
 {% endif %}
+
+{% do ELASTICSEARCHMERGED.config.node.update({'roles': ELASTICSEARCHMERGED.so_roles[GLOBALS.role].config.node.roles}) %}

@@ -12,6 +12,7 @@ include:
   - salt
   - systemd.reload
   - repo.client
+  - salt.mine_functions
 
 {% if INSTALLEDSALTVERSION|string != SALTVERSION|string %}
 
@@ -66,6 +67,9 @@ set_log_levels:
       - "log_level: info"
       - "log_level_logfile: info"
 
+# prior to 2.4.30 this managed file would restart the salt-minion service when updated
+# since this file is currently only adding a sleep timer on service start
+# it is not required to restart the service
 salt_minion_service_unit_file:
   file.managed:
     - name: {{ SYSTEMD_UNIT_FILE }}
@@ -78,14 +82,6 @@ salt_minion_service_unit_file:
 
 {% endif %}
 
-mine_functions:
-  file.managed:
-    - name: /etc/salt/minion.d/mine_functions.conf
-    - source: salt://salt/etc/minion.d/mine_functions.conf.jinja
-    - template: jinja
-    - defaults:
-        GLOBALS: {{ GLOBALS }}
-
 # this has to be outside the if statement above since there are <requisite>_in calls to this state
 salt_minion_service:
   service.running:
@@ -96,6 +92,5 @@ salt_minion_service:
       - file: mine_functions
 {% if INSTALLEDSALTVERSION|string == SALTVERSION|string %}
       - file: set_log_levels
-      - file: salt_minion_service_unit_file
 {% endif %}
     - order: last

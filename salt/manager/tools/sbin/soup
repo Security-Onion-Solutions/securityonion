@@ -171,6 +171,13 @@ airgap_update_dockers() {
   fi
 }
 
+backup_old_states_pillars() {
+
+	tar czf /nsm/backup/$(echo $INSTALLEDVERSION)_$(date +%Y%m%d-%H%M%S)_soup_default_states_pillars.tar.gz /opt/so/saltstack/default/
+	tar czf /nsm/backup/$(echo $INSTALLEDVERSION)_$(date +%Y%m%d-%H%M%S)_soup_local_states_pillars.tar.gz /opt/so/saltstack/local/
+
+}
+
 update_registry() {
   docker stop so-dockerregistry
   docker rm so-dockerregistry
@@ -396,6 +403,7 @@ preupgrade_changes() {
     [[ "$INSTALLEDVERSION" == 2.4.4 ]] && up_to_2.4.5
     [[ "$INSTALLEDVERSION" == 2.4.5 ]] && up_to_2.4.10
     [[ "$INSTALLEDVERSION" == 2.4.10 ]] && up_to_2.4.20
+    [[ "$INSTALLEDVERSION" == 2.4.20 ]] && up_to_2.4.30
     true
 }
 
@@ -407,7 +415,8 @@ postupgrade_changes() {
     [[ "$POSTVERSION" == 2.4.3 ]] && post_to_2.4.4
     [[ "$POSTVERSION" == 2.4.4 ]] && post_to_2.4.5 
     [[ "$POSTVERSION" == 2.4.5 ]] && post_to_2.4.10 
-    [[ "$POSTVERSION" == 2.4.10 ]] && post_to_2.4.20 
+    [[ "$POSTVERSION" == 2.4.10 ]] && post_to_2.4.20
+    [[ "$POSTVERSION" == 2.4.20 ]] && post_to_2.4.30 
     true
 }
 
@@ -434,9 +443,14 @@ post_to_2.4.10() {
 }
 
 post_to_2.4.20() {
-  echo "Pruning unused volumes"
-  docker volume prune -f
+  echo "Pruning unused docker volumes on all nodes - This process will run in the background."
+  salt --async \* cmd.run "docker volume prune -f"
   POSTVERSION=2.4.20
+}
+
+post_to_2.4.30() {
+  echo "Nothing to apply"
+  POSTVERSION=2.4.30
 }
 
 repo_sync() {
@@ -453,7 +467,6 @@ stop_salt_master() {
     echo ""
     echo "Killing any queued Salt jobs on the manager."
     pkill -9 -ef "/usr/bin/python3 /bin/salt" >> $SOUP_LOG 2>&1
-    set -e
 
     echo ""
     echo "Storing salt-master pid."
@@ -461,6 +474,7 @@ stop_salt_master() {
     echo "Found salt-master PID $MASTERPID"
     systemctl_func "stop" "salt-master"
     timeout 30 tail --pid=$MASTERPID -f /dev/null || echo "salt-master still running at $(date +"%T.%6N") after waiting 30s. We cannot kill due to systemd restart option."
+    set -e
 }
 
 stop_salt_minion() {
@@ -473,14 +487,12 @@ stop_salt_minion() {
     echo ""
     echo "Killing Salt jobs on this node."
     salt-call saltutil.kill_all_jobs --local
-    set -e
 
     echo "Storing salt-minion pid."
     MINIONPID=$(pgrep -f '/opt/saltstack/salt/bin/python3.10 /usr/bin/salt-minion' | head -1)
     echo "Found salt-minion PID $MINIONPID"
     systemctl_func "stop" "salt-minion"
 
-    set +e
     timeout 30 tail --pid=$MINIONPID -f /dev/null || echo "Killing salt-minion at $(date +"%T.%6N") after waiting 30s" && pkill -9 -ef /usr/bin/salt-minion
     set -e
 }
@@ -514,6 +526,12 @@ up_to_2.4.20() {
   echo "Nothing to do for 2.4.20"
   
   INSTALLEDVERSION=2.4.20
+}
+
+up_to_2.4.30() {
+  echo "Nothing to do for 2.4.30"
+  
+  INSTALLEDVERSION=2.4.30
 }
 
 determine_elastic_agent_upgrade() {
@@ -561,7 +579,7 @@ update_airgap_rules() {
   rsync -av $UPDATE_DIR/agrules/* /nsm/repo/rules/
 }
 
-update_centos_repo() {
+update_airgap_repo() {
   # Update the files in the repo
   echo "Syncing new updates to /nsm/repo"
   rsync -av $AGREPO/* /nsm/repo/
@@ -571,9 +589,9 @@ update_centos_repo() {
 }
 
 update_salt_mine() {
-    echo "Populating the mine with network.ip_addrs pillar.host.mainint for each host."
+    echo "Populating the mine with mine_functions for each host."
     set +e
-    salt \* cmd.run cmd='MAININT=$(salt-call pillar.get host:mainint --out=newline_values_only) && salt-call mine.send name=network.ip_addrs interface="$MAININT"'
+    salt \* mine.update -b 50
     set -e
 }
 
@@ -613,6 +631,7 @@ upgrade_check_salt() {
   if [ "$INSTALLEDSALTVERSION" == "$NEWSALTVERSION" ]; then
     echo "You are already running the correct version of Salt for Security Onion."
   else
+    echo "Salt needs to be upgraded to $NEWSALTVERSION."
     UPGRADESALT=1
   fi
 }   
@@ -621,22 +640,48 @@ upgrade_salt() {
   SALTUPGRADED=True
   echo "Performing upgrade of Salt from $INSTALLEDSALTVERSION to $NEWSALTVERSION."
   echo ""
-  # If CentOS
-  if [[ $OS == 'centos' ]]; then
+  # If rhel family
+  if [[ $is_rpm ]]; then
     echo "Removing yum versionlock for Salt."
     echo ""
     yum versionlock delete "salt-*"
     echo "Updating Salt packages."
     echo ""
     set +e
-    run_check_net_err \
-    "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -X -r -F -M -x python3 stable \"$NEWSALTVERSION\"" \
-    "Could not update salt, please check $SOUP_LOG for details."
+    # if oracle run with -r to ignore repos set by bootstrap
+    if [[ $OS == 'oracle' ]]; then
+      run_check_net_err \
+      "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -X -r -F -M -x python3 stable \"$NEWSALTVERSION\"" \
+      "Could not update salt, please check $SOUP_LOG for details."
+    # if another rhel family variant we want to run without -r to allow the bootstrap script to manage repos
+    else
+      run_check_net_err \
+      "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -X -F -M -x python3 stable \"$NEWSALTVERSION\"" \
+      "Could not update salt, please check $SOUP_LOG for details."
+    fi
     set -e
     echo "Applying yum versionlock for Salt."
     echo ""
     yum versionlock add "salt-*"
   # Else do Ubuntu things
+  elif [[ $is_deb ]]; then
+    echo "Removing apt hold for Salt."
+    echo ""
+    apt-mark unhold "salt-common"
+    apt-mark unhold "salt-master"
+    apt-mark unhold "salt-minion"
+    echo "Updating Salt packages."
+    echo ""
+    set +e
+    run_check_net_err \
+    "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -X -F -M -x python3 stable \"$NEWSALTVERSION\"" \
+    "Could not update salt, please check $SOUP_LOG for details."
+    set -e
+    echo "Applying apt hold for Salt."
+    echo ""
+    apt-mark hold "salt-common"
+    apt-mark hold "salt-master"
+    apt-mark hold "salt-minion"
   fi
 
   echo "Checking if Salt was upgraded."
@@ -648,7 +693,7 @@ upgrade_salt() {
     echo "Once the issue is resolved, run soup again."
     echo "Exiting."
     echo ""
-    exit 0
+    exit 1
   else
     echo "Salt upgrade success."
     echo ""
@@ -684,13 +729,16 @@ verify_latest_update_script() {
 
 # Keeping this block in case we need to do a hotfix that requires salt update
 apply_hotfix() {
-#  if [[ "$INSTALLEDVERSION" == "2.3.90" ]] ; then
-#    fix_wazuh
+  if [[ "$INSTALLEDVERSION" == "2.4.20" ]] ; then
+    salt-call state.apply elasticfleet -l info queue=True
+    . /usr/sbin/so-elastic-fleet-common
+    elastic_fleet_integration_remove endpoints-initial elastic-defend-endpoints
+    /usr/sbin/so-elastic-fleet-integration-policy-elastic-defend
 #  elif [[ "$INSTALLEDVERSION" == "2.3.110" ]] ; then
 #    2_3_10_hotfix_1
-#  else
+  else
    echo "No actions required. ($INSTALLEDVERSION/$HOTFIXVERSION)"
-#  fi
+  fi
 }
 
 
@@ -726,14 +774,8 @@ main() {
   echo ""
 
   set_os
-  if ! check_salt_master_status; then
-  	echo "Could not talk to salt master"
-    echo "Please run 'systemctl status salt-master' to ensure the salt-master service is running and check the log at /opt/so/log/salt/master."
-    echo "SOUP will now attempt to start the salt-master service and exit."
-    exit 1
-  fi
 
-  echo "This node can communicate with the salt-master."
+  check_salt_master_status 1 || fail  "Could not talk to salt master: Please run 'systemctl status salt-master' to ensure the salt-master service is running and check the log at /opt/so/log/salt/master."
 
   echo "Checking to see if this is a manager."
   echo ""
@@ -779,9 +821,10 @@ main() {
   set -e
 
   if [[ $is_airgap -eq 0 ]]; then
+    update_airgap_repo
     yum clean all
     check_os_updates
-  elif [[ $OS == 'oel' ]]; then
+  elif [[ $OS == 'oracle' ]]; then
     # sync remote repo down to local if not airgap
     repo_sync
     check_os_updates
@@ -789,12 +832,17 @@ main() {
 
   if [ "$is_hotfix" == "true" ]; then
     echo "Applying $HOTFIXVERSION hotfix"
+    # since we don't run the backup.config_backup state on import we wont snapshot previous version states and pillars
+    if [[ ! "$MINIONID" =~ "_import" ]]; then
+      backup_old_states_pillars
+    fi
     copy_new_files
     apply_hotfix
     echo "Hotfix applied"
     update_version
     enable_highstate
-    salt-call state.highstate -l info queue=True
+    (wait_for_salt_minion "$MINIONID" "5" '/dev/stdout' || fail "Salt minion was not running or ready.") 2>&1 | tee -a "$SOUP_LOG"
+    highstate
   else
     echo ""
     echo "Performing upgrade from Security Onion $INSTALLEDVERSION to Security Onion $NEWVERSION."
@@ -815,7 +863,7 @@ main() {
     else
       update_registry
       set +e
-      update_docker_containers "soup" "" "" "$SOUP_LOG"
+      update_docker_containers 'soup' '' '' '/dev/stdout' 2>&1 | tee -a "$SOUP_LOG"
       set -e
     fi
 
@@ -830,6 +878,14 @@ main() {
       echo "Upgrading Salt"
       # Update the repo files so it can actually upgrade
       upgrade_salt
+
+      # for Debian based distro, we need to stop salt again after upgrade output below is from bootstrap-salt
+      # *  WARN: Not starting daemons on Debian based distributions
+      #    is not working mostly because starting them is the default behaviour.
+      if [[ $is_deb ]]; then
+        stop_salt_minion
+        stop_salt_master
+      fi
     fi
 
     preupgrade_changes
@@ -840,9 +896,11 @@ main() {
       update_airgap_rules
     fi
 
-    # Only update the repo if its airgap
-    if [[ $is_airgap -eq 0 && $UPGRADESALT -ne 1 ]]; then
-      update_centos_repo
+    # since we don't run the backup.config_backup state on import we wont snapshot previous version states and pillars
+    if [[ ! "$MINIONID" =~ "_import" ]]; then
+      echo ""
+      echo "Creating snapshots of default and local Salt states and pillars and saving to /nsm/backup/"
+      backup_old_states_pillars
     fi
 
     echo ""
@@ -860,7 +918,7 @@ main() {
     # Testing that salt-master is up by checking that is it connected to itself
     set +e
     echo "Waiting on the Salt Master service to be ready."
-    salt-call state.show_top -l error queue=True || fail "salt-master could not be reached. Check $SOUP_LOG for details."
+    check_salt_master_status || fail  "Can't access salt master or it is not ready. Check $SOUP_LOG for details."
     set -e
 
     # update the salt-minion configs here and start the minion
@@ -885,7 +943,8 @@ main() {
     echo ""
     echo "Running a highstate. This could take several minutes."
     set +e
-    salt-call state.highstate -l info queue=True
+    (wait_for_salt_minion "$MINIONID" "5" '/dev/stdout' || fail "Salt minion was not running or ready.") 2>&1 | tee -a "$SOUP_LOG"
+    highstate
     set -e
 
     stop_salt_master
@@ -896,11 +955,12 @@ main() {
 
     set +e
     echo "Waiting on the Salt Master service to be ready."
-    salt-call state.show_top -l error queue=True || fail "salt-master could not be reached. Check $SOUP_LOG for details."
+    check_salt_master_status || fail  "Can't access salt master or it is not ready. Check $SOUP_LOG for details."
     set -e
     
     echo "Running a highstate to complete the Security Onion upgrade on this manager. This could take several minutes."
-    salt-call state.highstate -l info queue=True
+    (wait_for_salt_minion "$MINIONID" "5" '/dev/stdout' || fail "Salt minion was not running or ready.") 2>&1 | tee -a "$SOUP_LOG"
+    highstate
     postupgrade_changes
     [[ $is_airgap -eq 0 ]] && unmount_update
 

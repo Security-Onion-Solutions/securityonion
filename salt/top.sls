@@ -79,7 +79,6 @@ base:
     - utility
     - soctopus
     - playbook
-    - redis
     - elasticfleet
 
   '*_manager or *_managersearch or *_mom and G@saltversion:{{saltversion}}':

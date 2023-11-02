@@ -7,18 +7,22 @@
     tgt_type='compound') | dictsort()
 %}
 
-{%   set hostname = cached_grains[minionid]['host'] %}
-{%   set node_type = minionid.split('_')[1] %}
-{%   if node_type not in node_types.keys() %}
-{%     do node_types.update({node_type: {hostname: ip[0]}}) %}
-{%   else %}
-{%     if hostname not in node_types[node_type] %}
-{%       do node_types[node_type].update({hostname: ip[0]}) %}
+# only add a node to the pillar if it returned an ip from the mine
+{%   if ip | length > 0%}
+{%     set hostname = cached_grains[minionid]['host'] %}
+{%     set node_type = minionid.split('_')[1] %}
+{%     if node_type not in node_types.keys() %}
+{%       do node_types.update({node_type: {hostname: ip[0]}}) %}
 {%     else %}
-{%       do node_types[node_type][hostname].update(ip[0]) %}
+{%       if hostname not in node_types[node_type] %}
+{%         do node_types[node_type].update({hostname: ip[0]}) %}
+{%       else %}
+{%         do node_types[node_type][hostname].update(ip[0]) %}
+{%       endif %}
 {%     endif %}
 {%   endif %}
 {% endfor %}
+
 
 logstash:
   nodes:

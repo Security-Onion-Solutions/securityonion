@@ -6,6 +6,9 @@
 {% from 'docker/docker.map.jinja' import DOCKER %}
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 
+# include ssl since docker service requires the intca
+include:
+  - ssl
 
 dockergroup:
   group.present:
@@ -86,6 +89,11 @@ docker_running:
     - enable: True
     - watch:
       - file: docker_daemon
+      - x509: trusttheca
+    - require:
+      - file: docker_daemon
+      - x509: trusttheca
+
 
 # Reserve OS ports for Docker proxy in case boot settings are not already applied/present
 # 57314 = Strelka, 47760-47860 = Zeek

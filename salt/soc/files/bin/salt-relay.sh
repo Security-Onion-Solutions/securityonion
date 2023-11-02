@@ -67,10 +67,10 @@ function manage_minion() {
   response=$(so-minion "-o=$op" "-m=$minion_id")
   exit_code=$?
   if [[ exit_code -eq 0 ]]; then
-    log "Successful command execution"
+    log "Successful '$op' command execution on $minion_id"
     respond "$id" "true"
   else
-    log "Unsuccessful command execution: $response ($exit_code)"
+    log "Unsuccessful '$op' command execution on $minion_id: $response ($exit_code)"
     respond "$id" "false"
   fi
 }

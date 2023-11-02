@@ -3,5 +3,5 @@ post_setup_cron:
     - name: 'PATH=$PATH:/usr/sbin salt-call state.highstate'
     - identifier: post_setup_cron
     - user: root
-    - minute: '*/1'
+    - minute: '*/5'
     - identifier: post_setup_cron

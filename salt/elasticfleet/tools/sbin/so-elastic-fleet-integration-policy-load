@@ -12,6 +12,9 @@ if [ ! -f /opt/so/state/eaintegrations.txt ]; then
   # First, check for any package upgrades
   /usr/sbin/so-elastic-fleet-package-upgrade
 
+  # Second, configure Elastic Defend Integration seperately
+  /usr/sbin/so-elastic-fleet-integration-policy-elastic-defend
+
   # Initial Endpoints
   for INTEGRATION in /opt/so/conf/elastic-fleet/integrations/endpoints-initial/*.json
   do
@@ -61,7 +64,28 @@ if [ ! -f /opt/so/state/eaintegrations.txt ]; then
   if [[ "$RETURN_CODE" != "1" ]]; then
     touch /opt/so/state/eaintegrations.txt
   fi
+
+  # Fleet Server - Optional integrations
+  for INTEGRATION in /opt/so/conf/elastic-fleet/integrations-optional/FleetServer*/*.json
+  do
+    if ! [ "$INTEGRATION" == "/opt/so/conf/elastic-fleet/integrations-optional/FleetServer*/*.json" ]; then
+      FLEET_POLICY=`echo "$INTEGRATION"| cut -d'/' -f7`
+      printf "\n\nFleet Server Policy - Loading $INTEGRATION\n"
+      elastic_fleet_integration_check "$FLEET_POLICY" "$INTEGRATION"
+      if [ -n "$INTEGRATION_ID" ]; then
+        printf "\n\nIntegration $NAME exists - Updating integration\n"
+        elastic_fleet_integration_update "$INTEGRATION_ID" "@$INTEGRATION"
+      else
+        printf "\n\nIntegration does not exist - Creating integration\n"
+        if [ "$NAME" != "elasticsearch-logs" ]; then
+          elastic_fleet_integration_create "@$INTEGRATION"
+        fi
+      fi
+    fi
+  done
+  if [[ "$RETURN_CODE" != "1" ]]; then
+    touch /opt/so/state/eaintegrations.txt
+  fi
 else
   exit $RETURN_CODE
 fi
-

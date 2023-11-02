@@ -108,6 +108,11 @@ filecheck_stdout.log:
 
 {% if GLOBALS.md_engine == 'ZEEK' %}
 
+remove_filecheck_run:
+  cron.absent:
+    - identifier: filecheck_run
+    - user: socore
+
 filecheck_run_socore:
   cron.present:
     - name: 'ps -ef | grep filecheck | grep -v grep > /dev/null 2>&1 || python3 /opt/so/conf/strelka/filecheck >> /opt/so/log/strelka/filecheck_stdout.log 2>&1 &'
@@ -120,6 +125,11 @@ remove_filecheck_run_suricata:
     - user: suricata
 
 {% elif GLOBALS.md_engine == 'SURICATA'%}
+
+remove_filecheck_run:
+  cron.absent:
+    - identifier: filecheck_run
+    - user: suricata
 
 filecheck_run_suricata:
   cron.present:

@@ -152,7 +152,7 @@ plcronscript:
 
 # BPF compilation and configuration
 {% if ZEEKBPF %}
-   {% set BPF_CALC = salt['cmd.script']('/usr/sbin/so-bpf-compile', GLOBALS.sensor.interface + ' ' + ZEEKBPF|join(" "),cwd='/root') %}
+   {% set BPF_CALC = salt['cmd.script']('salt://common/tools/sbin/so-bpf-compile', GLOBALS.sensor.interface + ' ' + ZEEKBPF|join(" "),cwd='/root') %}
    {% if BPF_CALC['stderr'] == "" %}
        {% set BPF_STATUS = 1  %}
   {% else  %}
