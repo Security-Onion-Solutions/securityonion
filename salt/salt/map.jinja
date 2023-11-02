@@ -5,22 +5,18 @@
   {% set SPLITCHAR = '+' %}
   {% set SALTNOTHELD = salt['cmd.run']('apt-mark showhold | grep -q salt ; echo $?', python_shell=True) %}
   {% set SALTPACKAGES = ['salt-common', 'salt-master', 'salt-minion'] %}
-  {% set SALT_STATE_CODE_PATH = '/usr/lib/python3/dist-packages/salt/states' %}
-  {% set SALT_MODULE_CODE_PATH = '/usr/lib/python3/dist-packages/salt/modules' %}
   {% set SYSTEMD_UNIT_FILE = '/lib/systemd/system/salt-minion.service' %}
 {% else %}
   {% set SPLITCHAR = '-' %}
   {% set SALTNOTHELD = salt['cmd.run']('yum versionlock list | grep -q salt ; echo $?', python_shell=True) %}
   {% set SALTPACKAGES = ['salt', 'salt-master', 'salt-minion'] %}
-  {% set SALT_STATE_CODE_PATH = '/usr/lib/python3.6/site-packages/salt/states' %}
-  {% set SALT_MODULE_CODE_PATH = '/usr/lib/python3.6/site-packages/salt/modules' %}
   {% set SYSTEMD_UNIT_FILE = '/usr/lib/systemd/system/salt-minion.service' %}
 {% endif %}
 
 {% set INSTALLEDSALTVERSION = grains.saltversion %}
 
 {% if grains.saltversion|string != SALTVERSION|string %}
-  {% if grains.os|lower in ['Rocky', 'redhat', 'CentOS Stream'] %}
+  {% if grains.os_family|lower == 'redhat' %}
       {% set UPGRADECOMMAND = 'yum clean all ; /usr/sbin/bootstrap-salt.sh -s 120 -r -F -x python3 stable ' ~ SALTVERSION %}
   {% elif grains.os_family|lower == 'debian' %}
     {% set UPGRADECOMMAND = '/usr/sbin/bootstrap-salt.sh -s 120 -F -x python3 stable ' ~ SALTVERSION %}
