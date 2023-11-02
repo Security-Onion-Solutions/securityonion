@@ -94,6 +94,23 @@ salt_master_service:
       - file: engines_config
     - order: last
 
+{# if you have a mom, sync down the salt state files #}
+{% if grains.host != grains.master %}
+{%   set dirs = [] %}
+{%   for dir in salt['cp.list_master_dirs']() %}
+{%     set dir = dir.split('/')[0] %}
+{%     if dir not in dirs %}
+{%       do dirs.append(dir) %}
+salt_state_directory_{{dir}}:
+  file.recurse:
+    - name: /tmp/{{dir}}
+    - source: salt://{{dir}}/
+        - clean: True
+{%     endif %}
+{%   endfor %}
+{% endif %}
+
+
 {% else %}
 
 {{sls}}_state_not_allowed:
