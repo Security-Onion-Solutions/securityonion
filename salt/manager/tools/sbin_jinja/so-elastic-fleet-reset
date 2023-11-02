@@ -11,30 +11,39 @@
 
 require_manager
 
-
 # Inform user we are about to remove Elastic Fleet data
 echo
 echo "This script will remove the current Elastic Fleet install & all of its data and rerun Elastic Fleet setup."
 echo
-echo "If you would like to proceed, please type AGREE and hit ENTER."
+echo "If you would like to proceed, type AGREE and hit ENTER."
 echo
 # Read user input
 read INPUT
-if [ "$INPUT" != "AGREE" ] ; then exit 0; fi
+if [ "${INPUT^^}" != 'AGREE' ]; then exit 0; fi
 
 
-printf  "\nUninstalling all Elastic Agents on all Grid Nodes...\n\n"
+status "Uninstalling all Elastic Agents on all Grid Nodes..."
 salt \* cmd.run "elastic-agent uninstall -f" queue=True
 
-printf  "\nStopping Fleet Container...\n"
+status "Stopping Fleet Container..."
 so-elastic-fleet-stop --force
 
-printf "\nDeleting Fleet Data from Pillars...\n"
+status "Deleting Fleet Data from Pillars..."
 sed -i -z "s/elasticfleet:.*grid_enrollment_heavy.*'//" /opt/so/saltstack/local/pillar/minions/{{ GLOBALS.minion_id }}.sls
 sed -i "/fleet_grid_enrollment_token_general.*/d" /opt/so/saltstack/local/pillar/global/soc_global.sls
 sed -i "/fleet_grid_enrollment_token_heavy.*/d" /opt/so/saltstack/local/pillar/global/soc_global.sls
 
-printf "\n\nDeleting Elastic Fleet data...\n\n"
+status "Deleting Elastic Fleet data..."
+
+# Check to make sure that Elasticsearch is up & ready
+RETURN_CODE=0
+wait_for_web_response "https://localhost:9200/_cat/indices/.kibana*" "green open" 300 "curl -K /opt/so/conf/elasticsearch/curl.config"
+RETURN_CODE=$?
+
+if [[ "$RETURN_CODE" != "0" ]]; then
+    status "Elasticsearch not accessible, exiting script..."
+    exit 1
+fi
 
 ALIASES=".fleet-servers .fleet-policies-leader .fleet-agents .fleet-artifacts .fleet-enrollment-api-keys .kibana_ingest"
 for ALIAS in ${ALIASES}
@@ -45,21 +54,28 @@ do
     # Delete all resolved indices
     for INDX in ${INDXS}
     do
-            printf "\nDeleting $INDX \n"
+            status "Deleting $INDX"
             curl -K /opt/so/conf/kibana/curl.config -s -k -L -H "Content-Type: application/json" "https://localhost:9200/${INDX}" -XDELETE
     done
 done
 
-printf "\n\nRestarting Kibana...\n"
+status "Restarting Kibana..."
 so-kibana-restart --force
 
-wait_for_web_response "http://localhost:5601/app/kibana" "Elastic" 300 "curl -K /opt/so/conf/elasticsearch/curl.config"
+status "Checking to make sure that Kibana API is up & ready..."
+RETURN_CODE=0
+wait_for_web_response "http://localhost:5601/api/fleet/settings" "fleet" 300 "curl -K /opt/so/conf/elasticsearch/curl.config"
+RETURN_CODE=$?
 
-printf "\nStarting Elastic Fleet Setup...\n"
+if [[ "$RETURN_CODE" != "0" ]]; then
+    status "Kibana API not accessible, exiting script..."
+    exit 1
+fi
+
+status "Starting Elastic Fleet Setup..."
 so-elastic-fleet-setup
 
-
-printf  "\nRe-installing Elastic Agent on all Grid Nodes...\n\n"
+status "Re-installing Elastic Agent on all Grid Nodes..."
 salt \* state.apply elasticfleet.install_agent_grid queue=True
 
-printf "\nElastic Fleet Reset complete....\n"
+status "Elastic Fleet Reset complete...."
