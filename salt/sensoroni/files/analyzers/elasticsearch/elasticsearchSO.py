@@ -33,7 +33,7 @@ def buildReq(observableType, numberOfResults):
     }
     qterm=json.dumps(query)
     return qterm
-def sendReq(meta, index):
+def sendReq(meta, index, query):
     headers = {
         'Content-Type':'application/json',
     }
@@ -41,7 +41,7 @@ def sendReq(meta, index):
     url = "https://localhost:9200" + index + '_search' #urls needs to be replaced with actual local host/vm ip need to look into this
     authUser = meta['authUser']
     authPWD = meta['authPWD']
-    response = requests.post(url, auth = (authUser,authPWD), verify = False)
+    response = requests.post(url, auth = (authUser,authPWD), verify = False, data = query, headers= headers)
     return response.json()
 #testing
 def lookValue(raw, observable):
