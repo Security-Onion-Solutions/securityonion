@@ -61,8 +61,11 @@ log_has_errors() {
         grep -vE "Running scope as unit" &> "$error_log"
     
     if [[ $? -eq 0 ]]; then
+        # This function succeeds (returns 0) if errors are detected
         return 0
     fi
+
+    # No errors found, return 1 (function failed to find errors)
     return 1
 }
 
@@ -121,7 +124,10 @@ main() {
         echo "WARNING: Failed setup a while ago"
         exit_code=1
     elif log_has_errors; then 
-        echo "WARNING: Errors detected during setup"
+        echo "WARNING: Errors detected during setup."
+        echo "--------- ERRORS ---------"
+        cat $error_log
+        echo "--------------------------"
         exit_code=1
         touch /root/failure
     elif using_iso && cron_error_in_mail_spool; then
