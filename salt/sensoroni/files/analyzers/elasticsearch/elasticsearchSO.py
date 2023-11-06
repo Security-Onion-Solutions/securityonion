@@ -8,10 +8,13 @@ import json
 #original code
 #replace hash with the actual observable type
 query = {
+    "from" : 0, "size" : 1,
     "query": {
         "wildcard": {
             "hash": "*"
-        }
+        },
+    
+    
     }
 }
 headers = {
@@ -25,6 +28,7 @@ def buildReq(observableType, numberOfResults):
     #need to put size in
     #query that looks for every observable type in every document/index
     query = {
+        "from" : 0, "size" : numberOfResults,
         "query": {
             "wildcard": {
                 observableType: "*"
