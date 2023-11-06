@@ -676,7 +676,11 @@ if ! [[ -f $install_opt_file ]]; then
 		export MAINIP=$MAINIP
 		export PATCHSCHEDULENAME=$PATCHSCHEDULENAME
 		export INTERFACE=$INTERFACE
-		export CORECOUNT=$lb_procs
+		if [[ $low_mem == "true" ]]; then
+			export CORECOUNT=1
+		else
+			export CORECOUNT=$lb_procs
+		fi
 		export LSHOSTNAME=$HOSTNAME
 		export LSHEAP=$LS_HEAP_SIZE
 		export CPUCORES=$num_cpu_cores
@@ -768,8 +772,11 @@ if ! [[ -f $install_opt_file ]]; then
 		info "Restarting SOC to pick up initial user"
 		logCmd "so-soc-restart"
 		title "Setting up Elastic Fleet"
-		logCmd "salt-call state.apply elasticfleet.config"
-        	logCmd "so-elastic-fleet-setup"
+		logCmd "salt-call state.apply elasticfleet.config"	
+		if ! logCmd so-elastic-fleet-setup; then
+			error "Failed to run so-elastic-fleet-setup"
+			fail_setup
+		fi
 		if [[ ! $is_import ]]; then
 			title "Setting up Playbook"
 			logCmd "so-playbook-reset"

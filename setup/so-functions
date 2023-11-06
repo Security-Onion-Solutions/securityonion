@@ -268,15 +268,6 @@ collect_dockernet() {
 	fi
 }
 
-collect_es_space_limit() {
-	whiptail_log_size_limit "$log_size_limit"
-
-	while ! valid_int "$log_size_limit"; do # Upper/lower bounds?
-		whiptail_invalid_input
-		whiptail_log_size_limit "$log_size_limit"
-	done
-}
-
 collect_gateway() {
 	whiptail_management_interface_gateway
 
@@ -284,28 +275,6 @@ collect_gateway() {
 		whiptail_invalid_input
 		whiptail_management_interface_gateway "$MGATEWAY"
 	done
-}
-
-collect_homenet_mngr() {
-	whiptail_homenet_manager "10.0.0.0/8,192.168.0.0/16,172.16.0.0/12"
-	
-	while ! valid_cidr_list "$HNMANAGER"; do
-		whiptail_invalid_input
-		whiptail_homenet_manager "$HNMANAGER"
-	done
-}
-
-collect_homenet_snsr() {
-	if whiptail_homenet_sensor_inherit; then
-		export HNSENSOR=inherit
-	else
-		whiptail_homenet_sensor "10.0.0.0/8,192.168.0.0/16,172.16.0.0/12"
-		
-		while ! valid_cidr_list "$HNSENSOR"; do
-			whiptail_invalid_input
-			whiptail_homenet_sensor "$HNSENSOR"
-		done
-	fi
 }
 
 collect_hostname() {
@@ -344,26 +313,6 @@ collect_idh_preferences() {
 	whiptail_idh_preferences
 
 	if [[ "$idh_preferences" != "" ]]; then IDH_MGTRESTRICT='True'; fi
-}
-
-collect_idh_services() {
-	whiptail_idh_services
-
-	case "$IDH_SERVICES" in
-		'Linux Webserver (NAS Skin)')
-			IDH_SERVICES='"HTTP","FTP","SSH"'
-		;;
-		'MySQL Server')
-			IDH_SERVICES='"MYSQL","SSH"'
-		;;
-		'MSSQL Server')
-			IDH_SERVICES='"MSSQL","VNC'
-		;;
-		'Custom')
-			whiptail_idh_services_custom
-			IDH_SERVICES=$(echo "$IDH_SERVICES" | tr '[:blank:]' ',' )
-		;;
-	esac
 }
 
 collect_int_ip_mask() {
@@ -423,71 +372,6 @@ collect_net_method() {
 		collect_proxy no_ask
 		needs_proxy=true
 	fi
-}
-
-collect_ntp_servers() {
-	if whiptail_ntp_ask; then
-		[[ $is_airgap ]] && ntp_string=""
-		whiptail_ntp_servers "$ntp_string"
-
-		while ! valid_ntp_list "$ntp_string"; do
-			whiptail_invalid_input
-			whiptail_ntp_servers "$ntp_string"
-		done
-
-		IFS="," read -r -a ntp_servers <<< "$ntp_string" # Split string on commas into array
-	else
-		ntp_servers=()
-	fi
-}
-
-collect_oinkcode() {
-	whiptail_oinkcode
-
-	while ! valid_string "$OINKCODE" "" "128"; do
-		whiptail_invalid_input
-		whiptail_oinkcode "$OINKCODE"
-	done
-}
-
-collect_patch_schedule() {
-	whiptail_patch_schedule
-
-	case "$patch_schedule" in
-		'New Schedule')
-			whiptail_patch_schedule_select_days
-			whiptail_patch_schedule_select_hours
-			collect_patch_schedule_name_new
-			patch_schedule_os_new
-		;;
-		'Import Schedule')
-			collect_patch_schedule_name_import
-		;;
-		'Automatic')
-			PATCHSCHEDULENAME='auto'
-		;;
-		'Manual')
-			PATCHSCHEDULENAME='manual'
-		;;
-	esac
-}
-
-collect_patch_schedule_name_new() {
-	whiptail_patch_name_new_schedule
-
-	while ! valid_string "$PATCHSCHEDULENAME"; do
-		whiptail_invalid_string "schedule name"
-		whiptail_patch_name_new_schedule "$PATCHSCHEDULENAME"
-	done
-}
-
-collect_patch_schedule_name_import() {
-	whiptail_patch_schedule_import
-
-	while ! valid_string "$PATCHSCHEDULENAME"; do
-		whiptail_invalid_string "schedule name"
-		whiptail_patch_schedule_import "$PATCHSCHEDULENAME"
-	done
 }
 
 collect_proxy() {
@@ -658,47 +542,6 @@ configure_minion() {
 	} >> "$setup_log" 2>&1
 }
 
-configure_ntp() {
-	local chrony_conf=/etc/chrony.conf
-
-	# Install chrony if it isn't already installed
-	if ! command -v chronyc &> /dev/null; then
-		logCmd "dnf -y install chrony"
-	fi
-
-	[[ -f $chrony_conf ]] && mv $chrony_conf "$chrony_conf.bak"
-
-	printf '%s\n' "# NTP server list" > $chrony_conf
-
-	# Build list of servers
-	for addr in "${ntp_servers[@]}"; do
-		echo "server $addr iburst" >> $chrony_conf
-	done
-
-	printf '\n%s\n' "# Config options" >> $chrony_conf
-
-	printf '%s\n' \
-		'driftfile /var/lib/chrony/drift' \
-		'makestep 1.0 3' \
-		'rtcsync' \
-		'logdir /var/log/chrony' >> $chrony_conf
-
-	if [[ $is_rpm ]]; then
-		systemctl enable chronyd
-		systemctl restart chronyd
-	else 
-		systemctl enable chrony
-		systemctl restart chrony
-	fi
-
-	# Tell the chrony daemon to sync time & update the system time
-	# Since these commands only make a call to chronyd, wait after each command to make sure the changes are made
-	printf "Syncing chrony time to server: "
-	chronyc -a 'burst 4/4' && sleep 30
-	printf "Forcing chrony to update the time: "
-	chronyc -a makestep && sleep 30
-}
-
 checkin_at_boot() {
 	local minion_config=/etc/salt/minion
 
@@ -719,7 +562,7 @@ check_requirements() {
 		req_cores=4
 		req_nics=2
 	elif [[ $is_standalone ]]; then
-		req_mem=24
+		req_mem=16
 		req_cores=4
 		req_nics=2
 	elif [[ $is_manager ]]; then
@@ -743,7 +586,7 @@ check_requirements() {
 		req_cores=4
 		req_nics=1
 	elif [[ $is_heavynode ]]; then
-		req_mem=24
+		req_mem=16
 		req_cores=4
 		req_nics=2
 	elif [[ $is_idh ]]; then
@@ -808,6 +651,17 @@ check_requirements() {
 	
 	if [[ $total_mem_hr -lt $req_mem ]]; then
 		whiptail_requirements_error "memory" "${total_mem_hr} GB" "${req_mem} GB"
+		if [[ $is_standalone || $is_heavynode ]]; then
+			echo "This install type will fail with less than $req_mem GB of memory. Exiting setup."
+			exit 0
+		fi
+	fi
+	if [[ $is_standalone || $is_heavynode ]]; then
+		if [[ $total_mem_hr -gt 15 && $total_mem_hr -lt 24 ]]; then
+			low_mem=true
+		else
+			low_mem=false
+		fi
 	fi
 }
 
@@ -1055,16 +909,6 @@ download_elastic_agent_artifacts() {
 	fi
 }
 
-installer_progress_loop() {
-	local i=0
-	local msg="${1:-Performing background actions...}"
-	while true; do
-		[[ $i -lt 98 ]] && ((i++))
-		set_progress_str "$i" "$msg" nolog
-		[[ $i -gt 0 ]] && sleep 5s
-	done
-}
-
 installer_prereq_packages() {	
 	if [[ $is_deb ]]; then
 		# Print message to stdout so the user knows setup is doing something
@@ -1123,9 +967,7 @@ docker_seed_registry() {
 
 	if ! [ -f /nsm/docker-registry/docker/registry.tar ]; then
 		if [ "$install_type" == 'IMPORT' ]; then
-			container_list 'so-import'
-		elif [ "$install_type" == 'HELIXSENSOR' ]; then
-			container_list 'so-helix'
+			container_list 'so-import'	
 		else
 			container_list
 		fi
@@ -1258,7 +1100,7 @@ generate_ssl() {
 	# if the install type is a manager then we need to wait for the minion to be ready before trying
 	# to run the ssl state since we need the minion to sign the certs
 	if [[ "$install_type" =~ ^(EVAL|MANAGER|MANAGERSEARCH|STANDALONE|IMPORT|HELIXSENSOR)$ ]]; then
-		wait_for_salt_minion
+		(wait_for_salt_minion "$MINION_ID" "5" '/dev/stdout' || fail_setup) 2>&1 | tee -a "$setup_log"
 	fi
 	info "Applying SSL state"
 	logCmd "salt-call state.apply ssl -l info"
@@ -1384,7 +1226,7 @@ ls_heapsize() {
 	fi
 
 	case "$install_type" in
-		'MANAGERSEARCH' | 'HEAVYNODE' | 'HELIXSENSOR' | 'STANDALONE')
+		'MANAGERSEARCH' | 'HEAVYNODE' | 'STANDALONE')
 			LS_HEAP_SIZE='1000m'
 			;;
 		'EVAL')
@@ -1648,21 +1490,6 @@ network_setup() {
 	logCmd "sed -i '/\$MNIC/${INTERFACE}/g' /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable"
 }
 
-ntp_pillar_entries() {
-
-	local pillar_file=$local_salt_dir/pillar/minions/$MINION_ID.sls
-
-	
-	if [[ ${#ntp_servers[@]} -gt 0 ]]; then
-		printf '%s\n'\
-			"ntp:"\
-			"  servers:" > "$pillar_file"
-			for addr in "${ntp_servers[@]}"; do
-				printf '%s\n' "    - '$addr'" >> "$pillar_file"
-			done
-	fi
-}
-
 parse_install_username() {
 	# parse out the install username so things copy correctly
 	INSTALLUSERNAME=${SUDO_USER:-${USER}}
@@ -1881,7 +1708,11 @@ drop_install_options() {
 	echo "INTERFACE=$INTERFACE" >> /opt/so/install.txt
 	NODETYPE=${install_type^^}
 	echo "NODETYPE=$NODETYPE" >> /opt/so/install.txt
-	echo "CORECOUNT=$lb_procs" >> /opt/so/install.txt
+	if [[ $low_mem == "true" ]]; then
+		echo "CORECOUNT=1" >> /opt/so/install.txt
+	else
+		echo "CORECOUNT=$lb_procs" >> /opt/so/install.txt
+	fi
 	echo "LSHOSTNAME=$HOSTNAME" >> /opt/so/install.txt
 	echo "LSHEAP=$LS_HEAP_SIZE" >> /opt/so/install.txt
 	echo "CPUCORES=$num_cpu_cores" >> /opt/so/install.txt
@@ -1972,6 +1803,7 @@ securityonion_repo() {
 }
 
 repo_sync_local() {
+	SALTVERSION=$(egrep 'version: [0-9]{4}' ../salt/salt/master.defaults.yaml | sed 's/^.*version: //')
 	info "Repo Sync"
 	if [[ $is_supported ]]; then
 		# Sync the repo from the the SO repo locally.
@@ -2021,7 +1853,7 @@ repo_sync_local() {
 			curl -fsSL https://repo.securityonion.net/file/so-repo/prod/2.4/so/so.repo | tee /etc/yum.repos.d/so.repo
 			rpm --import https://repo.saltproject.io/salt/py3/redhat/9/x86_64/SALT-PROJECT-GPG-PUBKEY-2023.pub
 			dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-			curl -fsSL https://repo.saltproject.io/salt/py3/redhat/9/x86_64/minor/3006.1.repo | tee /etc/yum.repos.d/salt.repo
+			curl -fsSL "https://repo.saltproject.io/salt/py3/redhat/9/x86_64/minor/$SALTVERSION.repo" | tee /etc/yum.repos.d/salt.repo
 			dnf repolist
 			curl --retry 5 --retry-delay 60 -A "netinstall/$SOVERSION/$OS/$(uname -r)/1" https://sigs.securityonion.net/checkup --output /tmp/install
 		else
@@ -2491,20 +2323,6 @@ wait_for_file() {
 	done
 	info "Could not find $filename after waiting ${total_time}s"
 	return 1
-}
-
-wait_for_salt_minion() {
-	retry 60 5 "journalctl -u salt-minion.service | grep 'Minion is ready to receive requests'" >> "$setup_log" 2>&1 || fail_setup
-	local attempt=0
-	# each attempts would take about 15 seconds
-	local maxAttempts=20
-	until check_salt_minion_status; do
-		attempt=$((attempt+1))
-		if [[ $attempt -eq $maxAttempts ]]; then
-			fail_setup
-		fi
-		sleep 10
-	done
 }
 
 verify_setup() {

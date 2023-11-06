@@ -16,6 +16,7 @@ include:
   - kibana.secrets
   - manager.sync_es_users
   - manager.elasticsearch
+  - manager.kibana
 
 repo_log_dir:
   file.directory:
