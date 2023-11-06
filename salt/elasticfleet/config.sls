@@ -68,6 +68,7 @@ eapackageupgrade:
     - source: salt://elasticfleet/tools/sbin_jinja/so-elastic-fleet-package-upgrade
     - user: 947
     - group: 939
+    - mode: 755
     - template: jinja
 
 {%   if GLOBALS.role != "so-fleet" %}
