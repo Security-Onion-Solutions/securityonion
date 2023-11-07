@@ -7,8 +7,6 @@
 {%  from 'vars/globals.map.jinja' import GLOBALS %}
 {%- set SUPPORTED_PACKAGES = salt['pillar.get']('elasticfleet:packages', default=ELASTICFLEETDEFAULTS.elasticfleet.packages, merge=True) %}
 
-RETURN_CODE=0
-
 if [ ! -f /opt/so/state/estemplates.txt ]; then
   echo "State file /opt/so/state/estemplates.txt not found. Running so-elasticsearch-templates-load."
 
@@ -103,15 +101,9 @@ if [ ! -f /opt/so/state/estemplates.txt ]; then
     {% else %}
     echo "Elastic Fleet not configured. Exiting..."
     {% endif %}
-    RETURN_CODE=1
     exit 0
   fi
+  
   cd - >/dev/null
-  if [[ "$RETURN_CODE" != "1" ]]; then
-    touch /opt/so/state/estemplates.txt
-  else
-    echo "Errors were detected. This script will run again during the next application of the state."
-  fi
-else
-  exit $RETURN_CODE
-fi
+  
+  touch /opt/so/state/estemplates.txt
