@@ -15,52 +15,16 @@ ELASTICSEARCH_INGEST_PIPELINES="/opt/so/conf/elasticsearch/ingest/"
 
 # Wait for ElasticSearch to initialize
 if [ ! -f /opt/so/state/espipelines.txt ]; then
-echo "State file /opt/so/state/espipelines.txt not found. Running so-elasticsearch-pipelines."
-
+  echo "State file /opt/so/state/espipelines.txt not found. Running so-elasticsearch-pipelines."
   echo -n "Waiting for ElasticSearch..."
-  COUNT=0
-  ELASTICSEARCH_CONNECTED="no"
-  while [[ "$COUNT" -le 240 ]]; do
-      curl -K /opt/so/conf/elasticsearch/curl.config -k --output /dev/null --silent --head --fail -L https://"$ELASTICSEARCH_HOST":"$ELASTICSEARCH_PORT"
-          if [ $? -eq 0 ]; then
-                ELASTICSEARCH_CONNECTED="yes"
-                echo "connected!"
-                break
-          else
-                ((COUNT+=1))
-                sleep 1
-                echo -n "."
-          fi
-    done
-  if [ "$ELASTICSEARCH_CONNECTED" == "no" ]; then
-        echo
-        echo -e "Connection attempt timed out.  Unable to connect to ElasticSearch.  \nPlease try: \n  -checking log(s) in /var/log/elasticsearch/\n  -running 'sudo docker ps' \n  -running 'sudo so-elastic-restart'"
-        echo
-	exit 1
-  fi
+  retry 240 1 "so-elasticsearch-query / -k --output /dev/null --silent --head --fail" || fail "Connection attempt timed out.  Unable to connect to ElasticSearch.  \nPlease try: \n  -checking log(s) in /var/log/elasticsearch/\n  -running 'sudo docker ps' \n  -running 'sudo so-elastic-restart'"
 
   cd ${ELASTICSEARCH_INGEST_PIPELINES}
   echo "Loading pipelines..."
   for i in .[a-z]* *; 
   do 
     echo $i;
-    SUCCESSFUL="no"
-    while [[ "$TRYCOUNT" -le 4 ]]; do
-      RESPONSE=$(curl -K /opt/so/conf/elasticsearch/curl.config -k -XPUT -L https://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}/_ingest/pipeline/$i -H 'Content-Type: application/json' -d@$i 2>/dev/null);
-      if [ "$RESPONSE" == '{"acknowledged":true}' ]; then
-        SUCCESSFUL="yes"
-	break
-      else
-        ((TRYCOUNT+=1))
-        sleep 5
-	echo -n "Attempt $TRYCOUNT/5 unsuccessful..."
-      fi
-    done
-    if ! [ "$SUCCESSFUL" == "yes" ];then
-      echo -n "Could not load pipeline."
-      echo -n "$RESPONSE"
-      exit 1
-    fi
+    retry 5 5 "so-elasticsearch-query _ingest/pipeline/$i -d@$i -XPUT | grep '{\"acknowledged\":true}'" || fail "Could not load pipeline: $i"
   done
   echo
 

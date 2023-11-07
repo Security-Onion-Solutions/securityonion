@@ -32,155 +32,71 @@ if [ ! -f /opt/so/state/estemplates.txt ]; then
   {% endif %}
 
   if [ -f "$file" ]; then
-	# Wait for ElasticSearch to initialize
-	echo -n "Waiting for ElasticSearch..."
-	COUNT=0
-	ELASTICSEARCH_CONNECTED="no"
-	while [[ "$COUNT" -le 240 ]]; do
-      		so-elasticsearch-query / -k --output /dev/null --silent --head --fail
-		if [ $? -eq 0 ]; then
-			ELASTICSEARCH_CONNECTED="yes"
-			echo "connected!"
-			break
-		else
-			((COUNT+=1))
-			sleep 1
-			echo -n "."
-		fi
-	done
-	if [ "$ELASTICSEARCH_CONNECTED" == "no" ]; then
-		echo
-		echo -e "Connection attempt timed out.  Unable to connect to ElasticSearch.  \nPlease try: \n  -checking log(s) in /var/log/elasticsearch/\n  -running 'sudo docker ps' \n  -running 'sudo so-elastic-restart'"
-		echo
-		exit 1
-	fi
+    # Wait for ElasticSearch to initialize
+    echo -n "Waiting for ElasticSearch..."
+    retry 240 1 "so-elasticsearch-query / -k --output /dev/null --silent --head --fail" || fail "Connection attempt timed out.  Unable to connect to ElasticSearch.  \nPlease try: \n  -checking log(s) in /var/log/elasticsearch/\n  -running 'sudo docker ps' \n  -running 'sudo so-elastic-restart'"
+    {% if GLOBALS.role != 'so-heavynode' %}
+    SESSIONCOOKIE=$(curl -s -K /opt/so/conf/elasticsearch/curl.config -c - -X GET http://localhost:5601/ | grep sid | awk '{print $7}')
+    INSTALLED=$(elastic_fleet_package_is_installed {{ SUPPORTED_PACKAGES[0] }} )
+    if [ "$INSTALLED" != "installed" ]; then
+      echo
+      echo "Packages not yet installed."
+      echo
+      exit 0
+    fi
+    {% endif %}
 
-	{% if GLOBALS.role != 'so-heavynode' %}
-        SESSIONCOOKIE=$(curl -s -K /opt/so/conf/elasticsearch/curl.config -c - -X GET http://localhost:5601/ | grep sid | awk '{print $7}')
-	INSTALLED=$(elastic_fleet_package_is_installed {{ SUPPORTED_PACKAGES[0] }} )
-	if [ "$INSTALLED" != "installed" ]; then
-        	echo
-        	echo "Packages not yet installed."
-        	echo
-        	exit 0
-	fi
-        {% endif %}
+    cd ${ELASTICSEARCH_TEMPLATES}/component/ecs
 
-	cd ${ELASTICSEARCH_TEMPLATES}/component/ecs
+    echo "Loading ECS component templates..."
+    for i in *; do 
+      TEMPLATE=$(echo $i | cut -d '.' -f1) 
+      echo "$TEMPLATE-mappings" 
+      retry 5 5 "so-elasticsearch-query _component_template/${TEMPLATE}-mappings -d@$i -XPUT | grep '{\"acknowledged\":true}'" || fail "Could not load template: $TEMPLATE-mappings"
+    done
+    echo
 
-	echo "Loading ECS component templates..."
-	for i in *; do 
-	  TEMPLATE=$(echo $i | cut -d '.' -f1) 
-	  echo "$TEMPLATE-mappings" 
-          SUCCESSFUL="no"
-          while [[ "$TRYCOUNT" -le 4 ]]; do
-	    RESPONSE=$(so-elasticsearch-query _component_template/${TEMPLATE}-mappings -d@$i -XPUT 2>/dev/null); 
-            if [ "$RESPONSE" == '{"acknowledged":true}' ]; then
-              SUCCESSFUL="yes"
-              break
-            else
-              ((TRYCOUNT+=1))
-              sleep 5
-              echo -n "Attempt $TRYCOUNT/5 unsuccessful..."
-            fi
-          done
-            if ! [ "$SUCCESSFUL" == "yes" ];then
-              echo -n "Could not load template."
-              echo -n "$RESPONSE"
-              exit 1
-            fi
-        done
-	echo
+    cd ${ELASTICSEARCH_TEMPLATES}/component/elastic-agent
 
-	cd ${ELASTICSEARCH_TEMPLATES}/component/elastic-agent
-
-	echo "Loading Elastic Agent component templates..."
-	{% if GLOBALS.role == 'so-heavynode' %}
-        component_pattern="so-*"
-        {% else %}
-        component_pattern="*"
-        {% endif %}
-        for i in $component_pattern; do 
-	  TEMPLATE=${i::-5} 
-	  echo "$TEMPLATE"
-	  SUCCESSFUL="no"
-          while [[ "$TRYCOUNT" -le 4 ]]; do
-	    RESPONSE=$(so-elasticsearch-query _component_template/$TEMPLATE -d@$i -XPUT 2>/dev/null); 
-	    if [ "$RESPONSE" == '{"acknowledged":true}' ]; then
-              SUCCESSFUL="yes"
-              break
-            else
-              ((TRYCOUNT+=1))
-              sleep 5
-              echo -n "Attempt $TRYCOUNT/5 unsuccessful..."
-            fi
-          done
-            if ! [ "$SUCCESSFUL" == "yes" ];then
-              echo -n "Could not load template."
-              echo -n "$RESPONSE"
-              exit 1
-            fi
-        done
-	echo
+    echo "Loading Elastic Agent component templates..."
+    {% if GLOBALS.role == 'so-heavynode' %}
+    component_pattern="so-*"
+    {% else %}
+    component_pattern="*"
+    {% endif %}
+    for i in $component_pattern; do 
+      TEMPLATE=${i::-5} 
+      echo "$TEMPLATE"
+      retry 5 5 "so-elasticsearch-query _component_template/$TEMPLATE -d@$i -XPUT | grep '{\"acknowledged\":true}'" || fail "Could not load template: $TEMPLATE"
+    done
+    echo
 	    
-	# Load SO-specific component templates
-	cd ${ELASTICSEARCH_TEMPLATES}/component/so
+    # Load SO-specific component templates
+    cd ${ELASTICSEARCH_TEMPLATES}/component/so
 
-	echo "Loading Security Onion component templates..."
-	for i in *; do 
-	  TEMPLATE=$(echo $i | cut -d '.' -f1); 
-	  echo "$TEMPLATE"
-	  SUCCESSFUL="no"
-          while [[ "$TRYCOUNT" -le 4 ]]; do 
-	    RESPONSE=$(so-elasticsearch-query _component_template/$TEMPLATE -d@$i -XPUT 2>/dev/null);
-            if [ "$RESPONSE" == '{"acknowledged":true}' ]; then
-              SUCCESSFUL="yes"
-              break
-            else
-              ((TRYCOUNT+=1))
-              sleep 5
-              echo -n "Attempt $TRYCOUNT/5 unsuccessful..."
-            fi
-          done
-            if ! [ "$SUCCESSFUL" == "yes" ];then
-              echo -n "Could not load template."
-              echo -n "$RESPONSE"
-              exit 1
-            fi
-        done
-	echo
+    echo "Loading Security Onion component templates..."
+    for i in *; do 
+      TEMPLATE=$(echo $i | cut -d '.' -f1); 
+      echo "$TEMPLATE"
+      retry 5 5 "so-elasticsearch-query _component_template/$TEMPLATE -d@$i -XPUT | grep '{\"acknowledged\":true}'" || fail "Could not load template: $TEMPLATE"  
+    done
+    echo
 
-	# Load SO index templates
-	cd ${ELASTICSEARCH_TEMPLATES}/index
+    # Load SO index templates
+    cd ${ELASTICSEARCH_TEMPLATES}/index
 
-	echo "Loading Security Onion index templates..."
-	shopt -s extglob
-        {% if GLOBALS.role == 'so-heavynode' %}
-        pattern="!(*1password*|*aws*|*azure*|*cloudflare*|*elastic_agent*|*fim*|*github*|*google*|*osquery*|*system*|*windows*)"
-        {% else %}
-        pattern="*"
-        {% endif %}
-        for i in $pattern; do
-          TEMPLATE=${i::-14}
-          echo "$TEMPLATE"
-	  SUCCESSFUL="no"
-          while [[ "$TRYCOUNT" -le 4 ]]; do
-	    RESPONSE=$(so-elasticsearch-query _index_template/$TEMPLATE -d@$i -XPUT 2>/dev/null);
-            if [ "$RESPONSE" == '{"acknowledged":true}' ]; then
-              SUCCESSFUL="yes"
-              break
-            else
-              ((TRYCOUNT+=1))
-              sleep 5
-              echo -n "Attempt $TRYCOUNT/5 unsuccessful..."
-            fi
-          done
-            if ! [ "$SUCCESSFUL" == "yes" ];then
-              echo -n "Could not load template."
-              echo -n "$RESPONSE"
-              exit 1
-            fi
-        done
+    echo "Loading Security Onion index templates..."
+    shopt -s extglob
+    {% if GLOBALS.role == 'so-heavynode' %}
+    pattern="!(*1password*|*aws*|*azure*|*cloudflare*|*elastic_agent*|*fim*|*github*|*google*|*osquery*|*system*|*windows*)"
+    {% else %}
+    pattern="*"
+    {% endif %}
+    for i in $pattern; do
+      TEMPLATE=${i::-14}
+      echo "$TEMPLATE"
+      retry 5 5 "so-elasticsearch-query _index_template/$TEMPLATE -d@$i -XPUT | grep '{\"acknowledged\":true}'" || fail "Could not load template: $TEMPLATE"     
+      done
   else
     {% if GLOBALS.role == 'so-heavynode' %}
     echo "Common template does not exist. Exiting..."
