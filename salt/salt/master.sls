@@ -96,17 +96,22 @@ salt_master_service:
 
 {# if you have a mom, sync down the salt state files #}
 {% if grains.host != grains.master %}
-{%   set dirs = [] %}
-{%   for dir in salt['cp.list_master_dirs']() %}
-{%     set dir = dir.split('/')[0] %}
-{%     if dir not in dirs %}
-{%       do dirs.append(dir) %}
-salt_state_directory_{{dir}}:
+{# these are the envs defined in master config under file_roots #}
+{%   for env in ['default', 'local'] %}
+{%     set dirs = [] %}
+{%     for dir in salt['cp.list_master_dirs'](saltenv=env) %}
+{%       set dir = dir.split('/')[0] %}
+{%       if dir not in dirs %}
+{%         do dirs.append(dir) %}
+{{env}}_salt_state_directory_{{dir}}:
   file.recurse:
-    - name: /tmp/{{dir}}
+    - name: /opt/so/saltstack/{{env}}/salt/{{dir}}
     - source: salt://{{dir}}/
-        - clean: True
-{%     endif %}
+    - clean: True
+    - makedirs: True
+    - saltenv: {{env}}
+{%       endif %}
+{%     endfor %}
 {%   endfor %}
 {% endif %}
 
