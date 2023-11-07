@@ -41,19 +41,31 @@ echo "State file /opt/so/state/espipelines.txt not found. Running so-elasticsear
 
   cd ${ELASTICSEARCH_INGEST_PIPELINES}
   echo "Loading pipelines..."
-  for i in .[a-z]* *;
-    do echo $i;
-    RESPONSE=$(curl -K /opt/so/conf/elasticsearch/curl.config -k -XPUT -L https://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}/_ingest/pipeline/$i -H 'Content-Type: application/json' -d@$i 2>/dev/null);
-    ERRORS=$(echo $RESPONSE | grep -E "Connection attempt timed out|error");
-    if ! [ -z "$ERRORS" ]; then
-      echo $ERRORS;
-      RETURN_CODE=1;
-    fi;
+  for i in .[a-z]* *; 
+  do 
+    echo $i;
+    SUCCESSFUL="no"
+    while [[ "$TRYCOUNT" -le 4 ]]; do
+      RESPONSE=$(curl -K /opt/so/conf/elasticsearch/curl.config -k -XPUT -L https://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}/_ingest/pipeline/$i -H 'Content-Type: application/json' -d@$i 2>/dev/null);
+      if [ "$RESPONSE" == '{"acknowledged":true}' ]; then
+        SUCCESSFUL="yes"
+	break
+      else
+        ((TRYCOUNT+=1))
+        sleep 5
+	echo -n "Attempt $TRYCOUNT/5 unsuccessful..."
+      fi
+    done
+    if ! [ "$SUCCESSFUL" == "yes" ];then
+      echo -n "Could not load pipeline."
+      echo -n "$RESPONSE"
+      exit 1
+    fi
   done
   echo
 
   cd - >/dev/null
-
+  
   if [[ "$RETURN_CODE" != "1" ]]; then
     touch /opt/so/state/espipelines.txt
   else

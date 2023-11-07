@@ -7,25 +7,31 @@
 {%  from 'vars/globals.map.jinja' import GLOBALS %}
 {%- set SUPPORTED_PACKAGES = salt['pillar.get']('elasticfleet:packages', default=ELASTICFLEETDEFAULTS.elasticfleet.packages, merge=True) %}
 
-. /usr/sbin/so-common
-{% if GLOBALS.role != 'so-heavynode' %}
-if [ -f /usr/sbin/so-elastic-fleet-common ]; then
-  . /usr/sbin/so-elastic-fleet-common
-fi
-{% endif %}
+RETURN_CODE=0
 
-default_conf_dir=/opt/so/conf
+if [ ! -f /opt/so/state/estemplates.txt ]; then
+  echo "State file /opt/so/state/estemplates.txt not found. Running so-elasticsearch-templates-load."
 
-# Define a default directory to load pipelines from
-ELASTICSEARCH_TEMPLATES="$default_conf_dir/elasticsearch/templates/"
+  . /usr/sbin/so-common
 
-{% if GLOBALS.role == 'so-heavynode' %}
-file="/opt/so/conf/elasticsearch/templates/index/so-common-template.json"
-{% else %}
-file="/usr/sbin/so-elastic-fleet-common"
-{% endif %}
+  {% if GLOBALS.role != 'so-heavynode' %}
+  if [ -f /usr/sbin/so-elastic-fleet-common ]; then
+    . /usr/sbin/so-elastic-fleet-common
+  fi
+  {% endif %}
 
-if [ -f "$file" ]; then
+  default_conf_dir=/opt/so/conf
+
+  # Define a default directory to load pipelines from
+  ELASTICSEARCH_TEMPLATES="$default_conf_dir/elasticsearch/templates/"
+
+  {% if GLOBALS.role == 'so-heavynode' %}
+  file="/opt/so/conf/elasticsearch/templates/index/so-common-template.json"
+  {% else %}
+  file="/usr/sbin/so-elastic-fleet-common"
+  {% endif %}
+
+  if [ -f "$file" ]; then
 	# Wait for ElasticSearch to initialize
 	echo -n "Waiting for ElasticSearch..."
 	COUNT=0
@@ -59,12 +65,32 @@ if [ -f "$file" ]; then
         	exit 0
 	fi
         {% endif %}
-	set -e
 
 	cd ${ELASTICSEARCH_TEMPLATES}/component/ecs
 
 	echo "Loading ECS component templates..."
-	for i in *; do TEMPLATE=$(echo $i | cut -d '.' -f1); echo "$TEMPLATE-mappings"; so-elasticsearch-query _component_template/$TEMPLATE-mappings -d@$i -XPUT 2>/dev/null; echo; done
+	for i in *; do 
+	  TEMPLATE=$(echo $i | cut -d '.' -f1) 
+	  echo "$TEMPLATE-mappings" 
+          SUCCESSFUL="no"
+          while [[ "$TRYCOUNT" -le 4 ]]; do
+	    RESPONSE=$(so-elasticsearch-query _component_template/${TEMPLATE}-mappings -d@$i -XPUT 2>/dev/null); 
+            if [ "$RESPONSE" == '{"acknowledged":true}' ]; then
+              SUCCESSFUL="yes"
+              break
+            else
+              ((TRYCOUNT+=1))
+              sleep 5
+              echo -n "Attempt $TRYCOUNT/5 unsuccessful..."
+            fi
+          done
+            if ! [ "$SUCCESSFUL" == "yes" ];then
+              echo -n "Could not load template."
+              echo -n "$RESPONSE"
+              exit 1
+            fi
+        done
+	echo
 
 	cd ${ELASTICSEARCH_TEMPLATES}/component/elastic-agent
 
@@ -74,13 +100,54 @@ if [ -f "$file" ]; then
         {% else %}
         component_pattern="*"
         {% endif %}
-        for i in $component_pattern; do TEMPLATE=${i::-5}; echo "$TEMPLATE"; so-elasticsearch-query _component_template/$TEMPLATE -d@$i -XPUT 2>/dev/null; echo; done
-
+        for i in $component_pattern; do 
+	  TEMPLATE=${i::-5} 
+	  echo "$TEMPLATE"
+	  SUCCESSFUL="no"
+          while [[ "$TRYCOUNT" -le 4 ]]; do
+	    RESPONSE=$(so-elasticsearch-query _component_template/$TEMPLATE -d@$i -XPUT 2>/dev/null); 
+	    if [ "$RESPONSE" == '{"acknowledged":true}' ]; then
+              SUCCESSFUL="yes"
+              break
+            else
+              ((TRYCOUNT+=1))
+              sleep 5
+              echo -n "Attempt $TRYCOUNT/5 unsuccessful..."
+            fi
+          done
+            if ! [ "$SUCCESSFUL" == "yes" ];then
+              echo -n "Could not load template."
+              echo -n "$RESPONSE"
+              exit 1
+            fi
+        done
+	echo
+	    
 	# Load SO-specific component templates
 	cd ${ELASTICSEARCH_TEMPLATES}/component/so
 
 	echo "Loading Security Onion component templates..."
-	for i in *; do TEMPLATE=$(echo $i | cut -d '.' -f1); echo "$TEMPLATE"; so-elasticsearch-query _component_template/$TEMPLATE -d@$i -XPUT 2>/dev/null; echo; done
+	for i in *; do 
+	  TEMPLATE=$(echo $i | cut -d '.' -f1); 
+	  echo "$TEMPLATE"
+	  SUCCESSFUL="no"
+          while [[ "$TRYCOUNT" -le 4 ]]; do 
+	    RESPONSE=$(so-elasticsearch-query _component_template/$TEMPLATE -d@$i -XPUT 2>/dev/null);
+            if [ "$RESPONSE" == '{"acknowledged":true}' ]; then
+              SUCCESSFUL="yes"
+              break
+            else
+              ((TRYCOUNT+=1))
+              sleep 5
+              echo -n "Attempt $TRYCOUNT/5 unsuccessful..."
+            fi
+          done
+            if ! [ "$SUCCESSFUL" == "yes" ];then
+              echo -n "Could not load template."
+              echo -n "$RESPONSE"
+              exit 1
+            fi
+        done
 	echo
 
 	# Load SO index templates
@@ -94,18 +161,41 @@ if [ -f "$file" ]; then
         pattern="*"
         {% endif %}
         for i in $pattern; do
-            TEMPLATE=${i::-14};
-            echo "$TEMPLATE";
-            so-elasticsearch-query _index_template/$TEMPLATE -d@$i -XPUT 2>/dev/null;
-            echo;
+          TEMPLATE=${i::-14}
+          echo "$TEMPLATE"
+	  SUCCESSFUL="no"
+          while [[ "$TRYCOUNT" -le 4 ]]; do
+	    RESPONSE=$(so-elasticsearch-query _index_template/$TEMPLATE -d@$i -XPUT 2>/dev/null);
+            if [ "$RESPONSE" == '{"acknowledged":true}' ]; then
+              SUCCESSFUL="yes"
+              break
+            else
+              ((TRYCOUNT+=1))
+              sleep 5
+              echo -n "Attempt $TRYCOUNT/5 unsuccessful..."
+            fi
+          done
+            if ! [ "$SUCCESSFUL" == "yes" ];then
+              echo -n "Could not load template."
+              echo -n "$RESPONSE"
+              exit 1
+            fi
         done
-	echo
+  else
+    {% if GLOBALS.role == 'so-heavynode' %}
+    echo "Common template does not exist. Exiting..."
+    {% else %}
+    echo "Elastic Fleet not configured. Exiting..."
+    {% endif %}
+    RETURN_CODE=1
+    exit 0
+  fi
+  cd - >/dev/null
+  if [[ "$RETURN_CODE" != "1" ]]; then
+    touch /opt/so/state/estemplates.txt
+  else
+    echo "Errors were detected. This script will run again during the next application of the state."
+  fi
 else
-	{% if GLOBALS.role == 'so-heavynode' %}
-        echo "Common template does not exist. Exiting..."
-        {% else %}
-        echo "Elastic Fleet not configured. Exiting..."
-	{% endif %}
-        exit 0
+  exit $RETURN_CODE
 fi
-	cd - >/dev/null
