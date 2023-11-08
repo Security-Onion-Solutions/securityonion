@@ -7,8 +7,42 @@
 {%  from 'vars/globals.map.jinja' import GLOBALS %}
 {%- set SUPPORTED_PACKAGES = salt['pillar.get']('elasticfleet:packages', default=ELASTICFLEETDEFAULTS.elasticfleet.packages, merge=True) %}
 
-if [ ! -f /opt/so/state/estemplates.txt ]; then
-  echo "State file /opt/so/state/estemplates.txt not found. Running so-elasticsearch-templates-load."
+STATE_FILE_INITIAL=/opt/so/state/estemplates_initial_load_attempt.txt
+STATE_FILE_SUCCESS=/opt/so/state/estemplates.txt
+
+if [[ -f $STATE_FILE_INITIAL ]]; then
+  # The initial template load has already run. As this is a subsequent load, all dependencies should 
+  # already be satisified. Therefore, immediately exit/abort this script upon any template load failure
+  # since this is an unrecoverable failure.
+  should_exit_on_failure=1
+else
+  # This is the initial template load, and there likely are some components not yet setup in Elasticsearch.
+  # Therefore load as many templates as possible at this time and if an error occurs proceed to the next 
+  # template. But if at least one template fails to load do not mark the templates as having been loaded.
+  # This will allow the next load to resume the load of the templates that failed to load initially.
+  should_exit_on_failure=0
+  echo "This is the initial template load"
+fi
+
+load_failures=0
+
+load_template() {
+  uri=$1
+  file=$2
+
+  echo "Loading template file $i" 
+  if ! retry 3 5 "so-elasticsearch-query $uri -d@$file -XPUT" "{\"acknowledged\":true}"; then
+    if [[ $should_exit_on_failure -eq 1 ]]; then
+      fail "Could not load template file: $file"
+    else
+      load_failures=$((load_failures+1))
+      echo "Incremented load failure counter: $load_failures"
+    fi
+  fi
+}
+
+if [ ! -f $STATE_FILE_SUCCESS ]; then
+  echo "State file $STATE_FILE_SUCCESS not found. Running so-elasticsearch-templates-load."
 
   . /usr/sbin/so-common
 
@@ -44,13 +78,14 @@ if [ ! -f /opt/so/state/estemplates.txt ]; then
     fi
     {% endif %}
 
+    touch $STATE_FILE_INITIAL
+
     cd ${ELASTICSEARCH_TEMPLATES}/component/ecs
 
     echo "Loading ECS component templates..."
     for i in *; do 
       TEMPLATE=$(echo $i | cut -d '.' -f1) 
-      echo "$TEMPLATE-mappings" 
-      retry 24 5 "so-elasticsearch-query _component_template/${TEMPLATE}-mappings -d@$i -XPUT | grep '{\"acknowledged\":true}'" || fail "Could not load template: $TEMPLATE-mappings"
+      load_template "_component_template/${TEMPLATE}-mappings" "$i"
     done
     echo
 
@@ -64,8 +99,7 @@ if [ ! -f /opt/so/state/estemplates.txt ]; then
     {% endif %}
     for i in $component_pattern; do 
       TEMPLATE=${i::-5} 
-      echo "$TEMPLATE"
-      retry 24 5 "so-elasticsearch-query _component_template/$TEMPLATE -d@$i -XPUT | grep '{\"acknowledged\":true}'" || fail "Could not load template: $TEMPLATE"
+      load_template "_component_template/$TEMPLATE" "$i"
     done
     echo
 	    
@@ -75,8 +109,7 @@ if [ ! -f /opt/so/state/estemplates.txt ]; then
     echo "Loading Security Onion component templates..."
     for i in *; do 
       TEMPLATE=$(echo $i | cut -d '.' -f1); 
-      echo "$TEMPLATE"
-      retry 24 5 "so-elasticsearch-query _component_template/$TEMPLATE -d@$i -XPUT | grep '{\"acknowledged\":true}'" || fail "Could not load template: $TEMPLATE"  
+      load_template "_component_template/$TEMPLATE" "$i"
     done
     echo
 
@@ -92,9 +125,8 @@ if [ ! -f /opt/so/state/estemplates.txt ]; then
     {% endif %}
     for i in $pattern; do
       TEMPLATE=${i::-14}
-      echo "$TEMPLATE"
-      retry 60 5 "so-elasticsearch-query _index_template/$TEMPLATE -d@$i -XPUT" "{\"acknowledged\":true}" || fail "Could not load template: $TEMPLATE"     
-      done
+      load_template "_index_template/$TEMPLATE" "$i"
+    done
   else
     {% if GLOBALS.role == 'so-heavynode' %}
     echo "Common template does not exist. Exiting..."
@@ -105,5 +137,13 @@ if [ ! -f /opt/so/state/estemplates.txt ]; then
   fi
   
   cd - >/dev/null
-  touch /opt/so/state/estemplates.txt
+
+  if [[ $load_failures -eq 0 ]]; then
+    echo "All template loaded successfully"
+    touch $STATE_FILE_SUCCESS
+  else
+    echo "Encountered $load_failures templates that were unable to load, likely due to missing dependencies that will be available later; will retry on next highstate"
+  fi
+else
+  echo "Templates already loaded"
 fi
