@@ -1,5 +1,5 @@
 # Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
-# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
@@ -20,6 +20,19 @@ class TestRemove(unittest.TestCase):
                 soyaml.main()
                 sysmock.assert_called_once_with(1)
                 self.assertIn(mock_stdout.getvalue(), "Usage:")
+
+    def test_main_help_locked(self):
+        filename = "/tmp/so-yaml.lock"
+        file = open(filename, "w")
+        file.write = "fake lock file"
+        with patch('sys.exit', new=MagicMock()) as sysmock:
+            with patch('sys.stderr', new=StringIO()) as mock_stdout:
+                with patch('time.sleep', new=MagicMock()) as mock_sleep:
+                    sys.argv = ["cmd", "help"]
+                    soyaml.main()
+                    sysmock.assert_called()
+                    mock_sleep.assert_called_with(2)
+                    self.assertIn(mock_stdout.getvalue(), "Usage:")
 
     def test_main_help(self):
         with patch('sys.exit', new=MagicMock()) as sysmock:

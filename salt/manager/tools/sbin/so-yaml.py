@@ -85,10 +85,8 @@ def main():
         cmd = commands.get(args[0], showUsage)
         code = cmd(args[1:])
     finally:
-        try:
+        if os.path.exists(lockFile):
             os.remove(lockFile)
-        except Exception:
-            print("Lock file (" + lockFile + ") already removed")
 
     sys.exit(code)
 
