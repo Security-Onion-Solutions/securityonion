@@ -1,0 +1,59 @@
+from io import StringIO
+import sys
+from unittest.mock import patch, MagicMock
+import unittest
+import importlib
+soyaml = importlib.import_module("so-yaml")
+
+
+class TestRemove(unittest.TestCase):
+
+    def test_main_missing_input(self):
+        with patch('sys.exit', new=MagicMock()) as sysmock:
+            with patch('sys.stderr', new=StringIO()) as mock_stdout:
+                sys.argv = ["cmd"]
+                soyaml.main()
+                sysmock.assert_called_once_with(1)
+                self.assertIn(mock_stdout.getvalue(), "Usage:")
+
+    def test_main_help(self):
+        with patch('sys.exit', new=MagicMock()) as sysmock:
+            with patch('sys.stderr', new=StringIO()) as mock_stdout:
+                sys.argv = ["cmd", "help"]
+                soyaml.main()
+                sysmock.assert_called()
+                self.assertIn(mock_stdout.getvalue(), "Usage:")
+
+    def test_remove(self):
+        filename = "/tmp/so-yaml_test-remove.yaml"
+        file = open(filename, "w")
+        file.write("{key1: { child1: 123, child2: abc }, key2: false}")
+        file.close()
+
+        soyaml.remove([filename, "key1"])
+
+        file = open(filename, "r")
+        actual = file.read()
+        file.close()
+
+        expected = "key2: false\n"
+        self.assertEqual(actual, expected)
+
+    def test_remove_missing_args(self):
+        with patch('sys.exit', new=MagicMock()) as sysmock:
+            with patch('sys.stderr', new=StringIO()) as mock_stdout:
+                filename = "/tmp/so-yaml_test-remove.yaml"
+                file = open(filename, "w")
+                file.write("{key1: { child1: 123, child2: abc }, key2: false}")
+                file.close()
+
+                soyaml.remove([filename])
+
+                file = open(filename, "r")
+                actual = file.read()
+                file.close()
+
+                expected = "{key1: { child1: 123, child2: abc }, key2: false}"
+                self.assertEqual(actual, expected)
+                sysmock.assert_called_once_with(1)
+                self.assertIn(mock_stdout.getvalue(), "Missing filename or key arg\n")
