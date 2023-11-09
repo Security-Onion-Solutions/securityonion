@@ -123,9 +123,23 @@ if [ ! -f $STATE_FILE_SUCCESS ]; then
     {% else %}
     pattern="*"
     {% endif %}
+    # Index templates will be skipped if the following conditions are met:
+    # 1. The template is part of the "so-logs-" template group
+    # 2. The template name does not correlate to at least one existing component template
+    # In this situation, the script will treat the skipped template as a temporary failure
+    # and allow the templates to be loaded again on the next run or highstate, whichever 
+    # comes first.
+    COMPONENT_LIST=$(so-elasticsearch-component-templates-list)
     for i in $pattern; do
       TEMPLATE=${i::-14}
-      load_template "_index_template/$TEMPLATE" "$i"
+      COMPONENT_PATTERN=${TEMPLATE:3}
+      MATCH=$(echo "$TEMPLATE" | grep -E "^so-logs-")
+      if [[ -n "$MATCH" && ! "$COMPONENT_LIST" =~ "$COMPONENT_PATTERN" ]]; then
+        load_failures=$((load_failures+1))
+        echo "Component template does not exist. The index template will not be loaded. Load failures: $load_failures"
+      else
+        load_template "_index_template/$TEMPLATE" "$i"
+      fi
     done
   else
     {% if GLOBALS.role == 'so-heavynode' %}
