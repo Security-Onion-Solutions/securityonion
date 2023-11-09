@@ -10,6 +10,11 @@ def checkConfigRequirements(conf):
     # if the user hasn't given a valid elasticsearch domain, exit gracefully
     if "domain" not in conf or len(conf['domain']) == 0:
         sys.exit(126)
+    elif "authUser" not in conf or len(conf['authUser'] == 0):
+        sys.exit(126)
+    elif "authPWD" not in conf or len(conf['authPWD'] == 0):
+        sys.exit(126)
+    #add the rest
     else:
         return True
 
