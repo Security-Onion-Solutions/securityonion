@@ -133,10 +133,10 @@ if [ ! -f $STATE_FILE_SUCCESS ]; then
     for i in $pattern; do
       TEMPLATE=${i::-14}
       COMPONENT_PATTERN=${TEMPLATE:3}
-      MATCH=$(echo "$TEMPLATE" | grep -E "^so-logs-")
+      MATCH=$(echo "$TEMPLATE" | grep -E "^so-logs-" | grep -v osquery)
       if [[ -n "$MATCH" && ! "$COMPONENT_LIST" =~ "$COMPONENT_PATTERN" ]]; then
         load_failures=$((load_failures+1))
-        echo "Component template does not exist. The index template will not be loaded. Load failures: $load_failures"
+        echo "Component template does not exist for $COMPONENT_PATTERN. The index template will not be loaded. Load failures: $load_failures"
       else
         load_template "_index_template/$TEMPLATE" "$i"
       fi
