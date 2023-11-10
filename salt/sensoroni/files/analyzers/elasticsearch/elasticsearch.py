@@ -19,17 +19,32 @@ def checkConfigRequirements(conf):
         return True
 
 
-def buildReq(observableType, numberOfResults):
+def buildReq(observableType, numberOfResults = 10):
+
+    if(observableType != ""):
     # query that looks for specified observable type in every document/index
-    query = {
-        "from": 0,
-        "size": numberOfResults,
-        "query": {
-            "wildcard": {
-                observableType: "*"
+        query = {
+            "from": 0,
+            "size": numberOfResults,
+            "query": {
+                "wildcard": {
+                 observableType: "*"
+                }
             }
         }
-    }
+    else:
+    #for all document output
+    #issue is we may need to protect against _all index, and make sure this query does not provide back the original query statement (i could have messed up on this part)
+    #does return all the documents back
+        query = {
+            "from": 0,
+            "size": numberOfResults,
+            "query": {
+                "match_all": {
+                
+                }
+            }
+        }
     return json.dumps(query)
 
 
