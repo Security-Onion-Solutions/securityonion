@@ -657,8 +657,15 @@ if [[ "$OPERATION" == 'add' || "$OPERATION" == 'setup' ]]; then
 		# and they need to wait for ca creation to update the mine
 		updateMine
 		checkMine "network.ip_addrs"
+		# apply the elasticsearch state to the manager if a new searchnode was added
+		if [[ "$NODETYPE" == "SEARCHNODE" || "$NODETYPE" == "HEAVYNODE" ]]; then
+			# calls so-common and set_minionid sets MINIONID to local minion id
+			set_minionid
+			salt $MINIONID state.apply elasticsearch queue=True --async
+			salt $MINIONID state.apply soc queue=True --async
+		fi
 		# run this async so the cli doesn't wait for a return
-		salt "$MINION_ID" state.highstate --async
+		salt "$MINION_ID" state.highstate --async queue=True
 	fi
 fi
 

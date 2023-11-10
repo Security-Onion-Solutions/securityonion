@@ -7,103 +7,157 @@
 {%  from 'vars/globals.map.jinja' import GLOBALS %}
 {%- set SUPPORTED_PACKAGES = salt['pillar.get']('elasticfleet:packages', default=ELASTICFLEETDEFAULTS.elasticfleet.packages, merge=True) %}
 
-. /usr/sbin/so-common
-{% if GLOBALS.role != 'so-heavynode' %}
-. /usr/sbin/so-elastic-fleet-common
-{% endif %}
+STATE_FILE_INITIAL=/opt/so/state/estemplates_initial_load_attempt.txt
+STATE_FILE_SUCCESS=/opt/so/state/estemplates.txt
 
-default_conf_dir=/opt/so/conf
-
-# Define a default directory to load pipelines from
-ELASTICSEARCH_TEMPLATES="$default_conf_dir/elasticsearch/templates/"
-
-{% if GLOBALS.role == 'so-heavynode' %}
-file="/opt/so/conf/elasticsearch/templates/index/so-common-template.json"
-{% else %}
-file="/usr/sbin/so-elastic-fleet-common"
-{% endif %}
-
-if [ -f "$file" ]; then
-	# Wait for ElasticSearch to initialize
-	echo -n "Waiting for ElasticSearch..."
-	COUNT=0
-	ELASTICSEARCH_CONNECTED="no"
-	while [[ "$COUNT" -le 240 ]]; do
-      		so-elasticsearch-query / -k --output /dev/null --silent --head --fail
-		if [ $? -eq 0 ]; then
-			ELASTICSEARCH_CONNECTED="yes"
-			echo "connected!"
-			break
-		else
-			((COUNT+=1))
-			sleep 1
-			echo -n "."
-		fi
-	done
-	if [ "$ELASTICSEARCH_CONNECTED" == "no" ]; then
-		echo
-		echo -e "Connection attempt timed out.  Unable to connect to ElasticSearch.  \nPlease try: \n  -checking log(s) in /var/log/elasticsearch/\n  -running 'sudo docker ps' \n  -running 'sudo so-elastic-restart'"
-		echo
-		exit 1
-	fi
-
-	{% if GLOBALS.role != 'so-heavynode' %}
-        SESSIONCOOKIE=$(curl -s -K /opt/so/conf/elasticsearch/curl.config -c - -X GET http://localhost:5601/ | grep sid | awk '{print $7}')
-	INSTALLED=$(elastic_fleet_package_is_installed {{ SUPPORTED_PACKAGES[0] }} )
-	if [ "$INSTALLED" != "installed" ]; then
-        	echo
-        	echo "Packages not yet installed."
-        	echo
-        	exit 0
-	fi
-        {% endif %}
-	set -e
-
-	cd ${ELASTICSEARCH_TEMPLATES}/component/ecs
-
-	echo "Loading ECS component templates..."
-	for i in *; do TEMPLATE=$(echo $i | cut -d '.' -f1); echo "$TEMPLATE-mappings"; so-elasticsearch-query _component_template/$TEMPLATE-mappings -d@$i -XPUT 2>/dev/null; echo; done
-
-	cd ${ELASTICSEARCH_TEMPLATES}/component/elastic-agent
-
-	echo "Loading Elastic Agent component templates..."
-	{% if GLOBALS.role == 'so-heavynode' %}
-        component_pattern="so-*"
-        {% else %}
-        component_pattern="*"
-        {% endif %}
-        for i in $component_pattern; do TEMPLATE=${i::-5}; echo "$TEMPLATE"; so-elasticsearch-query _component_template/$TEMPLATE -d@$i -XPUT 2>/dev/null; echo; done
-
-	# Load SO-specific component templates
-	cd ${ELASTICSEARCH_TEMPLATES}/component/so
-
-	echo "Loading Security Onion component templates..."
-	for i in *; do TEMPLATE=$(echo $i | cut -d '.' -f1); echo "$TEMPLATE"; so-elasticsearch-query _component_template/$TEMPLATE -d@$i -XPUT 2>/dev/null; echo; done
-	echo
-
-	# Load SO index templates
-	cd ${ELASTICSEARCH_TEMPLATES}/index
-
-	echo "Loading Security Onion index templates..."
-	shopt -s extglob
-        {% if GLOBALS.role == 'so-heavynode' %}
-        pattern="!(*1password*|*aws*|*azure*|*cloudflare*|*elastic_agent*|*fim*|*github*|*google*|*osquery*|*system*|*windows*)"
-        {% else %}
-        pattern="*"
-        {% endif %}
-        for i in $pattern; do
-            TEMPLATE=${i::-14};
-            echo "$TEMPLATE";
-            so-elasticsearch-query _index_template/$TEMPLATE -d@$i -XPUT 2>/dev/null;
-            echo;
-        done
-	echo
+if [[ -f $STATE_FILE_INITIAL ]]; then
+  # The initial template load has already run. As this is a subsequent load, all dependencies should 
+  # already be satisified. Therefore, immediately exit/abort this script upon any template load failure
+  # since this is an unrecoverable failure.
+  should_exit_on_failure=1
 else
-	{% if GLOBALS.role == 'so-heavynode' %}
-        echo "Common template does not exist. Exiting..."
-        {% else %}
-        echo "Elastic Fleet not configured. Exiting..."
-	{% endif %}
-        exit 0
+  # This is the initial template load, and there likely are some components not yet setup in Elasticsearch.
+  # Therefore load as many templates as possible at this time and if an error occurs proceed to the next 
+  # template. But if at least one template fails to load do not mark the templates as having been loaded.
+  # This will allow the next load to resume the load of the templates that failed to load initially.
+  should_exit_on_failure=0
+  echo "This is the initial template load"
 fi
-	cd - >/dev/null
+
+load_failures=0
+
+load_template() {
+  uri=$1
+  file=$2
+
+  echo "Loading template file $i" 
+  if ! retry 3 5 "so-elasticsearch-query $uri -d@$file -XPUT" "{\"acknowledged\":true}"; then
+    if [[ $should_exit_on_failure -eq 1 ]]; then
+      fail "Could not load template file: $file"
+    else
+      load_failures=$((load_failures+1))
+      echo "Incremented load failure counter: $load_failures"
+    fi
+  fi
+}
+
+if [ ! -f $STATE_FILE_SUCCESS ]; then
+  echo "State file $STATE_FILE_SUCCESS not found. Running so-elasticsearch-templates-load."
+
+  . /usr/sbin/so-common
+
+  {% if GLOBALS.role != 'so-heavynode' %}
+  if [ -f /usr/sbin/so-elastic-fleet-common ]; then
+    . /usr/sbin/so-elastic-fleet-common
+  fi
+  {% endif %}
+
+  default_conf_dir=/opt/so/conf
+
+  # Define a default directory to load pipelines from
+  ELASTICSEARCH_TEMPLATES="$default_conf_dir/elasticsearch/templates/"
+
+  {% if GLOBALS.role == 'so-heavynode' %}
+  file="/opt/so/conf/elasticsearch/templates/index/so-common-template.json"
+  {% else %}
+  file="/usr/sbin/so-elastic-fleet-common"
+  {% endif %}
+
+  if [ -f "$file" ]; then
+    # Wait for ElasticSearch to initialize
+    echo -n "Waiting for ElasticSearch..."
+    retry 240 1 "so-elasticsearch-query / -k --output /dev/null --silent --head --fail" || fail "Connection attempt timed out.  Unable to connect to ElasticSearch.  \nPlease try: \n  -checking log(s) in /var/log/elasticsearch/\n  -running 'sudo docker ps' \n  -running 'sudo so-elastic-restart'"
+    {% if GLOBALS.role != 'so-heavynode' %}
+    SESSIONCOOKIE=$(curl -s -K /opt/so/conf/elasticsearch/curl.config -c - -X GET http://localhost:5601/ | grep sid | awk '{print $7}')
+    INSTALLED=$(elastic_fleet_package_is_installed {{ SUPPORTED_PACKAGES[0] }} )
+    if [ "$INSTALLED" != "installed" ]; then
+      echo
+      echo "Packages not yet installed."
+      echo
+      exit 0
+    fi
+    {% endif %}
+
+    touch $STATE_FILE_INITIAL
+
+    cd ${ELASTICSEARCH_TEMPLATES}/component/ecs
+
+    echo "Loading ECS component templates..."
+    for i in *; do 
+      TEMPLATE=$(echo $i | cut -d '.' -f1) 
+      load_template "_component_template/${TEMPLATE}-mappings" "$i"
+    done
+    echo
+
+    cd ${ELASTICSEARCH_TEMPLATES}/component/elastic-agent
+
+    echo "Loading Elastic Agent component templates..."
+    {% if GLOBALS.role == 'so-heavynode' %}
+    component_pattern="so-*"
+    {% else %}
+    component_pattern="*"
+    {% endif %}
+    for i in $component_pattern; do 
+      TEMPLATE=${i::-5} 
+      load_template "_component_template/$TEMPLATE" "$i"
+    done
+    echo
+	    
+    # Load SO-specific component templates
+    cd ${ELASTICSEARCH_TEMPLATES}/component/so
+
+    echo "Loading Security Onion component templates..."
+    for i in *; do 
+      TEMPLATE=$(echo $i | cut -d '.' -f1); 
+      load_template "_component_template/$TEMPLATE" "$i"
+    done
+    echo
+
+    # Load SO index templates
+    cd ${ELASTICSEARCH_TEMPLATES}/index
+
+    echo "Loading Security Onion index templates..."
+    shopt -s extglob
+    {% if GLOBALS.role == 'so-heavynode' %}
+    pattern="!(*1password*|*aws*|*azure*|*cloudflare*|*elastic_agent*|*fim*|*github*|*google*|*osquery*|*system*|*windows*)"
+    {% else %}
+    pattern="*"
+    {% endif %}
+    # Index templates will be skipped if the following conditions are met:
+    # 1. The template is part of the "so-logs-" template group
+    # 2. The template name does not correlate to at least one existing component template
+    # In this situation, the script will treat the skipped template as a temporary failure
+    # and allow the templates to be loaded again on the next run or highstate, whichever 
+    # comes first.
+    COMPONENT_LIST=$(so-elasticsearch-component-templates-list)
+    for i in $pattern; do
+      TEMPLATE=${i::-14}
+      COMPONENT_PATTERN=${TEMPLATE:3}
+      MATCH=$(echo "$TEMPLATE" | grep -E "^so-logs-|^so-metrics" | grep -v osquery)
+      if [[ -n "$MATCH" && ! "$COMPONENT_LIST" =~ "$COMPONENT_PATTERN" ]]; then
+        load_failures=$((load_failures+1))
+        echo "Component template does not exist for $COMPONENT_PATTERN. The index template will not be loaded. Load failures: $load_failures"
+      else
+        load_template "_index_template/$TEMPLATE" "$i"
+      fi
+    done
+  else
+    {% if GLOBALS.role == 'so-heavynode' %}
+    echo "Common template does not exist. Exiting..."
+    {% else %}
+    echo "Elastic Fleet not configured. Exiting..."
+    {% endif %}
+    exit 0
+  fi
+  
+  cd - >/dev/null
+
+  if [[ $load_failures -eq 0 ]]; then
+    echo "All template loaded successfully"
+    touch $STATE_FILE_SUCCESS
+  else
+    echo "Encountered $load_failures templates that were unable to load, likely due to missing dependencies that will be available later; will retry on next highstate"
+  fi
+else
+  echo "Templates already loaded"
+fi

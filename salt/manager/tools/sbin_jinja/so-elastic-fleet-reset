@@ -29,7 +29,7 @@ status "Stopping Fleet Container..."
 so-elastic-fleet-stop --force
 
 status "Deleting Fleet Data from Pillars..."
-sed -i -z "s/elasticfleet:.*grid_enrollment_heavy.*'//" /opt/so/saltstack/local/pillar/minions/{{ GLOBALS.minion_id }}.sls
+so-yaml.py remove /opt/so/saltstack/local/pillar/minions/{{ GLOBALS.minion_id }}.sls elasticfleet
 sed -i "/fleet_grid_enrollment_token_general.*/d" /opt/so/saltstack/local/pillar/global/soc_global.sls
 sed -i "/fleet_grid_enrollment_token_heavy.*/d" /opt/so/saltstack/local/pillar/global/soc_global.sls
 
@@ -71,6 +71,9 @@ if [[ "$RETURN_CODE" != "0" ]]; then
     status "Kibana API not accessible, exiting script..."
     exit 1
 fi
+
+status "Removing Integrations State File..."
+rm -f /opt/so/state/eaintegrations.txt
 
 status "Starting Elastic Fleet Setup..."
 so-elastic-fleet-setup
