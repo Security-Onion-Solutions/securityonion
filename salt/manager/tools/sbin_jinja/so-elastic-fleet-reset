@@ -13,7 +13,10 @@ require_manager
 
 # Inform user we are about to remove Elastic Fleet data
 echo
-echo "This script will remove the current Elastic Fleet install & all of its data and rerun Elastic Fleet setup."
+echo "This script will remove the current Elastic Fleet install and all of its data and then rerun Elastic Fleet setup."
+echo "This includes data previously ingested with Fleet such as Zeek and Suricata logs."
+echo "Deployed Elastic Agents will no longer be enrolled and will need to be reinstalled."
+echo "This script should only be used as a last resort to reinstall Elastic Fleet." 
 echo
 echo "If you would like to proceed, type AGREE and hit ENTER."
 echo
@@ -58,6 +61,15 @@ do
             curl -K /opt/so/conf/kibana/curl.config -s -k -L -H "Content-Type: application/json" "https://localhost:9200/${INDX}" -XDELETE
     done
 done
+
+status "Deleting Fleet-related Data Streams..."
+DATASTREAMS="logs-suricata-so","logs-kratos-so","logs-soc-so","logs-zeek-so"
+JSON_STRING=$( jq -n \
+                --arg DATASTREAMLIST "$DATASTREAMS" \
+                '{"dataStreams":[$DATASTREAMLIST]}'
+                )
+curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/index_management/delete_data_streams" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
+
 
 status "Restarting Kibana..."
 so-kibana-restart --force

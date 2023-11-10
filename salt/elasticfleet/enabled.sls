@@ -96,6 +96,17 @@ so-elastic-fleet:
 {%   endif %}
 
 {%  if GLOBALS.role != "so-fleet" %}
+so-elastic-fleet-package-statefile:
+  file.managed:
+    - name: /opt/so/state/elastic_fleet_packages.txt
+    - contents: {{ELASTICFLEETMERGED.packages}}
+
+so-elastic-fleet-package-upgrade:
+  cmd.run:
+    - name: /usr/sbin/so-elastic-fleet-package-upgrade
+    - onchanges:
+      - file: /opt/so/state/elastic_fleet_packages.txt
+
 so-elastic-fleet-integrations:
   cmd.run:
     - name: /usr/sbin/so-elastic-fleet-integration-policy-load
