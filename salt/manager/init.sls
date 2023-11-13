@@ -16,6 +16,7 @@ include:
   - kibana.secrets
   - manager.sync_es_users
   - manager.elasticsearch
+  - manager.kibana
 
 repo_log_dir:
   file.directory:
@@ -60,6 +61,8 @@ manager_sbin:
     - user: 939
     - group: 939
     - file_mode: 755
+    - exclude_pat: 
+      - "*_test.py"
 
 yara_update_scripts:
   file.recurse:

@@ -25,7 +25,8 @@ log_has_errors() {
     # Ignore salt mast cached public key and minion failed to auth because this is a test 
     # to see if the salt key had already been accepted.
 
-    # Ignore failed to connect to ::1 since we have most curls wrapped in a retry.
+    # Ignore failed to connect to since we have most curls wrapped in a retry and there are 
+    # multiple mirrors available.
 
     # Ignore perl-Error- since that is the name of a Perl package SO installs.
 
@@ -35,11 +36,13 @@ log_has_errors() {
     # This is ignored for Ubuntu
     # Failed to restart snapd.mounts-pre.target: Operation refused, unit snapd.mounts-pre.target
     # may be requested by dependency only (it is configured to refuse manual start/stop).
+
+    # Command failed with exit code is output during retry loops.
     
     grep -E "FAILED|Failed|failed|ERROR|Result: False|Error is not recoverable" "$setup_log" | \
         grep -vE "The Salt Master has cached the public key for this node" | \
         grep -vE "Minion failed to authenticate with the master" | \
-        grep -vE "Failed to connect to ::1" | \
+        grep -vE "Failed to connect to " | \
         grep -vE "Failed to set locale" | \
         grep -vE "perl-Error-" | \
         grep -vE "Failed:\s*?[0-9]+" | \
@@ -54,11 +57,15 @@ log_has_errors() {
         grep -vE "Login Failed Details" | \
         grep -vE "response from daemon: unauthorized" | \
         grep -vE "Reading first line of patchfile" | \
+        grep -vE "Command failed with exit code" | \
         grep -vE "Running scope as unit" &> "$error_log"
     
     if [[ $? -eq 0 ]]; then
+        # This function succeeds (returns 0) if errors are detected
         return 0
     fi
+
+    # No errors found, return 1 (function failed to find errors)
     return 1
 }
 
@@ -117,7 +124,10 @@ main() {
         echo "WARNING: Failed setup a while ago"
         exit_code=1
     elif log_has_errors; then 
-        echo "WARNING: Errors detected during setup"
+        echo "WARNING: Errors detected during setup."
+        echo "--------- ERRORS ---------"
+        cat $error_log
+        echo "--------------------------"
         exit_code=1
         touch /root/failure
     elif using_iso && cron_error_in_mail_spool; then

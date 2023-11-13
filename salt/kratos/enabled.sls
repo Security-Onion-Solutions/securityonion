@@ -21,8 +21,7 @@ so-kratos:
       - sobridge:
         - ipv4_address: {{ DOCKER.containers['so-kratos'].ip }}
     - binds:
-      - /opt/so/conf/kratos/schema.json:/kratos-conf/schema.json:ro    
-      - /opt/so/conf/kratos/kratos.yaml:/kratos-conf/kratos.yaml:ro
+      - /opt/so/conf/kratos/:/kratos-conf:ro
       - /opt/so/log/kratos/:/kratos-log:rw
       - /nsm/kratos/db:/kratos-data:rw
       {% if DOCKER.containers['so-kratos'].custom_bind_mounts %}

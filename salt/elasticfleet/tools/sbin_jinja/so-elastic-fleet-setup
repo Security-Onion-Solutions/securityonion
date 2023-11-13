@@ -8,7 +8,18 @@
 
 INTCA=/etc/pki/tls/certs/intca.crt
 
+. /usr/sbin/so-common
 . /usr/sbin/so-elastic-fleet-common
+
+# Check to make sure that Kibana API is up & ready
+RETURN_CODE=0
+wait_for_web_response "http://localhost:5601/api/fleet/settings" "fleet" 300 "curl -K /opt/so/conf/elasticsearch/curl.config"
+RETURN_CODE=$?
+
+if [[ "$RETURN_CODE" != "0" ]]; then
+    printf "Kibana API not accessible, exiting Elastic Fleet setup..."
+    exit 1
+fi
 
 printf "\n### Create ES Token ###\n"
 ESTOKEN=$(curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/service_tokens" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' |  jq -r .value)
@@ -120,3 +131,4 @@ salt-call state.apply elasticfleet queue=True
 # Generate installers & install Elastic Agent on the node
 so-elastic-agent-gen-installers
 salt-call state.apply elasticfleet.install_agent_grid queue=True
+exit 0

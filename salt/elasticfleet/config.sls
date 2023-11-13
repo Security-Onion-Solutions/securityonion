@@ -6,6 +6,7 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 {% if sls.split('.')[0] in allowed_states %}
+{% set node_data = salt['pillar.get']('node_data') %}
 
 # Add EA Group
 elasticfleetgroup:
@@ -67,6 +68,7 @@ eapackageupgrade:
     - source: salt://elasticfleet/tools/sbin_jinja/so-elastic-fleet-package-upgrade
     - user: 947
     - group: 939
+    - mode: 755
     - template: jinja
 
 {%   if GLOBALS.role != "so-fleet" %}
@@ -92,13 +94,53 @@ eaintegration:
     - user: 947
     - group: 939
 
+eaoptionalintegrationsdir:
+  file.directory:
+    - name: /opt/so/conf/elastic-fleet/integrations-optional
+    - user: 947
+    - group: 939
+    - makedirs: True
+
+{% for minion in node_data %}
+{% set role = node_data[minion]["role"] %}
+{% if role in [ "eval","fleet","heavynode","import","manager","managersearch","standalone" ] %}
+{% set optional_integrations = salt['pillar.get']('elasticfleet:optional_integrations', {}) %}
+{% set integration_keys = salt['pillar.get']('elasticfleet:optional_integrations', {}).keys() %}
+fleet_server_integrations_{{ minion }}:
+  file.directory:
+    - name: /opt/so/conf/elastic-fleet/integrations-optional/FleetServer_{{ minion }}
+    - user: 947
+    - group: 939
+    - makedirs: True
+{% for integration in integration_keys %}
+{% if 'enabled_nodes' in optional_integrations[integration]%}
+{% set enabled_nodes = optional_integrations[integration]["enabled_nodes"] %}
+{% if minion in enabled_nodes %}
+optional_integrations_dynamic_{{ minion }}_{{ integration }}:
+  file.managed:
+    - name: /opt/so/conf/elastic-fleet/integrations-optional/FleetServer_{{ minion }}/{{ integration }}.json
+    - source: salt://elasticfleet/files/integrations-optional/{{ integration }}.json
+    - user: 947
+    - group: 939
+    - template: jinja
+    - defaults:
+        NAME: {{ minion }}
+{% else %}
+optional_integrations_dynamic_{{ minion }}_{{ integration }}_delete:
+  file.absent:
+    - name: /opt/so/conf/elastic-fleet/integrations-optional/FleetServer_{{ minion }}/{{ integration }}.json
+{% endif %}
+{% endif %}
+{% endfor %}
+{% endif %}
+{% endfor %}
 ea-integrations-load:
   file.absent:
     - name: /opt/so/state/eaintegrations.txt
     - onchanges:
       - file: eaintegration
       - file: eadynamicintegration
-      - file: eapackageupgrade
+      - file: /opt/so/conf/elastic-fleet/integrations-optional/*
 {% endif %}
 {% else %}
 

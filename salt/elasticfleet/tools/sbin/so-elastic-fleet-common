@@ -68,6 +68,19 @@ elastic_fleet_integration_update() {
     curl -K /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fleet/package_policies/$UPDATE_ID" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
 }
 
+elastic_fleet_integration_policy_upgrade() {
+
+    INTEGRATION_ID=$1
+
+    JSON_STRING=$( jq -n \
+                    --arg INTEGRATIONID "$INTEGRATION_ID" \
+                    '{"packagePolicyIds":[$INTEGRATIONID]}'
+                    )
+
+    curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/package_policies/upgrade" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
+}
+
+
 elastic_fleet_package_version_check() {
     PACKAGE=$1
     curl -s -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X GET "localhost:5601/api/fleet/epm/packages/$PACKAGE" | jq -r '.item.version'

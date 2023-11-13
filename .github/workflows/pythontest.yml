@@ -4,9 +4,11 @@ on:
   push:
     paths: 
       - "salt/sensoroni/files/analyzers/**"
+      - "salt/manager/tools/sbin"
   pull_request:
     paths:
       - "salt/sensoroni/files/analyzers/**"
+      - "salt/manager/tools/sbin"
 
 jobs:
   build:
@@ -16,7 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.10"]
-        python-code-path: ["salt/sensoroni/files/analyzers"]
+        python-code-path: ["salt/sensoroni/files/analyzers", "salt/manager/tools/sbin"]
 
     steps:
     - uses: actions/checkout@v3
@@ -34,4 +36,4 @@ jobs:
         flake8 ${{ matrix.python-code-path }} --show-source --max-complexity=12  --doctests --max-line-length=200 --statistics
     - name: Test with pytest
       run: |
-        pytest ${{ matrix.python-code-path }} --cov=${{ matrix.python-code-path }} --doctest-modules --cov-report=term --cov-fail-under=100 --cov-config=${{ matrix.python-code-path }}/pytest.ini
+        pytest ${{ matrix.python-code-path }} --cov=${{ matrix.python-code-path }} --doctest-modules --cov-report=term --cov-fail-under=100 --cov-config=pytest.ini

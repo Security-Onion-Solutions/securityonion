@@ -346,7 +346,6 @@ desktop_packages:
       - snappy
       - sound-theme-freedesktop
       - soundtouch
-      - securityonion-networkminer
       - speech-dispatcher
       - speech-dispatcher-espeak-ng
       - speex
@@ -432,6 +431,10 @@ desktop_packages:
       - xorg-x11-xinit
       - xorg-x11-xinit-session
       - zip
+
+install_networkminer:
+  pkg.latest:
+    - name: securityonion-networkminer
 
 {% else %}
 
