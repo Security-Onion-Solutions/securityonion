@@ -5,45 +5,19 @@
 {% from 'salt/map.jinja' import SALTVERSION %}
 {% from 'salt/map.jinja' import SALTNOTHELD %}
 {% from 'salt/map.jinja' import INSTALLEDSALTVERSION %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 
 include:
   - salt.minion
+{%   if GLOBALS.has_mom %}
+  - salt.syndic
+{%   endif %}
 
 install_salt_master:
   pkg.installed:
     - name: salt-master
+    - version: {{ SALTVERSION }}
     - update_holds: True
-
-{% if INSTALLEDSALTVERSION|string != SALTVERSION|string %}
-
-{% if SALTNOTHELD | int == 0 %}
-unhold_salt_master_package:
-  module.run:
-    - pkg.unhold:
-      - pkgs:
-        - salt-master
-{% endif %}
-
-install_salt_master:
-  cmd.run:
-    - name: |
-        exec 0>&- # close stdin
-        exec 1>&- # close stdout
-        exec 2>&- # close stderr
-        nohup /bin/sh -c '{{ UPGRADECOMMAND }}' &
-
-{% endif %}
-
-{% if INSTALLEDSALTVERSION|string == SALTVERSION|string %}
-
-{% if SALTNOTHELD | int == 1 %}
-hold_salt_master_package:
-  module.run:
-    - pkg.hold:
-      - pkgs:
-        - salt-master
-{% endif %}
-{% endif %}
 
 ensure_local_salt:
   file.directory:
@@ -84,6 +58,19 @@ engines_config:
   file.managed:
     - name: /etc/salt/master.d/engines.conf
     - source: salt://salt/files/engines.conf
+
+{# this will ensure the option gets set on a mom but will need to be revised since it will #}
+{# also cause it to be set on a single manager setup without a mom #}
+{# we can use the node_data pillar or nodegroups here to check if a node is a mom with managers below it #}
+{% if not GLOBALS.has_mom %}
+add_order_masters:
+  file.append:
+    - name: /etc/salt/master
+    - text: |
+        order_masters: True
+    watch_in:
+      service: salt_master_service
+{% endif %}
 
 salt_master_service:
   service.running:

@@ -17,12 +17,32 @@
 {% set INSTALLEDSALTVERSION = grains.saltversion %}
 
 {% if grains.saltversion|string != SALTVERSION|string %}
+  {# use -r for Redhat to ignore bootstrap-salt provided repos #}
   {% if grains.os_family|lower == 'redhat' %}
-      {% set UPGRADECOMMAND = 'yum clean all ; /usr/sbin/bootstrap-salt.sh -s 120 -r -F -x python3 stable ' ~ SALTVERSION %}
+      {% if GLOBALS.is_manager %}
+        {% if GLOBALS.has_mom %}
+          {% do SALTPACKAGES.append('salt-syndic') %}
+          {# use -S to install/upgrade syndic #}
+          {% set UPGRADECOMMAND = 'yum clean all ; /usr/sbin/bootstrap-salt.sh -s 120 -r -F -S -M -x python3 stable ' ~ SALTVERSION %}
+        {% else %}
+          {% set UPGRADECOMMAND = 'yum clean all ; /usr/sbin/bootstrap-salt.sh -s 120 -r -F -M -x python3 stable ' ~ SALTVERSION %}
+        {% endif %}
+      {% else %}
+        {# not a manager so don't use -M #}
+        {% set UPGRADECOMMAND = 'yum clean all ; /usr/sbin/bootstrap-salt.sh -s 120 -r -F -x python3 stable ' ~ SALTVERSION %}
+      {% endif %}
+  {# don't use -r for Debian since we want to use the repos provided by bootstrap-salt #}
   {% elif grains.os_family|lower == 'debian' %}
     {% if GLOBALS.is_manager %}
-      {% set UPGRADECOMMAND = '/usr/sbin/bootstrap-salt.sh -s 120 -F -M -x python3 stable ' ~ SALTVERSION %}
+      {% if GLOBALS.has_mom %}
+        {% do SALTPACKAGES.append('salt-syndic') %}
+        {# use -S to install/upgrade syndic #}
+        {% set UPGRADECOMMAND = '/usr/sbin/bootstrap-salt.sh -s 120 -F -S -M -x python3 stable ' ~ SALTVERSION %}
+      {% else %}
+        {% set UPGRADECOMMAND = '/usr/sbin/bootstrap-salt.sh -s 120 -F -M -x python3 stable ' ~ SALTVERSION %}
+      {% endif %}
     {% else %}
+      {# not a manager so don't use -M #}
       {% set UPGRADECOMMAND = '/usr/sbin/bootstrap-salt.sh -s 120 -F -x python3 stable ' ~ SALTVERSION %}
     {% endif %}
   {% endif %}
