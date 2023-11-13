@@ -68,8 +68,8 @@ add_order_masters:
     - name: /etc/salt/master
     - text: |
         order_masters: True
-    watch_in:
-      service: salt_master_service
+    - watch_in:
+      - service: salt_master_service
 {% endif %}
 
 salt_master_service:
