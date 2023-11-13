@@ -4,6 +4,16 @@
 # or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
+{% from 'vars/globals.map.jinja' import GLOBALS -%}
+{% if GLOBALS.has_mom -%}
+{%   set CONFIGFILE='/etc/yum.repos.d/securityonion.repo' -%}
+{%   set REPOID='securityonion' -%}
+{%   set CHECKUP=false -%}
+{% else -%}
+{%   set CONFIGFILE='/opt/so/conf/reposync/repodownload.conf' -%}
+{%   set REPOID='securityonionsync' -%}
+{%   set CHECKUP=true -%}
+{% endif -%}
 NOROOT=1
 . /usr/sbin/so-common
 
@@ -13,6 +23,8 @@ salt_minion_count
 
 set -e
 
+{%- if CHECKUP %}
 curl --retry 5 --retry-delay 60 -A "reposync/$VERSION/$OS/$(uname -r)/$MINIONCOUNT" https://sigs.securityonion.net/checkup --output /tmp/checkup
-dnf reposync --norepopath -g --delete -m -c /opt/so/conf/reposync/repodownload.conf --repoid=securityonionsync --download-metadata -p /nsm/repo/
+{% endif -%}
+dnf reposync --norepopath -g --delete -m -c {{CONFIGFILE}} --repoid={{REPOID}} --download-metadata -p /nsm/repo/
 createrepo /nsm/repo
