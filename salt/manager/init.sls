@@ -54,6 +54,12 @@ repo_dir:
       - user
       - group
 
+{% if GLOBALS.os == 'OEL' %}
+install_createrepo:
+  pkg.installed:
+    - name: createrepo
+{% endif %}
+
 manager_sbin:
   file.recurse:
     - name: /usr/sbin
