@@ -17,7 +17,7 @@
   {% set COMMONNAME = GLOBALS.manager %}
 {% endif %}
 
-{% if grains.id.split('_')|last in ['manager', 'managersearch', 'eval', 'standalone', 'import', 'mom'] %}
+{% if not GLOBALS.has_mom and grains.id.split('_')|last in ['manager', 'managersearch', 'eval', 'standalone', 'import', 'mom'] %}
 include:
   - ca
     {% set trusttheca_text = salt['cp.get_file_str']('/etc/pki/ca.crt')|replace('\n', '') %}
@@ -27,7 +27,7 @@ include:
   - ca.dirs
     {% set x509dict = salt['mine.get'](GLOBALS.manager | lower~'*', 'x509.get_pem_entries') %}
     {% for host in x509dict %}
-      {% if 'manager' in host.split('_')|last or host.split('_')|last == 'standalone' %}
+      {% if host.split('_')|last in ['mom', 'manager', 'standalone'] %}
         {% do global_ca_text.append(x509dict[host].get('/etc/pki/ca.crt')|replace('\n', '')) %}
         {% do global_ca_server.append(host) %}
       {% endif %}
@@ -46,6 +46,17 @@ trusttheca:
   x509.pem_managed:
     - name: /etc/pki/tls/certs/intca.crt
     - text:  {{ trusttheca_text }}
+
+trusted_ca_crt:
+  x509.pem_managed:
+    - name: /etc/pki/ca-trust/source/anchors/ca.crt
+    - text:  {{ trusttheca_text }}
+
+update_ca_certs:
+  cmd.run:
+    - name: update-ca-trust
+    - onchanges:
+      - x509: trusted_ca_crt
 
 {% if GLOBALS.os_family == 'Debian' %}
 symlinkca:
