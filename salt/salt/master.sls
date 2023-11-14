@@ -59,18 +59,14 @@ engines_config:
     - name: /etc/salt/master.d/engines.conf
     - source: salt://salt/files/engines.conf
 
-{# this will ensure the option gets set on a mom but will need to be revised since it will #}
-{# also cause it to be set on a single manager setup without a mom #}
-{# we can use the node_data pillar or nodegroups here to check if a node is a mom with managers below it #}
-{% if not GLOBALS.has_mom %}
-add_order_masters:
-  file.append:
+master_config:
+  file.managed:
     - name: /etc/salt/master
-    - text: |
-        order_masters: True
+    - source: salt://salt/etc/master.jinja
+    - defaults:
+        HAS_MOM: {{ GLOBALS.has_mom }}
     - watch_in:
       - service: salt_master_service
-{% endif %}
 
 salt_master_service:
   service.running:
