@@ -63,10 +63,15 @@ master_config:
   file.managed:
     - name: /etc/salt/master
     - source: salt://salt/etc/master.jinja
+    - template: jinja
     - defaults:
         HAS_MOM: {{ GLOBALS.has_mom }}
+        MANAGER: {{ GLOBALS.manager }}
     - watch_in:
       - service: salt_master_service
+{%   if GLOBALS.has_mom %}
+      - service: salt_syndic_service
+{% endif %}
 
 salt_master_service:
   service.running:
