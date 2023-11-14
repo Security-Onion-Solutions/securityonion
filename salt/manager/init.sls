@@ -57,7 +57,14 @@ repo_dir:
 {% if GLOBALS.os == 'OEL' %}
 install_createrepo:
   pkg.installed:
-    - name: createrepo
+    - name: createrepo_c
+
+run_reposync:
+  cmd.run:
+    - name: /usr/sbin/so-repo-sync >> /opt/so/log/reposync/reposync.log 2>&1
+    - user: socore
+    - onchanges:
+      - pkg: install_createrepo
 {% endif %}
 
 manager_sbin:
