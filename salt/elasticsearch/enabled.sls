@@ -88,7 +88,7 @@ so-elasticsearch:
       - x509: /etc/pki/elasticsearch.crt
       - x509: /etc/pki/elasticsearch.key
       - file: elasticp12perms
-      {% if GLOBALS.is_manager %}
+      {% if not GLOBALS.has_mom and GLOBALS.is_manager %}
       - x509: pki_public_ca_crt
       {% else %}
       - x509: trusttheca
