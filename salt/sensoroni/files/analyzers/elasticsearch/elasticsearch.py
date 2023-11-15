@@ -10,32 +10,38 @@ def checkConfigRequirements(conf):
     # if the user hasn't given a valid elasticsearch domain, exit gracefully
     if "domain" not in conf or len(conf['domain']) == 0:
         sys.exit(126)
-    elif "authUser" not in conf or len(conf['authUser'] == 0):
+    elif "authUser" not in conf or len(conf['authUser']) == 0:
         sys.exit(126)
-    elif "authPWD" not in conf or len(conf['authPWD'] == 0):
+    elif "authPWD" not in conf or len(conf['authPWD']) == 0:
         sys.exit(126)
     #add the rest
     else:
         return True
 
 
-def buildReq(observableType, numberOfResults = 10):
-
-    if(observableType != ""):
+def buildReq(conf, numberOfResults = 10):
+    if(conf['observableType'] != ""):
     # query that looks for specified observable type in every document/index
         query = {
             "from": 0,
             "size": numberOfResults,
             "query": {
+                "range":{
+                    "@timestamp":{
+                        "gte":conf['timestampStart'],
+                        "lte":conf['timestampEnd']
+                    }
+                },
                 "wildcard": {
-                 observableType: "*"
+                 conf['observableType']: "*",
                 }
             }
         }
     else:
-    #for all document output
-    #issue is we may need to protect against _all index, and make sure this query does not provide back the original query statement (i could have messed up on this part)
-    #does return all the documents back
+    # for all document output
+    # issue is we may need to protect against _all index, and make sure this query 
+    # does not provide back the original query statement (i could have messed up on this part)
+    # does return all the documents back
         query = {
             "from": 0,
             "size": numberOfResults,
@@ -67,21 +73,22 @@ def sendReq(index, query):
     return response.json()
 
 
-def prepareResults(raw, observableType):
+def prepareResults(raw, observableType, conciseOutput = False):
     # will report the *limited* amount of hits in the summary, not the true amount
     summary = f"{len(raw['hits']['hits'])} hits recorded."
     status = 'info'
 
     # because each search hit in ES will return a lot of unrelated information,
     # we grab the related info and snip the rest.
-    if raw['hits']['hits']:
+    # this is now optional, probably enabled through config
+    if raw['hits']['hits'] and conciseOutput:
         organized_hits = []
         hits = raw['hits']['hits']
         for hit in hits:
             organized_hits.append(
                 {'_id': hit['_id'], observableType: hit['_source'][observableType]})
-
-    raw['hits']['hits'] = organized_hits
+        raw['hits']['hits'] = organized_hits
+    
     return {'response': raw, 'summary': summary, 'status': status}
 
 
@@ -90,7 +97,7 @@ def analyze(conf):
     
     # query = buildReq(conf['observable_type'], conf['numResults'])
     # REPLACE BELOW WITH ABOVE, SHOULD NOT BE HARDCODED
-    query = buildReq(conf['observable_type'], 5)
+    query = buildReq(conf, 5)
     
     response = sendReq(conf['index'], query)
     return prepareResults(response, conf['observable_type'])
@@ -98,8 +105,7 @@ def analyze(conf):
 
 def main():
     dir = os.path.dirname(os.path.realpath(__file__))
-    parser = argparse.ArgumentParser(
-        description='Search Elastic Search for a given artifact?')
+    parser = argparse.ArgumentParser(description='Search Elastic Search for a given artifact?')
     parser.add_argument('-c', '--config', metavar='CONFIG_FILE', default=dir + '/elasticsearch.yaml',
                         help='optional config file to use instead of the default config file')
     args = parser.parse_args()
