@@ -37,7 +37,7 @@ function poll() {
 
 function respond() {
   file="$QUEUE_DIR/$1.response"
-  tmpfile=${file}.tmp
+  tmpfile="${file}.tmp"
   response=$2
 
   touch "$tmpfile"
