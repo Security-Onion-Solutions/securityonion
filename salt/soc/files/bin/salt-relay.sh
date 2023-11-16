@@ -37,12 +37,14 @@ function poll() {
 
 function respond() {
   file="$QUEUE_DIR/$1.response"
+  tmpfile="${file}.tmp"
   response=$2
 
-  touch "$file"
-  chmod 660 "$file"
-  chown "$QUEUE_OWNER:$QUEUE_GROUP" "$file"
-  echo "$response" > "$file"
+  touch "$tmpfile"
+  chmod 660 "$tmpfile"
+  chown "$QUEUE_OWNER:$QUEUE_GROUP" "$tmpfile"
+  echo "$response" > "$tmpfile"
+  mv $tmpfile $file
 }
 
 function list_minions() {
