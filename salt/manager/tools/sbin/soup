@@ -737,10 +737,21 @@ apply_hotfix() {
     /usr/sbin/so-elastic-fleet-integration-policy-elastic-defend
   elif [[ "$INSTALLEDVERSION" == "2.4.30" ]] ; then
     rm -f /opt/so/conf/elastic-fleet/integrations/endpoints-initial/elastic-defend-endpoints.json
-    so-kibana-restart
+    so-kibana-restart --force
     . /usr/sbin/so-elastic-fleet-common
+
+    echo "Checking to make sure that Kibana API is up & ready..."
+    RETURN_CODE=0
+    wait_for_web_response "http://localhost:5601/api/fleet/settings" "fleet" 300 "curl -K /opt/so/conf/elasticsearch/curl.config"
+    RETURN_CODE=$?
+    if [[ "$RETURN_CODE" != "0" ]]; then
+        echo "Kibana API not accessible, exiting script..."
+        exit 1
+    fi
+
     elastic_fleet_integration_remove endpoints-initial elastic-defend-endpoints
     /usr/sbin/so-elastic-fleet-integration-policy-elastic-defend
+    salt-call state.highstate
   else
    echo "No actions required. ($INSTALLEDVERSION/$HOTFIXVERSION)"
   fi
