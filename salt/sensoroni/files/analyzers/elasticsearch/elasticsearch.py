@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 import argparse
 import helpers
 import requests
@@ -19,21 +20,34 @@ def checkConfigRequirements(conf):
         return True
 
 
-def buildReq(conf, numberOfResults = 10):
-    if(conf['observableType'] != ""):
+def buildReq(conf, input, numberOfResults = 10):
+    mappings = conf['map']
+    cur_time = datetime.now()
+    start_time = cur_time - timedelta(minutes=conf['timeDeltaMinutes'])
+    print(cur_time.strftime('%Y-%m-%dT%H:%M:%S'))
+    print(start_time.strftime('%Y-%m-%dT%H:%M:%S'))
+
+    if(input['artifactType'] in mappings):
     # query that looks for specified observable type in every document/index
         query = {
             "from": 0,
             "size": numberOfResults,
             "query": {
-                "range":{
-                    "@timestamp":{
-                        "gte":conf['timestampStart'],
-                        "lte":conf['timestampEnd']
+                "bool":{
+                    "must":[{
+                            "wildcard": {
+                                mappings[input['artifactType']]: input['value'],
+                            },
+                        }
+                    ],
+                    "filter":{
+                        "range":{
+                            conf['timestampFieldName']:{
+                                "gte": start_time.strftime('%Y-%m-%dT%H:%M:%S'),
+                                "lte": cur_time.strftime('%Y-%m-%dT%H:%M:%S')
+                            }
+                        }
                     }
-                },
-                "wildcard": {
-                 conf['observableType']: "*",
                 }
             }
         }
@@ -69,48 +83,46 @@ def sendReq(index, query):
     
     response = requests.post(url, auth=(
         authUser, authPWD), verify=False, data=query, headers=headers)
-    print(response.json())
     return response.json()
 
 
 def prepareResults(raw, observableType, conciseOutput = False):
     # will report the *limited* amount of hits in the summary, not the true amount
-    summary = f"{len(raw['hits']['hits'])} hits recorded."
+    summary = f"Documents returned: {len(raw['hits']['hits'])}"
     status = 'info'
 
-    # because each search hit in ES will return a lot of unrelated information,
-    # we grab the related info and snip the rest.
-    # this is now optional, probably enabled through config
-    if raw['hits']['hits'] and conciseOutput:
-        organized_hits = []
-        hits = raw['hits']['hits']
-        for hit in hits:
-            organized_hits.append(
-                {'_id': hit['_id'], observableType: hit['_source'][observableType]})
-        raw['hits']['hits'] = organized_hits
+    # if raw['hits']['hits'] and conciseOutput:
+    #     organized_hits = []
+    #     hits = raw['hits']['hits']
+    #     for hit in hits:
+    #         organized_hits.append(
+    #             {'_id': hit['_id'], observableType: hit['_source'][observableType]})
+    #     raw['hits']['hits'] = organized_hits
     
     return {'response': raw, 'summary': summary, 'status': status}
 
 
-def analyze(conf):
+def analyze(conf, input):
     checkConfigRequirements(conf)
-    
-    # query = buildReq(conf['observable_type'], conf['numResults'])
+    data = json.loads(input)
+    # query = buildReq(conf['map'], conf['numResults'])
     # REPLACE BELOW WITH ABOVE, SHOULD NOT BE HARDCODED
-    query = buildReq(conf, 5)
+    query = buildReq(conf, data, 5)
     
     response = sendReq(conf['index'], query)
-    return prepareResults(response, conf['observable_type'])
+    return prepareResults(response, conf['map'])
 
 
 def main():
     dir = os.path.dirname(os.path.realpath(__file__))
     parser = argparse.ArgumentParser(description='Search Elastic Search for a given artifact?')
+    parser.add_argument('artifact', help='required artifact')
     parser.add_argument('-c', '--config', metavar='CONFIG_FILE', default=dir + '/elasticsearch.yaml',
                         help='optional config file to use instead of the default config file')
     args = parser.parse_args()
-    results = analyze(helpers.loadConfig(args.config))
-    print(json.dumps(results))
+    if args.artifact:
+        results = analyze(helpers.loadConfig(args.config), args.artifact)
+        print(json.dumps(results))
 
 
 if __name__ == '__main__':
