@@ -6,6 +6,11 @@ import json
 import sys
 import os
 
+from pprint import pprint
+
+# default usage is:
+# python3 elasticsearch.py '{"artifactType":"hash", "value":"*"}'
+# ^ the above queries documents with field 'hash' with any value
 
 def checkConfigRequirements(conf):
     # if the user hasn't given a valid elasticsearch domain, exit gracefully
@@ -24,47 +29,35 @@ def buildReq(conf, input, numberOfResults = 10):
     mappings = conf['map']
     cur_time = datetime.now()
     start_time = cur_time - timedelta(minutes=conf['timeDeltaMinutes'])
-    print(cur_time.strftime('%Y-%m-%dT%H:%M:%S'))
-    print(start_time.strftime('%Y-%m-%dT%H:%M:%S'))
 
-    if(input['artifactType'] in mappings):
-    # query that looks for specified observable type in every document/index
-        query = {
-            "from": 0,
-            "size": numberOfResults,
-            "query": {
-                "bool":{
-                    "must":[{
-                            "wildcard": {
-                                mappings[input['artifactType']]: input['value'],
-                            },
-                        }
-                    ],
-                    "filter":{
-                        "range":{
-                            conf['timestampFieldName']:{
-                                "gte": start_time.strftime('%Y-%m-%dT%H:%M:%S'),
-                                "lte": cur_time.strftime('%Y-%m-%dT%H:%M:%S')
-                            }
+    if input['artifactType'] in mappings:
+        type = mappings[input['artifactType']]
+    else:
+        type = input['artifactType']
+        
+    query = {
+        "from": 0,
+        "size": numberOfResults,
+        "query": {
+            "bool":{
+                "must":[{
+                        "wildcard": {
+                            type : input['value'],
+                        },
+                    }
+                ],
+                "filter":{
+                    "range":{
+                        conf['timestampFieldName']:{
+                            "gte": start_time.strftime('%Y-%m-%dT%H:%M:%S'),
+                            "lte": cur_time.strftime('%Y-%m-%dT%H:%M:%S')
                         }
                     }
                 }
             }
         }
-    else:
-    # for all document output
-    # issue is we may need to protect against _all index, and make sure this query 
-    # does not provide back the original query statement (i could have messed up on this part)
-    # does return all the documents back
-        query = {
-            "from": 0,
-            "size": numberOfResults,
-            "query": {
-                "match_all": {
-                
-                }
-            }
-        }
+    }
+
     return json.dumps(query)
 
 
@@ -122,7 +115,8 @@ def main():
     args = parser.parse_args()
     if args.artifact:
         results = analyze(helpers.loadConfig(args.config), args.artifact)
-        print(json.dumps(results))
+        #print(json.dumps(results))
+        pprint(results)
 
 
 if __name__ == '__main__':
