@@ -450,6 +450,11 @@ post_to_2.4.20() {
 post_to_2.4.30() {
   echo "Regenerating Elastic Agent Installers"
   /sbin/so-elastic-agent-gen-installers
+  salt-call state.apply ca queue=True
+  stop_salt_minion
+  mv /etc/pki/managerssl.crt /etc/pki/managerssl.crt.old
+  mv /etc/pki/managerssl.key /etc/pki/managerssl.key.old
+  systemctl_func "start" "salt-minion"
   POSTVERSION=2.4.30
 }
 
@@ -529,6 +534,16 @@ up_to_2.4.20() {
 }
 
 up_to_2.4.30() {
+
+  # Remove older defend integration json & installed integration
+  rm -f /opt/so/conf/elastic-fleet/integrations/endpoints-initial/elastic-defend-endpoints.json
+
+  . $UPDATE_DIR/salt/elasticfleet/tools/sbin/so-elastic-fleet-common
+  elastic_fleet_integration_remove endpoints-initial elastic-defend-endpoints
+
+  rm -f /opt/so/state/eaintegrations.txt
+
+  # Elastic Update for this release, so download Elastic Agent files
   determine_elastic_agent_upgrade
   rm -f /opt/so/state/estemplates*.txt
 
@@ -735,8 +750,21 @@ apply_hotfix() {
     . /usr/sbin/so-elastic-fleet-common
     elastic_fleet_integration_remove endpoints-initial elastic-defend-endpoints
     /usr/sbin/so-elastic-fleet-integration-policy-elastic-defend
-#  elif [[ "$INSTALLEDVERSION" == "2.3.110" ]] ; then
-#    2_3_10_hotfix_1
+  elif [[ "$INSTALLEDVERSION" == "2.4.30" ]] ; then
+    rm -f /opt/so/conf/elastic-fleet/integrations/endpoints-initial/elastic-defend-endpoints.json
+    so-kibana-restart --force
+    so-kibana-api-check
+    . /usr/sbin/so-elastic-fleet-common
+
+    elastic_fleet_integration_remove endpoints-initial elastic-defend-endpoints
+    rm -f /opt/so/state/eaintegrations.txt
+    salt-call state.apply ca queue=True
+    stop_salt_minion
+    mv /etc/pki/managerssl.crt /etc/pki/managerssl.crt.old
+    mv /etc/pki/managerssl.key /etc/pki/managerssl.key.old
+    systemctl_func "start" "salt-minion"
+    echo "Applying Salt Highstate"
+    salt-call state.highstate queue=True  
   else
    echo "No actions required. ($INSTALLEDVERSION/$HOTFIXVERSION)"
   fi
