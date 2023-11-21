@@ -98,9 +98,9 @@ def prepareResults(raw, observableType, conciseOutput = False):
 def analyze(conf, input):
     checkConfigRequirements(conf)
     data = json.loads(input)
-    # query = buildReq(conf['map'], conf['numResults'])
+    query = buildReq(conf['map'], conf['numResults'])
     # REPLACE BELOW WITH ABOVE, SHOULD NOT BE HARDCODED
-    query = buildReq(conf, data, 5)
+    # query = buildReq(conf, data, 5)
     
     response = sendReq(conf['index'], query)
     return prepareResults(response, conf['map'])
