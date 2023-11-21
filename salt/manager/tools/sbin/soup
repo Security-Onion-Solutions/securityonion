@@ -755,8 +755,6 @@ apply_hotfix() {
   elif [[ "$INSTALLEDVERSION" == "2.4.30" ]] ; then
     if [[ -f /etc/pki/managerssl.key.old ]]; then
       echo "Fixing 20231117 not enabling highstate"
-      enable_highstate
-      salt-call state.highstate queue=True
     else
       rm -f /opt/so/conf/elastic-fleet/integrations/endpoints-initial/elastic-defend-endpoints.json
       so-kibana-restart --force
@@ -770,9 +768,6 @@ apply_hotfix() {
       mv /etc/pki/managerssl.crt /etc/pki/managerssl.crt.old
       mv /etc/pki/managerssl.key /etc/pki/managerssl.key.old
       systemctl_func "start" "salt-minion"
-      enable_highstate
-      echo "Applying Salt Highstate"
-      salt-call state.highstate queue=True
     fi  
   else
    echo "No actions required. ($INSTALLEDVERSION/$HOTFIXVERSION)"
