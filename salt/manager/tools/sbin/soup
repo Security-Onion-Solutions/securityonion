@@ -455,6 +455,8 @@ post_to_2.4.30() {
   mv /etc/pki/managerssl.crt /etc/pki/managerssl.crt.old
   mv /etc/pki/managerssl.key /etc/pki/managerssl.key.old
   systemctl_func "start" "salt-minion"
+  salt-call state.apply nginx queue=True
+  enable_highstate
   POSTVERSION=2.4.30
 }
 
@@ -751,20 +753,22 @@ apply_hotfix() {
     elastic_fleet_integration_remove endpoints-initial elastic-defend-endpoints
     /usr/sbin/so-elastic-fleet-integration-policy-elastic-defend
   elif [[ "$INSTALLEDVERSION" == "2.4.30" ]] ; then
-    rm -f /opt/so/conf/elastic-fleet/integrations/endpoints-initial/elastic-defend-endpoints.json
-    so-kibana-restart --force
-    so-kibana-api-check
-    . /usr/sbin/so-elastic-fleet-common
+    if [[ -f /etc/pki/managerssl.key.old ]]; then
+      echo "Skipping Certificate Generation"
+    else
+      rm -f /opt/so/conf/elastic-fleet/integrations/endpoints-initial/elastic-defend-endpoints.json
+      so-kibana-restart --force
+      so-kibana-api-check
+      . /usr/sbin/so-elastic-fleet-common
 
-    elastic_fleet_integration_remove endpoints-initial elastic-defend-endpoints
-    rm -f /opt/so/state/eaintegrations.txt
-    salt-call state.apply ca queue=True
-    stop_salt_minion
-    mv /etc/pki/managerssl.crt /etc/pki/managerssl.crt.old
-    mv /etc/pki/managerssl.key /etc/pki/managerssl.key.old
-    systemctl_func "start" "salt-minion"
-    echo "Applying Salt Highstate"
-    salt-call state.highstate queue=True  
+      elastic_fleet_integration_remove endpoints-initial elastic-defend-endpoints
+      rm -f /opt/so/state/eaintegrations.txt
+      salt-call state.apply ca queue=True
+      stop_salt_minion
+      mv /etc/pki/managerssl.crt /etc/pki/managerssl.crt.old
+      mv /etc/pki/managerssl.key /etc/pki/managerssl.key.old
+      systemctl_func "start" "salt-minion"
+    fi  
   else
    echo "No actions required. ($INSTALLEDVERSION/$HOTFIXVERSION)"
   fi
