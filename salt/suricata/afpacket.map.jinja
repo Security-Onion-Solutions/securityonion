@@ -1,6 +1,6 @@
 {% load_yaml as afpacket %}
 af-packet:
-  - interface: {{ salt['pillar.get']('sensor:interface', 'bond0') }}
+  - interface: {{ None if grains.role == 'so-import' else salt['pillar.get']('sensor:interface', 'bond0') }}
     cluster-id: 59
     cluster-type: cluster_flow
     defrag: yes
@@ -8,8 +8,4 @@ af-packet:
     threads: {{ salt['pillar.get']('sensor:suriprocs', salt['pillar.get']('sensor:suripins') | length) }}
     tpacket-v3: yes
     ring-size: {{ salt['pillar.get']('sensor:suriringsize', '5000') }}
-  - interface: default
-    #threads: auto
-    #use-mmap: no
-    #tpacket-v3: yes
 {% endload %}
