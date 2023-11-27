@@ -31,6 +31,10 @@ def buildReq(conf, input):
     cur_time = datetime.now()
     start_time = cur_time - timedelta(minutes=conf['timeDeltaMinutes'])
 
+    print(input)
+    #print(input['artifactType'])
+    #print(mappings)
+    
     if input['artifactType'] in mappings:
         type = mappings[input['artifactType']]
     else:
@@ -99,7 +103,7 @@ def prepareResults(raw, observableType, conciseOutput = False):
 def analyze(conf, input):
     checkConfigRequirements(conf)
     data = json.loads(input)
-    query = buildReq(conf, conf['numResults'])
+    query = buildReq(conf, data)
     # REPLACE BELOW WITH ABOVE, SHOULD NOT BE HARDCODED
     # query = buildReq(conf, data, 5)
     
