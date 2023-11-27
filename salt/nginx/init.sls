@@ -118,6 +118,10 @@ so-nginx:
     - watch:
       - file: nginxconf
       - file: nginxconfdir
+  {% if grains.role in ['so-manager', 'so-managersearch', 'so-eval', 'so-standalone', 'so-import', 'so-fleet'] %}
+      - x509: managerssl_key
+      - x509: managerssl_crt
+  {% endif %}
     - require:
       - file: nginxconf
   {% if grains.role in ['so-manager', 'so-managersearch', 'so-eval', 'so-standalone', 'so-import', 'so-fleet'] %}
