@@ -7,7 +7,6 @@ import sys
 import os
 
 
-
 # default usage is:
 # python3 elasticsearch.py '{"artifactType":"hash", "value":"*"}'
 # ^ the above queries documents with field 'hash' with any value
@@ -26,15 +25,15 @@ def buildReq(conf, input):
         numberOfResults = conf['numResults']
     else:
         numberOfResults = 10
+    
+    if conf['map'] != None:  
+        mappings = conf['map']
+    else:
+        mappings = dict()
         
-    mappings = conf['map']
     cur_time = datetime.now()
     start_time = cur_time - timedelta(minutes=conf['timeDeltaMinutes'])
 
-    print(input)
-    #print(input['artifactType'])
-    #print(mappings)
-    
     if input['artifactType'] in mappings:
         type = mappings[input['artifactType']]
     else:
@@ -66,36 +65,28 @@ def buildReq(conf, input):
     return json.dumps(query)
 
 
-def sendReq(index, query):
+def sendReq(conf, query):
     headers = {
         'Content-Type': 'application/json',
     }
     
-    # url = meta['domain'] + index + '_search'
-    # authUser = meta['authUser']
-    # authPWD = meta['authPWD']
-    # REPLACE BELOW WITH ABOVE, SHOULD NOT BE HARDCODED
-    url = "https://192.168.56.106:9200/" + index + "/_search"
-    authUser = "elastic"
-    authPWD = "adminadmin"
+    url = conf['base_url'] + conf['index'] + '/_search'
+    authUser = conf['authUser']
+    authPWD = conf['authPWD']
+    # code below is hard-coded for testing outside of SO
+    # url = "https://192.168.56.106:9200/" + conf['index'] + "/_search"
+    # authUser = "elastic"
+    # authPWD = "adminadmin"
     
     response = requests.post(url, auth=(
         authUser, authPWD), verify=False, data=query, headers=headers)
     return response.json()
 
 
-def prepareResults(raw, observableType, conciseOutput = False):
+def prepareResults(raw, conciseOutput = False):
     # will report the *limited* amount of hits in the summary, not the true amount
     summary = f"Documents returned: {len(raw['hits']['hits'])}"
     status = 'info'
-
-    # if raw['hits']['hits'] and conciseOutput:
-    #     organized_hits = []
-    #     hits = raw['hits']['hits']
-    #     for hit in hits:
-    #         organized_hits.append(
-    #             {'_id': hit['_id'], observableType: hit['_source'][observableType]})
-    #     raw['hits']['hits'] = organized_hits
     
     return {'response': raw, 'summary': summary, 'status': status}
 
@@ -104,25 +95,31 @@ def analyze(conf, input):
     checkConfigRequirements(conf)
     data = json.loads(input)
     query = buildReq(conf, data)
-    # REPLACE BELOW WITH ABOVE, SHOULD NOT BE HARDCODED
-    # query = buildReq(conf, data, 5)
-    
-    response = sendReq(conf['index'], query)
+    response = sendReq(conf, query)
     return prepareResults(response, conf['map'])
 
 
-def main():
-    dir = os.path.dirname(os.path.realpath(__file__))
-    parser = argparse.ArgumentParser(description='Search Elastic Search for a given artifact?')
-    parser.add_argument('artifact', help='required artifact')
-    parser.add_argument('-c', '--config', metavar='CONFIG_FILE', default=dir + '/elasticsearch.yaml',
-                        help='optional config file to use instead of the default config file')
-    args = parser.parse_args()
-    if args.artifact:
-        results = analyze(helpers.loadConfig(args.config), args.artifact)
-        print(json.dumps(results))
-        
+# def main():
+#     dir = os.path.dirname(os.path.realpath(__file__))
+#     parser = argparse.ArgumentParser(description='Search Elastic Search for a given artifact?')
+#     parser.add_argument('artifact', help='required artifact')
+#     parser.add_argument('-c', '--config', metavar='CONFIG_FILE', default=dir + '/elasticsearch.yaml',
+#                         help='optional config file to use instead of the default config file')
+#     args = parser.parse_args()
+#     if args.artifact:
+#         results = analyze(helpers.loadConfig(args.config), args.artifact)
+#         print(json.dumps(results))
 
+# a user will never run this code directly, nor will soc redirect to a different config
+
+
+def main():
+    if len(sys.argv) == 2:
+        dir = os.path.dirname(os.path.realpath(__file__))
+        results = analyze(helpers.loadConfig(dir + '/elasticsearch.yaml'), sys.argv[1])
+        print(json.dumps(results))
+    else:
+        print("ERROR: Input is not in proper JSON format")
 
 if __name__ == '__main__':
     main()
