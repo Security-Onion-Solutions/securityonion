@@ -19,18 +19,21 @@ def checkConfigRequirements(conf):
 
 
 def buildReq(conf, input):
-    if conf['numResults'] in conf:
-        numberOfResults = conf['numResults']
-    else:
-        numberOfResults = 10
+    # if conf['numResults'] in conf:
+    #     numberOfResults = conf['numResults']
+    # else:
+    #     numberOfResults = 10
     
-    if conf['map'] != None:  
-        mappings = conf['map']
-    else:
-        mappings = dict()
+    # if conf['map'] != None:  
+    #     mappings = conf['map']
+    # else:
+    #     mappings = dict()
+    
+    mappings = {"hash":"hash"}
         
     cur_time = datetime.now()
-    start_time = cur_time - timedelta(minutes=conf['timeDeltaMinutes'])
+    #start_time = cur_time - timedelta(minutes=conf['timeDeltaMinutes'])
+    start_time = cur_time - timedelta(minutes=99999)
 
     if input['artifactType'] in mappings:
         type = mappings[input['artifactType']]
@@ -39,7 +42,8 @@ def buildReq(conf, input):
         
     query = {
         "from": 0,
-        "size": numberOfResults,
+        #"size": numberOfResults,
+        "size": 10,
         "query": {
             "bool":{
                 "must":[{
@@ -50,7 +54,8 @@ def buildReq(conf, input):
                 ],
                 "filter":{
                     "range":{
-                        conf['timestampFieldName']:{
+                        #conf['timestampFieldName']:{
+                        "timestamp":{
                             "gte": start_time.strftime('%Y-%m-%dT%H:%M:%S'),
                             "lte": cur_time.strftime('%Y-%m-%dT%H:%M:%S')
                         }
@@ -68,13 +73,13 @@ def sendReq(conf, query):
         'Content-Type': 'application/json',
     }
     
-    url = conf['base_url'] + conf['index'] + '/_search'
-    authUser = conf['authUser']
-    authPWD = conf['authPWD']
+    # url = conf['base_url'] + conf['index'] + '/_search'
+    # authUser = conf['authUser']
+    # authPWD = conf['authPWD']
     # code below is hard-coded for testing outside of SO
-    # url = "https://192.168.56.106:9200/" + conf['index'] + "/_search"
-    # authUser = "elastic"
-    # authPWD = "adminadmin"
+    url = "https://192.168.56.106:9200/_all/_search"
+    authUser = "elastic"
+    authPWD = "adminadmin"
     
     response = requests.post(url, auth=(
         authUser, authPWD), verify=False, data=query, headers=headers)
