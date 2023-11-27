@@ -14,18 +14,19 @@ import os
 
 def checkConfigRequirements(conf):
     # if the user hasn't given a valid elasticsearch domain, exit gracefully
-    if "domain" not in conf or len(conf['domain']) == 0:
-        sys.exit(126)
-    elif "authUser" not in conf or len(conf['authUser']) == 0:
-        sys.exit(126)
-    elif "authPWD" not in conf or len(conf['authPWD']) == 0:
+    if "base_url" not in conf or len(conf['base_url']) == 0:
         sys.exit(126)
     #add the rest
     else:
         return True
 
 
-def buildReq(conf, input, numberOfResults = 10):
+def buildReq(conf, input):
+    if conf['numResults'] in conf:
+        numberOfResults = conf['numResults']
+    else:
+        numberOfResults = 10
+        
     mappings = conf['map']
     cur_time = datetime.now()
     start_time = cur_time - timedelta(minutes=conf['timeDeltaMinutes'])
@@ -70,7 +71,7 @@ def sendReq(index, query):
     # authUser = meta['authUser']
     # authPWD = meta['authPWD']
     # REPLACE BELOW WITH ABOVE, SHOULD NOT BE HARDCODED
-    url = "https://192.168.56.106:9200/" + index + '_search'
+    url = "https://192.168.56.106:9200/" + index + "/_search"
     authUser = "elastic"
     authPWD = "adminadmin"
     
@@ -98,7 +99,7 @@ def prepareResults(raw, observableType, conciseOutput = False):
 def analyze(conf, input):
     checkConfigRequirements(conf)
     data = json.loads(input)
-    query = buildReq(conf['map'], conf['numResults'])
+    query = buildReq(conf, conf['numResults'])
     # REPLACE BELOW WITH ABOVE, SHOULD NOT BE HARDCODED
     # query = buildReq(conf, data, 5)
     
