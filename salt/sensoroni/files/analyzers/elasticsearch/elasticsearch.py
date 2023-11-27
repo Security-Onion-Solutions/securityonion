@@ -6,16 +6,14 @@ import json
 import sys
 import os
 
-
 # default usage is:
 # python3 elasticsearch.py '{"artifactType":"hash", "value":"*"}'
 # ^ the above queries documents with field 'hash' with any value
 
 def checkConfigRequirements(conf):
     # if the user hasn't given a valid elasticsearch domain, exit gracefully
-    if "base_url" not in conf or len(conf['base_url']) == 0:
+    if len(conf['base_url']) == 0:
         sys.exit(126)
-    #add the rest
     else:
         return True
 
@@ -92,7 +90,8 @@ def prepareResults(raw, conciseOutput = False):
 
 
 def analyze(conf, input):
-    checkConfigRequirements(conf)
+    #checkConfigRequirements(conf)
+    # the above may possibly cause the analyzer to stop prematurely
     data = json.loads(input)
     query = buildReq(conf, data)
     response = sendReq(conf, query)
