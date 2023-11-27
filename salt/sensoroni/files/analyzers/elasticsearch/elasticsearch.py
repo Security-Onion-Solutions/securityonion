@@ -99,27 +99,17 @@ def analyze(conf, input):
     return prepareResults(response, conf['map'])
 
 
-# def main():
-#     dir = os.path.dirname(os.path.realpath(__file__))
-#     parser = argparse.ArgumentParser(description='Search Elastic Search for a given artifact?')
-#     parser.add_argument('artifact', help='required artifact')
-#     parser.add_argument('-c', '--config', metavar='CONFIG_FILE', default=dir + '/elasticsearch.yaml',
-#                         help='optional config file to use instead of the default config file')
-#     args = parser.parse_args()
-#     if args.artifact:
-#         results = analyze(helpers.loadConfig(args.config), args.artifact)
-#         print(json.dumps(results))
-
-# a user will never run this code directly, nor will soc redirect to a different config
-
-
 def main():
-    if len(sys.argv) == 2:
-        dir = os.path.dirname(os.path.realpath(__file__))
-        results = analyze(helpers.loadConfig(dir + '/elasticsearch.yaml'), sys.argv[1])
+    dir = os.path.dirname(os.path.realpath(__file__))
+    parser = argparse.ArgumentParser(description='Search Elastic Search for a given artifact?')
+    parser.add_argument('artifact', help='required artifact')
+    parser.add_argument('-c', '--config', metavar='CONFIG_FILE', default=dir + '/elasticsearch.yaml',
+                        help='optional config file to use instead of the default config file')
+    args = parser.parse_args()
+    if args.artifact:
+        results = analyze(helpers.loadConfig(args.config), args.artifact)
         print(json.dumps(results))
-    else:
-        print("ERROR: Input is not in proper JSON format")
+
 
 if __name__ == '__main__':
     main()
