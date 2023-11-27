@@ -99,7 +99,7 @@ def prepareResults(raw, observableType, conciseOutput = False):
 def analyze(conf, input):
     checkConfigRequirements(conf)
     data = json.loads(input)
-    query = buildReq(conf, conf['numResults'])
+    query = buildReq(conf, data)
     # REPLACE BELOW WITH ABOVE, SHOULD NOT BE HARDCODED
     # query = buildReq(conf, data, 5)
     
