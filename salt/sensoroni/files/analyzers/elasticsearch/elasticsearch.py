@@ -76,7 +76,7 @@ def sendReq(conf, query):
     # authUser = "elastic"
     # authPWD = "adminadmin"
     
-    response = requests.post(url, auth=(
+    response = requests.post(url=url, auth=(
         authUser, authPWD), verify=False, data=query, headers=headers)
     return response.json()
 
