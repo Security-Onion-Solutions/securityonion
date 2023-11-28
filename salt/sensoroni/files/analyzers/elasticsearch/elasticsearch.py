@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-from urllib.parse import urljoin
 import argparse
 import helpers
 import requests
@@ -69,7 +68,7 @@ def sendReq(conf, query):
         'Content-Type': 'application/json',
     }
     
-    url = urljoin(conf['base_url'], conf['index'], '/_search')
+    url = conf['base_url'] + conf['index'] + '/_search'
     
     authUser = conf['authUser']
     authPWD = conf['authPWD']
