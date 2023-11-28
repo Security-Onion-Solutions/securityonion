@@ -68,6 +68,7 @@ def sendReq(conf, query):
         'Content-Type': 'application/json',
     }
     
+    url = 'https://' + str(conf['base_url']) + str(conf['index']) + '/_search'
     url = conf['base_url'] + conf['index'] + '/_search'
     
     authUser = conf['authUser']
@@ -76,8 +77,8 @@ def sendReq(conf, query):
     # url = "https://192.168.56.106:9200/" + conf['index'] + "/_search"
     # authUser = "elastic"
     # authPWD = "adminadmin"
-    
-    response = requests.post(url, auth=(
+    print(url)
+    response = requests.post(str(url), auth=(
         authUser, authPWD), verify=False, data=query, headers=headers)
     return response.json()
 
