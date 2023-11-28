@@ -70,6 +70,7 @@ def sendReq(conf, query):
     }
     
     url = urljoin(conf['base_url'] + conf['index'] + '/_search')
+    url = urljoin(conf['domain'] + conf['index'] + '/_search')
     authUser = conf['authUser']
     authPWD = conf['authPWD']
     # code below is hard-coded for testing outside of SO
