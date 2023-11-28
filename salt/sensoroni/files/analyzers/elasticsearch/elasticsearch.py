@@ -76,7 +76,7 @@ def sendReq(conf, query):
     # url = "https://192.168.56.106:9200/" + conf['index'] + "/_search"
     # authUser = "elastic"
     # authPWD = "adminadmin"
-    
+    print(url)
     response = requests.post(str(url), auth=(
         authUser, authPWD), verify=False, data=query, headers=headers)
     return response.json()
