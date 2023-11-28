@@ -2,6 +2,20 @@
 
 Security Onion 2.3 is here!
 
+## End Of Life Warning
+
+Security Onion 2.3 reaches End Of Life (EOL) on April 6, 2024:
+
+https://blog.securityonion.net/2023/10/6-month-eol-notice-for-security-onion-23.html
+
+For new installations, please see the 2.4 branch of this repo:
+
+https://github.com/Security-Onion-Solutions/securityonion/tree/2.4/main
+
+If you have an existing 2.3 installation and would like to migrate to 2.4, please see:
+
+https://docs.securityonion.net/en/2.4/appendix.html
+
 ## Screenshots
 
 Alerts

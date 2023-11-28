@@ -42,12 +42,13 @@ zeek:
       - frameworks/files/hash-all-files
       - frameworks/files/detect-MHR
       - policy/frameworks/notice/extend-email/hostnames
+      - policy/frameworks/notice/community-id
+      - policy/protocols/conn/community-id-logging
       - ja3
       - hassh
       - intel
       - cve-2020-0601
       - securityonion/bpfconf
-      - securityonion/communityid
       - securityonion/file-extraction
       - oui-logging
       - icsnpp-modbus
