@@ -69,7 +69,7 @@ def sendReq(conf, query):
         'Content-Type': 'application/json',
     }
     
-    url = urljoin(conf['base_url'] + conf['index'] + '/_search')
+    url = urljoin(conf['base_url'], conf['index'], '/_search')
     
     authUser = conf['authUser']
     authPWD = conf['authPWD']
