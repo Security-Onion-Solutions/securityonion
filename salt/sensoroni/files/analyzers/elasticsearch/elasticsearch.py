@@ -68,16 +68,16 @@ def sendReq(conf, query):
         'Content-Type': 'application/json',
     }
     
-    url1 = 'https://' + str(conf['base_url']) + str(conf['index']) + '/_search'
-    url2 = conf['base_url'] + conf['index'] + '/_search'
+    url = 'https://' + str(conf['base_url']) + str(conf['index']) + '/_search'
+    # url2 = conf['base_url'] + conf['index'] + '/_search'
     authUser = conf['authUser']
     authPWD = conf['authPWD']
-    #code below is hard-coded for testing outside of SO
-    url = "https://192.168.56.106:9200/" + conf['index'] + "/_search"
-    authUser = "elastic"
-    authPWD = "adminadmin"
-    print(url1)
-    print(url2)
+    # #code below is hard-coded for testing outside of SO
+    # url = "https://192.168.56.106:9200/" + conf['index'] + "/_search"
+    # authUser = "elastic"
+    # authPWD = "adminadmin"
+    # print(url1)
+    # print(url2)
     response = requests.post(str(url), auth=(
         authUser, authPWD), verify=False, data=query, headers=headers)
     return response.json()
