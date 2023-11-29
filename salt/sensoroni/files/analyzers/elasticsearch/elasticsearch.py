@@ -1,35 +1,47 @@
 from datetime import datetime, timedelta
-import urllib3
 import argparse
-import helpers
 import requests
+import helpers
+import urllib3
 import json
 import sys
 import os
 
+
 # default usage is:
 # python3 elasticsearch.py '{"artifactType":"hash", "value":"*"}'
-# ^ the above queries documents with field 'hash' with any value
+
+# To use outside of a Security Onion box, pass in '-c test.yaml' at the end
+# of the above command to give this analyzer some test values. You may edit the
+# values in the test.yaml file freely.
+
 
 def checkConfigRequirements(conf):
-    # if the user hasn't given a valid elasticsearch domain, exit gracefully
-    if len(conf['base_url']) == 0:
+    # if the user hasn't given valid configurables, quit.
+    if not conf['numResults']:
+        sys.exit(126)
+    if not conf['timeDeltaMinutes']:
+        sys.exit(126)
+    if (not conf['authUser'] or not conf['authPWD']) and not conf['api_key']:
+        sys.exit(126)
+    if not conf['index']:
+        sys.exit(126)
+    if not conf['base_url']:
+        sys.exit(126)
+    if not conf['timestampFieldName']:
         sys.exit(126)
     else:
         return True
 
 
 def buildReq(conf, input):
-    if conf['numResults'] in conf:
-        numberOfResults = conf['numResults']
-    else:
-        numberOfResults = 10
-    
-    if conf['map'] != None:  
+    numberOfResults = conf['numResults']
+
+    if conf['map'] != None:
         mappings = conf['map']
     else:
         mappings = dict()
-        
+
     cur_time = datetime.now()
     start_time = cur_time - timedelta(minutes=int(conf['timeDeltaMinutes']))
 
@@ -37,21 +49,21 @@ def buildReq(conf, input):
         type = mappings[input['artifactType']]
     else:
         type = input['artifactType']
-        
+
     query = {
         "from": 0,
         "size": numberOfResults,
         "query": {
-            "bool":{
-                "must":[{
-                        "wildcard": {
-                            type : input['value'],
-                        },
-                    }
+            "bool": {
+                "must": [{
+                    "wildcard": {
+                        type: input['value'],
+                    },
+                }
                 ],
-                "filter":{
-                    "range":{
-                        conf['timestampFieldName']:{
+                "filter": {
+                    "range": {
+                        conf['timestampFieldName']: {
                             "gte": start_time.strftime('%Y-%m-%dT%H:%M:%S'),
                             "lte": cur_time.strftime('%Y-%m-%dT%H:%M:%S')
                         }
@@ -60,7 +72,7 @@ def buildReq(conf, input):
             }
         }
     }
-
+    
     return json.dumps(query)
 
 
@@ -68,40 +80,51 @@ def sendReq(conf, query):
     headers = {
         'Content-Type': 'application/json',
     }
-    
+
     url = conf['base_url'] + conf['index'] + '/_search'
-    authUser = conf['authUser']
-    authPWD = conf['authPWD']
-    # #code below is hard-coded for testing outside of SO
-    # url = "https://192.168.56.106:9200/" + conf['index'] + "/_search"
-    # authUser = "elastic"
-    # authPWD = "adminadmin"
+    uname = conf['authUser']
+    pwd = conf['authPWD']
+    apikey = conf['api_key']
+
+    # Change before release!
     urllib3.disable_warnings()
+    # With verify=False in the post request, we are disabling TLS authentification.
+    # disable_warnings() simply suppresses these errors so Security Onion can
+    # read the output properly.
+
+    # The final version will have the verify parameter link to a .pem certificate
+    # that will be configurable by the end user
+    # if len(pwd) != 0 and len(uname) != 0:
+    #     response = requests.post(str(url), auth=(
+    #         uname, pwd), verify=False, data=query, headers=headers)
+    # elif len(apikey) != 0:
+    #     response = requests.post(str(url), auth=(
+    #         apikey), verify=False, data=query, headers=headers)
+    
     response = requests.post(str(url), auth=(
-        authUser, authPWD), verify=False, data=query, headers=headers)
+        uname, pwd), verify=False, data=query, headers=headers)
     return response.json()
 
 
-def prepareResults(raw, conciseOutput = False):
+def prepareResults(raw):
     # will report the *limited* amount of hits in the summary, not the true amount
     summary = f"Documents returned: {len(raw['hits']['hits'])}"
     status = 'info'
-    
     return {'response': raw, 'summary': summary, 'status': status}
 
 
 def analyze(conf, input):
-    #checkConfigRequirements(conf)
-    # the above may possibly cause the analyzer to stop prematurely
+    checkConfigRequirements(conf)
     data = json.loads(input)
     query = buildReq(conf, data)
     response = sendReq(conf, query)
-    return prepareResults(response, conf['map'])
+    return prepareResults(response)
 
 
 def main():
     dir = os.path.dirname(os.path.realpath(__file__))
-    parser = argparse.ArgumentParser(description='Search Elastic Search for a given artifact?')
+    parser = argparse.ArgumentParser(
+        description='Search Elastic Search for a given artifact?')
     parser.add_argument('artifact', help='required artifact')
     parser.add_argument('-c', '--config', metavar='CONFIG_FILE', default=dir + '/elasticsearch.yaml',
                         help='optional config file to use instead of the default config file')

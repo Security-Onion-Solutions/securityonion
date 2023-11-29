@@ -5,7 +5,6 @@ import os
 import sys
 
 
-
 def buildReq(observ_type, observ_value):
     if observ_type == 'hash':
         qterms = {'query': 'search_hash', 'hash': observ_value}
@@ -54,18 +53,17 @@ def prepareResults(raw):
         status = 'caution'
         summary = 'internal_failure'
 
-    results = {'response': raw, 'summary': summary, 'status': status}    
+    results = {'response': raw, 'summary': summary, 'status': status}
     return results
 
 
 def analyze(input):
     data = json.loads(input)
     meta = helpers.loadMetadata(__file__)
-    helpers.checkSupportedType(meta, data["artifactType"])    
+    helpers.checkSupportedType(meta, data["artifactType"])
     query = buildReq(data['artifactType'], data['value'])
-    response = sendReq(meta, query)   
+    response = sendReq(meta, query)
     return prepareResults(response)
-    
 
 
 def main():
@@ -78,5 +76,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
