@@ -31,6 +31,8 @@ def buildReq(conf, input):
         
     cur_time = datetime.now()
     start_time = cur_time - timedelta(minutes=int(float(conf['timeDeltaMinutes'])))
+    print(conf['timeDeltaMinutes'])
+
 
     if input['artifactType'] in mappings:
         type = mappings[input['artifactType']]
