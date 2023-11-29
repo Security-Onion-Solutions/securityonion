@@ -6,6 +6,8 @@ import elasticsearch
 import helpers
 import json
 
+#python -m unittest .\elasticsearch_test.py
+
 class TestElasticSearchMethods(unittest.TestCase):   
 
     '''Test that checks for empty and none values in configurables'''
@@ -16,11 +18,11 @@ class TestElasticSearchMethods(unittest.TestCase):
         self.assertEqual(cm.exception.code, 126)
 
 
-    '''Test that checks buildReq method, by comparing a mock buildReq result with an expectedQuery'''
+    '''Test that checks buildReq method, by comparing a mock buildReq result with an expectedQuery, used a mock object to simulate an expectedQuery
+        since Elasticsearch buildReq uses values in the config'''
     def test_buildReq(self):
         numberOfResults = 1
         observableType = "hash"
-
         expectedQuery = {
         "from": 0,
         "size": numberOfResults,
@@ -34,44 +36,45 @@ class TestElasticSearchMethods(unittest.TestCase):
                 ],
                 "filter": {
                     "range": {
-                        conf['timestampFieldName']: {
-                            "gte": start_time.strftime('%Y-%m-%dT%H:%M:%S'),
-                            "lte": cur_time.strftime('%Y-%m-%dT%H:%M:%S')
+                        "@timestamp": {
+                            "gte": ('2023-11-29T14:23:45'),
+                            "lte": ('2023-11-29T14:23:45')
                         }
                     }
                 }
             }
         }
-    }
-        
-        return_value = "not done"
-
-        with patch('requests.post', new=MagicMock(return_value=MagicMock())) as mock:
+    }      
+        with patch('elasticsearch.buildReq', new=MagicMock(return_value=expectedQuery)) as mock:
             response = elasticsearch.buildReq(
-                observableType,numberOfResults)
-        
-         
-        self.assertEqual(json.dumps(return_value), json.dumps(expectedQuery))
+                observableType,numberOfResults)     
+            self.assertEqual(json.dumps(response), json.dumps(expectedQuery))
+            mock.assert_called_once()
 
+    '''Test that checks sendReq method to expect a response from a requests.post'''
     def test_sendReq(self):
+        conf = {"base_url":"test", "authUser":"test", "authPWD":"test", "api_key":"test","index":"test"}
         with patch('requests.post', new=MagicMock(return_value=MagicMock())) as mock:
-            response = elasticsearch.sendReq(
-                'example_index', 'example_query')
-            self.assertIsNotNone(response)
+            response = elasticsearch.sendReq(conf, 'example_query')
+            self.assertIsNotNone(response)    
 
-    def test_prepareResults(self):
-        #need to ask Wes how he wants the prepare result output
-        #not done
-        summary = "There are 5 hits recorded."
+    '''Test that checks prepareResults method, by comparing a mock prepareResults return_value with an expectedResult'''
+    def test_prepareResults(self):        
+        summary = "Documents returned: 5"
         status = 'info'
         raw = {'_id': "0", "hash": "123"}
-        with patch('requests.post', new=MagicMock(return_value=MagicMock())) as mock:
-            response = elasticsearch.prepareResults(
-                'example_index', 'example_query')
+        expectedResult = {'response': raw, 'summary': summary, 'status': status}        
 
+        with patch('elasticsearch.prepareResults', new=MagicMock(return_value=expectedResult)) as mock:
+            response = elasticsearch.prepareResults(raw)
+            self.assertEqual(expectedResult, response)
+            mock.assert_called_once()
 
-        results = elasticsearch.prepareResults(raw)
-        self.assertEqual(1, 1)
+       
+        
+
+       
+    
     
     
 
