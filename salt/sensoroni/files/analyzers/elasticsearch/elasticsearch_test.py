@@ -10,6 +10,24 @@ import json
 
 class TestElasticSearchMethods(unittest.TestCase):   
 
+    # def test_main_missing_input(self):
+    #     with patch('sys.exit', new=MagicMock()) as sysmock:
+    #         with patch('sys.stderr', new=StringIO()) as mock_stderr:
+    #             sys.argv = ["cmd"]
+    #             elasticsearch.main()
+    #             self.assertEqual(mock_stderr.getvalue(), "usage: cmd [-h] [-c CONFIG_FILE] artifact\ncmd: error: the following arguments are required: artifact\n")
+    #             sysmock.assert_called_once_with(2)
+
+    # def test_main_success(self):
+    #     output = {"foo": "bar"}
+    #     with patch('sys.stdout', new=StringIO()) as mock_stdout:
+    #         with patch('elasticsearch.analyze', new=MagicMock(return_value=output)) as mock:
+    #             sys.argv = ["cmd", "input"]
+    #             elasticsearch.main()
+    #             expected = '{"foo": "bar"}\n'
+    #             self.assertEqual(mock_stdout.getvalue(), expected)
+    #             mock.assert_called_once()
+
     '''Test that checks for empty and none values in configurables'''
     def test_checkConfigRequirements(self):
         conf = {"base_url":"", "authUser":"", "authPWD":"", "numResults":None,"api_key":"","index":"","timeDeltaMinutes": None,"timestampFieldName":"", "map":{}}
@@ -69,8 +87,18 @@ class TestElasticSearchMethods(unittest.TestCase):
             self.assertEqual(expectedResult, response)
             mock.assert_called_once()
 
-       
-        
+    '''Test that checks analyze method, simulated sendReq and prepareResults with 2 mock objects and variables sendReqOutput and prepareResultOutput,
+            input created for analyze method call and then we compared results['summary'] with 'Documents returned: 5' '''    
+    def test_analyze(self):        
+        sendReqOutput = {'_id': "0", "hash": "123"}
+        input = '{"artifactType":"hash", "value":"123"}'
+        prepareResultOutput = {'response': {'_id': "0", "hash": "123"},'summary': "Documents returned: 5", 'status': 'info'}
+        conf = {"base_url":"test", "authUser":"test", "authPWD":"test", "numResults":10,"api_key":"test","index":"test","timeDeltaMinutes": 14400,"timestampFieldName":"test", "map":{}}
+        with patch('elasticsearch.sendReq', new=MagicMock(return_value=sendReqOutput)) as mock:
+            with patch('elasticsearch.prepareResults', new=MagicMock(return_value=prepareResultOutput)) as mock2:
+                results = elasticsearch.analyze(conf, input)
+                self.assertEqual(results["summary"], "Documents returned: 5")
+                mock.assert_called_once()  
 
        
     
