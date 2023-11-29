@@ -111,7 +111,7 @@ def main():
     args = parser.parse_args()
     if args.artifact:
         results = analyze(helpers.loadConfig(args.config), args.artifact)
-        #print(args.config['timeDeltaMinutes'])
+        print(args.config['timeDeltaMinutes'])
         print(json.dumps(results))
 
 
