@@ -8,28 +8,50 @@ import json
 
 class TestElasticSearchMethods(unittest.TestCase):   
 
-    #case for when no domain is provided
+    '''Test that checks for empty and none values in configurables'''
     def test_checkConfigRequirements(self):
-        conf = {"domain":""}
+        conf = {"base_url":"", "authUser":"", "authPWD":"", "numResults":None,"api_key":"","index":"","timeDeltaMinutes": None,"timestampFieldName":"", "map":{}}
         with self.assertRaises(SystemExit) as cm:
             elasticsearch.checkConfigRequirements(conf)
         self.assertEqual(cm.exception.code, 126)
 
-    def test_buildReqHash(self):
+
+    '''Test that checks buildReq method, by comparing a mock buildReq result with an expectedQuery'''
+    def test_buildReq(self):
         numberOfResults = 1
         observableType = "hash"
 
         expectedQuery = {
-            "from": 0,
-            "size": numberOfResults,
-            "query": {
-                "wildcard": {
-                    observableType: "*"
+        "from": 0,
+        "size": numberOfResults,
+        "query": {
+            "bool": {
+                "must": [{
+                    "wildcard": {
+                        observableType: observableType,
+                    },
+                }
+                ],
+                "filter": {
+                    "range": {
+                        conf['timestampFieldName']: {
+                            "gte": start_time.strftime('%Y-%m-%dT%H:%M:%S'),
+                            "lte": cur_time.strftime('%Y-%m-%dT%H:%M:%S')
+                        }
+                    }
                 }
             }
         }
-        result = elasticsearch.buildReq(observableType,numberOfResults)    
-        self.assertEqual(result, json.dumps(expectedQuery))
+    }
+        
+        return_value = "not done"
+
+        with patch('requests.post', new=MagicMock(return_value=MagicMock())) as mock:
+            response = elasticsearch.buildReq(
+                observableType,numberOfResults)
+        
+         
+        self.assertEqual(json.dumps(return_value), json.dumps(expectedQuery))
 
     def test_sendReq(self):
         with patch('requests.post', new=MagicMock(return_value=MagicMock())) as mock:
