@@ -68,8 +68,8 @@ def sendReq(conf, query):
         'Content-Type': 'application/json',
     }
     
-    url = 'https://' + str(conf['base_url']) + str(conf['index']) + '/_search'
-    # url2 = conf['base_url'] + conf['index'] + '/_search'
+    #url = 'https://' + str(conf['base_url']) + str(conf['index']) + '/_search'
+    url = conf['base_url'] + conf['index'] + '/_search'
     authUser = conf['authUser']
     authPWD = conf['authPWD']
     # #code below is hard-coded for testing outside of SO
