@@ -255,6 +255,16 @@ base:
     - elasticfleet.install_agent_grid
     - docker_clean
 
+  '*_kafkanode and G@saltversion:{{saltversion}}':
+    - match: compound
+    - kafka
+    - logstash
+    - ssl
+    - telegraf
+    - firewall
+    - docker_clean
+    - elasticfleet.install_agent_grid
+
   '*_idh and G@saltversion:{{saltversion}}':
     - match: compound
     - ssl

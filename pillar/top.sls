@@ -65,6 +65,7 @@ base:
     - soctopus.adv_soctopus
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
+    - kafka.nodes
 
   '*_sensor':
     - healthcheck.sensor
@@ -240,6 +241,15 @@ base:
     - redis.adv_redis
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
+
+  '*_kafkanode':
+    - logstash.nodes
+    - logstash.soc_logstash
+    - logstash.adv_logstash
+    - minions.{{ grains.id }}
+    - minions.adv_{{ grains.id }}
+    - secrets
+    - kafka.nodes
 
   '*_import':
     - secrets

@@ -1,0 +1,26 @@
+{% set kafka_brokers = salt['pillar.get']('logstash:nodes:kafkanode', {}) %}
+{% set broker_ips = [] %}
+{% for node, node_data in kafka_brokers.items() %}
+  {% do broker_ips.append(node_data['ip'] + ":9092") %}
+{% endfor %}
+
+{% set bootstrap_servers = "','".join(broker_ips) %}
+
+
+#Run on searchnodes ingest kafka topic(s) group_id allows load balancing of event ingest to all searchnodes
+input {
+    kafka {
+        codec => json
+        #Can ingest multiple topics. Set to a value from SOC UI?
+        topics => ['logstash-topic',]
+        group_id => 'searchnodes'
+        security_protocol => 'SSL'
+        bootstrap_servers => {{ bootstrap_servers }}
+        ssl_keystore_location => '/usr/share/logstash/kafka-logstash.p12'
+        ssl_keystore_password => ''
+        ssl_keystore_type => 'PKCS12'
+        ssl_truststore_location => '/etc/pki/ca-trust/extracted/java/cacerts'
+        # Set password as a pillar to avoid bad optics? This is default truststore for grid
+        ssl_truststore_password => 'changeit'
+    }
+}
