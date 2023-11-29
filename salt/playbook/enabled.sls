@@ -33,6 +33,7 @@ so-playbook:
       - sobridge:
         - ipv4_address: {{ DOCKER.containers['so-playbook'].ip }}
     - binds:
+      - /opt/so/conf/playbook/redmine-files:/usr/src/redmine/files:rw
       - /opt/so/log/playbook:/playbook/log:rw
       {% if DOCKER.containers['so-playbook'].custom_bind_mounts %}
         {% for BIND in DOCKER.containers['so-playbook'].custom_bind_mounts %}

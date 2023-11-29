@@ -1,7 +1,5 @@
-{% from 'vars/globals.map.jinja' import GLOBALS %}
-
 {# we only want this state to run it is CentOS #}
-{% if GLOBALS.os == 'OEL' %}
+{% if grains.os == 'OEL' %}
 
 desktop_packages:
   pkg.installed:
@@ -348,7 +346,6 @@ desktop_packages:
       - snappy
       - sound-theme-freedesktop
       - soundtouch
-      - securityonion-networkminer
       - speech-dispatcher
       - speech-dispatcher-espeak-ng
       - speex
@@ -434,6 +431,10 @@ desktop_packages:
       - xorg-x11-xinit
       - xorg-x11-xinit-session
       - zip
+
+install_networkminer:
+  pkg.latest:
+    - name: securityonion-networkminer
 
 {% else %}
 

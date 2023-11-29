@@ -43,6 +43,20 @@ strelka_sbin:
     - group: 939
     - file_mode: 755
 
+strelkagkredisdatadir:
+  file.directory:
+    - name: /nsm/strelka/gk-redis-data
+    - user: 939
+    - group: 939
+    - makedirs: True
+
+strelkacoordredisdatadir:
+  file.directory:
+    - name: /nsm/strelka/coord-redis-data
+    - user: 939
+    - group: 939
+    - makedirs: True
+
 {% else %}
 
 {{sls}}_state_not_allowed:

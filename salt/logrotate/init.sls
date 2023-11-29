@@ -3,6 +3,7 @@
 logrotateconfdir:
   file.directory:
     - name: /opt/so/conf/logrotate
+    - makedirs: True
 
 commonlogrotatescript:
   file.managed:

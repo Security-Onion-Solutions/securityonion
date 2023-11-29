@@ -91,7 +91,7 @@ fi
 # if packages are updated and the box isn't rebooted
 if [[ $is_debian ]]; then
 	update_packages
-	if [[ -f "/var/run/reboot-required" ]]; then
+	if [[ -f "/var/run/reboot-required" ]] && [ -z "$test_profile" ]; then
 		whiptail_debian_reboot_required
 		reboot
 	fi
@@ -104,6 +104,7 @@ if [ "$setup_type" = 'desktop' ]; then
 	# Check to see if this is an ISO. Usually this dir on exists on ISO installs.
 	if [ -d /root/SecurityOnion ]; then
 		is_desktop_iso=true
+		install_type='DESKTOP'
 	fi
 fi
 
@@ -182,8 +183,39 @@ if [ -n "$test_profile" ]; then
 		install_type=SEARCHNODE
 		HOSTNAME=search
 		MSRVIP_OFFSET=-1
+	elif [[ "$test_profile" =~ "-managersearch" ]]; then
+		install_type=MANAGERSEARCH
+		HOSTNAME=manager
+	elif [[ "$test_profile" =~ "-heavynode" ]]; then
+		install_type=HEAVYNODE
+		HOSTNAME=sensor
+		MSRVIP_OFFSET=-1
+	elif [[ "$test_profile" =~ "-desktop" ]]; then
+		install_type=DESKTOP
+		MSRVIP_OFFSET=-3
+		is_desktop_grid=true
+	elif [[ "$test_profile" =~ "-idh" ]]; then
+		install_type=IDH
+		HOSTNAME=idh
+		MSRVIP_OFFSET=-4
+	elif [[ "$test_profile" =~ "-receiver" ]]; then
+		install_type=RECEIVER
+		HOSTNAME=receiver
+		MSRVIP_OFFSET=-5
+	elif [[ "$test_profile" =~ "-fleet" ]]; then
+		install_type=FLEET
+		HOSTNAME=fleet
+		MSRVIP_OFFSET=-6
 	else
 		HOSTNAME=manager
+	fi
+
+	if [[ "$install_type" =~ "DESKTOP" ]]; then
+		is_desktop=true
+		HOSTNAME=desktop
+		if [[ -z "$is_desktop_grid" ]]; then
+			is_desktop_grid=false
+		fi
 	fi
 	
 	info "Activating test profile; profile=$test_profile; install_type=$install_type"
@@ -333,39 +365,41 @@ if [[ $is_desktop ]]; then
 		exit 1
 	fi
 
-#	if ! whiptail_desktop_install; then
-	if [[ $is_desktop_iso ]]; then
-		if whiptail_desktop_nongrid_iso; then
-			# Remove setup from auto launching
-			parse_install_username
-			sed -i '$ d' /home/$INSTALLUSERNAME/.bash_profile >> "$setup_log" 2>&1
-			securityonion_repo
-			info "Enabling graphical interface and setting it to load at boot"
-			systemctl set-default graphical.target
-			info "Setting desktop background"
-			set_desktop_background
-			echo "Desktop Install Complete!"
-			echo ""
-			echo "Please reboot to start graphical interface."
-			exit 0
+	whiptail_desktop_install
+	if ! $is_desktop_grid; then
+		if [[ $is_desktop_iso ]]; then
+			if whiptail_desktop_nongrid_iso; then
+				# Remove setup from auto launching
+				parse_install_username
+				sed -i '$ d' /home/$INSTALLUSERNAME/.bash_profile >> "$setup_log" 2>&1
+				securityonion_repo
+				info "Enabling graphical interface and setting it to load at boot"
+				systemctl set-default graphical.target
+				info "Setting desktop background"
+				set_desktop_background
+				echo "Desktop Install Complete!"
+				echo ""
+				echo "Please reboot to start graphical interface."
+				exit 0
+			else
+				# Abort!
+				exit 0
+			fi
 		else
-			# Abort!
-			exit 0
-		fi
-	else
-		if whiptail_desktop_nongrid_network; then
-			info ""
-			info ""
-			info "Kicking off the automated setup of the Security Onion Desktop. This can take a while depending on your network connection."
-			info ""
-			info ""
-			desktop_salt_local
-		else
-			# Abort!
-			exit 0
+			if whiptail_desktop_nongrid_network; then
+				networking_needful
+				info ""
+				info ""
+				info "Kicking off the automated setup of the Security Onion Desktop. This can take a while depending on your network connection."
+				info ""
+				info ""
+				desktop_salt_local
+			else
+				# Abort!
+				exit 0
+			fi
 		fi
 	fi
-#	fi
 
 	# If you got this far then you want to join the grid
 	is_minion=true
@@ -388,7 +422,7 @@ if ! [[ -f $install_opt_file ]]; then
 		# If it is an install from ISO is this airgap?
 		[[ $is_iso ]] && whiptail_airgap
 		# Make sure minimum requirements are met
-		check_requirements "manager"
+		check_requirements
 		# Do networking things
 		networking_needful
 		# Do we need a proxy?
@@ -419,7 +453,7 @@ if ! [[ -f $install_opt_file ]]; then
 		monints=true
 		check_elastic_license
 		[[ $is_iso ]] && whiptail_airgap
-		check_requirements "manager"
+		check_requirements
 		networking_needful
 		[[ ! $is_airgap ]] && collect_net_method
 		collect_dockernet
@@ -440,7 +474,7 @@ if ! [[ -f $install_opt_file ]]; then
 		check_elastic_license
 		waitforstate=true
 		[[ $is_iso ]] && whiptail_airgap
-		check_requirements "manager"
+		check_requirements
 		networking_needful
 		[[ ! $is_airgap ]] && collect_net_method
 		collect_dockernet
@@ -460,7 +494,7 @@ if ! [[ -f $install_opt_file ]]; then
 		check_elastic_license
 		waitforstate=true
 		[[ $is_iso ]] && whiptail_airgap
-		check_requirements "manager"
+		check_requirements
 		networking_needful
 		[[ ! $is_airgap ]] && collect_net_method
 		collect_dockernet
@@ -478,7 +512,7 @@ if ! [[ -f $install_opt_file ]]; then
 	elif [[ $is_sensor ]]; then
 		info "Setting up as node type sensor"
 		monints=true
-		check_requirements "sensor"
+		check_requirements
 		calculate_useable_cores
 		networking_needful
 		check_network_manager_conf
@@ -493,7 +527,7 @@ if ! [[ -f $install_opt_file ]]; then
 
 	elif [[ $is_fleet ]]; then
 		info "Setting up as node type fleet"
-		check_requirements "fleet"
+		check_requirements
 		networking_needful
 		check_network_manager_conf
 		set_network_dev_status_list
@@ -506,7 +540,7 @@ if ! [[ -f $install_opt_file ]]; then
 
 	elif [[ $is_searchnode ]]; then
 		info "Setting up as node type searchnode"
-		check_requirements "elasticsearch"
+		check_requirements
 		networking_needful
 		check_network_manager_conf
 		set_network_dev_status_list
@@ -520,7 +554,7 @@ if ! [[ -f $install_opt_file ]]; then
 	elif [[ $is_heavynode ]]; then
 		info "Setting up as node type heavynode"
 		monints=true
-		check_requirements "heavynode"
+		check_requirements
 		calculate_useable_cores
 		networking_needful
 		check_network_manager_conf
@@ -535,7 +569,7 @@ if ! [[ -f $install_opt_file ]]; then
 
 	elif [[ $is_idh ]]; then
 		info "Setting up as node type idh"
-		check_requirements "idh"
+		check_requirements
 		networking_needful
 		collect_mngr_hostname
 		add_mngr_ip_to_hosts
@@ -549,7 +583,7 @@ if ! [[ -f $install_opt_file ]]; then
 		waitforstate=true
 		[[ $is_iso ]] && whiptail_airgap
 		check_elastic_license
-		check_requirements "import"
+		check_requirements
 		networking_needful
 		[[ ! $is_airgap ]] && detect_cloud
 		collect_dockernet
@@ -567,7 +601,27 @@ if ! [[ -f $install_opt_file ]]; then
 
 	elif [[ $is_receiver ]]; then
 		info "Setting up as node type receiver"
-		check_requirements "receiver"
+		check_requirements
+		networking_needful
+		collect_mngr_hostname
+		add_mngr_ip_to_hosts
+		check_manager_connection
+		set_minion_info
+		whiptail_end_settings
+
+	# desktop install will only get this far if joining the grid
+	elif [[ $is_desktop ]]; then
+		info "Setting up as node type desktop"
+		networking_needful
+		collect_mngr_hostname
+		add_mngr_ip_to_hosts
+		check_manager_connection
+		set_minion_info
+		whiptail_end_settings
+
+	elif [[ $is_kafka ]]; then
+		info "Setting up as node type Kafka broker"
+		#check_requirements "kafka"
 		networking_needful
 		collect_mngr_hostname
 		add_mngr_ip_to_hosts
@@ -641,7 +695,11 @@ if ! [[ -f $install_opt_file ]]; then
 		export MAINIP=$MAINIP
 		export PATCHSCHEDULENAME=$PATCHSCHEDULENAME
 		export INTERFACE=$INTERFACE
-		export CORECOUNT=$lb_procs
+		if [[ $low_mem == "true" ]]; then
+			export CORECOUNT=1
+		else
+			export CORECOUNT=$lb_procs
+		fi
 		export LSHOSTNAME=$HOSTNAME
 		export LSHEAP=$LS_HEAP_SIZE
 		export CPUCORES=$num_cpu_cores
@@ -679,6 +737,17 @@ if ! [[ -f $install_opt_file ]]; then
 
 		logCmd "salt-call state.apply common.packages"
 		logCmd "salt-call state.apply common"
+		# this will apply the salt.minion state first since salt.master includes salt.minion
+		logCmd "salt-call state.apply salt.master"
+		# wait here until we get a response from the salt-master since it may have just restarted
+		# exit setup after 5-6 minutes of trying
+		check_salt_master_status || fail  "Can't access salt master or it is not ready"
+		# apply the ca state to create the ca and put it in the mine early in the install
+		# the minion ip will already be in the mine from configure_minion function in so-functions
+		generate_ca
+		# this will also call the ssl state since docker requires the intca
+		# the salt-minion service will need to be up on the manager to sign requests
+		generate_ssl
 		logCmd "salt-call state.apply docker"
 		firewall_generate_templates
 		set_initial_firewall_policy
@@ -686,8 +755,6 @@ if ! [[ -f $install_opt_file ]]; then
 		title "Downloading Elastic Agent Artifacts"
 		download_elastic_agent_artifacts
 
-		generate_ca
-		generate_ssl
 		logCmd "salt-call state.apply -l info firewall"
 
 		# create these so the registry state can add so-registry to /opt/so/conf/so-status/so-status.conf
@@ -724,8 +791,11 @@ if ! [[ -f $install_opt_file ]]; then
 		info "Restarting SOC to pick up initial user"
 		logCmd "so-soc-restart"
 		title "Setting up Elastic Fleet"
-		logCmd "salt-call state.apply elasticfleet.config"
-        	logCmd "so-elastic-fleet-setup"
+		logCmd "salt-call state.apply elasticfleet.config"	
+		if ! logCmd so-elastic-fleet-setup; then
+			error "Failed to run so-elastic-fleet-setup"
+			fail_setup
+		fi
 		if [[ ! $is_import ]]; then
 			title "Setting up Playbook"
 			logCmd "so-playbook-reset"
@@ -733,8 +803,6 @@ if ! [[ -f $install_opt_file ]]; then
 		checkin_at_boot
 		set_initial_firewall_access
 		logCmd "salt-call schedule.enable -linfo --local"
-		systemctl restart salt-master
-		systemctl restart salt-minion
 		verify_setup
 	else
 		touch /root/accept_changes

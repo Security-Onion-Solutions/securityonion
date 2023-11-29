@@ -26,8 +26,8 @@ so-idstools:
       - http_proxy={{ proxy }}
       - https_proxy={{ proxy }}
       - no_proxy={{ salt['pillar.get']('manager:no_proxy') }}
-      {% if DOCKER.containers['so-elastalert'].extra_env %}
-        {% for XTRAENV in DOCKER.containers['so-elastalert'].extra_env %}
+      {% if DOCKER.containers['so-idstools'].extra_env %}
+        {% for XTRAENV in DOCKER.containers['so-idstools'].extra_env %}
       - {{ XTRAENV }}
         {% endfor %}
       {% endif %}
@@ -77,6 +77,7 @@ run_so-rule-update:
       - docker_container: so-idstools
     - onchanges:
       - file: idstoolsetcsync
+      - file: synclocalnidsrules
     - order: last
 
 {% else %}

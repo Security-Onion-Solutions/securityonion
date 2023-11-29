@@ -91,8 +91,11 @@ desktop_salt_local() {
 	securityonion_repo
 	gpg_rpm_import
 	# Install salt
-	logCmd "yum -y install salt-minion-$SALTVERSION httpd-tools python3 python36-docker python36-dateutil python36-m2crypto python36-mysql python36-packaging python36-lxml yum-utils device-mapper-persistent-data lvm2 openssl jq"
+	logCmd "yum -y install salt-minion-$SALTVERSION httpd-tools python3 python3-dateutil yum-utils device-mapper-persistent-data lvm2 openssl jq"
 	logCmd "yum -y update --exclude=salt*"
+
+	salt_install_module_deps
+	salt_patch_x509_v2
 
 	logCmd "salt-call state.apply desktop --local --file-root=../salt/ -l info"
 	read -r -d '' message <<- EOM
@@ -101,8 +104,10 @@ desktop_salt_local() {
 		Press the Enter key to reboot.
 	EOM
 
-	whiptail --title "$whiptail_title" --msgbox "$message" 12 75
-	reboot
+	if [[ -z "$TESTING" ]]; then
+		whiptail --title "$whiptail_title" --msgbox "$message" 12 75
+		reboot
+	fi
 	exit 0 
 
 }
@@ -263,15 +268,6 @@ collect_dockernet() {
 	fi
 }
 
-collect_es_space_limit() {
-	whiptail_log_size_limit "$log_size_limit"
-
-	while ! valid_int "$log_size_limit"; do # Upper/lower bounds?
-		whiptail_invalid_input
-		whiptail_log_size_limit "$log_size_limit"
-	done
-}
-
 collect_gateway() {
 	whiptail_management_interface_gateway
 
@@ -279,28 +275,6 @@ collect_gateway() {
 		whiptail_invalid_input
 		whiptail_management_interface_gateway "$MGATEWAY"
 	done
-}
-
-collect_homenet_mngr() {
-	whiptail_homenet_manager "10.0.0.0/8,192.168.0.0/16,172.16.0.0/12"
-	
-	while ! valid_cidr_list "$HNMANAGER"; do
-		whiptail_invalid_input
-		whiptail_homenet_manager "$HNMANAGER"
-	done
-}
-
-collect_homenet_snsr() {
-	if whiptail_homenet_sensor_inherit; then
-		export HNSENSOR=inherit
-	else
-		whiptail_homenet_sensor "10.0.0.0/8,192.168.0.0/16,172.16.0.0/12"
-		
-		while ! valid_cidr_list "$HNSENSOR"; do
-			whiptail_invalid_input
-			whiptail_homenet_sensor "$HNSENSOR"
-		done
-	fi
 }
 
 collect_hostname() {
@@ -341,26 +315,6 @@ collect_idh_preferences() {
 	if [[ "$idh_preferences" != "" ]]; then IDH_MGTRESTRICT='True'; fi
 }
 
-collect_idh_services() {
-	whiptail_idh_services
-
-	case "$IDH_SERVICES" in
-		'Linux Webserver (NAS Skin)')
-			IDH_SERVICES='"HTTP","FTP","SSH"'
-		;;
-		'MySQL Server')
-			IDH_SERVICES='"MYSQL","SSH"'
-		;;
-		'MSSQL Server')
-			IDH_SERVICES='"MSSQL","VNC'
-		;;
-		'Custom')
-			whiptail_idh_services_custom
-			IDH_SERVICES=$(echo "$IDH_SERVICES" | tr '[:blank:]' ',' )
-		;;
-	esac
-}
-
 collect_int_ip_mask() {
 	whiptail_management_interface_ip_mask
 
@@ -393,20 +347,22 @@ collect_mngr_hostname() {
 		sed -i "/$MSRV/d" /etc/hosts
 	fi
 
-	if ! getent hosts "$MSRV"; then
-		whiptail_manager_ip
+	if [[ -z "$MSRVIP" ]]; then
+		if ! getent hosts "$MSRV"; then
+			whiptail_manager_ip
 
-		while ! valid_ip4 "$MSRVIP" || [[ $MSRVIP == "$MAINIP" || $MSRVIP == "127.0.0.1" ]]; do
-			whiptail_invalid_input
+			while ! valid_ip4 "$MSRVIP" || [[ $MSRVIP == "$MAINIP" || $MSRVIP == "127.0.0.1" ]]; do
+				whiptail_invalid_input
+				whiptail_manager_ip "$MSRVIP"
+			done
+		else
+			MSRVIP=$(getent hosts "$MSRV" | awk 'NR==1{print $1}')
 			whiptail_manager_ip "$MSRVIP"
-		done
-	else
-		MSRVIP=$(getent hosts "$MSRV" | awk 'NR==1{print $1}')
-		whiptail_manager_ip "$MSRVIP"
-		while ! valid_ip4 "$MSRVIP" || [[ $MSRVIP == "$MAINIP" || $MSRVIP == "127.0.0.1" ]]; do
-			whiptail_invalid_input
-			whiptail_manager_ip "$MSRVIP"
-		done
+			while ! valid_ip4 "$MSRVIP" || [[ $MSRVIP == "$MAINIP" || $MSRVIP == "127.0.0.1" ]]; do
+				whiptail_invalid_input
+				whiptail_manager_ip "$MSRVIP"
+			done
+		fi
 	fi
 }
 
@@ -416,71 +372,6 @@ collect_net_method() {
 		collect_proxy no_ask
 		needs_proxy=true
 	fi
-}
-
-collect_ntp_servers() {
-	if whiptail_ntp_ask; then
-		[[ $is_airgap ]] && ntp_string=""
-		whiptail_ntp_servers "$ntp_string"
-
-		while ! valid_ntp_list "$ntp_string"; do
-			whiptail_invalid_input
-			whiptail_ntp_servers "$ntp_string"
-		done
-
-		IFS="," read -r -a ntp_servers <<< "$ntp_string" # Split string on commas into array
-	else
-		ntp_servers=()
-	fi
-}
-
-collect_oinkcode() {
-	whiptail_oinkcode
-
-	while ! valid_string "$OINKCODE" "" "128"; do
-		whiptail_invalid_input
-		whiptail_oinkcode "$OINKCODE"
-	done
-}
-
-collect_patch_schedule() {
-	whiptail_patch_schedule
-
-	case "$patch_schedule" in
-		'New Schedule')
-			whiptail_patch_schedule_select_days
-			whiptail_patch_schedule_select_hours
-			collect_patch_schedule_name_new
-			patch_schedule_os_new
-		;;
-		'Import Schedule')
-			collect_patch_schedule_name_import
-		;;
-		'Automatic')
-			PATCHSCHEDULENAME='auto'
-		;;
-		'Manual')
-			PATCHSCHEDULENAME='manual'
-		;;
-	esac
-}
-
-collect_patch_schedule_name_new() {
-	whiptail_patch_name_new_schedule
-
-	while ! valid_string "$PATCHSCHEDULENAME"; do
-		whiptail_invalid_string "schedule name"
-		whiptail_patch_name_new_schedule "$PATCHSCHEDULENAME"
-	done
-}
-
-collect_patch_schedule_name_import() {
-	whiptail_patch_schedule_import
-
-	while ! valid_string "$PATCHSCHEDULENAME"; do
-		whiptail_invalid_string "schedule name"
-		whiptail_patch_schedule_import "$PATCHSCHEDULENAME"
-	done
 }
 
 collect_proxy() {
@@ -642,54 +533,13 @@ configure_minion() {
 		"log_level_logfile: info"\
 		"log_file: /opt/so/log/salt/minion" >> "$minion_config"
 
-	cp -f ../salt/salt/etc/minion.d/mine_functions.conf.jinja /etc/salt/minion.d/mine_functions.conf
-	sed -i "s/{{ GLOBALS.main_interface }}/$MNIC/" /etc/salt/minion.d/mine_functions.conf
+	info "Running: salt-call state.apply salt.mine_functions --local --file-root=../salt/ -l info pillar='{"host": {"mainint": "$MNIC"}}'"
+	salt-call state.apply salt.mine_functions --local --file-root=../salt/ -l info pillar="{'host': {'mainint': $MNIC}}"
 
 	{
 		logCmd "systemctl enable salt-minion";
 		logCmd "systemctl restart salt-minion";
 	} >> "$setup_log" 2>&1
-}
-
-configure_ntp() {
-	local chrony_conf=/etc/chrony.conf
-
-	# Install chrony if it isn't already installed
-	if ! command -v chronyc &> /dev/null; then
-		logCmd "dnf -y install chrony"
-	fi
-
-	[[ -f $chrony_conf ]] && mv $chrony_conf "$chrony_conf.bak"
-
-	printf '%s\n' "# NTP server list" > $chrony_conf
-
-	# Build list of servers
-	for addr in "${ntp_servers[@]}"; do
-		echo "server $addr iburst" >> $chrony_conf
-	done
-
-	printf '\n%s\n' "# Config options" >> $chrony_conf
-
-	printf '%s\n' \
-		'driftfile /var/lib/chrony/drift' \
-		'makestep 1.0 3' \
-		'rtcsync' \
-		'logdir /var/log/chrony' >> $chrony_conf
-
-	if [[ $is_rpm ]]; then
-		systemctl enable chronyd
-		systemctl restart chronyd
-	else 
-		systemctl enable chrony
-		systemctl restart chrony
-	fi
-
-	# Tell the chrony daemon to sync time & update the system time
-	# Since these commands only make a call to chronyd, wait after each command to make sure the changes are made
-	printf "Syncing chrony time to server: "
-	chronyc -a 'burst 4/4' && sleep 30
-	printf "Forcing chrony to update the time: "
-	chronyc -a makestep && sleep 30
 }
 
 checkin_at_boot() {
@@ -700,8 +550,6 @@ checkin_at_boot() {
 }
 
 check_requirements() {
-	local standalone_or_dist=$1
-	local node_type=$2 # optional
 	local req_mem
 	local req_cores
 	local req_storage
@@ -709,27 +557,57 @@ check_requirements() {
 	readarray -t nic_list <<< "$(ip link| awk -F: '$0 !~ "lo|vir|veth|br|docker|wl|^[^0-9]"{print $2}' | grep -vwe "bond0"  | sed 's/ //g' | sed -r 's/(.*)(\.[0-9]+)@\1/\1\2/g')"
 	local num_nics=${#nic_list[@]}
 	
-	if [[ "$standalone_or_dist" == 'standalone' ]]; then
+	if [[ $is_eval ]]; then
 		req_mem=12
 		req_cores=4
 		req_nics=2
-	elif [[ "$standalone_or_dist" == 'dist' ]]; then
-		req_mem=8
+	elif [[ $is_standalone ]]; then
+		req_mem=16
 		req_cores=4
-		if [[ "$node_type" == 'sensor' ]]; then req_nics=2; else req_nics=1; fi
-		if [[ "$node_type" == 'fleet' ]]; then req_mem=4; fi
-		if [[ "$node_type" == 'idh' ]]; then req_mem=1 req_cores=2; fi
-	elif [[ "$standalone_or_dist" == 'import' ]]; then
+		req_nics=2
+	elif [[ $is_manager ]]; then
+		req_mem=16
+		req_cores=4
+		req_nics=1
+	elif [[ $is_managersearch ]]; then
+		req_mem=16
+		req_cores=8
+		req_nics=1
+	elif [[ $is_sensor ]]; then
+		req_mem=12
+		req_cores=4
+		req_nics=2
+	elif [[ $is_fleet ]]; then
 		req_mem=4
+		req_cores=4
+		req_nics=1
+	elif [[ $is_searchnode ]]; then
+		req_mem=16
+		req_cores=4
+		req_nics=1
+	elif [[ $is_heavynode ]]; then
+		req_mem=16
+		req_cores=4
+		req_nics=2
+	elif [[ $is_idh ]]; then
+		req_mem=1
+		req_cores=2
+		req_nics=1
+	elif [[ $is_import ]]; then
+		req_mem=4
+		req_cores=2
+		req_nics=1
+	elif [[ $is_receiver ]]; then
+		req_mem=8
 		req_cores=2
 		req_nics=1
 	fi
 
 	if [[ $setup_type == 'network' ]] ; then
-		if [[ -n $nsm_mount ]]; then
-			if [[ "$standalone_or_dist" == 'import' ]]; then
+		if [[ -n $nsm_mount ]]; then # does a /nsm mount exist
+			if [[ $is_import ]]; then
 				req_storage=50
-			elif [[ "$node_type" == 'idh' ]]; then
+			elif [[ $is_idh ]]; then
 			    req_storage=12
 			else
 				req_storage=100
@@ -741,10 +619,10 @@ check_requirements() {
 				whiptail_storage_requirements "/nsm" "${free_space_nsm} GB" "${req_storage} GB"
 			fi
 		else
-			if [[ "$standalone_or_dist" == 'import' ]]; then
+			if [[ $is_import ]]; then
 				req_storage=50
-			elif [[ "$node_type" == 'idh' ]]; then
-			        req_storage=12
+			elif [[ $is_idh ]]; then
+			    req_storage=12
 			else
 				req_storage=200
 			fi
@@ -773,6 +651,17 @@ check_requirements() {
 	
 	if [[ $total_mem_hr -lt $req_mem ]]; then
 		whiptail_requirements_error "memory" "${total_mem_hr} GB" "${req_mem} GB"
+		if [[ $is_standalone || $is_heavynode ]]; then
+			echo "This install type will fail with less than $req_mem GB of memory. Exiting setup."
+			exit 0
+		fi
+	fi
+	if [[ $is_standalone || $is_heavynode ]]; then
+		if [[ $total_mem_hr -gt 15 && $total_mem_hr -lt 24 ]]; then
+			low_mem=true
+		else
+			low_mem=false
+		fi
 	fi
 }
 
@@ -1020,16 +909,6 @@ download_elastic_agent_artifacts() {
 	fi
 }
 
-installer_progress_loop() {
-	local i=0
-	local msg="${1:-Performing background actions...}"
-	while true; do
-		[[ $i -lt 98 ]] && ((i++))
-		set_progress_str "$i" "$msg" nolog
-		[[ $i -gt 0 ]] && sleep 5s
-	done
-}
-
 installer_prereq_packages() {	
 	if [[ $is_deb ]]; then
 		# Print message to stdout so the user knows setup is doing something
@@ -1088,9 +967,7 @@ docker_seed_registry() {
 
 	if ! [ -f /nsm/docker-registry/docker/registry.tar ]; then
 		if [ "$install_type" == 'IMPORT' ]; then
-			container_list 'so-import'
-		elif [ "$install_type" == 'HELIXSENSOR' ]; then
-			container_list 'so-helix'
+			container_list 'so-import'	
 		else
 			container_list
 		fi
@@ -1223,7 +1100,7 @@ generate_ssl() {
 	# if the install type is a manager then we need to wait for the minion to be ready before trying
 	# to run the ssl state since we need the minion to sign the certs
 	if [[ "$install_type" =~ ^(EVAL|MANAGER|MANAGERSEARCH|STANDALONE|IMPORT|HELIXSENSOR)$ ]]; then
-		wait_for_salt_minion
+		(wait_for_salt_minion "$MINION_ID" "5" '/dev/stdout' || fail_setup) 2>&1 | tee -a "$setup_log"
 	fi
 	info "Applying SSL state"
 	logCmd "salt-call state.apply ssl -l info"
@@ -1270,7 +1147,7 @@ get_redirect() {
 get_minion_type() {
 	local minion_type
 	case "$install_type" in
-		'EVAL' | 'MANAGERSEARCH' | 'MANAGER' | 'SENSOR' | 'HEAVYNODE' | 'SEARCHNODE' | 'FLEET' | 'IDH' | 'STANDALONE' | 'IMPORT' | 'RECEIVER' | 'KAFKANODE')
+		'EVAL' | 'MANAGERSEARCH' | 'MANAGER' | 'SENSOR' | 'HEAVYNODE' | 'SEARCHNODE' | 'FLEET' | 'IDH' | 'STANDALONE' | 'IMPORT' | 'RECEIVER' | 'DESKTOP' | 'KAFKANODE')
 			minion_type=$(echo "$install_type" | tr '[:upper:]' '[:lower:]')
 			;;
 	esac
@@ -1350,7 +1227,7 @@ ls_heapsize() {
 	fi
 
 	case "$install_type" in
-		'MANAGERSEARCH' | 'HEAVYNODE' | 'HELIXSENSOR' | 'STANDALONE')
+		'MANAGERSEARCH' | 'HEAVYNODE' | 'STANDALONE')
 			LS_HEAP_SIZE='1000m'
 			;;
 		'EVAL')
@@ -1614,21 +1491,6 @@ network_setup() {
 	logCmd "sed -i '/\$MNIC/${INTERFACE}/g' /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable"
 }
 
-ntp_pillar_entries() {
-
-	local pillar_file=$local_salt_dir/pillar/minions/$MINION_ID.sls
-
-	
-	if [[ ${#ntp_servers[@]} -gt 0 ]]; then
-		printf '%s\n'\
-			"ntp:"\
-			"  servers:" > "$pillar_file"
-			for addr in "${ntp_servers[@]}"; do
-				printf '%s\n' "    - '$addr'" >> "$pillar_file"
-			done
-	fi
-}
-
 parse_install_username() {
 	# parse out the install username so things copy correctly
 	INSTALLUSERNAME=${SUDO_USER:-${USER}}
@@ -1667,9 +1529,7 @@ process_installtype() {
 	elif [ "$install_type" = 'KAFKANODE' ]; then
 		is_kafka=true
 	elif [ "$install_type" = 'DESKTOP' ]; then
-		if [ "$setup_type" != 'desktop' ]; then
-			exec bash so-setup desktop
-		fi
+		is_desktop=true
 	fi
 
 }
@@ -1851,7 +1711,11 @@ drop_install_options() {
 	echo "INTERFACE=$INTERFACE" >> /opt/so/install.txt
 	NODETYPE=${install_type^^}
 	echo "NODETYPE=$NODETYPE" >> /opt/so/install.txt
-	echo "CORECOUNT=$lb_procs" >> /opt/so/install.txt
+	if [[ $low_mem == "true" ]]; then
+		echo "CORECOUNT=1" >> /opt/so/install.txt
+	else
+		echo "CORECOUNT=$lb_procs" >> /opt/so/install.txt
+	fi
 	echo "LSHOSTNAME=$HOSTNAME" >> /opt/so/install.txt
 	echo "LSHEAP=$LS_HEAP_SIZE" >> /opt/so/install.txt
 	echo "CPUCORES=$num_cpu_cores" >> /opt/so/install.txt
@@ -1888,7 +1752,7 @@ securityonion_repo() {
 		if [ -n "$(ls -A /etc/yum.repos.d/ 2>/dev/null)" ]; then
 			logCmd "mv -v /etc/yum.repos.d/* /root/oldrepos/"
 		fi
-		if [[ $is_desktop_iso ]]; then
+		if ! $is_desktop_grid; then
 			gpg_rpm_import
 			if [[ ! $is_airgap ]]; then
 				echo "https://repo.securityonion.net/file/so-repo/prod/2.4/oracle/9" > /etc/yum/mirror.txt
@@ -1933,22 +1797,21 @@ securityonion_repo() {
 	fi
 	if [[ $is_rpm ]]; then logCmd "dnf repolist all"; fi
 	if [[ $waitforstate ]]; then
-		if [[ ! $is_airgap ]]; then
-			if [[ $is_rpm ]]; then
+		if [[ $is_rpm ]]; then
 				# Build the repo locally so we can use it
 				echo "Syncing Repos"
 				repo_sync_local
-			fi
 		fi
 	fi
 }
 
 repo_sync_local() {
+	SALTVERSION=$(egrep 'version: [0-9]{4}' ../salt/salt/master.defaults.yaml | sed 's/^.*version: //')
 	info "Repo Sync"
 	if [[ $is_supported ]]; then
 		# Sync the repo from the the SO repo locally.
 		# Check for reposync
-		info "Backing up old repos"
+		info "Adding Repo Download Configuration"
 		mkdir -p /nsm/repo
 		mkdir -p /opt/so/conf/reposync/cache
 		echo "https://repo.securityonion.net/file/so-repo/prod/2.4/oracle/9" > /opt/so/conf/reposync/mirror.txt
@@ -1972,10 +1835,10 @@ repo_sync_local() {
 		if [[ ! $is_airgap ]]; then
         	curl --retry 5 --retry-delay 60 -A "netinstall/$SOVERSION/$OS/$(uname -r)/1" https://sigs.securityonion.net/checkup --output /tmp/install
 			logCmd "dnf reposync --norepopath -g --delete -m -c /opt/so/conf/reposync/repodownload.conf --repoid=securityonionsync --download-metadata -p /nsm/repo/"
+			# After the download is complete run createrepo
+			create_repo
 		fi
 
-	# After the download is complete run createrepo
-	create_repo
 	else
 		# Add the proper repos for unsupported stuff
 		echo "Adding Repos"
@@ -1993,7 +1856,7 @@ repo_sync_local() {
 			curl -fsSL https://repo.securityonion.net/file/so-repo/prod/2.4/so/so.repo | tee /etc/yum.repos.d/so.repo
 			rpm --import https://repo.saltproject.io/salt/py3/redhat/9/x86_64/SALT-PROJECT-GPG-PUBKEY-2023.pub
 			dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-			curl -fsSL https://repo.saltproject.io/salt/py3/redhat/9/x86_64/minor/3006.1.repo | tee /etc/yum.repos.d/salt.repo
+			curl -fsSL "https://repo.saltproject.io/salt/py3/redhat/9/x86_64/minor/$SALTVERSION.repo" | tee /etc/yum.repos.d/salt.repo
 			dnf repolist
 			curl --retry 5 --retry-delay 60 -A "netinstall/$SOVERSION/$OS/$(uname -r)/1" https://sigs.securityonion.net/checkup --output /tmp/install
 		else
@@ -2060,7 +1923,7 @@ saltify() {
 		if [[ $waitforstate ]]; then
 			retry 150 20 "apt-get -y install salt-common=$SALTVERSION salt-minion=$SALTVERSION salt-master=$SALTVERSION" || fail_setup
 			retry 150 20 "apt-mark hold salt-minion salt-common salt-master" || fail_setup
-			retry 150 20 "apt-get -y install python3-pip python3-dateutil python3-m2crypto python3-mysqldb python3-packaging python3-influxdb python3-lxml" || exit 1
+			retry 150 20 "apt-get -y install python3-pip python3-dateutil python3-m2crypto python3-packaging python3-influxdb python3-lxml" || exit 1
 		else
 			retry 150 20 "apt-get -y install salt-common=$SALTVERSION salt-minion=$SALTVERSION" || fail_setup
 			retry 150 20 "apt-mark hold salt-minion salt-common" || fail_setup
@@ -2078,21 +1941,22 @@ saltify() {
 	fi
 
 	logCmd "mkdir -p /etc/salt/minion.d"
+	salt_install_module_deps
+	salt_patch_x509_v2
+
+}
+
+salt_install_module_deps() {
     logCmd "salt-pip install docker --no-index --only-binary=:all: --find-links files/salt_module_deps/docker/"
     logCmd "salt-pip install pymysql --no-index --only-binary=:all: --find-links files/salt_module_deps/pymysql/"
+}
 
+salt_patch_x509_v2() {
 	# this can be removed when https://github.com/saltstack/salt/issues/64195 is resolved
 	if [ $SALTVERSION == "3006.1" ]; then
 		info "Salt version 3006.1 found. Patching /opt/saltstack/salt/lib/python3.10/site-packages/salt/states/x509_v2.py"
 		\cp -v ./files/patch/states/x509_v2.py /opt/saltstack/salt/lib/python3.10/site-packages/salt/states/x509_v2.py
 	fi
-
-}
-
-
-# Run a salt command to generate the minion key
-salt_firstcheckin() {
-	salt-call state.show_top >> /dev/null 2>&1 # send output to /dev/null because we don't actually care about the ouput
 }
 
 # Create an secrets pillar so that passwords survive re-install
@@ -2463,10 +2327,6 @@ wait_for_file() {
 	done
 	info "Could not find $filename after waiting ${total_time}s"
 	return 1
-}
-
-wait_for_salt_minion() {
-	retry 60 5 "journalctl -u salt-minion.service | grep 'Minion is ready to receive requests'" >> "$setup_log" 2>&1 || fail_setup
 }
 
 verify_setup() {

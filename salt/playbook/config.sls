@@ -91,6 +91,14 @@ playbooklogdir:
     - group: 939
     - makedirs: True
 
+playbookfilesdir:
+  file.directory:
+    - name: /opt/so/conf/playbook/redmine-files
+    - dir_mode: 775
+    - user: 939
+    - group: 939
+    - makedirs: True
+
 {%   if 'idh' in salt['cmd.shell']("ls /opt/so/saltstack/local/pillar/minions/|awk -F'_' {'print $2'}|awk -F'.' {'print $1'}").split() %}
 idh-plays:
   file.recurse:

@@ -1,7 +1,5 @@
-{% from 'vars/globals.map.jinja' import GLOBALS %}
-
 {# we only want this state to run it is CentOS #}
-{% if GLOBALS.os == 'OEL' %}
+{% if grains.os == 'OEL' %}
 
 include:
   - desktop.packages
@@ -14,10 +12,7 @@ graphical_target:
     - require:
       - desktop_packages
 
-convert_gnome_classic:
-  cmd.script:
-    - name: salt://desktop/scripts/convert-gnome-classic.sh
-
+{# set users to use gnome-classic #}
 {%   for username in salt['file.find'](path='/home/',mindepth=1,maxdepth=1,type='d') %}
 {%     set username = username.split('/')[2] %}
 {%     if username != 'zeek' %}

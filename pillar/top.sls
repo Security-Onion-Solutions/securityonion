@@ -4,14 +4,9 @@ base:
     - global.adv_global
     - docker.soc_docker
     - docker.adv_docker
-    - firewall.soc_firewall
-    - firewall.adv_firewall
     - influxdb.token
     - logrotate.soc_logrotate
     - logrotate.adv_logrotate
-    - nginx.soc_nginx
-    - nginx.adv_nginx
-    - node_data.ips
     - ntp.soc_ntp
     - ntp.adv_ntp
     - patch.needs_restarting
@@ -21,6 +16,13 @@ base:
     - sensoroni.adv_sensoroni
     - telegraf.soc_telegraf
     - telegraf.adv_telegraf
+
+  '* and not *_desktop':
+    - firewall.soc_firewall
+    - firewall.adv_firewall
+    - nginx.soc_nginx
+    - nginx.adv_nginx
+    - node_data.ips
 
   '*_manager or *_managersearch':
     - match: compound
