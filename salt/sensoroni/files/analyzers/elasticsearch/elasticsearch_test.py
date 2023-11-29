@@ -46,8 +46,7 @@ class TestElasticSearchMethods(unittest.TestCase):
         }
     }      
         with patch('elasticsearch.buildReq', new=MagicMock(return_value=expectedQuery)) as mock:
-            response = elasticsearch.buildReq(
-                observableType,numberOfResults)     
+            response = elasticsearch.buildReq(observableType,numberOfResults)     
             self.assertEqual(json.dumps(response), json.dumps(expectedQuery))
             mock.assert_called_once()
 
