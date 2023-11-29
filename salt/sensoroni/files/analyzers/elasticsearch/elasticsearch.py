@@ -30,9 +30,7 @@ def buildReq(conf, input):
         mappings = dict()
         
     cur_time = datetime.now()
-    start_time = cur_time - timedelta(minutes=conf['timeDeltaMinutes'])
-    
-
+    start_time = cur_time - timedelta(minutes=int(conf['timeDeltaMinutes']))
 
     if input['artifactType'] in mappings:
         type = mappings[input['artifactType']]
@@ -111,7 +109,6 @@ def main():
     args = parser.parse_args()
     if args.artifact:
         results = analyze(helpers.loadConfig(args.config), args.artifact)
-        print(args.config['timeDeltaMinutes'])
         print(json.dumps(results))
 
 
