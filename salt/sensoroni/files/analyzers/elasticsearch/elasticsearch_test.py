@@ -70,9 +70,9 @@ class TestElasticSearchMethods(unittest.TestCase):
             mock.assert_called_once()
 
     def test_wrongbuildReq(self):
-            result={'map':'123','artifactType':'hash','timestampFieldName':'abc', 'timeDeltaMinutes':14400, 'numResults':10,'value':'0' }
+            result={'map':'123','artifactType':'hash','timestamp_field_name':'abc', 'time_delta_minutes':14400, 'num_results':10,'value':'0' }
             cur_time = datetime.now()
-            start_time = cur_time - timedelta(minutes=result['timeDeltaMinutes'])
+            start_time = cur_time - timedelta(minutes=result['time_delta_minutes'])
             query=elasticsearch.buildReq(result, result)
             comparequery=json.dumps({
                 "from": 0,
@@ -87,7 +87,7 @@ class TestElasticSearchMethods(unittest.TestCase):
                         ],
                         "filter":{
                             "range":{
-                                result['timestampFieldName']:{
+                                result['timestamp_field_name']:{
                                     "gte": start_time.strftime('%Y-%m-%dT%H:%M:%S'),
                                     "lte": cur_time.strftime('%Y-%m-%dT%H:%M:%S')
                                 }
@@ -100,9 +100,9 @@ class TestElasticSearchMethods(unittest.TestCase):
             self.assertEqual(query, comparequery )
             
     def test_rightbuildReq(self):
-            result={'map':{'hash':'testingHash'},'artifactType':'hash','timestampFieldName':'abc', 'timeDeltaMinutes':14400 ,'value':'0','numResults':10 }
+            result={'map':{'hash':'testingHash'},'artifactType':'hash','timestamp_field_name':'abc', 'time_delta_minutes':14400, 'num_results':10,'value':'0'}
             cur_time = datetime.now()
-            start_time = cur_time - timedelta(minutes=result['timeDeltaMinutes'])
+            start_time = cur_time - timedelta(minutes=result['time_delta_minutes'])
             query=elasticsearch.buildReq(result, result)
             comparequery=json.dumps({
                 "from": 0,
@@ -118,7 +118,7 @@ class TestElasticSearchMethods(unittest.TestCase):
                         ,
                         "filter":{
                             "range":{
-                                result['timestampFieldName']:{
+                                result['timestamp_field_name']:{
                                     "gte": start_time.strftime('%Y-%m-%dT%H:%M:%S'),
                                     "lte": cur_time.strftime('%Y-%m-%dT%H:%M:%S')
                                 }
@@ -130,9 +130,9 @@ class TestElasticSearchMethods(unittest.TestCase):
             self.assertEqual(query, comparequery )
 
     def test_rightbuildReq100result(self):
-        result={'map':{'hash':'testingHash'},'artifactType':'hash','timestampFieldName':'abc', 'timeDeltaMinutes':14400 ,'value':'0','numResults':100}
+        result={'map':{'hash':'testingHash'},'artifactType':'hash','timestamp_field_name':'abc', 'time_delta_minutes':14400, 'num_results':100,'value':'0'}
         cur_time = datetime.now()
-        start_time = cur_time - timedelta(minutes=result['timeDeltaMinutes'])
+        start_time = cur_time - timedelta(minutes=result['time_delta_minutes'])
         query=elasticsearch.buildReq(result, result)
         comparequery=json.dumps({
             "from": 0,
@@ -148,7 +148,7 @@ class TestElasticSearchMethods(unittest.TestCase):
                     ,
                     "filter":{
                         "range":{
-                            result['timestampFieldName']:{
+                            result['timestamp_field_name']:{
                                 "gte": start_time.strftime('%Y-%m-%dT%H:%M:%S'),
                                 "lte": cur_time.strftime('%Y-%m-%dT%H:%M:%S')
                             }
