@@ -5,6 +5,7 @@ import unittest
 import elasticsearch
 import helpers
 import json
+from datetime import datetime, timedelta
 
 #python -m unittest .\elasticsearch_test.py
 
@@ -67,6 +68,97 @@ class TestElasticSearchMethods(unittest.TestCase):
             response = elasticsearch.buildReq(observableType,numberOfResults)     
             self.assertEqual(json.dumps(response), json.dumps(expectedQuery))
             mock.assert_called_once()
+
+    def test_wrongbuildReq(self):
+            result={'map':'123','artifactType':'hash','timestamp_field_name':'abc', 'time_delta_minutes':14400, 'num_results':10,'value':'0' }
+            cur_time = datetime.now()
+            start_time = cur_time - timedelta(minutes=result['time_delta_minutes'])
+            query=elasticsearch.buildReq(result, result)
+            comparequery=json.dumps({
+                "from": 0,
+                "size":10,
+                "query": {
+                    "bool":{
+                        "must": [{
+                            "wildcard": {
+                                'hash': result['value'],
+                            },
+                        }
+                        ],
+                        "filter":{
+                            "range":{
+                                result['timestamp_field_name']:{
+                                    "gte": start_time.strftime('%Y-%m-%dT%H:%M:%S'),
+                                    "lte": cur_time.strftime('%Y-%m-%dT%H:%M:%S')
+                                }
+                            }
+                        }
+                    }
+                }
+                
+            })
+            self.assertEqual(query, comparequery )
+            
+    def test_rightbuildReq(self):
+            result={'map':{'hash':'testingHash'},'artifactType':'hash','timestamp_field_name':'abc', 'time_delta_minutes':14400, 'num_results':10,'value':'0'}
+            cur_time = datetime.now()
+            start_time = cur_time - timedelta(minutes=result['time_delta_minutes'])
+            query=elasticsearch.buildReq(result, result)
+            comparequery=json.dumps({
+                "from": 0,
+                "size": 10,
+                "query": {
+                    "bool":{
+                        "must":[{
+                                "wildcard": {
+                                    result['map'][result['artifactType']]: result['value'],
+                                },
+                            }
+                        ]
+                        ,
+                        "filter":{
+                            "range":{
+                                result['timestamp_field_name']:{
+                                    "gte": start_time.strftime('%Y-%m-%dT%H:%M:%S'),
+                                    "lte": cur_time.strftime('%Y-%m-%dT%H:%M:%S')
+                                }
+                            }
+                        }
+                    }
+                }
+            })
+            self.assertEqual(query, comparequery )
+
+    def test_rightbuildReq100result(self):
+        result={'map':{'hash':'testingHash'},'artifactType':'hash','timestamp_field_name':'abc', 'time_delta_minutes':14400, 'num_results':100,'value':'0'}
+        cur_time = datetime.now()
+        start_time = cur_time - timedelta(minutes=result['time_delta_minutes'])
+        query=elasticsearch.buildReq(result, result)
+        comparequery=json.dumps({
+            "from": 0,
+            "size": 100,
+            "query": {
+                "bool":{
+                    "must":[{
+                            "wildcard": {
+                                result['map'][result['artifactType']]: result['value'],
+                            },
+                        }
+                    ]
+                    ,
+                    "filter":{
+                        "range":{
+                            result['timestamp_field_name']:{
+                                "gte": start_time.strftime('%Y-%m-%dT%H:%M:%S'),
+                                "lte": cur_time.strftime('%Y-%m-%dT%H:%M:%S')
+                            }
+                        }
+                    }
+                }
+            }
+        })
+        self.assertEqual(query, comparequery )
+
 
     '''Test that checks sendReq method to expect a response from a requests.post'''
     def test_sendReq(self):
