@@ -13,7 +13,6 @@ import os
 # of the above command to give this analyzer some test values. You may edit the
 # values in the test.yaml file freely.
 
-# Change all var names to snake case
 
 def checkConfigRequirements(conf):
     # if the user hasn't given valid configurables, quit.
@@ -73,7 +72,7 @@ def buildReq(conf, input):
             }
         }
     }
-    
+
     return json.dumps(query)
 
 
@@ -90,14 +89,16 @@ def sendReq(conf, query):
         headers = {
             'Content-Type': 'application/json',
         }
-        response = requests.post(str(url), auth=(uname, pwd), verify=cert_path, data=query, headers=headers)
+        response = requests.post(str(url), auth=(
+            uname, pwd), verify=cert_path, data=query, headers=headers)
     elif apikey:
         headers = {
             'Content-Type': 'application/json',
             'Authorization': f"Apikey {apikey}"
         }
-        response = requests.post(str(url), verify=cert_path, data=query, headers=headers)
-    
+        response = requests.post(
+            str(url), verify=cert_path, data=query, headers=headers)
+
     return response.json()
 
 
