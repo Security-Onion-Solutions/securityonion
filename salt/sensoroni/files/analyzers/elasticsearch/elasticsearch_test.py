@@ -31,7 +31,7 @@ class TestElasticSearchMethods(unittest.TestCase):
 
     '''Test that checks for empty and none values in configurables'''
     def test_checkConfigRequirements(self):
-        conf = {"base_url":"", "authUser":"", "authPWD":"", "numResults":None,"api_key":"","index":"","timeDeltaMinutes": None,"timestampFieldName":"", "map":{}}
+        conf = {"base_url":"", "auth_user":"", "auth_pwd":"", "num_results":None,"api_key":"","index":"","time_delta_minutes": None,"timestamp_field_name":"", "map":{}, "cert_path":""}
         with self.assertRaises(SystemExit) as cm:
             elasticsearch.checkConfigRequirements(conf)
         self.assertEqual(cm.exception.code, 126)
@@ -162,17 +162,17 @@ class TestElasticSearchMethods(unittest.TestCase):
 
     '''Test that checks sendReq method to expect a response from a requests.post'''
     def test_sendReq(self):
-        conf = {"base_url":"test", "authUser":"test", "authPWD":"test", "api_key":"test","index":"test"}
+        conf = {"base_url":"test", "auth_user":"test", "auth_pwd":"test", "api_key":"test","index":"test", "cert_path":""}
         with patch('requests.post', new=MagicMock(return_value=MagicMock())) as mock:
             response = elasticsearch.sendReq(conf, 'example_query')
             self.assertIsNotNone(response)    
 
     '''Test that checks prepareResults method, by comparing a mock prepareResults return_value with an expectedResult'''
-    def test_prepareResults(self):        
+    def test_prepareResults(self):
         summary = "Documents returned: 5"
         status = 'info'
         raw = {'_id': "0", "hash": "123"}
-        expectedResult = {'response': raw, 'summary': summary, 'status': status}        
+        expectedResult = {'response': raw, 'summary': summary, 'status': status}
 
         with patch('elasticsearch.prepareResults', new=MagicMock(return_value=expectedResult)) as mock:
             response = elasticsearch.prepareResults(raw)
@@ -181,19 +181,13 @@ class TestElasticSearchMethods(unittest.TestCase):
 
     '''Test that checks analyze method, simulated sendReq and prepareResults with 2 mock objects and variables sendReqOutput and prepareResultOutput,
             input created for analyze method call and then we compared results['summary'] with 'Documents returned: 5' '''    
-    def test_analyze(self):        
+    def test_analyze(self):
         sendReqOutput = {'_id': "0", "hash": "123"}
         input = '{"artifactType":"hash", "value":"123"}'
         prepareResultOutput = {'response': {'_id': "0", "hash": "123"},'summary': "Documents returned: 5", 'status': 'info'}
-        conf = {"base_url":"test", "authUser":"test", "authPWD":"test", "numResults":10,"api_key":"test","index":"test","timeDeltaMinutes": 14400,"timestampFieldName":"test", "map":{}}
+        conf = {"base_url":"test", "auth_user":"test", "auth_pwd":"test", "num_results":10,"api_key":"test","index":"test","time_delta_minutes": 14400,"timestamp_field_name":"test", "map":{}, "cert_path":""}
         with patch('elasticsearch.sendReq', new=MagicMock(return_value=sendReqOutput)) as mock:
             with patch('elasticsearch.prepareResults', new=MagicMock(return_value=prepareResultOutput)) as mock2:
                 results = elasticsearch.analyze(conf, input)
                 self.assertEqual(results["summary"], "Documents returned: 5")
-                mock.assert_called_once()  
-
-       
-    
-    
-    
-
+                mock.assert_called_once()

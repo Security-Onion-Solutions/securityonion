@@ -2,11 +2,9 @@ from datetime import datetime, timedelta
 import argparse
 import requests
 import helpers
-import urllib3
 import json
 import sys
 import os
-
 
 # default usage is:
 # python3 elasticsearch.py '{"artifactType":"hash", "value":"*"}'
@@ -15,27 +13,30 @@ import os
 # of the above command to give this analyzer some test values. You may edit the
 # values in the test.yaml file freely.
 
+# Change all var names to snake case
 
 def checkConfigRequirements(conf):
     # if the user hasn't given valid configurables, quit.
-    if not conf['numResults']:
+    if not conf['num_results']:
         sys.exit(126)
-    if not conf['timeDeltaMinutes']:
+    if not conf['time_delta_minutes']:
         sys.exit(126)
-    if (not conf['authUser'] or not conf['authPWD']) and not conf['api_key']:
+    if (not conf['auth_user'] or not conf['auth_pwd']) and not conf['api_key']:
         sys.exit(126)
     if not conf['index']:
         sys.exit(126)
     if not conf['base_url']:
         sys.exit(126)
-    if not conf['timestampFieldName']:
+    if not conf['timestamp_field_name']:
         sys.exit(126)
     else:
         return True
 
 
 def buildReq(conf, input):
-    numberOfResults = conf['numResults']
+    # structure a query to send to the Elasticsearch machine
+    # based off of user configurable values
+    num_results = conf['num_results']
 
     if conf['map'] != None:
         mappings = conf['map']
@@ -43,7 +44,7 @@ def buildReq(conf, input):
         mappings = dict()
 
     cur_time = datetime.now()
-    start_time = cur_time - timedelta(minutes=int(conf['timeDeltaMinutes']))
+    start_time = cur_time - timedelta(minutes=int(conf['time_delta_minutes']))
 
     if input['artifactType'] in mappings:
         type = mappings[input['artifactType']]
@@ -52,7 +53,7 @@ def buildReq(conf, input):
 
     query = {
         "from": 0,
-        "size": numberOfResults,
+        "size": num_results,
         "query": {
             "bool": {
                 "must": [{
@@ -63,7 +64,7 @@ def buildReq(conf, input):
                 ],
                 "filter": {
                     "range": {
-                        conf['timestampFieldName']: {
+                        conf['timestamp_field_name']: {
                             "gte": start_time.strftime('%Y-%m-%dT%H:%M:%S'),
                             "lte": cur_time.strftime('%Y-%m-%dT%H:%M:%S')
                         }
@@ -77,37 +78,31 @@ def buildReq(conf, input):
 
 
 def sendReq(conf, query):
-    headers = {
-        'Content-Type': 'application/json',
-    }
-
+    # send configured query with even more user specification
+    headers = {}
     url = conf['base_url'] + conf['index'] + '/_search'
-    uname = conf['authUser']
-    pwd = conf['authPWD']
+    uname = conf['auth_user']
+    pwd = conf['auth_pwd']
     apikey = conf['api_key']
+    cert_path = conf['cert_path']
 
-    # Change before release!
-    urllib3.disable_warnings()
-    # With verify=False in the post request, we are disabling TLS authentification.
-    # disable_warnings() simply suppresses these errors so Security Onion can
-    # read the output properly.
-
-    # The final version will have the verify parameter link to a .pem certificate
-    # that will be configurable by the end user
-    # if len(pwd) != 0 and len(uname) != 0:
-    #     response = requests.post(str(url), auth=(
-    #         uname, pwd), verify=False, data=query, headers=headers)
-    # elif len(apikey) != 0:
-    #     response = requests.post(str(url), auth=(
-    #         apikey), verify=False, data=query, headers=headers)
+    if pwd and uname:
+        headers = {
+            'Content-Type': 'application/json',
+        }
+        response = requests.post(str(url), auth=(uname, pwd), verify=cert_path, data=query, headers=headers)
+    elif apikey:
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f"Apikey {apikey}"
+        }
+        response = requests.post(str(url), verify=cert_path, data=query, headers=headers)
     
-    response = requests.post(str(url), auth=(
-        uname, pwd), verify=False, data=query, headers=headers)
     return response.json()
 
 
 def prepareResults(raw):
-    # will report the *limited* amount of hits in the summary, not the true amount
+    # returns raw API response, amount of hits found, and status of request in order
     summary = f"Documents returned: {len(raw['hits']['hits'])}"
     status = 'info'
     return {'response': raw, 'summary': summary, 'status': status}
