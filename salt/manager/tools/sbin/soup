@@ -450,7 +450,10 @@ post_to_2.4.20() {
 post_to_2.4.30() {
   echo "Regenerating Elastic Agent Installers"
   /sbin/so-elastic-agent-gen-installers
+  # there is an occasional error with this state: pki_public_ca_crt: TypeError: list indices must be integers or slices, not str
+  set +e
   salt-call state.apply ca queue=True
+  set -e
   stop_salt_minion
   mv /etc/pki/managerssl.crt /etc/pki/managerssl.crt.old
   mv /etc/pki/managerssl.key /etc/pki/managerssl.key.old
