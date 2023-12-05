@@ -14,18 +14,22 @@ def checkConfigRequirements(conf):
 def buildReq(conf, artifact_value):
     headers = {"Authorization": "Bearer " + conf['api_key']}
     base_url = conf['base_url']
-    if conf['live_flow'] is True:
+    if str(conf['live_flow']).lower() == "true":
         uri = "/v1/live-flow/raw-messages/analyze"
         data = {"create_mailbox": True, "mailbox_email_address": str(conf['mailbox_email_address']), "message_source_id": str(conf['message_source_id']), "raw_message": artifact_value}
     else:
         uri = "/v0/messages/analyze"
-        data = {"raw_message": artifact_value, "run_active_detection_rules": True}
+        data = {"raw_message": artifact_value,
+                "run_active_detection_rules": True}
     url = base_url + uri
     return url, headers, data
 
 
 def sendReq(url, headers, data):
-    response = requests.request('POST', url=url, headers=headers, data=json.dumps(data)).json()
+    response = requests.request('POST',
+                                url=url,
+                                headers=headers,
+                                data=json.dumps(data)).json()
     return response
 
 
@@ -66,7 +70,7 @@ def analyze(conf, input):
 
 def main():
     dir = os.path.dirname(os.path.realpath(__file__))
-    parser = argparse.ArgumentParser(description="Submit an email to Sublime Platform's EML Analyzer for analysis")
+    parser = argparse.ArgumentParser(description="Submit an email to Sublime Platform's EML Analyzer")
     parser.add_argument('artifact', help='the artifact represented in JSON format')
     parser.add_argument('-c', '--config', metavar="CONFIG_FILE", default=dir + "/sublime.yaml", help='optional config file to use instead of the default config file')
     args = parser.parse_args()

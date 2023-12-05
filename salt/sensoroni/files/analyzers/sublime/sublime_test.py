@@ -13,7 +13,7 @@ class TestSublimePlatformMethods(unittest.TestCase):
             with patch('sys.stderr', new=StringIO()) as mock_stderr:
                 sys.argv = ["cmd"]
                 sublime.main()
-                self.assertEqual(mock_stderr.getvalue(), "usage: cmd [-h] [-c CONFIG_FILE] artifact\ncmd: error: the following arguments are required: artifact\n")
+                self.assertEqual(mock_stderr.getvalue(), '''usage: cmd [-h] [-c CONFIG_FILE] artifact\ncmd: error: the following arguments are required: artifact\n''')
                 sysmock.assert_called_once_with(2)
 
     def test_main_success(self):
