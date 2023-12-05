@@ -43,6 +43,7 @@ def removeKey(content, key):
     else:
         content.pop(key, None)
 
+
 def remove(args):
     if len(args) != 2:
         print('Missing filename or key arg', file=sys.stderr)
