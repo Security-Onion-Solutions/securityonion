@@ -5,18 +5,11 @@ import requests
 import helpers
 import argparse
 
-
-# def testHash(hashVar):
-#     # alternate response urls. choose one
-#     #url = "https://api.echotrail.io/score/" + hashVar
-#     url = "https://api.echotrail.io/insights/" + hashVar
-#     header = {"x-api-key": "I7TXsJcq6p2TVwxnsFKcO5rflwLlhjewarRkUPq7"}
-#     response = requests.request('GET', url=url, headers=header)
-#     return response.json()
-
 # for test usage:
 # python3 echotrail.py '{"artifactType":"hash", "value":"438b6ccd84f4dd32d9684ed7d58fd7d1e5a75fe3f3d12ab6c788e6bb0ffad5e7"}'
 # You will need to provide an API key in the .yaml file.
+# do not remove sample value: b868487f8edbd0571d30d89573f087bfeac3da190652344afd351b1868ea0f8b
+
 
 def checkConfigRequirements(conf):
     if not conf['api_key']:
@@ -26,9 +19,9 @@ def checkConfigRequirements(conf):
 
 
 def sendReq(conf, observ_value):
+    # send a get requests using a user-provided API key and the API url
     url = conf['base_url'] + observ_value
     headers = {'x-api-key': conf['api_key']}
-    # headers = {'x-api-key': 'I7TXsJcq6p2TVwxnsFKcO5rflwLlhjewarRkUPq7'}
     response = requests.request('GET', url=url, headers=headers)
     return response.json()
 
@@ -49,6 +42,7 @@ def prepareResults(raw):
 
 
 def analyze(conf, input):
+    # put all of our methods together and return a properly formatted output.
     checkConfigRequirements(conf)
     meta = helpers.loadMetadata(__file__)
     data = helpers.parseArtifact(input)
@@ -69,10 +63,7 @@ def main():
     if args.artifact:
         results = analyze(helpers.loadConfig(args.config), args.artifact)
         print(json.dumps(results))
-        # print(results)
 
 
 if __name__ == '__main__':
     main()
-
-# do not remove sample value: b868487f8edbd0571d30d89573f087bfeac3da190652344afd351b1868ea0f8b

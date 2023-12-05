@@ -1,37 +1,31 @@
 import requests
 import helpers
 import json
-import os
 import sys
 
 
 def buildReq(observ_type, observ_value):
+    # supports hash, ip, and domain. determines which query type to send.
     if observ_type == 'hash':
         qterms = {'query': 'search_hash', 'hash': observ_value}
-    elif observ_type == 'ip':
+    elif observ_type == 'ip' or observ_type == 'domain':
         qterms = {'query': 'search_ioc', 'search_term': observ_value}
-    elif observ_type == 'domain':
-        qterms = {'query': 'search_ioc', 'search_term': observ_value}
-    else:
-        return
     return qterms
 
 
 def sendReq(meta, query):
+    # send a post request based off of our compiled query
     url = meta['baseUrl']
     response = requests.post(url, json.dumps(query))
     return response.json()
 
 
 def prepareResults(raw):
+    # gauge threat level based off of threatfox's confidence level
     if raw != {} and raw['query_status'] == 'ok':
         parsed = raw['data'][0]
 
-        # if parsed['threat_type_desc'] != '':
-        #     summary = parsed['threat_type_desc']
-        # else:
-        #     summary = parsed['threat_type']
-
+        # get summary
         if parsed['threat_type'] != '':
             summary = parsed['threat_type']
         else:
@@ -58,6 +52,8 @@ def prepareResults(raw):
 
 
 def analyze(input):
+    # put all of our methods together, pass them input, and return
+    # properly formatted json/python dict output
     data = json.loads(input)
     meta = helpers.loadMetadata(__file__)
     helpers.checkSupportedType(meta, data["artifactType"])
