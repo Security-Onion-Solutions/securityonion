@@ -450,7 +450,10 @@ post_to_2.4.20() {
 post_to_2.4.30() {
   echo "Regenerating Elastic Agent Installers"
   /sbin/so-elastic-agent-gen-installers
+  # there is an occasional error with this state: pki_public_ca_crt: TypeError: list indices must be integers or slices, not str
+  set +e
   salt-call state.apply ca queue=True
+  set -e
   stop_salt_minion
   mv /etc/pki/managerssl.crt /etc/pki/managerssl.crt.old
   mv /etc/pki/managerssl.key /etc/pki/managerssl.key.old
@@ -594,7 +597,11 @@ unmount_update() {
 
 update_airgap_rules() {
   # Copy the rules over to update them for airgap.
-  rsync -av $UPDATE_DIR/agrules/* /nsm/repo/rules/
+  rsync -av $UPDATE_DIR/agrules/suricata/* /nsm/rules/suricata/
+  rsync -av $UPDATE_DIR/agrules/yara/* /nsm/rules/yara/
+  if [ -d /nsm/repo/rules/sigma ]; then
+    rsync -av $UPDATE_DIR/agrules/sigma/* /nsm/repo/rules/sigma/
+  fi
 }
 
 update_airgap_repo() {
@@ -753,6 +760,9 @@ apply_hotfix() {
     elastic_fleet_integration_remove endpoints-initial elastic-defend-endpoints
     /usr/sbin/so-elastic-fleet-integration-policy-elastic-defend
   elif [[ "$INSTALLEDVERSION" == "2.4.30" ]] ; then
+    if [[ $is_airgap -eq 0 ]]; then
+      update_airgap_rules
+    fi
     if [[ -f /etc/pki/managerssl.key.old ]]; then
       echo "Skipping Certificate Generation"
     else
@@ -768,6 +778,7 @@ apply_hotfix() {
       mv /etc/pki/managerssl.crt /etc/pki/managerssl.crt.old
       mv /etc/pki/managerssl.key /etc/pki/managerssl.key.old
       systemctl_func "start" "salt-minion"
+      (wait_for_salt_minion "$MINIONID" "5" '/dev/stdout' || fail "Salt minion was not running or ready.") 2>&1 | tee -a "$SOUP_LOG"
     fi  
   else
    echo "No actions required. ($INSTALLEDVERSION/$HOTFIXVERSION)"
@@ -875,7 +886,6 @@ main() {
     echo "Hotfix applied"
     update_version
     enable_highstate
-    (wait_for_salt_minion "$MINIONID" "5" '/dev/stdout' || fail "Salt minion was not running or ready.") 2>&1 | tee -a "$SOUP_LOG"
     highstate
   else
     echo ""
