@@ -39,14 +39,14 @@ def prepareResults(raw):
         for r in raw["rule_results"]:
             if r["matched"] is True:
                 matched.append(r)
-            if len(matched) > 0:
-                raw = matched
-                status = "threat"
-                summary = "malicious"
-            else:
-                raw = "No rules matched."
-                status = "ok"
-                summary = "harmless"
+        if len(matched) > 0:
+            raw = matched
+            status = "threat"
+            summary = "malicious"
+        else:
+            raw = "No rules matched."
+            status = "ok"
+            summary = "harmless"
     elif "flagged_rules" in raw:
         if raw["flagged_rules"] is not None:
             status = "threat"
