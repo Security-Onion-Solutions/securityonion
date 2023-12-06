@@ -30,7 +30,7 @@ Many analyzers require authentication, via an API key or similar. The table belo
 [AlienVault OTX](https://otx.alienvault.com/api)            |&check;|
 [EmailRep](https://emailrep.io/key)                  |&check;|
 [GreyNoise](https://www.greynoise.io/plans/community)                 |&check;|
-LocalFile                 |&cross;|
+[LocalFile](https://github.com/Security-Onion-Solutions/securityonion/tree/fix/sublime_analyzer_documentation/salt/sensoroni/files/analyzers/localfile)                 |&cross;|
 [Malware Hash Registry](https://hash.cymru.com/docs_whois)    |&cross;|
 [Pulsedive](https://pulsedive.com/api/)                 |&check;|
 [Spamhaus](https://www.spamhaus.org/dbl/)                  |&cross;|
