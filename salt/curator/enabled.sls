@@ -58,15 +58,8 @@ delete_so-curator_so-status.disabled:
     - regex: ^so-curator$
 
 so-curator-cluster-close:
-  cron.present:
-    - name: /usr/sbin/so-curator-cluster-close > /opt/so/log/curator/cron-close.log 2>&1
+  cron.absent:
     - identifier: so-curator-cluster-close
-    - user: root
-    - minute: '2'
-    - hour: '*/1'
-    - daymonth: '*'
-    - month: '*'
-    - dayweek: '*'
 
 so-curator-cluster-delete:
   cron.present:
