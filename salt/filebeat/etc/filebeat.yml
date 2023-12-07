@@ -302,6 +302,22 @@ filebeat.inputs:
   index: "so-rita"
 
 - type: filestream
+  id: rita-beacon-sni
+  paths:
+    - /nsm/rita/beacons-sni.csv
+  exclude_lines: ['^Score', '^Source', '^Domain', '^No results']
+  fields:
+    module: rita
+    dataset: beacon
+    category: network
+  processors:
+  - drop_fields:
+      fields: ["source", "prospector", "input", "offset", "beat"]
+  fields_under_root: true
+  pipeline: "rita.snibeacon"
+  index: "so-rita"
+
+- type: filestream
   id: rita-connection
   paths:
     - /nsm/rita/long-connections.csv
