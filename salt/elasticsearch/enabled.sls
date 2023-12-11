@@ -206,7 +206,7 @@ so-curator-cluster-delete:
 
 so-elasticsearch-indices-delete:
   cron.present:
-    - name: /usr/sbin/so-elasticsearch-indices-delete > /opt/so/log/curator/cron-elasticsearch-indices-delete.log 2>&1
+    - name: /usr/sbin/so-elasticsearch-indices-delete > /opt/so/log/elasticsearch/cron-elasticsearch-indices-delete.log 2>&1
     - identifier: so-elasticsearch-indices-delete
     - user: root
     - minute: '*/5'
