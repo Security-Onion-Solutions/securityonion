@@ -8,7 +8,7 @@
 # Elastic agent is not managed by salt. Because of this we must store this base information in a 
 # script that accompanies the soup system. Since so-common is one of those special soup files, 
 # and since this same logic is required during installation, it's included in this file.
-ELASTIC_AGENT_TARBALL_VERSION="8.8.2"
+ELASTIC_AGENT_TARBALL_VERSION="8.10.4"
 ELASTIC_AGENT_URL="https://repo.securityonion.net/file/so-repo/prod/2.4/elasticagent/elastic-agent_SO-$ELASTIC_AGENT_TARBALL_VERSION.tar.gz"
 ELASTIC_AGENT_MD5_URL="https://repo.securityonion.net/file/so-repo/prod/2.4/elasticagent/elastic-agent_SO-$ELASTIC_AGENT_TARBALL_VERSION.md5"
 ELASTIC_AGENT_FILE="/nsm/elastic-fleet/artifacts/elastic-agent_SO-$ELASTIC_AGENT_TARBALL_VERSION.tar.gz"
@@ -133,34 +133,47 @@ check_elastic_license() {
 }
 
 check_salt_master_status() {
-	local timeout=$1
-	echo "Checking if we can talk to the salt master"
-	salt-call state.show_top concurrent=true
-
-	return
+	local count=0
+    local attempts="${1:- 10}"
+	current_time="$(date '+%b %d %H:%M:%S')"
+	echo "Checking if we can access the salt master and that it is ready at: ${current_time}"
+    while ! salt-call state.show_top -l error concurrent=true 1> /dev/null; do
+        current_time="$(date '+%b %d %H:%M:%S')"
+        echo "Can't access salt master or it is not ready at: ${current_time}"
+        ((count+=1))
+        if [[ $count -eq $attempts ]]; then
+			# 10 attempts takes about 5.5 minutes
+            echo "Gave up trying to access salt-master"
+            return 1
+        fi
+    done
+	current_time="$(date '+%b %d %H:%M:%S')"
+	echo "Successfully accessed and salt master ready at: ${current_time}"
+    return 0
 }
 
+# this is only intended to be used to check the status of the minion from a salt master
 check_salt_minion_status() {
-	local timeout=$1
-	echo "Checking if the salt minion will respond to jobs" >> "$setup_log" 2>&1
-	salt "$MINION_ID" test.ping -t $timeout > /dev/null 2>&1
+	local minion="$1"
+	local timeout="${2:-5}"
+	local logfile="${3:-'/dev/stdout'}"
+	echo "Checking if the salt minion: $minion will respond to jobs" >> "$logfile" 2>&1
+	salt "$minion" test.ping -t $timeout > /dev/null 2>&1
 	local status=$?
 	if [ $status -gt 0 ]; then
-		echo "  Minion did not respond" >> "$setup_log" 2>&1
+		echo "  Minion did not respond" >> "$logfile" 2>&1
 	else
-		echo "  Received job response from salt minion" >> "$setup_log" 2>&1
+		echo "  Received job response from salt minion" >> "$logfile" 2>&1
 	fi
 
 	return $status
 }
 
-
-
 copy_new_files() {
   # Copy new files over to the salt dir
   cd $UPDATE_DIR
-  rsync -a salt $DEFAULT_SALT_DIR/
-  rsync -a pillar $DEFAULT_SALT_DIR/
+  rsync -a salt $DEFAULT_SALT_DIR/ --delete
+  rsync -a pillar $DEFAULT_SALT_DIR/ --delete
   chown -R socore:socore $DEFAULT_SALT_DIR/
   chmod 755 $DEFAULT_SALT_DIR/pillar/firewall/addfirewall.sh
   cd /tmp
@@ -242,7 +255,7 @@ gpg_rpm_import() {
 	    else
 	        local RPMKEYSLOC="$UPDATE_DIR/salt/repo/client/files/$OS/keys"
 	    fi
-		RPMKEYS=('RPM-GPG-KEY-oracle' 'RPM-GPG-KEY-EPEL-9' 'SALT-PROJECT-GPG-PUBKEY-2023.pub' 'docker.pub' 'securityonion.pub' 'MariaDB-Server-GPG-KEY')
+		RPMKEYS=('RPM-GPG-KEY-oracle' 'RPM-GPG-KEY-EPEL-9' 'SALT-PROJECT-GPG-PUBKEY-2023.pub' 'docker.pub' 'securityonion.pub')
 		for RPMKEY in "${RPMKEYS[@]}"; do
     	        rpm --import $RPMKEYSLOC/$RPMKEY
 	        echo "Imported $RPMKEY"
@@ -384,6 +397,10 @@ retry() {
 								echo "<Start of output>"
 								echo "$output"
 								echo "<End of output>"
+								if [[ $exitcode -eq 0 ]]; then
+									echo "Forcing exit code to 1"
+									exitcode=1
+								fi
                         fi
                 elif [ -n "$failedOutput" ]; then
                         if [[ "$output" =~ "$failedOutput" ]]; then
@@ -392,7 +409,7 @@ retry() {
 								echo "$output"
 								echo "<End of output>"
 								if [[ $exitcode -eq 0 ]]; then
-									echo "The exitcode was 0, but we are setting to 1 since we found $failedOutput in the output."
+									echo "Forcing exit code to 1"
 									exitcode=1
 								fi
                         else
@@ -430,6 +447,24 @@ run_check_net_err() {
 	fi
 }
 
+wait_for_salt_minion() {
+	local minion="$1"
+	local timeout="${2:-5}"
+	local logfile="${3:-'/dev/stdout'}"
+	retry 60 5 "journalctl -u salt-minion.service | grep 'Minion is ready to receive requests'" >> "$logfile" 2>&1 || fail
+	local attempt=0
+	# each attempts would take about 15 seconds
+	local maxAttempts=20
+	until check_salt_minion_status "$minion" "$timeout" "$logfile"; do
+		attempt=$((attempt+1))
+		if [[ $attempt -eq $maxAttempts ]]; then
+			return 1
+		fi
+		sleep 10
+	done
+	return 0
+}
+
 salt_minion_count() {
 	local MINIONDIR="/opt/so/saltstack/local/pillar/minions"
 	MINIONCOUNT=$(ls -la $MINIONDIR/*.sls | grep -v adv_ | wc -l)
@@ -442,19 +477,51 @@ set_os() {
 			OS=rocky
 			OSVER=9
 			is_rocky=true
+			is_rpm=true
 		elif grep -q "CentOS Stream release 9" /etc/redhat-release; then
 			OS=centos
 			OSVER=9
 			is_centos=true
-		elif grep -q "Oracle Linux Server release 9" /etc/system-release; then
-			OS=oel
+			is_rpm=true
+		elif grep -q "AlmaLinux release 9" /etc/redhat-release; then
+			OS=alma
 			OSVER=9
-			is_oracle=true
+			is_alma=true
+			is_rpm=true
+		elif grep -q "Red Hat Enterprise Linux release 9" /etc/redhat-release; then
+			if [ -f /etc/oracle-release ]; then
+				OS=oracle
+				OSVER=9
+				is_oracle=true
+				is_rpm=true
+			else
+				OS=rhel
+				OSVER=9
+				is_rhel=true
+				is_rpm=true
+			fi
 		fi
 		cron_service_name="crond"
-	else
-		OS=ubuntu
-		is_ubuntu=true
+	elif [ -f /etc/os-release ]; then
+		if grep -q "UBUNTU_CODENAME=focal" /etc/os-release; then
+			OSVER=focal
+			UBVER=20.04
+			OS=ubuntu
+			is_ubuntu=true
+			is_deb=true
+		elif grep -q "UBUNTU_CODENAME=jammy" /etc/os-release; then
+			OSVER=jammy
+			UBVER=22.04
+			OS=ubuntu
+			is_ubuntu=true
+			is_deb=true
+		elif grep -q "VERSION_CODENAME=bookworm" /etc/os-release; then
+			OSVER=bookworm
+			DEBVER=12
+			is_debian=true
+			OS=debian
+			is_deb=true
+		fi
 		cron_service_name="cron"
 	fi
 }
@@ -486,6 +553,10 @@ set_version() {
 			VERSION="$NEWVERSION"
 		fi
 	fi
+}
+
+status () {
+    printf "\n=========================================================================\n$(date) | $1\n=========================================================================\n"
 }
 
 systemctl_func() {

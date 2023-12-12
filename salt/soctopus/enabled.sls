@@ -52,6 +52,8 @@ so-soctopus:
       - {{ XTRAENV }}
       {% endfor %}
     {% endif %}
+    - watch:
+      - file: /opt/so/conf/soctopus/SOCtopus.conf
     - require:
       - file: soctopusconf
       - file: navigatordefaultlayer

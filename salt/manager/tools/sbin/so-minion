@@ -9,23 +9,23 @@ if [ -f /usr/sbin/so-common ]; then
 	. /usr/sbin/so-common
 fi
 
-if [ "$(id -u)" -ne 0 ]; then
-	echo "This script must be run using sudo!"
+function usage() {
+	echo "Usage: $0 -o=<operation> -m=[id]"
+	echo ""
+	echo " where <operation> is one of the following:"
+	echo ""
+	echo "      add: Accepts a new key and adds the minion files"
+	echo "   delete: Removes the key and deletes the minion files"
+	echo "     list: Lists all keys with hashes"
+	echo "   reject: Rejects a key"
+	echo "  restart: Restart a minion (reboot)"
+	echo "     test: Perform minion test"
+	echo ""
 	exit 1
-fi
+}
 
 if [[ $# -lt 1 ]]; then
-  echo "Usage: $0 -o=<operation> -m=[id]"
-  echo ""
-  echo " where <operation> is one of the following:"
-  echo ""
-  echo "     list: Lists all keys with hashes"
-  echo "   accept: Accepts a new key and adds the minion files"
-  echo "   delete: Removes the key and deletes the minion files"
-  echo "   reject: Rejects a key"
-  echo "     test: Perform minion test"
-  echo ""
-  exit 1
+	usage
 fi
 
 for i in "$@"; do
@@ -38,6 +38,8 @@ for i in "$@"; do
 			MINION_ID="${i#*=}"
 			shift 
 			;;
+
+		# The following args are used internally during setup, not to be specified manually.
 		-e=*|--esheap=*)
 			ES_HEAP_SIZE="${i#*=}"
 			shift
@@ -63,6 +65,7 @@ for i in "$@"; do
 			exit 1
 			;;
 		*)
+			usage
 		;;
 	esac
 done
@@ -76,7 +79,7 @@ function getinstallinfo() {
 	source <(echo $INSTALLVARS)
 }
 
-function testminion() {
+function testMinion() {
 	# Always run on the host, since this is going to be the manager of a distributed grid, or an eval/standalone.
 	# Distributed managers must run this in order for the sensor nodes to have access to the so-tcpreplay image.
 	so-test
@@ -92,12 +95,19 @@ function testminion() {
 	exit $result
 }
 
-function listminions() {
+function restartMinion() {
+	salt "$MINION_ID" system.reboot
+	result=$?
+
+	exit $result
+}
+
+function listMinions() {
 	salt-key list -F --out=json
 	exit $?
 }
 
-function rejectminion() {
+function rejectMinion() {
 	salt-key -y -r $MINION_ID
 	exit $?
 }
@@ -106,11 +116,11 @@ function acceptminion() {
 	salt-key -y -a $MINION_ID
 }
 
-function deleteminion() {
+function deleteMinion() {
 	salt-key -y -d $MINION_ID
 }
 
-function deleteminionfiles () {
+function deleteMinionFiles () {
 	rm -f $PILLARFILE
 	rm -f $ADVPILLARFILE
 }
@@ -406,12 +416,17 @@ function update_logstash_outputs() {
     curl -K /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fleet/outputs/so-manager_logstash" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
 }
 
+function checkMine() {
+	local func=$1
+	# make sure the minion sees itself in the mine since it needs to see itself for states as opposed to using salt-run
+	retry 20 1 "salt '$MINION_ID' mine.get '\*' '$func'" "$MINION_ID"
+
+}
+
 function updateMine() {
-	salt "$MINION_ID" mine.send network.ip_addrs interface="$MNIC"
+	retry 20 1 "salt '$MINION_ID' mine.update" True
 }
-function apply_ES_state() {
-	salt-call state.apply elasticsearch concurrent=True
-}
+
 function createEVAL() {
 	is_pcaplimit=true
 	add_elasticsearch_to_minion
@@ -547,8 +562,6 @@ function createSEARCHNODE() {
 	add_elasticsearch_to_minion
 	add_logstash_to_minion
 	add_telegraf_to_minion
-	updateMine
-	apply_ES_state
 }
 
 function createRECEIVER() {
@@ -563,6 +576,19 @@ function createDESKTOP() {
 }
 
 function testConnection() {
+	# the minion should be trying to auth every 10 seconds so 15 seconds should be more than enough time to see this in the log
+	# this retry was put in because it is possible that a minion is attempted to be pinged before it has authenticated and connected to the Salt master
+	# causing the first ping to fail and typically wouldn't be successful until the second ping
+	# this check may pass without the minion being authenticated if it was previously connected and the line exists in the log
+	retry 15 1 "grep 'Authentication accepted from $MINION_ID' /opt/so/log/salt/master"
+	local retauth=$?
+	if [[ $retauth != 0 ]]; then
+		echo "The Minion did not authenticate with the Salt master in the allotted time"
+		echo "Deleting the key"
+		deleteminion
+		exit 1
+	fi
+
 	retry 15 3 "salt '$MINION_ID' test.ping" True
 	local ret=$?
 	if [[ $ret != 0 ]]; then
@@ -573,25 +599,33 @@ function testConnection() {
 	fi
 }
 
-if [[ "$OPERATION" = 'list' ]]; then
-	listminions
-fi
+function addMinion() {
+	# Accept the salt key
+	acceptminion
+	# Test to see if the minion was accepted
+	testConnection
+	# Pull the info from the file to build what is needed
+	getinstallinfo
+}
 
-if [[ "$OPERATION" = 'delete' ]]; then
-	deleteminionfiles
-	deleteminion
-fi
-
-if [[ "$OPERATION" = 'add' || "$OPERATION" = 'setup' ]]; then
-	# Skip this if its setup
-	if [ $OPERATION != 'setup' ]; then
-		# Accept the salt key
-		acceptminion
-		# Test to see if the minion was accepted
-		testConnection
-		# Pull the info from the file to build what is needed
-		getinstallinfo
+function updateMineAndApplyStates() {
+	# tell the minion to populate the mine with data from mine_functions which is populated during setup
+	# this only needs to happen on non managers since they handle this during setup
+	# and they need to wait for ca creation to update the mine
+	updateMine
+	checkMine "network.ip_addrs"
+	# apply the elasticsearch state to the manager if a new searchnode was added
+	if [[ "$NODETYPE" == "SEARCHNODE" || "$NODETYPE" == "HEAVYNODE" ]]; then
+		# calls so-common and set_minionid sets MINIONID to local minion id
+		set_minionid
+		salt $MINIONID state.apply elasticsearch queue=True --async
+		salt $MINIONID state.apply soc queue=True --async
 	fi
+	# run this async so the cli doesn't wait for a return
+	salt "$MINION_ID" state.highstate --async queue=True
+}
+
+function setupMinionFiles() {
 	# Check to see if nodetype is set
 	if [ -z $NODETYPE ]; then
 		echo "No node type specified"
@@ -605,10 +639,44 @@ if [[ "$OPERATION" = 'add' || "$OPERATION" = 'setup' ]]; then
 	else
 		add_sensoroni_to_minion
 	fi
+
 	create$NODETYPE
 	echo "Minion file created for $MINION_ID"	
-fi
+}
 
-if [[ "$OPERATION" = 'test' ]]; then
-	testminion
-fi
+case "$OPERATION" in
+	"add")
+		addMinion
+		setupMinionFiles
+		updateMineAndApplyStates
+		;;
+
+	"delete")
+		deleteMinionFiles
+		deleteMinion
+		;;
+
+	"list")
+		listMinions
+		;;
+
+	"reject")
+		rejectMinion
+		;;
+
+	"restart")
+		restartMinion
+		;;
+		
+	"setup")
+		# only should be invoked directly during setup, never manually
+		setupMinionFiles
+		;;
+
+	"test")
+		testMinion
+		;;
+	*)
+		usage
+		;;
+esac

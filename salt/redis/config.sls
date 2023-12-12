@@ -25,6 +25,13 @@ redisworkdir:
     - group: 939
     - makedirs: True
 
+redisdatadir:
+  file.directory:
+    - name: /nsm/redis/data
+    - user: 939
+    - group: 939
+    - makedirs: True
+
 redislogdir:
   file.directory:
     - name: /opt/so/log/redis

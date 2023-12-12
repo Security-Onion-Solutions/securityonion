@@ -6,19 +6,20 @@ Security Onion provides a means for performing data analysis on varying inputs. 
 
 The built-in analyzers support the following observable types:
 
-| Name                    | Domain | Hash  | IP    | Mail  | Other | URI   |  URL  | User Agent |
-| ------------------------|--------|-------|-------|-------|-------|-------|-------|-------|
-| Alienvault OTX          |&check; |&check;|&check;|&cross;|&cross;|&cross;|&check;|&cross;|
-| EmailRep                |&cross; |&cross;|&cross;|&check;|&cross;|&cross;|&cross;|&cross;|
-| Greynoise               |&cross; |&cross;|&check;|&cross;|&cross;|&cross;|&cross;|&cross;|
-| LocalFile               |&check; |&check;|&check;|&cross;|&check;|&cross;|&check;|&cross;|
-| Malware Hash Registry   |&cross; |&check;|&cross;|&cross;|&cross;|&cross;|&check;|&cross;|
-| Pulsedive               |&check; |&check;|&check;|&cross;|&cross;|&check;|&check;|&check;|
-| Spamhaus                |&cross; |&cross;|&check;|&cross;|&cross;|&cross;|&cross;|&cross;|
-| Urlhaus                 |&cross; |&cross;|&cross;|&cross;|&cross;|&cross;|&check;|&cross;|
-| Urlscan                 |&cross; |&cross;|&cross;|&cross;|&cross;|&cross;|&check;|&cross;|
-| Virustotal              |&check; |&check;|&check;|&cross;|&cross;|&cross;|&check;|&cross;|
-| WhoisLookup             |&check; |&cross;|&cross;|&cross;|&cross;|&check;|&cross;|&cross;|
+| Name                    | Domain |  EML  | Hash  | IP    | Mail  | Other | URI   |  URL  | User Agent |
+| ------------------------|--------|-------|-------|-------|-------|-------|-------|-------|-------|
+| Alienvault OTX          |&check; |&cross;|&check;|&check;|&cross;|&cross;|&cross;|&check;|&cross;|
+| EmailRep                |&cross; |&cross;|&cross;|&cross;|&check;|&cross;|&cross;|&cross;|&cross;|
+| Greynoise               |&cross; |&cross;|&cross;|&check;|&cross;|&cross;|&cross;|&cross;|&cross;|
+| LocalFile               |&check; |&cross;|&check;|&check;|&cross;|&check;|&cross;|&check;|&cross;|
+| Malware Hash Registry   |&cross; |&cross;|&check;|&cross;|&cross;|&cross;|&cross;|&check;|&cross;|
+| Pulsedive               |&check; |&cross;|&check;|&check;|&cross;|&cross;|&check;|&check;|&check;|
+| Spamhaus                |&cross; |&cross;|&cross;|&check;|&cross;|&cross;|&cross;|&cross;|&cross;|
+| Sublime Platform        |&cross; |&check;|&cross;|&cross;|&cross;|&cross;|&cross;|&cross;|&cross;|
+| Urlhaus                 |&cross; |&cross;|&cross;|&cross;|&cross;|&cross;|&cross;|&check;|&cross;|
+| Urlscan                 |&cross; |&cross;|&cross;|&cross;|&cross;|&cross;|&cross;|&check;|&cross;|
+| Virustotal              |&check; |&cross;|&check;|&check;|&cross;|&cross;|&cross;|&check;|&cross;|
+| WhoisLookup             |&check; |&cross;|&cross;|&cross;|&cross;|&cross;|&check;|&cross;|&cross;|
 
 ## Authentication
 
@@ -29,10 +30,11 @@ Many analyzers require authentication, via an API key or similar. The table belo
 [AlienVault OTX](https://otx.alienvault.com/api)            |&check;|
 [EmailRep](https://emailrep.io/key)                  |&check;|
 [GreyNoise](https://www.greynoise.io/plans/community)                 |&check;|
-LocalFile                 |&cross;|
+[LocalFile](https://github.com/Security-Onion-Solutions/securityonion/tree/fix/sublime_analyzer_documentation/salt/sensoroni/files/analyzers/localfile)                 |&cross;|
 [Malware Hash Registry](https://hash.cymru.com/docs_whois)    |&cross;|
 [Pulsedive](https://pulsedive.com/api/)                 |&check;|
 [Spamhaus](https://www.spamhaus.org/dbl/)                  |&cross;|
+[Sublime Platform](https://sublime.security)              |&check;| 
 [Urlhaus](https://urlhaus.abuse.ch/)                   |&cross;|
 [Urlscan](https://urlscan.io/docs/api/)                   |&check;|
 [VirusTotal](https://developers.virustotal.com/reference/overview)                |&check;|
@@ -152,6 +154,12 @@ The analyzer itself will only run when a user in SOC enqueues an analyzer job, s
 
 ```bash
 python -m urlhaus '{"artifactType":"url","value":"https://bigbadbotnet.invalid",...}'
+```
+
+To manually test an analyzer outside of the Sensoroni Docker container, use a command similar to the following:
+
+```bash
+PYTHONPATH=. python urlhaus/urlhaus.py '{"artifactType":"url","value":"https://bigbadbotnet.invalid",...}'
 ```
 
 It is up to each analyzer to determine whether the provided input is compatible with that analyzer. This is assisted by the analyzer metadata, as described earlier in this document, with the use of the `supportedTypes` list.

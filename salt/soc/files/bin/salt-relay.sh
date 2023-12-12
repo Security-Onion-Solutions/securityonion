@@ -37,12 +37,14 @@ function poll() {
 
 function respond() {
   file="$QUEUE_DIR/$1.response"
+  tmpfile="${file}.tmp"
   response=$2
 
-  touch "$file"
-  chmod 660 "$file"
-  chown "$QUEUE_OWNER:$QUEUE_GROUP" "$file"
-  echo "$response" > "$file"
+  touch "$tmpfile"
+  chmod 660 "$tmpfile"
+  chown "$QUEUE_OWNER:$QUEUE_GROUP" "$tmpfile"
+  echo "$response" > "$tmpfile"
+  mv $tmpfile $file
 }
 
 function list_minions() {
@@ -67,10 +69,10 @@ function manage_minion() {
   response=$(so-minion "-o=$op" "-m=$minion_id")
   exit_code=$?
   if [[ exit_code -eq 0 ]]; then
-    log "Successful command execution"
+    log "Successful '$op' command execution on $minion_id"
     respond "$id" "true"
   else
-    log "Unsuccessful command execution: $response ($exit_code)"
+    log "Unsuccessful '$op' command execution on $minion_id: $response ($exit_code)"
     respond "$id" "false"
   fi
 }

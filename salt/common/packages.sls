@@ -46,10 +46,16 @@ python-rich:
 {% endif %}
 
 {% if GLOBALS.os_family == 'RedHat' %}
+
+remove_mariadb:
+  pkg.removed:
+    - name: mariadb-devel
+
 commonpkgs:
   pkg.installed:
     - skip_suggestions: True
     - pkgs:
+      - python3-dnf-plugin-versionlock
       - curl
       - device-mapper-persistent-data
       - fuse
@@ -62,12 +68,9 @@ commonpkgs:
       - httpd-tools
       - jq
       - lvm2
-      - mariadb-devel
       - net-tools
       - nmap-ncat
-      - openssl
       - procps-ng
-      - python3-dnf-plugin-versionlock
       - python3-docker
       - python3-m2crypto
       - python3-packaging
@@ -79,4 +82,5 @@ commonpkgs:
       - unzip
       - wget
       - yum-utils
+
 {% endif %}
