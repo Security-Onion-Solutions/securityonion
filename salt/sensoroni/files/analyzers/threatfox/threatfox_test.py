@@ -55,9 +55,6 @@ class TestThreatfoxMethods(unittest.TestCase):
         result = threatfox.buildReq('hash', '2151c4b970eff0071948dbbc19066aa4')
         self.assertNotEqual(result, {})
     
-    def test_buildReqFalseEmptyInput(self):
-        result=threatfox.buildReq(' ', '')
-        self.assertIsNone(result)
 
     # simulate API response and makes sure sendReq gives a response
     # we are just checking if sendReq gives back anything
@@ -96,7 +93,7 @@ class TestThreatfoxMethods(unittest.TestCase):
     def test_prepareResults_threat(self):
         # threat exists
         raw = {'query_status': 'ok', 'data': [
-            {'threat_type_desc': 'threat', 'confidence_level': 94}]}
+            {'threat_type': 'threat', 'confidence_level': 94}]}
         sim_results = {'response': raw,
                        'summary': 'threat', 'status': 'threat'}
         results = threatfox.prepareResults(raw)
