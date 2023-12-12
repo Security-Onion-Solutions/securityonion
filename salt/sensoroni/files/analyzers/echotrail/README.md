@@ -2,7 +2,7 @@
 
 
 ## Description
-Submit a filename, hash, commandline to Echo Trail for analysis
+Submit a filename, hash, commandline to EchoTrail for analysis
 
 ## Configuration Requirements
 
@@ -10,7 +10,10 @@ In SOC, navigate to `Administration`, toggle `Show all configurable settings, in
 
 ![echotrail](https://github.com/RyHoa/securityonion/assets/129560634/43b55869-1fba-4907-8418-c0745c37237b)
 
-``api_key`` - API key used for communication with the Echotrail API
+
+The following configuration options are available for:
+
+``api_key`` - API key used for communication with the Echotrail API (Required)
 
 This value should be set in the ``sensoroni`` pillar, like so:
 

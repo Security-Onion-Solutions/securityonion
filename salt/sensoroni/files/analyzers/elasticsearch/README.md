@@ -2,14 +2,13 @@
 Elasticsearch returns an informational breakdown of the queried observable.
 
 ## Overview
-Elasticsearch supports queries towards user's database:
-User can use these observable type to query :hash, domain, file, filename, fqdn, gimphash, ip, mail, mail_subject, regexp, registry, telfhash, tlsh, uri_path, url, and user-agent values
+Elasticsearch facilitates queries within the user's database. User can use these observable type: hash, domain, file, filename, fqdn, gimphash, IP, mail, mail_subject, regexp, registry, telfhash, tlsh, uri_path, URL, and user-agent values.
 
 ## Description
-Configured, and submit the field you want to search for in your database. Ex:domain, hash, IP, or URL
+Configure and submit the field you want to search for in your database. Ex: domain, hash, IP, or URL
 
 ## Requirement
-An API key or Credentials is necessary for utilizing Elasticsearch.
+An API key or User Credentials is necessary for utilizing Elasticsearch.
 
 ## Configuration Requirements
 
@@ -17,27 +16,28 @@ In SOC, navigate to `Administration`, toggle `Show all configurable settings, in
 
 ![image](https://github.com/RyHoa/securityonion/assets/129560634/31c612d3-39f8-4d9e-881b-210c87a56b50)
 
+
 The following configuration options are available for:
 
-``api_key`` - API key used for communication with the Elastic Search API
+``api_key`` - API key used for communication with the Elasticsearch API (Optional if auth_user and auth_pwd are used)
 
-``auth_user`` - Username used for communication with elasticsearch database
+``auth_user`` - Username used for communication with Elasticsearch 
 
-``auth_pwd`` - password used for communication with elasticsearch
+``auth_pwd`` - Password used for communication with Elasticsearch
 
 ``base_url`` - URL that connect to Elasticsearch VM on port 9200. Example format :"https://<your IP address>:9200
 
-``index`` - the index of the data in Elasticsearch database. Default value is _all
+``index`` - The index of the data in Elasticsearch database. Default value is _all.
 
-``num_results`` - the max number of results will be displayed
+``num_results`` - The max number of results will be displayed. Default value is 10.
 
-``time_delta_minutes`` - Range of time the users want the data. The value is in minutes and will be converted to days. Defaults value is is 1440
+``time_delta_minutes`` - Range of time the users want the data in minutes. The value is in minutes and will be converted to days. Defaults value is is 1440.
 
-``timestamp_field_name`` - the name of your timestamp field name. Default value is @timestamp
+``timestamp_field_name`` - The name of your timestamp field name. Default value is @timestamp.
 
-``map`` -this is the dictionary of the field name in the user's Elasticsearch database. Example value {"hash":"userhashfieldname"}. This value will map the Security Onion hash field name to user hash field name.
+``map`` - This is the dictionary of the field name in the user's Elasticsearch database. Example value {"hash":"userhashfieldname"}. This value will map the Security Onion hash field name to user hash field name.
 
-``cert_path`` - this is the path to the certificate in the host for authentication purpose 
+``cert_path`` - This is the path to the certificate in the host for authentication purpose (Required)
 
 This value should be set in the ``sensoroni`` pillar, like so:
 
