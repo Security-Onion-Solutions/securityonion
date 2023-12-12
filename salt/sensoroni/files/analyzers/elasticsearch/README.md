@@ -12,6 +12,13 @@ Configured, and submit the field you want to search for in your database. Ex:dom
 An API key or Credentials is necessary for utilizing Elasticsearch.
 
 ## Configuration Requirements
+
+In SOC, navigate to `Administration`, toggle `Show all configurable settings, including advanced settings.`, and navigate to `sensoroni` -> `analyzers` -> `elasticsearch`.
+
+![image](image.png)
+
+The following configuration options are available for:
+
 ``api_key`` - API key used for communication with the Elastic Search API
 ``auth_user``          - Username used for communication with elasticsearch database
 ``auth_pwd``           - password used for communication with elasticsearch
