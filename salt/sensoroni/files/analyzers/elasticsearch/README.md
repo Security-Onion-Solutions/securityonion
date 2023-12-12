@@ -23,14 +23,23 @@ The following configuration options are available for:
 ``api_key`` - API key used for communication with the Elastic Search API
 
 ``auth_user`` - Username used for communication with elasticsearch database
+
 ``auth_pwd`` - password used for communication with elasticsearch
+
 ``base_url`` - URL that connect to Elasticsearch VM on port 9200. Example format :"https://<your IP address>:9200
+
 ``index`` - the index of the data in Elasticsearch database. Default value is _all
+
 ``num_results`` - the max number of results will be displayed
+
 ``time_delta_minutes`` - Range of time the users want the data. The value is in minutes and will be converted to days. Defaults value is is 1440
+
 ``timestamp_field_name`` - the name of your timestamp field name. Default value is @timestamp
+
 ``map`` -this is the dictionary of the field name in the user's Elasticsearch database. Example value {"hash":"userhashfieldname"}. This value will map the Security Onion hash field name to user hash field name.
+
 ``cert_path`` - this is the path to the certificate in the host for authentication purpose 
+
 This value should be set in the ``sensoroni`` pillar, like so:
 
 ```
