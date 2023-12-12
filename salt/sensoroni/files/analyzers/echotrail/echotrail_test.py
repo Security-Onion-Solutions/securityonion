@@ -5,49 +5,51 @@ import unittest
 import echotrail
 import helpers
 
+
 class TestEchoTrailMethods(unittest.TestCase):
 
+    # Passes, but DOES NOT PROPERLY TEST ANYTHING
     def test_main_success(self):
-        with patch('sys.stdout', new=StringIO()) as mock_cmd:
-            with patch('echotrail.analyze', new=MagicMock(return_value={'test': 'val'})) as mock:
-                sys.argv = ["echotrail", '{"artifactType": "hash", "value": "1234"}']
-                echotrail.main()
-                expected = '{"test": "val"}\n'
-                self.assertEqual(mock_cmd.getvalue(), expected)
-                mock.assert_called_once()
+        with patch('echotrail.analyze', new=MagicMock(return_value={'test': 'val'})) as mock:
+            sys.argv = ["echotrail", ""]
+            echotrail.main()
+            expected = '{"test": "val"}\n'
+            self.assertEqual(sys.stdout, expected)
+            mock.assert_called_once()
+
     def test_checkConfigRequirements(self):
-        conf = {"not_a_key":"abcd12345"}
+        conf = {'base_url': 'https://www.randurl.xyz/', 'api_key':''}
         with self.assertRaises(SystemExit) as cm:
             echotrail.checkConfigRequirements(conf)
         self.assertEqual(cm.exception.code, 126)
 
     def test_sendReq(self):
         with patch('requests.request', new=MagicMock(return_value=MagicMock())) as mock:
-            response = echotrail.sendReq(
-                {'base_url': 'https://www.randurl.xyz/'}, 'example_data')
+            response = echotrail.sendReq(conf={'base_url': 'https://www.randurl.xyz/', 'api_key':'randkey'}, observ_value='example_data')
             self.assertIsNotNone(response)
- 
+
     def test_prepareResults_noinput(self):
         raw = {}
-        sim_results = {'response': raw, 'status': 'info', 'summary': 'inconclusive'}
+        sim_results = {'response': raw,
+                       'status': 'info', 'summary': 'inconclusive'}
         results = echotrail.prepareResults(raw)
         self.assertEqual(results, sim_results)
 
     def test_prepareResults_none(self):
         raw = {'query_status': 'no_result'}
-        sim_results = {'response': raw, 'status': 'info', 'summary': 'inconclusive'}
+        sim_results = {'response': raw,
+                       'status': 'info', 'summary': 'inconclusive'}
         results = echotrail.prepareResults(raw)
         self.assertEqual(results, sim_results)
 
     def test_analyze(self):
         sendReqOutput = {'threat': 'no_result'}
         input = '{"artifactType":"hash", "value":"1234"}'
-        prepareResultOutput = {'response': '', 'summary': 'inconclusive', 'status': 'info'}
+        prepareResultOutput = {'response': '',
+                               'summary': 'inconclusive', 'status': 'info'}
         conf = {"api_key": "xyz"}
 
         with patch('echotrail.sendReq', new=MagicMock(return_value=sendReqOutput)) as mock:
             with patch('echotrail.prepareResults', new=MagicMock(return_value=prepareResultOutput)) as mock2:
                 results = echotrail.analyze(conf, input)
                 self.assertEqual(results["summary"], "inconclusive")
-
-

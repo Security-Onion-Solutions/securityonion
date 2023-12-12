@@ -6,6 +6,8 @@ import json
 import sys
 import os
 
+from pprint import pprint
+
 # default usage is:
 # python3 elasticsearch.py '{"artifactType":"hash", "value":"*"}'
 
@@ -127,7 +129,8 @@ def main():
     args = parser.parse_args()
     if args.artifact:
         results = analyze(helpers.loadConfig(args.config), args.artifact)
-        print(json.dumps(results))
+        #print(json.dumps(results))
+        pprint(results)
 
 
 if __name__ == '__main__':
