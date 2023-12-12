@@ -7,7 +7,6 @@ import helpers
 
 
 class TestEchoTrailMethods(unittest.TestCase):
-    # Passes, but DOES NOT PROPERLY TEST ANYTHING
     def test_main_success(self):
         with patch('sys.stdout', new=StringIO()) as mock_cmd:
             with patch('echotrail.analyze', new=MagicMock(return_value={'test': 'val'})) as mock:
@@ -16,6 +15,13 @@ class TestEchoTrailMethods(unittest.TestCase):
                 expected = '{"test": "val"}\n'
                 self.assertEqual(mock_cmd.getvalue(), expected)
                 mock.assert_called_once()
+                
+    def test_main_missing_input(self):
+        with patch('sys.exit', new=MagicMock()) as sysmock:
+            with patch('sys.stderr', new=StringIO()) as mock_stderr:
+                sys.argv = ["cmd"]
+                echotrail.main()
+                self.assertEqual(mock_stderr.getvalue(), "usage: cmd [-h] [-c CONFIG_FILE] artifact\ncmd: error: the following arguments are required: artifact\n")
 
     def test_checkConfigRequirements(self):
         conf = {'base_url': 'https://www.randurl.xyz/', 'api_key':''}
