@@ -7,15 +7,15 @@ import helpers
 
 
 class TestEchoTrailMethods(unittest.TestCase):
-
     # Passes, but DOES NOT PROPERLY TEST ANYTHING
     def test_main_success(self):
-        with patch('echotrail.analyze', new=MagicMock(return_value={'test': 'val'})) as mock:
-            sys.argv = ["echotrail", ""]
-            echotrail.main()
-            expected = '{"test": "val"}\n'
-            self.assertEqual(sys.stdout, expected)
-            mock.assert_called_once()
+        with patch('sys.stdout', new=StringIO()) as mock_cmd:
+            with patch('echotrail.analyze', new=MagicMock(return_value={'test': 'val'})) as mock:
+                sys.argv = ["test", "test"]
+                echotrail.main()
+                expected = '{"test": "val"}\n'
+                self.assertEqual(mock_cmd.getvalue(), expected)
+                mock.assert_called_once()
 
     def test_checkConfigRequirements(self):
         conf = {'base_url': 'https://www.randurl.xyz/', 'api_key':''}
