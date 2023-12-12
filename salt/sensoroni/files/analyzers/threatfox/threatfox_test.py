@@ -30,7 +30,7 @@ class TestThreatfoxMethods(unittest.TestCase):
             with patch('threatfox.analyze', new=MagicMock(return_value={'test': 'val'})) as mock:
                 sys.argv = ["cmd", "input"]
                 threatfox.main()
-                expected = "{'test': 'val'}\n"
+                expected = '{"test": "val"}\n'
                 self.assertEqual(mock_cmd.getvalue(), expected)
                 mock.assert_called_once()
 
