@@ -6,6 +6,9 @@ import json
 import sys
 import os
 
+# As it stands, this analyzer does not support querying for mixed-case fields without disregarding case completely.
+# So the current version will only support querying for all-lowercase alphanumerical values.
+
 # default usage is:
 # python3 elasticsearch.py '{"artifactType":"hash", "value":"*"}'
 
@@ -56,7 +59,9 @@ def buildReq(conf, input):
             "bool": {
                 "must": [{
                     "wildcard": {
-                        type: input['value'],
+                        type: {
+                            "value": input['value']
+                        }
                     },
                 }
                 ],
