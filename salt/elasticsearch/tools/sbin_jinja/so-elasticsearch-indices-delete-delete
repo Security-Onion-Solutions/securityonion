@@ -9,8 +9,8 @@
 {%- set ELASTICSEARCH_HOST = GLOBALS.node_ip -%}
 {%- set RETENTION = salt['pillar.get']('elasticsearch:retention', ELASTICDEFAULTS.elasticsearch.retention, merge=true) -%}
 
-LOG="/opt/so/log/curator/so-curator-cluster-delete.log"
-ALERT_LOG="/opt/so/log/curator/alert.log"
+LOG="/opt/so/log/elasticsearch/so-elasticsearch-indices-delete.log"
+ALERT_LOG="/opt/so/log/elasticsearch/indices-delete-alert.log"
 LOG_SIZE_LIMIT_GB=$(/usr/sbin/so-elasticsearch-cluster-space-total {{ RETENTION.retention_pct}})
 LOG_SIZE_LIMIT=$(( "$LOG_SIZE_LIMIT_GB" * 1000 * 1000 * 1000 ))
 ITERATION=0
@@ -51,8 +51,11 @@ while overlimit && [[ $ITERATION -lt $MAX_ITERATIONS ]]; do
       if [ "${INDEX}" != "${CURRENT_WRITE_INDEX}" ]; then
         # This should not be a write index, so we should be allowed to delete it
         printf "\n$(date) - Used disk space exceeds LOG_SIZE_LIMIT (${LOG_SIZE_LIMIT_GB} GB) - Deleting ${INDEX} index...\n" >> ${LOG}
-        /usr/sbin/so-elasticsearch-query ${INDEX} -XDELETE >> ${LOG} 2>&1
+	/usr/sbin/so-elasticsearch-query ${INDEX} -XDELETE >> ${LOG} 2>&1
       fi
+    else
+	    printf "\n$(date) - Used disk space exceeds LOG_SIZE_LIMIT (${LOG_SIZE_LIMIT_GB} GB) - There is only one backing index (${INDEX}).  Deleting ${DATASTREAM} data stream...\n" >> ${LOG}
+      /usr/sbin/so-elasticsearch-query _data_stream/$DATASTREAM -XDELETE >> ${LOG} 2>&1
     fi
     if ! overlimit ; then
       exit

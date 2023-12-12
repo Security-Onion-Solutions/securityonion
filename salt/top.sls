@@ -74,7 +74,6 @@ base:
     - suricata
     - zeek
     - strelka
-    - curator
     - elastalert
     - utility
     - soctopus
@@ -104,7 +103,6 @@ base:
     - redis
     - elastic-fleet-package-registry
     - kibana
-    - curator
     - elastalert
     - utility
     - soctopus
@@ -140,7 +138,6 @@ base:
     - suricata
     - zeek
     - strelka
-    - curator
     - elastalert
     - utility
     - soctopus
@@ -179,7 +176,6 @@ base:
     - elasticsearch
     - logstash
     - redis
-    - curator
     - elastic-fleet-package-registry
     - kibana
     - elastalert
@@ -199,7 +195,6 @@ base:
     - elasticsearch
     - logstash
     - redis
-    - curator
     - strelka
     - pcap
     - suricata

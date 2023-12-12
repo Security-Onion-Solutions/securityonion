@@ -18,6 +18,10 @@ so-elasticsearch_so-status.disabled:
     - name: /opt/so/conf/so-status/so-status.conf
     - regex: ^so-elasticsearch$
 
+so-elasticsearch-indices-delete:
+  cron.absent:
+    - identifier: so-elasticsearch-indices-delete 
+
 {% else %}
 
 {{sls}}_state_not_allowed:
