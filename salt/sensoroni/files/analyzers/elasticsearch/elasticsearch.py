@@ -114,7 +114,7 @@ def prepareResults(raw):
 
 
 def analyze(conf, input):
-    checkConfigRequirements(conf)
+    #checkConfigRequirements(conf)
     data = json.loads(input)
     query = buildReq(conf, data)
     response = sendReq(conf, query)
