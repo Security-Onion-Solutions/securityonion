@@ -31,6 +31,9 @@ def checkConfigRequirements(conf):
     #     sys.exit(126)
     # if not conf['timestamp_field_name']:
     #     sys.exit(126)
+    # if len(conf['base_url']) == 0:
+    #     sys.exit(126)
+
     return True
 
 
