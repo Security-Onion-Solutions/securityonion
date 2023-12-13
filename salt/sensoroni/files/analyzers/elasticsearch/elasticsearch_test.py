@@ -11,13 +11,13 @@ from datetime import datetime, timedelta
 
 class TestElasticSearchMethods(unittest.TestCase):   
 
-    # def test_main_missing_input(self):
-    #     with patch('sys.exit', new=MagicMock()) as sysmock:
-    #         with patch('sys.stderr', new=StringIO()) as mock_stderr:
-    #             sys.argv = ["cmd"]
-    #             elasticsearch.main()
-    #             self.assertEqual(mock_stderr.getvalue(), "usage: cmd [-h] [-c CONFIG_FILE] artifact\ncmd: error: the following arguments are required: artifact\n")
-    #             sysmock.assert_called_once_with(2)
+    def test_main_missing_input(self):
+        with patch('sys.exit', new=MagicMock()) as sysmock:
+            with patch('sys.stderr', new=StringIO()) as mock_stderr:
+                sys.argv = ["cmd"]
+                elasticsearch.main()
+                self.assertEqual(mock_stderr.getvalue(), "usage: cmd [-h] [-c CONFIG_FILE] artifact\ncmd: error: the following arguments are required: artifact\n")
+                sysmock.assert_called_once_with(2)
 
     # def test_main_success(self):
     #     output = {"foo": "bar"}

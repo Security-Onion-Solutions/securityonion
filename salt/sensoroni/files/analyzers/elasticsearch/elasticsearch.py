@@ -60,9 +60,7 @@ def buildReq(conf, input):
             "bool": {
                 "must": [{
                     "wildcard": {
-                        type: {
-                            "value": input['value']
-                        }
+                        type: input['value'],                        
                     },
                 }
                 ],
