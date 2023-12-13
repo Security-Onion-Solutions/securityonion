@@ -19,8 +19,8 @@ import os
 
 def checkConfigRequirements(conf):
     # if the user hasn't given valid configurables, quit.
-    if not conf['num_results']:
-        sys.exit(126)
+    # if not conf['num_results']:
+    #     sys.exit(126)
     # if not conf['time_delta_minutes']:
     #     sys.exit(126)
     # if (not conf['auth_user'] or not conf['auth_pwd']) and not conf['api_key']:
@@ -31,8 +31,8 @@ def checkConfigRequirements(conf):
     #     sys.exit(126)
     # if not conf['timestamp_field_name']:
     #     sys.exit(126)
-    # if len(conf['base_url']) == 0:
-    #     sys.exit(126)
+    if len(conf['base_url']) == 0:
+        sys.exit(126)
 
     return True
 
