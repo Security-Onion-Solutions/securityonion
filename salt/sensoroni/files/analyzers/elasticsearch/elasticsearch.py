@@ -21,16 +21,16 @@ def checkConfigRequirements(conf):
     # if the user hasn't given valid configurables, quit.
     if not conf['num_results']:
         sys.exit(126)
-    if not conf['time_delta_minutes']:
-        sys.exit(126)
-    if (not conf['auth_user'] or not conf['auth_pwd']) and not conf['api_key']:
-        sys.exit(126)
-    if not conf['index']:
-        sys.exit(126)
-    if not conf['base_url']:
-        sys.exit(126)
-    if not conf['timestamp_field_name']:
-        sys.exit(126)
+    # if not conf['time_delta_minutes']:
+    #     sys.exit(126)
+    # if (not conf['auth_user'] or not conf['auth_pwd']) and not conf['api_key']:
+    #     sys.exit(126)
+    # if not conf['index']:
+    #     sys.exit(126)
+    # if not conf['base_url']:
+    #     sys.exit(126)
+    # if not conf['timestamp_field_name']:
+    #     sys.exit(126)
     return True
 
 
@@ -114,7 +114,7 @@ def prepareResults(raw):
 
 
 def analyze(conf, input):
-    #checkConfigRequirements(conf)
+    checkConfigRequirements(conf)
     data = json.loads(input)
     query = buildReq(conf, data)
     response = sendReq(conf, query)
