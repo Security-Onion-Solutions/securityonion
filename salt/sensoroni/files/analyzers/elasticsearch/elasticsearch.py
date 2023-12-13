@@ -94,7 +94,7 @@ def sendReq(conf, query):
             'Content-Type': 'application/json',
         }
         response = requests.post(str(url), auth=(
-            uname, pwd), verify=cert_path, data=query, headers=headers)
+            uname, pwd), verify=False, data=query, headers=headers)
     elif apikey:
         headers = {
             'Content-Type': 'application/json',
