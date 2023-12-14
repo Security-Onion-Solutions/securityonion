@@ -33,18 +33,23 @@ so-logstash:
       - sobridge:
         - ipv4_address: {{ DOCKER.containers['so-logstash'].ip }}
     - user: logstash
-    - extra_hosts: {{ REDIS_NODES }}
+    - extra_hosts:
+    {% for node in REDIS_NODES %}
+    {%   for hostname, ip in node.items() %}
+      - {{hostname}}:{{ip}}
+    {%   endfor %}
+    {% endfor %}
     {% if DOCKER.containers['so-logstash'].extra_hosts %}
-      {% for XTRAHOST in DOCKER.containers['so-logstash'].extra_hosts %}
+    {%   for XTRAHOST in DOCKER.containers['so-logstash'].extra_hosts %}
       - {{ XTRAHOST }}
-      {% endfor %}
+    {%   endfor %}
     {% endif %}
     - environment:
       - LS_JAVA_OPTS=-Xms{{ lsheap }} -Xmx{{ lsheap }}
     {% if DOCKER.containers['so-logstash'].extra_env %}
-      {% for XTRAENV in DOCKER.containers['so-logstash'].extra_env %}
+    {%   for XTRAENV in DOCKER.containers['so-logstash'].extra_env %}
       - {{ XTRAENV }}
-      {% endfor %}
+    {%   endfor %}
     {% endif %}
     - port_bindings:
       {% for BINDING in DOCKER.containers['so-logstash'].port_bindings %}
