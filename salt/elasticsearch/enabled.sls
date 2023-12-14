@@ -26,7 +26,12 @@ so-elasticsearch:
     - networks:
       - sobridge:
         - ipv4_address: {{ DOCKER.containers['so-elasticsearch'].ip }}
-    - extra_hosts:  {{ LOGSTASH_NODES }}
+    - extra_hosts:
+    {% for node in LOGSTASH_NODES %}
+    {%   for hostname, ip in node.items() %}
+      - {{hostname}}:{{ip}}
+    {%   endfor %}
+    {% endfor %}
     {% if DOCKER.containers['so-elasticsearch'].extra_hosts %}
       {% for XTRAHOST in DOCKER.containers['so-elasticsearch'].extra_hosts %}
       - {{ XTRAHOST }}
