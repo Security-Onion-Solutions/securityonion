@@ -124,7 +124,7 @@ def analyze(conf, input):
 def main():
     dir = os.path.dirname(os.path.realpath(__file__))
     parser = argparse.ArgumentParser(
-        description='Search Elastic Search for a given artifact?')
+        description='Search Elasticsearch for a given artifact?')
     parser.add_argument('artifact', help='required artifact')
     parser.add_argument('-c', '--config', metavar='CONFIG_FILE', default=dir + '/elasticsearch.yaml',
                         help='optional config file to use instead of the default config file')
