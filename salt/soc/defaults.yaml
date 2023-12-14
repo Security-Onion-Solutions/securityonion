@@ -470,6 +470,18 @@ soc:
         - rule.action
         - rule.reason
         - network.community_id
+      ':pfsense:':
+        - soc_timestamp
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - network.transport
+        - network.direction
+        - observer.ingress.interface.name
+        - event.action
+        - event.reason
+        - network.community_id
       ':osquery:':
         - soc_timestamp
         - source.ip
@@ -1348,7 +1360,7 @@ soc:
               showSubtitle: true
             - name: Firewall
               description: Firewall events grouped by action
-              query: 'tags:firewall | groupby rule.action'
+              query: 'observer.type:firewall | groupby event.action'
               showSubtitle: true
         dashboards:
           advanced: true
@@ -1551,7 +1563,7 @@ soc:
               query: 'tags:s7* | groupby -sankey event.dataset source.ip destination.ip | groupby event.dataset | groupby source.ip | groupby destination.ip | groupby destination.port'
             - name: Firewall
               description: Firewall logs
-              query: 'tags:firewall | groupby -sankey rule.action interface.name | groupby rule.action | groupby interface.name | groupby network.transport | groupby source.ip | groupby destination.ip | groupby destination.port'
+              query: 'observer.type:firewall | groupby -sankey event.action observer.ingress.interface.name | groupby event.action | groupby observer.ingress.interface.name | groupby network.type | groupby network.transport | groupby source.ip | groupby destination.ip | groupby destination.port'
             - name: VLAN
               description: VLAN (Virtual Local Area Network) tagged logs
               query: '* AND _exists_:network.vlan.id | groupby network.vlan.id | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby event.dataset | groupby event.module | groupby observer.name | groupby source.geo.country_name | groupby destination.geo.country_name'
