@@ -96,6 +96,51 @@ class TestThreatfoxMethods(unittest.TestCase):
         results = threatfox.prepareResults(raw)
         self.assertEqual(results, sim_results)
 
+    def test_prepareResults_threat_type_does_not_exist(self):
+        # threat type does not exist
+        raw = {'query_status': 'ok', 'data': [
+            {'threat_type': '', 'threat_type_desc': 'description', 'confidence_level': 0}]}
+        sim_results = {'response': raw,
+                       'summary': 'description', 'status': 'ok'}
+        results = threatfox.prepareResults(raw)
+        self.assertEqual(results, sim_results)
+
+    def test_prepareResults_threat_type_25_or_less(self):
+        # confidence level of 25 or less
+        raw = {'query_status': 'ok', 'data': [
+            {'threat_type': 'threat', 'confidence_level': 25}]}
+        sim_results = {'response': raw,
+                       'summary': 'threat', 'status': 'ok'}
+        results = threatfox.prepareResults(raw)
+        self.assertEqual(results, sim_results)
+
+    def test_prepareResults_threat_type_greater_than_25(self):
+        # confidence level greater than 25
+        raw = {'query_status': 'ok', 'data': [
+            {'threat_type': 'threat', 'confidence_level': 26}]}
+        sim_results = {'response': raw,
+                       'summary': 'threat', 'status': 'info'}
+        results = threatfox.prepareResults(raw)
+        self.assertEqual(results, sim_results)
+
+    def test_prepareResults_threat_type_greater_than_50(self):
+        # confidence level greater than 50
+        raw = {'query_status': 'ok', 'data': [
+            {'threat_type': 'threat', 'confidence_level': 51}]}
+        sim_results = {'response': raw,
+                       'summary': 'threat', 'status': 'caution'}
+        results = threatfox.prepareResults(raw)
+        self.assertEqual(results, sim_results)
+
+    def test_prepareResults_threat_type_greater_than_75(self):
+        # confidence level greater than 75
+        raw = {'query_status': 'ok', 'data': [
+            {'threat_type': 'threat', 'confidence_level': 76}]}
+        sim_results = {'response': raw,
+                       'summary': 'threat', 'status': 'threat'}
+        results = threatfox.prepareResults(raw)
+        self.assertEqual(results, sim_results)
+
     def test_prepareResults_error(self):
         raw = {}
         sim_results = {'response': raw, 'status': 'caution',
