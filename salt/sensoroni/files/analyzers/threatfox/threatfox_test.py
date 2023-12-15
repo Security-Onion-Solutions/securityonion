@@ -50,23 +50,20 @@ class TestThreatfoxMethods(unittest.TestCase):
         result = threatfox.buildReq('domain', 'https://google.com')
         self.assertEqual(
             result, {'query': 'search_ioc', 'search_term': 'https://google.com'})
-    
+
     def test_buildReqFalse(self):
         result = threatfox.buildReq('hash', '2151c4b970eff0071948dbbc19066aa4')
         self.assertNotEqual(result, {})
-    
 
-    # simulate API response and makes sure sendReq gives a response
-    # we are just checking if sendReq gives back anything
+    # simulate API response and makes sure sendReq gives a response, we are just checking if sendReq gives back anything
     def test_sendReq(self):
         with patch('requests.post', new=MagicMock(return_value=MagicMock())) as mock:
             response = threatfox.sendReq(
                 {'baseUrl': 'https://www.randurl.xyz'}, 'example_data')
             self.assertIsNotNone(response)
+            mock.assert_called_once()
 
-    # result stores the output of the prepareResults method
-    # comparing result with expected output
-
+    # result stores the output of the prepareResults method, comparing result with expected output
     def test_prepareResults_noinput(self):
         # no/improper given input
         raw = {}
@@ -113,9 +110,9 @@ class TestThreatfoxMethods(unittest.TestCase):
         input = '{"artifactType":"hash", "value":"1234"}'
         prepareResultOutput = {'response': '',
                                'summary': 'no result', 'status': ''}
-
         with patch('threatfox.sendReq', new=MagicMock(return_value=sendReqOutput)) as mock:
             with patch('threatfox.prepareResults', new=MagicMock(return_value=prepareResultOutput)) as mock2:
                 results = threatfox.analyze(input)
                 self.assertEqual(results["summary"], "no result")
                 mock.assert_called_once()
+                mock2.assert_called_once()

@@ -5,10 +5,10 @@ import requests
 import helpers
 import argparse
 
+
 # for test usage:
 # python3 echotrail.py '{"artifactType":"hash", "value":"438b6ccd84f4dd32d9684ed7d58fd7d1e5a75fe3f3d12ab6c788e6bb0ffad5e7"}'
 # You will need to provide an API key in the .yaml file.
-
 def checkConfigRequirements(conf):
     if not conf['api_key']:
         sys.exit(126)
