@@ -8,12 +8,7 @@
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 {%   from 'docker/docker.map.jinja' import DOCKER %}
 {%   from 'logstash/map.jinja' import LOGSTASH_MERGED %}
-{%   from 'logstash/map.jinja' import REDIS_NODES %}
-{#   we append the manager here so that it is added to extra_hosts so the heavynode can resolve it #}
-{#   we cannont append in the logstash/map.jinja because then it would be added to the 0900_input_redis.conf #}
-{%   if GLOBALS.role == 'so-heavynode' %}
-{%     do REDIS_NODES.append({GLOBALS.manager:GLOBALS.manager_ip}) %}
-{%   endif %}
+{%   from 'logstash/map.jinja' import LOGSTASH_NODES %}
 {%   set lsheap = LOGSTASH_MERGED.settings.lsheap %}
 
 include:
@@ -34,7 +29,7 @@ so-logstash:
         - ipv4_address: {{ DOCKER.containers['so-logstash'].ip }}
     - user: logstash
     - extra_hosts:
-    {% for node in REDIS_NODES %}
+    {% for node in LOGSTASH_NODES %}
     {%   for hostname, ip in node.items() %}
       - {{hostname}}:{{ip}}
     {%   endfor %}
