@@ -30,10 +30,10 @@ def checkConfigRequirements(conf):
     if not conf['base_url']:
         sys.exit(126)
     if not conf['timestamp_field_name']:
-        sys.exit(126)   
+        sys.exit(126)
     if not conf['cert_path']:
-        sys.exit(126)    
-    return True   
+        sys.exit(126)
+    return True
 
 
 def buildReq(conf, input):
@@ -41,7 +41,7 @@ def buildReq(conf, input):
     # based off of user configurable values
     num_results = conf['num_results']
 
-    if conf['map'] != None:
+    if conf['map'] is not None:
         mappings = conf['map']
     else:
         mappings = dict()
@@ -61,7 +61,7 @@ def buildReq(conf, input):
             "bool": {
                 "must": [{
                     "wildcard": {
-                        type: input['value'],                        
+                        type: input['value'],
                     },
                 }
                 ],
