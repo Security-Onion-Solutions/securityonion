@@ -32,13 +32,70 @@ class TestElasticSearchMethods(unittest.TestCase):
                     mock_yaml.assert_called_once()
 
     '''Test that checks for empty and none values in configurables'''
-    def test_checkConfigRequirements(self):
-        conf = {"base_url": "", "auth_user": "", "auth_pwd": "", "num_results": None, "api_key": "", "index": "", "time_delta_minutes": None, "timestamp_field_name": "", "map": {}, "cert_path": ""}
+    def test_checkConfigRequirements_no_num_results(self):
+        conf = {"base_url": "https://baseurl", "auth_user": "test",
+                "auth_pwd": "test", "num_results": None, "api_key": "abcd1234",
+                "index": "_all", "time_delta_minutes": 12345, "timestamp_field_name": "@timestamp",
+                "map": {"test": "test"}, "cert_path": "/cert"}
         with self.assertRaises(SystemExit) as cm:
             elasticsearch.checkConfigRequirements(conf)
         self.assertEqual(cm.exception.code, 126)
+
+    def test_checkConfigRequirements_no_delta(self):
+        conf = {"base_url": "https://baseurl", "auth_user": "test",
+                "auth_pwd": "test", "num_results": 1, "api_key": "abcd1234",
+                "index": "_all", "time_delta_minutes": None, "timestamp_field_name": "@timestamp",
+                "map": {"test": "test"}, "cert_path": "/cert"}
+        with self.assertRaises(SystemExit) as cm:
+            elasticsearch.checkConfigRequirements(conf)
+        self.assertEqual(cm.exception.code, 126)
+
+    def test_checkConfigRequirements_no_auth_user(self):
+        conf = {"base_url": "https://baseurl", "auth_user": None, "auth_pwd": "test",
+                "num_results": "1", "api_key": None, "index": "_all", "time_delta_minutes": 12345,
+                "timestamp_field_name": "@timestamp", "map": {"test": "test"}, "cert_path": "/cert"}
+        with self.assertRaises(SystemExit) as cm:
+            elasticsearch.checkConfigRequirements(conf)
+        self.assertEqual(cm.exception.code, 126)
+
     '''Test that checks buildReq method, by comparing a mock buildReq result with an expectedQuery, used a mock object to simulate an expectedQuery
         since Elasticsearch buildReq uses values in the config'''
+
+    def test_checkConfigRequirements_no_index(self):
+        conf = {"base_url": "https://baseurl", "auth_user": "test", "auth_pwd": "test",
+                "num_results": "1", "api_key": "abcd1234", "index": None, "time_delta_minutes": 12345,
+                "timestamp_field_name": "@timestamp", "map": {"test": "test"}, "cert_path": "/cert"}
+        with self.assertRaises(SystemExit) as cm:
+            elasticsearch.checkConfigRequirements(conf)
+        self.assertEqual(cm.exception.code, 126)
+
+    def test_checkConfigRequirements_no_base_url(self):
+        conf = {"base_url": None, "auth_user": "test", "auth_pwd": "test", "num_results": "1",
+                "api_key": "abcd1234", "index": "_all", "time_delta_minutes": 12345,
+                "timestamp_field_name": "@timestamp", "map": {"test": "test"}, "cert_path": "/cert"}
+        with self.assertRaises(SystemExit) as cm:
+            elasticsearch.checkConfigRequirements(conf)
+        self.assertEqual(cm.exception.code, 126)
+
+    def test_checkConfigRequirements_no_timestamp_field_name(self):
+        conf = {"base_url": "https://baseurl", "auth_user": "test", "auth_pwd": "test", "num_results": "1",
+                "api_key": "abcd1234", "index": "_all", "time_delta_minutes": 12345,
+                "timestamp_field_name": None, "map": {"test": "test"}, "cert_path": "/cert"}
+        with self.assertRaises(SystemExit) as cm:
+            elasticsearch.checkConfigRequirements(conf)
+        self.assertEqual(cm.exception.code, 126)
+
+    def test_checkConfigRequirements_no_cert_path(self):
+        conf = {"base_url": "https://baseurl", "auth_user": "test", "auth_pwd": "test", "num_results": "1",
+                "api_key": "abcd1234", "index": "_all", "time_delta_minutes": 12345, "timestamp_field_name": "@timestamp",
+                "map": {"test": "test"}, "cert_path": None}
+        with self.assertRaises(SystemExit) as cm:
+            elasticsearch.checkConfigRequirements(conf)
+        self.assertEqual(cm.exception.code, 126)
+
+    '''Test that checks buildReq method, by comparing a mock buildReq result with an expectedQuery, used a mock object to simulate an expectedQuery
+        since Elasticsearch buildReq uses values in the config'''
+
     def test_buildReq(self):
         numberOfResults = 1
         observableType = "hash"
@@ -70,7 +127,8 @@ class TestElasticSearchMethods(unittest.TestCase):
             mock.assert_called_once()
 
     def test_wrongbuildReq(self):
-        result = {'map': '123', 'artifactType': 'hash', 'timestamp_field_name': 'abc', 'time_delta_minutes': 14400, 'num_results': 10, 'value': '0'}
+        mapping = None
+        result = {'map': mapping, 'artifactType': 'hash', 'timestamp_field_name': 'abc', 'time_delta_minutes': 14400, 'num_results': 10, 'value': '0'}
         cur_time = datetime.now()
         start_time = cur_time - timedelta(minutes=result['time_delta_minutes'])
         query = elasticsearch.buildReq(result, result)
@@ -155,8 +213,15 @@ class TestElasticSearchMethods(unittest.TestCase):
         self.assertEqual(query, comparequery)
 
     '''Test that checks sendReq method to expect a response from a requests.post'''
-    def test_sendReq(self):
+    def test_sendReq_user_password(self):
         conf = {"base_url": "test", "auth_user": "test", "auth_pwd": "test", "api_key": "test", "index": "test", "cert_path": ""}
+        with patch('requests.post', new=MagicMock(return_value=MagicMock())) as mock:
+            response = elasticsearch.sendReq(conf, 'example_query')
+            self.assertIsNotNone(response)
+            mock.assert_called_once
+
+    def test_sendReq_apikey(self):
+        conf = {"base_url": "test", "auth_user": None, "auth_pwd": None, "api_key": "abcd1234", "index": "test", "cert_path": ""}
         with patch('requests.post', new=MagicMock(return_value=MagicMock())) as mock:
             response = elasticsearch.sendReq(conf, 'example_query')
             self.assertIsNotNone(response)
@@ -164,15 +229,12 @@ class TestElasticSearchMethods(unittest.TestCase):
 
     '''Test that checks prepareResults method, by comparing a mock prepareResults return_value with an expectedResult'''
     def test_prepareResults(self):
-        summary = "Documents returned: 5"
-        status = 'info'
-        raw = {'_id': "0", "hash": "123"}
-        expectedResult = {'response': raw, 'summary': summary, 'status': status}
+        raw = {"hits": {"hits": [{"_id": 0, "hash": "123"}]}}
+        results = elasticsearch.prepareResults(raw)
+        self.assertEqual(results["response"], raw)
+        self.assertEqual(results["summary"], "Documents returned: 1")
+        self.assertEqual(results["status"], "info")
 
-        with patch('elasticsearch.prepareResults', new=MagicMock(return_value=expectedResult)) as mock:
-            response = elasticsearch.prepareResults(raw)
-            self.assertEqual(expectedResult, response)
-            mock.assert_called_once()
     '''Test that checks analyze method, simulated sendReq and prepareResults with 2 mock objects and variables sendReqOutput and prepareResultOutput,
             input created for analyze method call and then we compared results['summary'] with 'Documents returned: 5' '''
     def test_analyze(self):

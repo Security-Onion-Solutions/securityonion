@@ -49,6 +49,20 @@ class TestEchoTrailMethods(unittest.TestCase):
         results = echotrail.prepareResults(raw)
         self.assertEqual(results, sim_results)
 
+    def test_prepareResults_filenames(self):
+        raw = {'filenames': [["abc.exe", "def.exe"], ["abc.exe", "def.exe"]]}
+        sim_results = {'response': raw,
+                       'status': 'info', 'summary': 'abc.exe'}
+        results = echotrail.prepareResults(raw)
+        self.assertEqual(results, sim_results)
+
+    def test_prepareResults_tags(self):
+        raw = {'tags': [["tag1", "tag2"], ["tag1", "tag2"]]}
+        sim_results = {'response': raw,
+                       'status': 'info', 'summary': 'tag1'}
+        results = echotrail.prepareResults(raw)
+        self.assertEqual(results, sim_results)
+
     def test_analyze(self):
         sendReqOutput = {'threat': 'no_result'}
         input = '{"artifactType":"hash", "value":"1234"}'
