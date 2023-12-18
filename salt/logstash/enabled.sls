@@ -8,12 +8,7 @@
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 {%   from 'docker/docker.map.jinja' import DOCKER %}
 {%   from 'logstash/map.jinja' import LOGSTASH_MERGED %}
-{%   from 'logstash/map.jinja' import REDIS_NODES %}
-{#   we append the manager here so that it is added to extra_hosts so the heavynode can resolve it #}
-{#   we cannont append in the logstash/map.jinja because then it would be added to the 0900_input_redis.conf #}
-{%   if GLOBALS.role == 'so-heavynode' %}
-{%     do REDIS_NODES.append({GLOBALS.manager:GLOBALS.manager_ip}) %}
-{%   endif %}
+{%   from 'logstash/map.jinja' import LOGSTASH_NODES %}
 {%   set lsheap = LOGSTASH_MERGED.settings.lsheap %}
 
 include:
@@ -33,18 +28,23 @@ so-logstash:
       - sobridge:
         - ipv4_address: {{ DOCKER.containers['so-logstash'].ip }}
     - user: logstash
-    - extra_hosts: {{ REDIS_NODES }}
+    - extra_hosts:
+    {% for node in LOGSTASH_NODES %}
+    {%   for hostname, ip in node.items() %}
+      - {{hostname}}:{{ip}}
+    {%   endfor %}
+    {% endfor %}
     {% if DOCKER.containers['so-logstash'].extra_hosts %}
-      {% for XTRAHOST in DOCKER.containers['so-logstash'].extra_hosts %}
+    {%   for XTRAHOST in DOCKER.containers['so-logstash'].extra_hosts %}
       - {{ XTRAHOST }}
-      {% endfor %}
+    {%   endfor %}
     {% endif %}
     - environment:
       - LS_JAVA_OPTS=-Xms{{ lsheap }} -Xmx{{ lsheap }}
     {% if DOCKER.containers['so-logstash'].extra_env %}
-      {% for XTRAENV in DOCKER.containers['so-logstash'].extra_env %}
+    {%   for XTRAENV in DOCKER.containers['so-logstash'].extra_env %}
       - {{ XTRAENV }}
-      {% endfor %}
+    {%   endfor %}
     {% endif %}
     - port_bindings:
       {% for BINDING in DOCKER.containers['so-logstash'].port_bindings %}
