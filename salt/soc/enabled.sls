@@ -33,21 +33,26 @@ so-soc:
       - /opt/so/conf/soc/soc_users_roles:/opt/sensoroni/rbac/users_roles:rw
       - /opt/so/conf/soc/queue:/opt/sensoroni/queue:rw
       - /opt/so/saltstack:/opt/so/saltstack:rw
-    - extra_hosts: {{ DOCKER_EXTRA_HOSTS }}
-      {% if DOCKER.containers['so-soc'].extra_hosts %}
-        {% for XTRAHOST in DOCKER.containers['so-soc'].extra_hosts %}
+    - extra_hosts:
+    {% for node in DOCKER_EXTRA_HOSTS %}
+    {%   for hostname, ip in node.items() %}
+      - {{hostname}}:{{ip}}
+    {%   endfor %}
+    {% endfor %}
+    {% if DOCKER.containers['so-soc'].extra_hosts %}
+    {%   for XTRAHOST in DOCKER.containers['so-soc'].extra_hosts %}
       - {{ XTRAHOST }}
-        {% endfor %}
-      {% endif %}
+    {%   endfor %}
+    {% endif %}
     - port_bindings:
-      {% for BINDING in DOCKER.containers['so-soc'].port_bindings %}
+    {% for BINDING in DOCKER.containers['so-soc'].port_bindings %}
       - {{ BINDING }}
-      {% endfor %}
+    {% endfor %}
     {% if DOCKER.containers['so-soc'].extra_env %}
     - environment:
-      {% for XTRAENV in DOCKER.containers['so-soc'].extra_env %}
+    {%   for XTRAENV in DOCKER.containers['so-soc'].extra_env %}
       - {{ XTRAENV }}
-      {% endfor %}
+    {%   endfor %}
     {% endif %}
     - watch:
       - file: /opt/so/conf/soc/*
