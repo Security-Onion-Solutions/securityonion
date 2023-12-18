@@ -27,6 +27,15 @@ so-curator-cluster-delete:
   cron.absent:
     - identifier: so-curator-cluster-delete
 
+delete_curator_configuration:
+  file.absent:
+    - name: /opt/so/conf/curator
+    - recurse: True
+
+delete_curator_scripts:
+  file.absent:
+    - name: /usr/sbin/so-curator-*
+
 {% else %}
 
 {{sls}}_state_not_allowed:
