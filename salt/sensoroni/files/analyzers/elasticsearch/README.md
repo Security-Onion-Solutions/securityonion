@@ -14,7 +14,7 @@ An API key or User Credentials is necessary for utilizing Elasticsearch.
 
 In SOC, navigate to `Administration`, toggle `Show all configurable settings, including advanced settings.`, and navigate to `sensoroni` -> `analyzers` -> `elasticsearch`.
 
-![image](https://github.com/RyHoa/securityonion/assets/129560634/31c612d3-39f8-4d9e-881b-210c87a56b50)
+![image](https://github.com/Security-Onion-Solutions/securityonion/tree/2.4/dev/assets/images/screenshots/analyzers/elasticsearch.png)
 
 
 The following configuration options are available for:
