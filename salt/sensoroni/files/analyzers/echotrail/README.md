@@ -8,7 +8,7 @@ Submit a filename, hash, commandline to EchoTrail for analysis
 
 In SOC, navigate to `Administration`, toggle `Show all configurable settings, including advanced settings.`, and navigate to `sensoroni` -> `analyzers` -> `echotrail`.
 
-![echotrail](https://github.com/Security-Onion-Solutions/securityonion/tree/2.4/dev/assets/images/screenshots/analyzers/echotrail.png)
+![echotrail](https://github.com/Security-Onion-Solutions/securityonion/tree/fix/analyzer_images/assets/images/screenshots/analyzers/echotrail.png)
 
 
 The following configuration options are available for:
