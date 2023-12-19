@@ -67,10 +67,14 @@ set_log_levels:
       - "log_level: info"
       - "log_level_logfile: info"
 
+# we use the only if here because there is a point in setup where thise state runs
+# but this state isn'r present on a manager type node
 enable_startup_states:
   file.uncomment:
     - name: /etc/salt/minion
     - regex: '^startup_states: highstate$'
+    - onlyif:
+      - cmd: "grep 'startup_states: highstate' /etc/salt/minion"
 
 # prior to 2.4.30 this managed file would restart the salt-minion service when updated
 # since this file is currently only adding a sleep timer on service start
