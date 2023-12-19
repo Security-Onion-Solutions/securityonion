@@ -6,7 +6,7 @@ Submit a base64-encoded EML file to Sublime Platform for analysis.
 ## Configuration Requirements
 In SOC, navigate to `Administration`, toggle `Show all configurable settings, including advanced settings.`, and navigate to `sensoroni` -> `analyzers` -> `sublime_platform`.
 
-![image](https://github.com/Security-Onion-Solutions/securityonion/assets/16829864/a914f59d-c09f-40b6-ae8b-d644df236b81)
+![image](https://github.com/Security-Onion-Solutions/securityonion/tree/2.4/dev/assets/images/screenshots/analyzers/sublime.png)
 
 
 The following configuration options are available for:
