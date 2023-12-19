@@ -73,8 +73,6 @@ enable_startup_states:
   file.uncomment:
     - name: /etc/salt/minion
     - regex: '^startup_states: highstate$'
-    - onlyif:
-      - cmd: "grep 'startup_states: highstate' /etc/salt/minion"
 
 # prior to 2.4.30 this managed file would restart the salt-minion service when updated
 # since this file is currently only adding a sleep timer on service start
