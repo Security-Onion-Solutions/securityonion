@@ -67,8 +67,6 @@ set_log_levels:
       - "log_level: info"
       - "log_level_logfile: info"
 
-# we use the only if here because there is a point in setup where thise state runs
-# but this state isn'r present on a manager type node
 enable_startup_states:
   file.uncomment:
     - name: /etc/salt/minion
