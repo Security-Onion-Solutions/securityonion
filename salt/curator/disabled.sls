@@ -27,6 +27,8 @@ delete_curator_configuration:
     - recurse: True
 
 {% set files = salt.file.find(path='/usr/sbin', name='so-curator*') %}
+{% if files|length > 0 %}
 delete_curator_scripts:
   file.absent:
     - names: {{files|yaml}}
+{% endif %}
