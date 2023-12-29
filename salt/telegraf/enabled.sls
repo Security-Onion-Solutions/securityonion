@@ -55,6 +55,7 @@ so-telegraf:
       - /opt/so/log/suricata:/var/log/suricata:ro
       - /opt/so/log/raid:/var/log/raid:ro
       - /opt/so/log/sostatus:/var/log/sostatus:ro
+      - /opt/so/log/salt:/var/log/salt:ro
       {% if DOCKER.containers['so-telegraf'].custom_bind_mounts %}
         {% for BIND in DOCKER.containers['so-telegraf'].custom_bind_mounts %}
       - {{ BIND }}
