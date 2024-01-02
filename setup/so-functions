@@ -531,7 +531,8 @@ configure_minion() {
 		"  x509_v2: true"\
 		"log_level: info"\
 		"log_level_logfile: info"\
-		"log_file: /opt/so/log/salt/minion" >> "$minion_config"
+		"log_file: /opt/so/log/salt/minion"\
+		"#startup_states: highstate" >> "$minion_config"
 
 	info "Running: salt-call state.apply salt.mine_functions --local --file-root=../salt/ -l info pillar='{"host": {"mainint": "$MNIC"}}'"
 	salt-call state.apply salt.mine_functions --local --file-root=../salt/ -l info pillar="{'host': {'mainint': $MNIC}}"
@@ -540,13 +541,6 @@ configure_minion() {
 		logCmd "systemctl enable salt-minion";
 		logCmd "systemctl restart salt-minion";
 	} >> "$setup_log" 2>&1
-}
-
-checkin_at_boot() {
-	local minion_config=/etc/salt/minion
-
-	info "Enabling checkin at boot" 
-	echo "startup_states: highstate" >> "$minion_config"
 }
 
 check_requirements() {
