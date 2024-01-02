@@ -1,5 +1,4 @@
-### 2.4.30-20231228 ISO image released on 2023/12/19
-
+### 2.4.30-20231228 ISO image released on 20240102
 
 
 ### Download and Verify
