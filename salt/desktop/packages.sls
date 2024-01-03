@@ -35,6 +35,7 @@ desktop_packages:
       - bluez-libs
       - bluez-obexd
       - bolt
+      - brasero
       - bzip2
       - bzip2-libs
       - c-ares
