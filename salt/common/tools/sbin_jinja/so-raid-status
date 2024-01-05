@@ -49,11 +49,18 @@ check_nsm_raid() {
 
 check_boss_raid() {
   MVCLI=$(/usr/local/bin/mvcli info -o vd |grep status |grep functional)
+  MVTEST=$(/usr/local/bin/mvcli info -o vd | grep "No adapter")
 
-  if [[ -n $MVCLI ]]; then
-    BOSSRAID=0
+  # Check to see if this is a SM based system
+  if [[ -z $MVTEST ]]; then
+    if [[ -n $MVCLI ]]; then
+      BOSSRAID=0
+    else
+      BOSSRAID=1
+    fi
   else
-    BOSSRAID=1
+    # This doesn't have boss raid so lets make it 0
+    BOSSRAID=0
   fi
 }
 
