@@ -36,7 +36,9 @@ while [[ $try_count -le 6 ]]; do
             }"
 
         # Update the Automation API key in the secrets pillar
-        sed "s/playbook_automation_api_key:/playbook_automation_api_key: ${automation_api_key}/g" -i $local_salt_dir/pillar/secrets.sls 
+        so-yaml.py remove $local_salt_dir/pillar/secrets.sls secrets.playbook_automation_api_key
+        printf '%s\n'\
+            "  playbook_automation_api_key: $automation_api_key" >> $local_salt_dir/pillar/secrets.sls
         exit 0
     fi
     ((try_count++))
