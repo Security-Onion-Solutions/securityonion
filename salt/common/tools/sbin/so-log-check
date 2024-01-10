@@ -109,6 +109,8 @@ if [[ $EXCLUDE_STARTUP_ERRORS == 'Y' ]]; then
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|timeout exceeded"             # server not yet ready (telegraf waiting on elasticsearch)
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|influxsize kbytes"            # server not yet ready (telegraf waiting on influx)
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|expected field at"            # server not yet ready (telegraf waiting on health data)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|connection timed out"         # server not yet ready (telegraf plugin unable to connect)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|command timed out"            # server not yet ready (telegraf plugin waiting for script to finish)
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|cached the public key"        # server not yet ready (salt minion waiting on key acceptance)
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|no ingest nodes"              # server not yet ready (logstash waiting on elastic)
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|failed to poll"               # server not yet ready (sensoroni waiting on soc)
@@ -119,6 +121,7 @@ if [[ $EXCLUDE_STARTUP_ERRORS == 'Y' ]]; then
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|timeout retrieving container" # Telegraf unable to reach Docker engine, rare
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|error while communicating"    # Elasticsearch MS -> HN "sensor" temporarily unavailable
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|tls handshake error"          # Docker registry container when new node comes onlines
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|Unable to get license information" # Logstash trying to contact ES before it's ready
 fi
 
 if [[ $EXCLUDE_FALSE_POSITIVE_ERRORS == 'Y' ]]; then
@@ -167,6 +170,9 @@ if [[ $EXCLUDE_KNOWN_ERRORS == 'Y' ]]; then
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|error parsing signature"      # Malformed Suricata rule, from upstream provider
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|sticky buffer has no matches" # Non-critical Suricata error
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|Unable to determine destination index stats"  # Elastic transform temporary error
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|cannot join on an empty table" # InfluxDB flux query, import nodes
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|exhausting result iterator"   # InfluxDB flux query mismatched table results (temporary data issue)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|failed to finish run"         # InfluxDB rare error, self-recoverable
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|iteration"
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|communication packets"
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|use of closed"
@@ -223,6 +229,9 @@ exclude_log "spool"        # disregard zeek analyze logs as this is data specifi
 exclude_log "import"       # disregard imported test data the contains error strings
 exclude_log "update.log"   # ignore playbook updates due to several known issues
 exclude_log "playbook.log" # ignore due to several playbook known issues
+exclude_log "cron-cluster-delete.log" # ignore since Curator has been removed
+exclude_log "cron-close.log" # ignore since Curator has been removed
+exclude_log "curator.log" # ignore since Curator has been removed
 
 for log_file in $(cat /tmp/log_check_files); do
     status "Checking log file $log_file"
