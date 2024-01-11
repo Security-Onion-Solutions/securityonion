@@ -103,7 +103,7 @@ eaoptionalintegrationsdir:
 
 {% for minion in node_data %}
 {% set role = node_data[minion]["role"] %}
-{% if role in [ "eval","fleet","heavynode","import","manager","managersearch","standalone" ] %}
+{% if role in [ "eval","fleet","heavynode","import","manager","managersearch","standalone", "mom" ] %}
 {% set optional_integrations = salt['pillar.get']('elasticfleet:optional_integrations', {}) %}
 {% set integration_keys = salt['pillar.get']('elasticfleet:optional_integrations', {}).keys() %}
 fleet_server_integrations_{{ minion }}:
