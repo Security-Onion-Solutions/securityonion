@@ -4,7 +4,7 @@
 # Elastic License 2.0.
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
-{% from 'vars/globals.map.jinja' import GLOBALS %}
+{% from 'vars/globals.map.jinja' import GLOBALS %
 {% if sls.split('.')[0] in allowed_states %}
 {% set node_data = salt['pillar.get']('node_data') %}
 
@@ -104,8 +104,9 @@ eaoptionalintegrationsdir:
 {% for minion in node_data %}
 {% set role = node_data[minion]["role"] %}
 {% if role in [ "eval","fleet","heavynode","import","manager","managersearch","standalone" ] %}
-{% set optional_integrations = salt['pillar.get']('elasticfleet:optional_integrations', {}) %}
-{% set integration_keys = salt['pillar.get']('elasticfleet:optional_integrations', {}).keys() %}
+{% from 'elasticfleet/map.jinja' import ELASTICFLEETMERGED %}
+{% set optional_integrations = ELASTICFLEETMERGED.optional_integrations %}
+{% set integration_keys = optional_integrations.keys() %}
 fleet_server_integrations_{{ minion }}:
   file.directory:
     - name: /opt/so/conf/elastic-fleet/integrations-optional/FleetServer_{{ minion }}
