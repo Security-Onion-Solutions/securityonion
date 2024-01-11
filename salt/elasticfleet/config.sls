@@ -4,7 +4,7 @@
 # Elastic License 2.0.
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
-{% from 'vars/globals.map.jinja' import GLOBALS %
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 {% if sls.split('.')[0] in allowed_states %}
 {% set node_data = salt['pillar.get']('node_data') %}
 
