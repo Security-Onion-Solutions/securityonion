@@ -5,8 +5,8 @@
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% from 'vars/globals.map.jinja' import GLOBALS %}
-{% from 'elasticfleet/map.jinja' import ELASTICFLEETMERGED %}
 {% if sls.split('.')[0] in allowed_states %}
+{% from 'elasticfleet/map.jinja' import ELASTICFLEETMERGED %}
 {% set node_data = salt['pillar.get']('node_data') %}
 
 # Add EA Group
