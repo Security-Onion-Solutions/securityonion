@@ -466,9 +466,7 @@ post_to_2.4.30() {
 }
 
 post_to_2.4.40() {
-  echo "Removing old ATT&CK Navigator Layers..."
-  rm -rf /opt/so/conf/navigator/layers/enterprise-attack.json
-  rm -rf /opt/so/conf/navigator/layers/nav_layer_playbook.json
+  echo "Nothing to apply"
 
   POSTVERSION=2.4.40
 }
@@ -566,7 +564,9 @@ up_to_2.4.30() {
 }
 
 up_to_2.4.40() {
-  echo "Nothing to do for 2.4.40"
+  echo "Removing old ATT&CK Navigator Layers..."
+  rm -f /opt/so/conf/navigator/layers/enterprise-attack.json
+  rm -f /opt/so/conf/navigator/layers/nav_layer_playbook.json
 
   INSTALLEDVERSION=2.4.40
 }
@@ -987,16 +987,6 @@ main() {
     echo "Ensuring salt-minion configs are up-to-date."
     salt-call state.apply salt.minion -l info queue=True
     echo ""
-
-    # Only regenerate osquery packages if Fleet is enabled
-    FLEET_MANAGER=$(lookup_pillar fleet_manager)
-    FLEET_NODE=$(lookup_pillar fleet_node)
-    if [[ "$FLEET_MANAGER" == "True" || "$FLEET_NODE" == "True" ]]; then
-      echo ""
-      echo "Regenerating Osquery Packages.... This will take several minutes."
-      salt-call state.apply fleet.event_gen-packages -l info queue=True
-      echo ""
-    fi
 
     enable_highstate
 
