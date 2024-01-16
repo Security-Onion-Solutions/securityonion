@@ -62,16 +62,6 @@ apply_stigs(){
     else
         logCmd "echo 'PermitUserEnvironment no' >> /etc/ssh/sshd_config"
     fi
-    if is_manager_node; then
-        echo "Setting localpkg_gpgcheck=1 OSCAP rule id: xccdf_org.ssgproject.content_rule_ensure_gpgcheck_local_packages"
-        if [ ! -f /opt/so/saltstack/local/salt/repo/client/files/oracle/yum.conf.jinja ]; then
-            logCmd "cp /opt/so/saltstack/default/salt/repo/client/files/oracle/yum.conf.jinja /opt/so/saltstack/local/salt/repo/client/files/oracle/yum.conf.jinja"
-        fi
-        if ! grep -q "^localpkg_gpgcheck=1$" /opt/so/saltstack/local/salt/repo/client/files/oracle/yum.conf.jinja; then
-            echo 'localpkg_gpgcheck=1' >> /opt/so/saltstack/local/salt/repo/client/files/oracle/yum.conf.jinja
-            logCmd "grep localpkg_gpgcheck /opt/so/saltstack/local/salt/repo/client/files/oracle/yum.conf.jinja"
-        fi
-    fi
 
     echo "Running custom OSCAP profile to remediate applicable STIGs"
     logCmd "oscap xccdf eval --remediate --profile xccdf_org.ssgproject.content_profile_stig --results $stig_log/results.xml $stig_conf/sos-oscap.xml"
