@@ -8,7 +8,7 @@
 # if this script isn't already running
 if [[ ! "`pidof -x $(basename $0) -o %PPID`" ]]; then
 
-    NEEDS_RESTART=$(cat /var/log/sostatus/needs-restarted)
+    NEEDS_RESTART=$(cat /var/log/sostatus/needs_restarted)
 
     echo "os restart=$NEEDS_RESTART"
 
