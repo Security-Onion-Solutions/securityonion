@@ -8,19 +8,7 @@
 # if this script isn't already running
 if [[ ! "`pidof -x $(basename $0) -o %PPID`" ]]; then
 
-    NEEDS_RESTART=0
-
-    if which needs-restarting &> /dev/null; then
-        # DNF/RPM family
-        if ! needs-restarting -r &> /dev/null; then
-            NEEDS_RESTART=1
-        fi
-    else
-        # APT family
-        if [ -f /var/run/reboot-required ]; then
-            NEEDS_RESTART=1
-        fi
-    fi
+    NEEDS_RESTART=$(cat /var/log/sostatus/needs-restarted)
 
     echo "os restart=$NEEDS_RESTART"
 
