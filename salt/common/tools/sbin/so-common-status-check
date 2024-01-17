@@ -1,0 +1,52 @@
+#!/usr/bin/env python3
+
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+import sys
+import subprocess
+import os
+
+sys.path.append('/opt/saltstack/salt/lib/python3.10/site-packages/')
+import salt.config
+import salt.loader
+
+__opts__ = salt.config.minion_config('/etc/salt/minion')
+__grains__ = salt.loader.grains(__opts__)
+
+def check_needs_restarted():
+  osfam = __grains__['os_family']
+  val = '0'
+  outfile = "/opt/so/log/sostatus/needs_restarted"
+
+  if osfam == 'Debian':
+    if os.path.exists('/var/run/reboot-required'):
+      val = '1'
+  elif osfam == 'RedHat':
+    cmd = 'needs-restarting -r > /dev/null 2>&1'
+    try:
+      needs_restarting = subprocess.check_call(cmd, shell=True)
+    except subprocess.CalledProcessError:
+      val = '1'
+  else:
+    fail("Unsupported OS")
+
+  with open(outfile, 'w') as f:
+    f.write(val)
+
+def fail(msg):
+  print(msg, file=sys.stderr)
+  sys.exit(1)
+
+
+def main():
+  proc = subprocess.run(['id', '-u'], stdout=subprocess.PIPE, encoding="utf-8")
+  if proc.stdout.strip() != "0":
+    fail("This program must be run as root")
+
+  check_needs_restarted()
+
+if __name__ == "__main__":
+  main()

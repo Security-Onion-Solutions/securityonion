@@ -29,4 +29,4 @@ so-user_sync:
     - user: root
     - name: 'PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/root/bin /usr/sbin/so-user sync &>> /opt/so/log/soc/sync.log'
     - identifier: so-user_sync
-    - onlyif: "grep 'startup_states: highstate' /etc/salt/minion"
+    - onlyif: "grep -x 'startup_states: highstate' /etc/salt/minion"

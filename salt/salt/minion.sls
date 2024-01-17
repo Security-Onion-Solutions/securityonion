@@ -67,6 +67,12 @@ set_log_levels:
       - "log_level: info"
       - "log_level_logfile: info"
 
+enable_startup_states:
+  file.uncomment:
+    - name: /etc/salt/minion
+    - regex: '^startup_states: highstate$'
+    - unless: pgrep so-setup
+
 # prior to 2.4.30 this managed file would restart the salt-minion service when updated
 # since this file is currently only adding a sleep timer on service start
 # it is not required to restart the service

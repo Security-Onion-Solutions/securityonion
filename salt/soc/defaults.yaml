@@ -465,10 +465,20 @@ soc:
         - destination.ip
         - destination.port
         - network.transport
-        - network.direction
-        - interface.name
-        - rule.action
-        - rule.reason
+        - network.type
+        - observer.ingress.interface.name
+        - event.action
+        - network.community_id
+      ':pfsense:':
+        - soc_timestamp
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - network.transport
+        - network.type
+        - observer.ingress.interface.name
+        - event.action
         - network.community_id
       ':osquery:':
         - soc_timestamp
@@ -1240,7 +1250,7 @@ soc:
               showSubtitle: true
             - name: HTTP
               description: HTTP with exe downloads
-              query: 'tags:http AND (file.resp_mime_types:dosexec OR file.resp_mime_types:executable) | groupby http.virtual_host'
+              query: 'tags:http AND file.resp_mime_types:*exec* | groupby http.virtual_host'
               showSubtitle: true
             - name: Intel
               description: Intel framework hits grouped by indicator
@@ -1348,7 +1358,7 @@ soc:
               showSubtitle: true
             - name: Firewall
               description: Firewall events grouped by action
-              query: 'tags:firewall | groupby rule.action'
+              query: 'observer.type:firewall | groupby event.action'
               showSubtitle: true
         dashboards:
           advanced: true
@@ -1551,7 +1561,7 @@ soc:
               query: 'tags:s7* | groupby -sankey event.dataset source.ip destination.ip | groupby event.dataset | groupby source.ip | groupby destination.ip | groupby destination.port'
             - name: Firewall
               description: Firewall logs
-              query: 'tags:firewall | groupby -sankey rule.action interface.name | groupby rule.action | groupby interface.name | groupby network.transport | groupby source.ip | groupby destination.ip | groupby destination.port'
+              query: 'observer.type:firewall | groupby -sankey event.action observer.ingress.interface.name | groupby event.action | groupby observer.ingress.interface.name | groupby network.type | groupby network.transport | groupby source.ip | groupby destination.ip | groupby destination.port'
             - name: VLAN
               description: VLAN (Virtual Local Area Network) tagged logs
               query: '* AND _exists_:network.vlan.id | groupby network.vlan.id | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby event.dataset | groupby event.module | groupby observer.name | groupby source.geo.country_name | groupby destination.geo.country_name'
@@ -1630,6 +1640,9 @@ soc:
               query: '* | groupby destination.port rule.name event.severity_label'
             - name: Ungroup
               query: '*'
+        grid:
+          maxUploadSize: 26214400
+          staleMetricsMs: 120000
         cases:
           advanced: false
           aggregationActionsEnabled: false
@@ -1675,6 +1688,7 @@ soc:
               labels:
                   - autonomous-system
                   - domain
+                  - eml
                   - file
                   - filename
                   - fqdn

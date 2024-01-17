@@ -404,6 +404,7 @@ preupgrade_changes() {
     [[ "$INSTALLEDVERSION" == 2.4.5 ]] && up_to_2.4.10
     [[ "$INSTALLEDVERSION" == 2.4.10 ]] && up_to_2.4.20
     [[ "$INSTALLEDVERSION" == 2.4.20 ]] && up_to_2.4.30
+    [[ "$INSTALLEDVERSION" == 2.4.30 ]] && up_to_2.4.40
     true
 }
 
@@ -416,7 +417,8 @@ postupgrade_changes() {
     [[ "$POSTVERSION" == 2.4.4 ]] && post_to_2.4.5 
     [[ "$POSTVERSION" == 2.4.5 ]] && post_to_2.4.10 
     [[ "$POSTVERSION" == 2.4.10 ]] && post_to_2.4.20
-    [[ "$POSTVERSION" == 2.4.20 ]] && post_to_2.4.30 
+    [[ "$POSTVERSION" == 2.4.20 ]] && post_to_2.4.30
+    [[ "$POSTVERSION" == 2.4.30 ]] && post_to_2.4.40
     true
 }
 
@@ -461,6 +463,11 @@ post_to_2.4.30() {
   salt-call state.apply nginx queue=True
   enable_highstate
   POSTVERSION=2.4.30
+}
+
+post_to_2.4.40() {
+  echo "Nothing to apply"
+  POSTVERSION=2.4.40
 }
 
 repo_sync() {
@@ -553,6 +560,14 @@ up_to_2.4.30() {
   rm -f /opt/so/state/estemplates*.txt
 
   INSTALLEDVERSION=2.4.30
+}
+
+up_to_2.4.40() {
+  echo "Removing old ATT&CK Navigator Layers..."
+  rm -f /opt/so/conf/navigator/layers/enterprise-attack.json
+  rm -f /opt/so/conf/navigator/layers/nav_layer_playbook.json
+
+  INSTALLEDVERSION=2.4.40
 }
 
 determine_elastic_agent_upgrade() {
@@ -971,16 +986,6 @@ main() {
     echo "Ensuring salt-minion configs are up-to-date."
     salt-call state.apply salt.minion -l info queue=True
     echo ""
-
-    # Only regenerate osquery packages if Fleet is enabled
-    FLEET_MANAGER=$(lookup_pillar fleet_manager)
-    FLEET_NODE=$(lookup_pillar fleet_node)
-    if [[ "$FLEET_MANAGER" == "True" || "$FLEET_NODE" == "True" ]]; then
-      echo ""
-      echo "Regenerating Osquery Packages.... This will take several minutes."
-      salt-call state.apply fleet.event_gen-packages -l info queue=True
-      echo ""
-    fi
 
     enable_highstate
 

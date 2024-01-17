@@ -34,12 +34,17 @@ fi
 CURRENT_LIST=$(jq -c -r '.item.hosts' <<<  "$RAW_JSON")
 CURRENT_HASH=$(sha1sum <<< "$CURRENT_LIST" | awk '{print $1}')
 
+declare -a NEW_LIST=()
+
+{# If we select to not send to manager via SOC, then omit the code that adds manager to NEW_LIST #}
+{% if ELASTICFLEETMERGED.enable_manager_output %}
 # Create array & add initial elements
 if [ "{{ GLOBALS.hostname }}" = "{{ GLOBALS.url_base }}" ]; then
-    NEW_LIST=("{{ GLOBALS.url_base }}:5055")
+    NEW_LIST+=("{{ GLOBALS.url_base }}:5055")
 else
-    NEW_LIST=("{{ GLOBALS.url_base }}:5055" "{{ GLOBALS.hostname }}:5055")
+    NEW_LIST+=("{{ GLOBALS.url_base }}:5055" "{{ GLOBALS.hostname }}:5055")
 fi
+{% endif %}
 
 # Query for FQDN entries & add them to the list
 {% if ELASTICFLEETMERGED.config.server.custom_fqdn | length > 0 %}

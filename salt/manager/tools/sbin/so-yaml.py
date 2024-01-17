@@ -16,12 +16,12 @@ lockFile = "/tmp/so-yaml.lock"
 def showUsage(args):
     print('Usage: {} <COMMAND> <YAML_FILE> [ARGS...]'.format(sys.argv[0]))
     print('  General commands:')
-    print('    remove         - Removes a yaml top-level key, if it exists. Requires KEY arg.')
+    print('    remove         - Removes a yaml key, if it exists. Requires KEY arg.')
     print('    help           - Prints this usage information.')
     print('')
     print('  Where:')
     print('   YAML_FILE       - Path to the file that will be modified. Ex: /opt/so/conf/service/conf.yaml')
-    print('   KEY             - Top level key only, does not support dot-notations for nested keys at this time. Ex: level1')
+    print('   KEY             - YAML key, does not support \' or " characters at this time. Ex: level1.level2')
     sys.exit(1)
 
 
@@ -36,6 +36,14 @@ def writeYaml(filename, content):
     return yaml.dump(content, file)
 
 
+def removeKey(content, key):
+    pieces = key.split(".", 1)
+    if len(pieces) > 1:
+        removeKey(content[pieces[0]], pieces[1])
+    else:
+        content.pop(key, None)
+
+
 def remove(args):
     if len(args) != 2:
         print('Missing filename or key arg', file=sys.stderr)
@@ -43,11 +51,12 @@ def remove(args):
         return
 
     filename = args[0]
+    key = args[1]
+
     content = loadYaml(filename)
-
-    content.pop(args[1], None)
-
+    removeKey(content, key)
     writeYaml(filename, content)
+
     return 0
 
 

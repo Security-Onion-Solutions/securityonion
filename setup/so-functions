@@ -531,7 +531,8 @@ configure_minion() {
 		"  x509_v2: true"\
 		"log_level: info"\
 		"log_level_logfile: info"\
-		"log_file: /opt/so/log/salt/minion" >> "$minion_config"
+		"log_file: /opt/so/log/salt/minion"\
+		"#startup_states: highstate" >> "$minion_config"
 
 	info "Running: salt-call state.apply salt.mine_functions --local --file-root=../salt/ -l info pillar='{"host": {"mainint": "$MNIC"}}'"
 	salt-call state.apply salt.mine_functions --local --file-root=../salt/ -l info pillar="{'host': {'mainint': $MNIC}}"
@@ -545,8 +546,8 @@ configure_minion() {
 checkin_at_boot() {
 	local minion_config=/etc/salt/minion
 
-	info "Enabling checkin at boot" 
-	echo "startup_states: highstate" >> "$minion_config"
+	info "Enabling checkin at boot"
+	sed -i 's/#startup_states: highstate/startup_states: highstate/' "$minion_config"
 }
 
 check_requirements() {
@@ -1412,7 +1413,7 @@ make_some_dirs() {
 	mkdir -p $local_salt_dir/salt/firewall/portgroups
 	mkdir -p $local_salt_dir/salt/firewall/ports
 
-	for THEDIR in bpf pcap elasticsearch ntp firewall redis backup influxdb strelka sensoroni curator soc soctopus docker zeek suricata nginx telegraf logstash soc manager kratos idstools idh elastalert global;do
+	for THEDIR in bpf pcap elasticsearch ntp firewall redis backup influxdb strelka sensoroni soc soctopus docker zeek suricata nginx telegraf logstash soc manager kratos idstools idh elastalert global;do
 	mkdir -p $local_salt_dir/pillar/$THEDIR
 	touch $local_salt_dir/pillar/$THEDIR/adv_$THEDIR.sls
 	touch $local_salt_dir/pillar/$THEDIR/soc_$THEDIR.sls
@@ -1555,7 +1556,6 @@ reserve_group_ids() {
 	logCmd "groupadd -g 931 logstash"
 	logCmd "groupadd -g 932 kibana"
 	logCmd "groupadd -g 933 elastalert"
-	logCmd "groupadd -g 934 curator"
 	logCmd "groupadd -g 937 zeek"
 	logCmd "groupadd -g 940 suricata"
 	logCmd "groupadd -g 941 stenographer"
@@ -1648,8 +1648,8 @@ reinstall_init() {
 		backup_dir /nsm/kratos "$date_string"
 		backup_dir /nsm/influxdb "$date_string"
 
-		# Remove the old launcher package in case the config changes
-		remove_package launcher-final
+		# Uninstall local Elastic Agent, if installed
+		logCmd "elastic-agent uninstall -f"
 
 		if [[ $is_deb ]]; then
 			info "Unholding previously held packages."
@@ -2332,6 +2332,8 @@ verify_setup() {
 	result=$?
 	set +o pipefail
 	if [[ $result -eq 0 ]]; then
+		# Remove ISO sudoers entry if present
+                sed -i '/so-setup/d' /etc/sudoers
 		whiptail_setup_complete
 	else
 		whiptail_setup_failed

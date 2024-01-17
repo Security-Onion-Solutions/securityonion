@@ -9,23 +9,23 @@ if [ -f /usr/sbin/so-common ]; then
 	. /usr/sbin/so-common
 fi
 
-if [ "$(id -u)" -ne 0 ]; then
-	echo "This script must be run using sudo!"
+function usage() {
+	echo "Usage: $0 -o=<operation> -m=[id]"
+	echo ""
+	echo " where <operation> is one of the following:"
+	echo ""
+	echo "      add: Accepts a new key and adds the minion files"
+	echo "   delete: Removes the key and deletes the minion files"
+	echo "     list: Lists all keys with hashes"
+	echo "   reject: Rejects a key"
+	echo "  restart: Restart a minion (reboot)"
+	echo "     test: Perform minion test"
+	echo ""
 	exit 1
-fi
+}
 
 if [[ $# -lt 1 ]]; then
-  echo "Usage: $0 -o=<operation> -m=[id]"
-  echo ""
-  echo " where <operation> is one of the following:"
-  echo ""
-  echo "     list: Lists all keys with hashes"
-  echo "   accept: Accepts a new key and adds the minion files"
-  echo "   delete: Removes the key and deletes the minion files"
-  echo "   reject: Rejects a key"
-  echo "     test: Perform minion test"
-  echo ""
-  exit 1
+	usage
 fi
 
 for i in "$@"; do
@@ -38,6 +38,8 @@ for i in "$@"; do
 			MINION_ID="${i#*=}"
 			shift 
 			;;
+
+		# The following args are used internally during setup, not to be specified manually.
 		-e=*|--esheap=*)
 			ES_HEAP_SIZE="${i#*=}"
 			shift
@@ -63,6 +65,7 @@ for i in "$@"; do
 			exit 1
 			;;
 		*)
+			usage
 		;;
 	esac
 done
@@ -76,7 +79,7 @@ function getinstallinfo() {
 	source <(echo $INSTALLVARS)
 }
 
-function testminion() {
+function testMinion() {
 	# Always run on the host, since this is going to be the manager of a distributed grid, or an eval/standalone.
 	# Distributed managers must run this in order for the sensor nodes to have access to the so-tcpreplay image.
 	so-test
@@ -92,12 +95,19 @@ function testminion() {
 	exit $result
 }
 
-function listminions() {
+function restartMinion() {
+	salt "$MINION_ID" system.reboot
+	result=$?
+
+	exit $result
+}
+
+function listMinions() {
 	salt-key list -F --out=json
 	exit $?
 }
 
-function rejectminion() {
+function rejectMinion() {
 	salt-key -y -r $MINION_ID
 	exit $?
 }
@@ -106,11 +116,11 @@ function acceptminion() {
 	salt-key -y -a $MINION_ID
 }
 
-function deleteminion() {
+function deleteMinion() {
 	salt-key -y -d $MINION_ID
 }
 
-function deleteminionfiles () {
+function deleteMinionFiles () {
 	rm -f $PILLARFILE
 	rm -f $ADVPILLARFILE
 }
@@ -292,13 +302,6 @@ function add_strelka_to_minion() {
 	"  " >> $PILLARFILE
 }
 
-function add_curator_to_minion() {
-    printf '%s\n'\
-    "curator:"\
-    "  enabled: True"\
-	"  " >> $PILLARFILE
-}
-
 function add_telegraf_to_minion() {
     printf '%s\n'\
     "telegraf:"\
@@ -425,7 +428,6 @@ function createEVAL() {
 	add_playbook_to_minion
 	add_elastalert_to_minion
 	add_kibana_to_minion
-	add_curator_to_minion
 	add_telegraf_to_minion
 	add_influxdb_to_minion
 	add_nginx_to_minion
@@ -448,7 +450,6 @@ function createSTANDALONE() {
 	add_elastalert_to_minion
 	add_kibana_to_minion
 	add_redis_to_minion
-	add_curator_to_minion
 	add_telegraf_to_minion
 	add_influxdb_to_minion
 	add_nginx_to_minion
@@ -468,7 +469,6 @@ function createMANAGER() {
 	add_elastalert_to_minion
 	add_kibana_to_minion
 	add_redis_to_minion
-	add_curator_to_minion
 	add_telegraf_to_minion
 	add_influxdb_to_minion
 	add_nginx_to_minion
@@ -488,7 +488,6 @@ function createMANAGERSEARCH() {
 	add_elastalert_to_minion
 	add_kibana_to_minion
 	add_redis_to_minion
-	add_curator_to_minion
 	add_telegraf_to_minion
 	add_influxdb_to_minion
 	add_nginx_to_minion
@@ -538,7 +537,6 @@ function createHEAVYNODE() {
 	add_sensor_to_minion
 	add_strelka_to_minion
 	add_redis_to_minion
-	add_curator_to_minion
 	add_telegraf_to_minion
 }
 
@@ -589,25 +587,33 @@ function testConnection() {
 	fi
 }
 
-if [[ "$OPERATION" = 'list' ]]; then
-	listminions
-fi
+function addMinion() {
+	# Accept the salt key
+	acceptminion
+	# Test to see if the minion was accepted
+	testConnection
+	# Pull the info from the file to build what is needed
+	getinstallinfo
+}
 
-if [[ "$OPERATION" = 'delete' ]]; then
-	deleteminionfiles
-	deleteminion
-fi
-
-if [[ "$OPERATION" == 'add' || "$OPERATION" == 'setup' ]]; then
-	# Skip this if its setup
-	if [[ $OPERATION == 'add' ]]; then
-		# Accept the salt key
-		acceptminion
-		# Test to see if the minion was accepted
-		testConnection
-		# Pull the info from the file to build what is needed
-		getinstallinfo
+function updateMineAndApplyStates() {
+	# tell the minion to populate the mine with data from mine_functions which is populated during setup
+	# this only needs to happen on non managers since they handle this during setup
+	# and they need to wait for ca creation to update the mine
+	updateMine
+	checkMine "network.ip_addrs"
+	# apply the elasticsearch state to the manager if a new searchnode was added
+	if [[ "$NODETYPE" == "SEARCHNODE" || "$NODETYPE" == "HEAVYNODE" ]]; then
+		# calls so-common and set_minionid sets MINIONID to local minion id
+		set_minionid
+		salt $MINIONID state.apply elasticsearch queue=True --async
+		salt $MINIONID state.apply soc queue=True --async
 	fi
+	# run this async so the cli doesn't wait for a return
+	salt "$MINION_ID" state.highstate --async queue=True
+}
+
+function setupMinionFiles() {
 	# Check to see if nodetype is set
 	if [ -z $NODETYPE ]; then
 		echo "No node type specified"
@@ -624,25 +630,41 @@ if [[ "$OPERATION" == 'add' || "$OPERATION" == 'setup' ]]; then
 
 	create$NODETYPE
 	echo "Minion file created for $MINION_ID"	
+}
 
-	if [[ "$OPERATION" == 'add' ]]; then
-		# tell the minion to populate the mine with data from mine_functions which is populated during setup
-		# this only needs to happen on non managers since they handle this during setup
-		# and they need to wait for ca creation to update the mine
-		updateMine
-		checkMine "network.ip_addrs"
-		# apply the elasticsearch state to the manager if a new searchnode was added
-		if [[ "$NODETYPE" == "SEARCHNODE" || "$NODETYPE" == "HEAVYNODE" ]]; then
-			# calls so-common and set_minionid sets MINIONID to local minion id
-			set_minionid
-			salt $MINIONID state.apply elasticsearch queue=True --async
-			salt $MINIONID state.apply soc queue=True --async
-		fi
-		# run this async so the cli doesn't wait for a return
-		salt "$MINION_ID" state.highstate --async queue=True
-	fi
-fi
+case "$OPERATION" in
+	"add")
+		addMinion
+		setupMinionFiles
+		updateMineAndApplyStates
+		;;
 
-if [[ "$OPERATION" = 'test' ]]; then
-	testminion
-fi
+	"delete")
+		deleteMinionFiles
+		deleteMinion
+		;;
+
+	"list")
+		listMinions
+		;;
+
+	"reject")
+		rejectMinion
+		;;
+
+	"restart")
+		restartMinion
+		;;
+		
+	"setup")
+		# only should be invoked directly during setup, never manually
+		setupMinionFiles
+		;;
+
+	"test")
+		testMinion
+		;;
+	*)
+		usage
+		;;
+esac

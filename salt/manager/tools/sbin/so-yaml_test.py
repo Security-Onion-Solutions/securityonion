@@ -57,6 +57,36 @@ class TestRemove(unittest.TestCase):
         expected = "key2: false\n"
         self.assertEqual(actual, expected)
 
+    def test_remove_nested(self):
+        filename = "/tmp/so-yaml_test-remove.yaml"
+        file = open(filename, "w")
+        file.write("{key1: { child1: 123, child2: abc }, key2: false}")
+        file.close()
+
+        soyaml.remove([filename, "key1.child2"])
+
+        file = open(filename, "r")
+        actual = file.read()
+        file.close()
+
+        expected = "key1:\n  child1: 123\nkey2: false\n"
+        self.assertEqual(actual, expected)
+
+    def test_remove_nested_deep(self):
+        filename = "/tmp/so-yaml_test-remove.yaml"
+        file = open(filename, "w")
+        file.write("{key1: { child1: 123, child2: { deep1: 45, deep2: ab } }, key2: false}")
+        file.close()
+
+        soyaml.remove([filename, "key1.child2.deep1"])
+
+        file = open(filename, "r")
+        actual = file.read()
+        file.close()
+
+        expected = "key1:\n  child1: 123\n  child2:\n    deep2: ab\nkey2: false\n"
+        self.assertEqual(actual, expected)
+
     def test_remove_missing_args(self):
         with patch('sys.exit', new=MagicMock()) as sysmock:
             with patch('sys.stderr', new=StringIO()) as mock_stdout:
