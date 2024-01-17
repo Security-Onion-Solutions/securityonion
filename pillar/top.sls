@@ -16,6 +16,7 @@ base:
     - sensoroni.adv_sensoroni
     - telegraf.soc_telegraf
     - telegraf.adv_telegraf
+    - users
 
   '* and not *_desktop':
     - firewall.soc_firewall

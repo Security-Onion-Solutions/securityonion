@@ -29,6 +29,7 @@ base:
     - salt.minion-check
     - salt.lasthighstate
     - common
+    - users
     - docker
     - docker_clean
 
