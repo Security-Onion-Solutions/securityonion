@@ -8,6 +8,7 @@
 import sys
 import subprocess
 import os
+import json
 
 sys.path.append('/opt/saltstack/salt/lib/python3.10/site-packages/')
 import salt.config
@@ -36,10 +37,54 @@ def check_needs_restarted():
   with open(outfile, 'w') as f:
     f.write(val)
 
+def check_for_fips():
+    os = __grains__['os']
+    fips = False
+    # Only checking fully supported OS
+    if os == 'OEL':
+        try:
+            result = subprocess.run(['fips-mode-setup', '--is-enabled'], check=True, stdout=subprocess.PIPE)
+            fips = result.returncode == 0
+        except FileNotFoundError:
+            with open('/proc/sys/crypto/fips_enabled', 'r') as f:
+                contents = f.read()
+                if '1' in contents:
+                    fips = True
+                else:
+                    fips = False
+        return fips
+
+def check_for_luks():
+    os = __grains__['os']
+    luks = False
+    # Only checking fully supported OS
+    if os == 'OEL':
+        result = subprocess.run(['lsblk', '-p', '-J'], check=True, stdout=subprocess.PIPE)
+        data = json.loads(result.stdout)
+        for device in data['blockdevices']:
+            if 'children' in device:
+                for gc in device['children']:
+                    if 'children' in gc:
+                        try:
+                            result = subprocess.run(['cryptsetup', 'isLuks', gc['name']], check=True, stdout=subprocess.PIPE)
+                            luks = result.returncode == 0
+                        except FileNotFoundError:
+                            for ggc in gc['children']:
+                                if 'crypt' in ggc['type']:
+                                    luks = True
+            if luks:
+                break
+        return luks
+
+def check_features():
+    fips = check_for_fips()
+    luks = check_for_luks()
+    with open('/opt/so/log/sostatus/features-check.log', 'w') as f:
+       f.write("featuresdetected fips={},luks={}".format(fips,luks))
+
 def fail(msg):
   print(msg, file=sys.stderr)
   sys.exit(1)
-
 
 def main():
   proc = subprocess.run(['id', '-u'], stdout=subprocess.PIPE, encoding="utf-8")
@@ -47,6 +92,7 @@ def main():
     fail("This program must be run as root")
 
   check_needs_restarted()
+  check_features()
 
 if __name__ == "__main__":
   main()
