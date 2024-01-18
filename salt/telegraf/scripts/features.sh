@@ -7,8 +7,11 @@
 
 if [[ ! "`pidof -x $(basename $0) -o %PPID`" ]]; then
 
-    cat /var/log/sostatus/features-check.log
+    FIPS_ENABLED=$(cat /var/log/sostatus/fips_enabled)
+    LUKS_ENABLED=$(cat /var/log/sostatus/luks_enabled)
 
+    echo "features fips=$FIPS_ENABLED"
+    echo "features luks=$LUKS_ENABLED"
 fi
 
 exit 0
