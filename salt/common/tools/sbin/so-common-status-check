@@ -80,10 +80,13 @@ def main():
   proc = subprocess.run(['id', '-u'], stdout=subprocess.PIPE, encoding="utf-8")
   if proc.stdout.strip() != "0":
     fail("This program must be run as root")
-
+  # Ensure that umask is 0022 so that files created by this script have rw-r-r permissions
+  org_umask = os.umask(0o022)
   check_needs_restarted()
   check_for_fips()
   check_for_luks()
+  # Restore umask to whatever value was set before this script was run. STIG sets to 0077 rw---
+  os.umask(org_umask)
 
 if __name__ == "__main__":
   main()
