@@ -13,6 +13,9 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states and GLOBALS.os == 'OEL' %}
 {%   if 'stig' in salt['pillar.get']('features', []) %}
+  {% set OSCAP_PROFILE_NAME = 'xccdf_org.ssgproject.content_profile_stig' %}
+  {% set OSCAP_PROFILE_LOCATION = '/opt/so/conf/stig/sos-oscap.xml' %}
+  {% set OSCAP_OUTPUT_DIR = '/opt/so/log/stig' %}
 oscap_packages:
   pkg.installed:
     - skip_suggestions: True
@@ -43,26 +46,45 @@ update_stig_profile:
     - group: socore
     - mode: 0644
 
-update_remediation_script:
-  file.managed:
-    - name: /usr/sbin/so-stig
-    - source: salt://stig/files/so-stig
-    - user: socore
-    - group: socore
-    - mode: 0755
-    - template: jinja
+{% if not salt['file.file_exists'](OSCAP_OUTPUT_DIR ~ '/pre-oscap-report.html') %}
+run_initial_scan:
+  module.run:
+  - name: openscap.xccdf
+  - params: 'eval --remediate --profile {{ OSCAP_PROFILE_NAME }} --results {{ OSCAP_OUTPUT_DIR }}/pre-oscap-results.xml --report {{ OSCAP_OUTPUT_DIR }}/pre-oscap-report.html {{ OSCAP_PROFILE_LOCATION }}'
+{% endif %}
 
-remove_old_stig_log:
-  file.absent:
-    - name: /opt/so/log/stig/stig-remediate.log
+run_remediate:
+  module.run:
+    - name: openscap.xccdf
+    - params: 'eval --remediate --profile {{ OSCAP_PROFILE_NAME }} --results {{ OSCAP_OUTPUT_DIR }}/post-oscap-results.xml --report {{ OSCAP_PROFILE_LOCATION }}'
 
-run_remediation_script:
-  cmd.run:
-    - name: so-stig > /opt/so/log/stig/stig-remediate.log
-    - hide_output: True
-    - success_retcodes:
-      - 0
-      - 2
+{# OSCAP rule id: xccdf_org.ssgproject.content_rule_disable_ctrlaltdel_burstaction #}
+disable_ctrl_alt_del_action:
+  file.replace:
+    - name: /etc/systemd/system.conf
+    - pattern: '^#CtrlAltDelBurstAction=none'
+    - repl: 'CtrlAltDelBurstAction=none'
+    - backup: '.bak'
+
+{# OSCAP rule id: xccdf_org.ssgproject.content_rule_no_empty_passwords #}
+remove_nullok_from_password_auth:
+  file.replace:
+    - name: /etc/pam.d/password-auth
+    - pattern: ' nullok'
+    - repl: ''
+    - backup: '.bak'
+
+remove_nullok_from_system_auth_auth:
+  file.replace:
+    - name: /etc/pam.d/system-auth
+    - pattern: ' nullok'
+    - repl: ''
+    - backup: '.bak'
+
+run_post_scan:
+  module.run:
+    - name: openscap.xccdf
+    - params: 'eval --profile {{ OSCAP_PROFILE_NAME }} --results {{ OSCAP_OUTPUT_DIR }}/post-oscap-results.xml --report {{ OSCAP_OUTPUT_DIR }}/post-oscap-report.html {{ OSCAP_PROFILE_LOCATION }}'
 
 {%   else %}
 {{sls}}_no_license_detected:
