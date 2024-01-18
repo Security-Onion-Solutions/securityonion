@@ -11,6 +11,35 @@ INTCA=/etc/pki/tls/certs/intca.crt
 . /usr/sbin/so-common
 . /usr/sbin/so-elastic-fleet-common
 
+# Deleting Elastic Fleet data...
+
+# Check to make sure that Elasticsearch is up & ready
+RETURN_CODE=0
+wait_for_web_response "https://localhost:9200/_cat/indices/.kibana*" "green open" 300 "curl -K /opt/so/conf/elasticsearch/curl.config"
+RETURN_CODE=$?
+
+if [[ "$RETURN_CODE" != "0" ]]; then
+    status "Elasticsearch not accessible, exiting Elastic Fleet setup..."
+    exit 1
+fi
+
+ALIASES=".fleet-servers .fleet-policies-leader .fleet-policies .fleet-agents .fleet-artifacts .fleet-enrollment-api-keys .kibana_ingest"
+for ALIAS in ${ALIASES}
+do
+    # Get all concrete indices from alias
+    INDXS=$(curl -K /opt/so/conf/kibana/curl.config -s -k -L -H "Content-Type: application/json" "https://localhost:9200/_resolve/index/${ALIAS}"  | jq -r '.aliases[].indices[]')
+
+    # Delete all resolved indices
+    for INDX in ${INDXS}
+    do
+            status "Deleting $INDX"
+            curl -K /opt/so/conf/kibana/curl.config -s -k -L -H "Content-Type: application/json" "https://localhost:9200/${INDX}" -XDELETE
+    done
+done
+
+# Restarting Kibana...
+so-kibana-restart
+
 # Check to make sure that Kibana API is up & ready
 RETURN_CODE=0
 wait_for_web_response "http://localhost:5601/api/fleet/settings" "fleet" 300 "curl -K /opt/so/conf/elasticsearch/curl.config"

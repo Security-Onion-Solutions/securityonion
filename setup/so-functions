@@ -1649,8 +1649,8 @@ reinstall_init() {
 		backup_dir /nsm/kratos "$date_string"
 		backup_dir /nsm/influxdb "$date_string"
 
-		# Remove the old launcher package in case the config changes
-		remove_package launcher-final
+		# Uninstall local Elastic Agent, if installed
+		logCmd "elastic-agent uninstall -f"
 
 		if [[ $is_deb ]]; then
 			info "Unholding previously held packages."
@@ -2333,6 +2333,8 @@ verify_setup() {
 	result=$?
 	set +o pipefail
 	if [[ $result -eq 0 ]]; then
+		# Remove ISO sudoers entry if present
+                sed -i '/so-setup/d' /etc/sudoers
 		whiptail_setup_complete
 	else
 		whiptail_setup_failed

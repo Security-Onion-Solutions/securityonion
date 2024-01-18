@@ -179,6 +179,14 @@ so-status_check_cron:
     - month: '*'
     - dayweek: '*'
 
+# This cronjob/script runs a check if the node needs restarted, but should be used for future status checks as well
+common_status_check_cron:
+  cron.present:
+    - name: '/usr/sbin/so-common-status-check > /dev/null 2>&1'
+    - identifier: common_status_check
+    - user: root
+    - minute: '*/10'
+
 remove_post_setup_cron:
   cron.absent:
     - name: 'PATH=$PATH:/usr/sbin salt-call state.highstate'
