@@ -40,15 +40,15 @@ def check_needs_restarted():
 def check_for_fips():
     fips = 0
     try:
-        result = subprocess.run(['fips-mode-setup', '--is-enabled'], check=True, stdout=subprocess.PIPE)
-        fips = int(result.returncode == 0)
+        result = subprocess.run(['fips-mode-setup', '--is-enabled'], stdout=subprocess.PIPE)
+        if result.returncode == 0:
+            fips = 1
     except FileNotFoundError:
         with open('/proc/sys/crypto/fips_enabled', 'r') as f:
             contents = f.read()
             if '1' in contents:
                 fips = 1
-            else:
-                fips = 0
+
     with open('/opt/so/log/sostatus/fips_enabled', 'w') as f:
        f.write(str(fips))
 
@@ -61,8 +61,9 @@ def check_for_luks():
             for gc in device['children']:
                 if 'children' in gc:
                     try:
-                        result = subprocess.run(['cryptsetup', 'isLuks', gc['name']], check=True, stdout=subprocess.PIPE)
-                        luks = int(result.returncode == 0)
+                        result = subprocess.run(['cryptsetup', 'isLuks', gc['name']], stdout=subprocess.PIPE)
+                        if result.returncode == 0:
+                           luks = 1
                     except FileNotFoundError:
                         for ggc in gc['children']:
                             if 'crypt' in ggc['type']:
