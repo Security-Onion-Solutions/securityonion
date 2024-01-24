@@ -4,7 +4,7 @@
 # Elastic License 2.0.
 
 {% from 'stig/map.jinja' import STIGMERGED %}
-{%   if 'stig' in salt['pillar.get']('features', []) %}
+{%   if 'stg' in salt['pillar.get']('features', []) %}
 stig_remediate_schedule:
   schedule.present:
     - function: state.apply

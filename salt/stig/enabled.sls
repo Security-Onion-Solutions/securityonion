@@ -12,7 +12,7 @@
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states and GLOBALS.os == 'OEL' %}
-{%   if 'stig' in salt['pillar.get']('features', []) %}
+{%   if 'stg' in salt['pillar.get']('features', []) %}
   {% set OSCAP_PROFILE_NAME = 'xccdf_org.ssgproject.content_profile_stig' %}
   {% set OSCAP_PROFILE_LOCATION = '/opt/so/conf/stig/sos-oscap.xml' %}
   {% set OSCAP_OUTPUT_DIR = '/opt/so/log/stig' %}
