@@ -65,8 +65,7 @@ master_config:
     - source: salt://salt/etc/master.jinja
     - template: jinja
     - defaults:
-        HAS_MOM: {{ GLOBALS.has_mom }}
-        MANAGER: {{ GLOBALS.manager }}
+        GLOBALS: {{ GLOBALS }}
     - watch_in:
       - service: salt_master_service
 {%   if GLOBALS.has_mom %}

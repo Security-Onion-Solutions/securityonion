@@ -325,6 +325,18 @@ function add_nginx_to_minion() {
 	"  " >> $PILLARFILE
 }
 
+# we will probably only run this function on a manager
+function add_nodegroup_to_minion() {
+    printf '%s\n'\
+    "nodegroup:"\
+    "  name: $NODEGROUP"\
+	"  " >> $PILLARFILE
+
+	# fire an event for the manager to tell the mom to create the nodegroups directories
+	salt-call event.send 'nodegroup/create' "nodegroup=$NODEGROUP"
+
+}
+
 function add_soctopus_to_minion() {
     printf '%s\n'\
     "soctopus:"\
@@ -485,6 +497,7 @@ function createMOM() {
 }
 
 function createMANAGER() {
+	add_nodegroup_to_minion
 	add_elasticsearch_to_minion
 	add_logstash_to_minion
 	add_playbook_to_minion
