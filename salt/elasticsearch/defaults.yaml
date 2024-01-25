@@ -3803,6 +3803,62 @@ elasticsearch:
               set_priority:
                 priority: 50
             min_age: 30d
+        so-logs-endpoint_x_diagnostic_x_collection:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - event-mappings
+        - logs-endpoint.diagnostic.collection@custom
+        - logs-endpoint.diagnostic.collection@package
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        index_patterns:
+        - logs-endpoint.diagnostic.collection-*
+        priority: 501
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-logs-endpoint.diagnostic.collection-logs
+              mapping:
+                total_fields:
+                  limit: 5000
+              number_of_replicas: 0
+              sort:
+                field: '@timestamp'
+                order: desc
+      policy:
+        _meta:
+          managed: true
+          managed_by: security_onion
+          package:
+            name: elastic_agent
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 30d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
     so-logs-endpoint_x_events_x_api:
       index_sorting: false
       index_template:
