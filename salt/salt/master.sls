@@ -100,6 +100,14 @@ local_salt_state_directory:
     - makedirs: True
     - saltenv: local
 
+# from the mom, sync this nodegroups pillars to the nodegroups manager
+local_pillar_directory:
+  file.recurse:
+    - name: /opt/so/saltstack/local/pillar/
+    - source: salt://salt/nodegroups/{{pillar.nodegroup.name}}
+    - makedirs: True
+    - saltenv: local
+
 {% endif %}
 
 
