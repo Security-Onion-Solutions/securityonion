@@ -41,6 +41,15 @@ so-elastic-fleet-auto-configure-elasticsearch-urls:
     - retry: True
 {% endif %}
 
+# Sync Elastic Agent artifacts to Fleet Node
+{% if grains.role in ['so-fleet'] %}
+elasticagent_syncartifacts:
+  file.recurse:
+    - name: /nsm/elastic-fleet/artifacts/beats
+    - source: salt://beats?saltenv=elasticartifacts
+
+{% endif %}
+
 {%   if SERVICETOKEN != '' %}
 so-elastic-fleet:
   docker_container.running:
