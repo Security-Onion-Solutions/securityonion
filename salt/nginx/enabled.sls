@@ -14,6 +14,9 @@ include:
   - nginx.config
   - nginx.sostatus
 
+
+{%   if grains.role not in ['so-fleet'] %}
+
 {#   if the user has selected to replace the crt and key in the ui #}
 {%   if NGINXMERGED.ssl.replace_cert %}
 
@@ -88,6 +91,8 @@ make-rule-dir-nginx:
     - recurse:
       - user
       - group
+      
+{%   endif %}
 
 so-nginx:
   docker_container.running:

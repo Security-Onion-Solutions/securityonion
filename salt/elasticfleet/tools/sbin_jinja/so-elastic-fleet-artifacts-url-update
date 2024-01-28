@@ -1,0 +1,102 @@
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0; you may not use
+# this file except in compliance with the Elastic License 2.0.
+{% from 'vars/globals.map.jinja' import GLOBALS %}
+
+. /usr/sbin/so-common
+
+# Only run on Managers
+if ! is_manager_node; then
+    printf "Not a Manager Node... Exiting"
+    exit 0
+fi
+
+##########
+# Set Elastic Agent Artifact Registry URL
+
+
+
+
+function update_es_urls() {
+	
+# For each element in NEWLIST, create a new entry
+
+JSON_STRING=$( jq -n \
+                --arg NAME "FleetServer_{{ GLOBALS.hostname }}" \
+                --arg URL "http://{{ GLOBALS.url_base }}:8443/artifacts/" \
+                '{"name":$NAME,"host":$URL,"is_default":true}'
+                )
+
+curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/agent_download_sources" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
+
+#########
+
+    # Generate updated JSON payload
+{% if grains.role not in ['so-import', 'so-eval'] %}
+    JSON_STRING=$(jq -n --arg UPDATEDLIST $NEW_LIST_JSON '{"name":"so-manager_elasticsearch","type":"elasticsearch","hosts": $UPDATEDLIST,"config_yaml":""}')
+{%- else %}
+    JSON_STRING=$(jq -n --arg UPDATEDLIST $NEW_LIST_JSON '{"name":"so-manager_elasticsearch","type":"elasticsearch","hosts": $UPDATEDLIST,"is_default":true,"is_default_monitoring":true,"config_yaml":""}')
+{%- endif %}
+    # Update Fleet Elasticsearch URLs
+    curl -K /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fleet/outputs/so-manager_elasticsearch" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
+}
+
+#START HERE
+
+# Get current list of Artifact URLs
+#RAW_JSON=$(curl -K /opt/so/conf/elasticsearch/curl.config 'http://localhost:5601/api/fleet/outputs/so-manager_elasticsearch')
+RAW_JSON=$(curl -K /opt/so/conf/elasticsearch/curl.config 'http://localhost:5601/api/fleet/agent_download_sources')
+
+
+# Check to make sure that the server responded with good data - else, bail from script
+CHECKSUM=$(jq -r '.page' <<< "$RAW_JSON")
+if [ "$CHECKSUM" != "1" ]; then
+ printf "Failed to query for current Elastic Agent Artifact URLs..."
+ exit 1
+fi
+
+# Get the current list of Elastic Agent Artifact URLs & hash them
+CURRENT_LIST=$(jq -c -r '.items[].host' <<<  "$RAW_JSON")
+CURRENT_HASH=$(sha1sum <<< "$CURRENT_LIST" | awk '{print $1}')
+
+
+# Create array & add initial elements
+if [ "{{ GLOBALS.hostname }}" = "{{ GLOBALS.url_base }}" ]; then
+    NEW_LIST=("http://{{ GLOBALS.url_base }}:8443/artifacts/")
+else
+    NEW_LIST=("http://{{ GLOBALS.url_base }}:8443/artifacts/" "http://{{ GLOBALS.hostname }}:8443/artifacts/")
+fi
+
+# Query for the current Grid Nodes that are running Logstash (which includes Fleet Nodes)
+LOGSTASHNODES=$(salt-call --out=json pillar.get logstash:nodes | jq '.local')
+
+# Query for Fleet Nodes & add them to the list (Hostname)
+if grep -q "fleet" <<< $LOGSTASHNODES; then
+   readarray -t FLEETNODES < <(jq -r ' .fleet | keys_unsorted[]'  <<< $LOGSTASHNODES)
+   for NODE in "${FLEETNODES[@]}"
+   do
+    NEW_LIST+=("http://$NODE:8443/artifacts/")
+   done
+fi
+
+# Sort & hash the new list of Fleet Elasticsearch URLs
+NEW_LIST_JSON=$(jq --compact-output --null-input '$ARGS.positional' --args -- "${NEW_LIST[@]}")
+NEW_HASH=$(sha1sum <<< "$NEW_LIST_JSON" | awk '{print $1}')
+
+# Compare the current & new list of URLs - if different, update the Fleet Elasticsearch URLs
+if [ "$1" = "--force" ]; then
+    printf "\nUpdating List, since --force was specified.\n"
+    printf "Current List: $CURRENT_LIST\nNew List: $NEW_LIST_JSON\n"
+    update_es_urls
+    exit 0
+fi
+
+if [ "$NEW_HASH" = "$CURRENT_HASH" ]; then
+    printf "\nHashes match - no update needed.\n"
+    printf "Current List: $CURRENT_LIST\nNew List: $NEW_LIST_JSON\n"
+    exit 0
+else
+    printf "\nHashes don't match - update needed.\n"
+    printf "Current List: $CURRENT_LIST\nNew List: $NEW_LIST_JSON\n"
+    #update_es_urls
+fi
