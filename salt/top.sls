@@ -264,6 +264,7 @@ base:
     - telegraf
     - firewall
     - logstash
+    - nginx
     - elasticfleet
     - elasticfleet.install_agent_grid
     - schedule
