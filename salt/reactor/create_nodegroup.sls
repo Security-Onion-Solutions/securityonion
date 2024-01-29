@@ -16,21 +16,30 @@ import shutil
 def run():
   MINIONID = data['id']
   NODEGROUP = data['data']['nodegroup']
-  SALT_ROOT = '/opt/so/saltstack'
-  DEFAULT_PILLAR_PATH = os.path.join(SALT_ROOT, 'default/pillar')
-  LOCAL_PILLAR_PATH = os.path.join(SALT_ROOT, 'local/pillar')
-  NODEGROUP_PATH = os.path.join(LOCAL_PILLAR_PATH, 'nodegroups' , NODEGROUP)
+  SALTSTACK_ROOT = '/opt/so/saltstack'
+  DEFAULT_PILLAR_PATH = os.path.join(SALTSTACK_ROOT, 'default/pillar')
+  LOCAL_PILLAR_PATH = os.path.join(SALTSTACK_ROOT, 'local/pillar')
+  DEFAULT_STATE_PATH = os.path.join(SALTSTACK_ROOT, 'default/salt')
+  LOCAL_STATE_PATH = os.path.join(SALTSTACK_ROOT, 'local/salt')
   # the mom will need somewhere to store pillar files to distribute to the nodegroups manager
-  NODEGROUP_STATE_PATH = os.path.join(SALT_ROOT, 'local/salt/nodegroups', NODEGROUP)
+  NODEGROUPS_PATH = os.path.join(LOCAL_STATE_PATH, 'nodegroups')
+  NODEGROUP_PATH = os.path.join(NODEGROUPS_PATH , NODEGROUP)
+  NODEGROUP_STATE_PATH = os.path.join(NODEGROUPS_PATH, NODEGROUP, 'salt')
+  NODEGROUP_PILLAR_PATH = os.path.join(NODEGROUPS_PATH, NODEGROUP, 'pillar')
 
   logging.info('reactor: create_nodegroup: nodegroup creation of %s requested by %s' % (NODEGROUP, MINIONID))
 
-  # check if the nodegroups pillar directory exists
-  if not os.path.isdir(NODEGROUP_STATE_PATH):
-    os.mkdir(NODEGROUP_STATE_PATH, 0o755)
-    UID, GID = pwd.getpwnam('socore').pw_uid, pwd.getpwnam('socore').pw_uid
-    os.chown(NODEGROUP_STATE_PATH, UID, GID)
+  # check if the pillar directory exists for the new manager's nodegroup
+  if not os.path.isdir(NODEGROUP_PATH):
+    os.makedirs(NODEGROUP_PATH, 0o755)
+    UID, GID = str(pwd.getpwnam('socore').pw_uid), str(pwd.getpwnam('socore').pw_uid)
     # copy all the default pillar directories and files to the nodegroup
-    shutil.copytree(DEFAULT_PILLAR_PATH, NODEGROUP_STATE_PATH, dirs_exist_ok=True)
+    shutil.copytree(DEFAULT_PILLAR_PATH, NODEGROUP_PILLAR_PATH, dirs_exist_ok=True)
+    # copy /opt/so/saltstack/local/salt/ into /opt/so/saltstack/local/salt/nodegroups/NODEGROUP/salt, but we have to ignore the nodegroups directory
+    #shutil.copytree(LOCAL_STATE_PATH, NODEGROUP_STATE_PATH, dirs_exist_ok=True, ignore=shutil.ignore_patterns('*nodegroups*'))
+    os.system('chown -R ' + UID + ':' + GID + ' ' + NODEGROUP_PATH)
+    logging.info('reactor: create_nodegroup: nodegroup %s created' % NODEGROUP)
+  else:
+    logging.error('reactor: create_nodegroup: nodegroup %s already exists' % NODEGROUP)
 
   return {}
