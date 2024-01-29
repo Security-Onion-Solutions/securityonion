@@ -784,6 +784,8 @@ verify_latest_update_script() {
     if [[ "$CURRENTSOUP" == "$GITSOUP" && "$CURRENTCMN" == "$GITCMN" && "$CURRENTIMGCMN" == "$GITIMGCMN" && "$CURRENTSOFIREWALL" == "$GITSOFIREWALL" ]]; then
       echo "Succesfully updated soup scripts."
     else
+      # When STIGs are enabled soup scripts will fail to update using --file-root --local.
+      # After checking that the expected hashes are not present, retry updating soup scripts using salt master.
       echo "There was a problem updating soup scripts.. Trying to rerun script update"
       salt-call state.apply common.soup_scripts queue=True -linfo
     fi
