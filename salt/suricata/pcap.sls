@@ -1,6 +1,5 @@
 {% from 'vars/globals.map.jinja' import GLOBALS %}
-{% import_yaml 'suricata/defaults.yaml' as SURICATADEFAULTS %}
-{% set SURICATAMERGED = salt['pillar.get']('suricata', SURICATADEFAULTS.suricata, merge=True) %}
+{% from 'suricata/map.jinja' import SURICATAMERGED %}
 
 suripcapdir:
   file.directory:
@@ -10,16 +9,14 @@ suripcapdir:
     - mode: 755
     - makedirs: True
 
-{{ SURICATAMERGED.config['af-packet'].threads }}
 
-for thread in afp.threads
+{% for i in range(1, SURICATAMERGED.config['af-packet'].threads) + 1) %}
 
-suripcapthreaddir:
+suripcapthread{{i}}dir:
   file.directory:
-    - name: /nsm/suripcap/{{thread}}
+    - name: /nsm/suripcap/{{i}}
     - user: 940
     - group: 939
     - mode: 755
-    - makedirs: True
 
-endfor
+{% endfor %}

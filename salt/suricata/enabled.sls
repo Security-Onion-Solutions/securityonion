@@ -12,9 +12,9 @@
 include:
   - suricata.config
   - suricata.sostatus
-  if blah
+{%   if GLOBALS.pcap_engine == "SURICATA" %}
   - suricata.pcap
-  endif
+{%   endif %}
 
 so-suricata:
   docker_container.running:
