@@ -12,6 +12,9 @@
 include:
   - suricata.config
   - suricata.sostatus
+  if blah
+  - suricata.pcap
+  endif
 
 so-suricata:
   docker_container.running:
