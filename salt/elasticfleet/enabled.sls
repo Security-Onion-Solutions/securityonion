@@ -40,7 +40,7 @@ so-elastic-fleet-auto-configure-elasticsearch-urls:
     - name: /usr/sbin/so-elastic-fleet-es-url-update
     - retry: True
 
-so-elastic-fleet-auto-configure-elasticsearch-urls:
+so-elastic-fleet-auto-configure-artifact-urls:
   cmd.run:
     - name: /usr/sbin/so-elastic-fleet-artifacts-url-update
     - retry: True 
