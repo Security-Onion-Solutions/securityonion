@@ -1,5 +1,5 @@
 # Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
-# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
@@ -61,7 +61,7 @@ manager_sbin:
     - user: 939
     - group: 939
     - file_mode: 755
-    - exclude_pat: 
+    - exclude_pat:
       - "*_test.py"
 
 yara_update_scripts:
@@ -103,55 +103,6 @@ rules_dir:
     - group: socore
     - makedirs: True
 
-{%    if STRELKAMERGED.rules.enabled %}
-
-strelkarepos:
-  file.managed:
-    - name: /opt/so/conf/strelka/repos.txt
-    - source: salt://strelka/rules/repos.txt.jinja
-    - template: jinja
-    - defaults:
-        STRELKAREPOS: {{ STRELKAMERGED.rules.repos }}
-    - makedirs: True
-
-strelka-yara-update:
-  {%       if MANAGERMERGED.reposync.enabled and not GLOBALS.airgap %} 
-  cron.present:
-  {%       else %}
-  cron.absent:
-  {%       endif %}
-    - user: socore
-    - name: '/usr/sbin/so-yara-update >> /opt/so/log/yarasync/yara-update.log 2>&1'
-    - identifier: strelka-yara-update
-    - hour: '7'
-    - minute: '1'
-
-strelka-yara-download:
-  {%       if MANAGERMERGED.reposync.enabled and not GLOBALS.airgap %}
-  cron.present:
-  {%       else %}
-  cron.absent:
-  {%       endif %}
-    - user: socore
-    - name: '/usr/sbin/so-yara-download >> /opt/so/log/yarasync/yara-download.log 2>&1'
-    - identifier: strelka-yara-download
-    - hour: '7'
-    - minute: '1'
-
-{%      if not GLOBALS.airgap %}
-update_yara_rules:
-  cmd.run:
-    - name: /usr/sbin/so-yara-update
-    - onchanges:
-      - file: yara_update_scripts
-
-download_yara_rules:
-  cmd.run:
-    - name: /usr/sbin/so-yara-download
-    - onchanges:
-      - file: yara_update_scripts
-{%      endif %}
-{%     endif %}
 {% else %}
 
 {{sls}}_state_not_allowed:
