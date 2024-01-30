@@ -35,6 +35,9 @@ so-suricata:
       - /nsm/suricata/:/nsm/:rw
       - /nsm/suricata/extracted:/var/log/suricata//filestore:rw
       - /opt/so/conf/suricata/bpf:/etc/suricata/bpf:ro
+      {% if GLOBALS.pcap_engine == "SURICATA" %}
+      - /nsm/suripcap/:/nsm/pcap:rw
+      {% endif %}
       {% if DOCKER.containers['so-suricata'].custom_bind_mounts %}
         {% for BIND in DOCKER.containers['so-suricata'].custom_bind_mounts %}
       - {{ BIND }}

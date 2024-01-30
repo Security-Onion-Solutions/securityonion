@@ -9,8 +9,8 @@ suripcapdir:
     - mode: 755
     - makedirs: True
 
-
-{% for i in range(1, SURICATAMERGED.config['af-packet'].threads) + 1) %}
+{# there should only be 1 interface in af-packet so we can just reference the first list item #}
+{% for i in range(1, SURICATAMERGED.config['af-packet'][0].threads + 1) %}
 
 suripcapthread{{i}}dir:
   file.directory:
