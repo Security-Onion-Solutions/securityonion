@@ -23,6 +23,9 @@ so-sensoroni:
       - /opt/so/conf/sensoroni/sensoroni.json:/opt/sensoroni/sensoroni.json:ro
       - /opt/so/conf/sensoroni/analyzers:/opt/sensoroni/analyzers:rw
       - /opt/so/log/sensoroni:/opt/sensoroni/logs:rw
+      {% if GLOBALS.pcap_engine == "SURICATA" %}
+      - /nsm/suripcap/:/nsm/suripcap:rw
+      {% endif %}
       {% if DOCKER.containers['so-sensoroni'].custom_bind_mounts %}
         {% for BIND in DOCKER.containers['so-sensoroni'].custom_bind_mounts %}
       - {{ BIND }}
