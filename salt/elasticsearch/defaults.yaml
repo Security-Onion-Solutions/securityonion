@@ -117,6 +117,35 @@ elasticsearch:
               sort:
                 field: '@timestamp'
                 order: desc
+    so-detection:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - detection-mappings
+        - detection-settings
+        index_patterns:
+        - so-detection*
+        priority: 500
+        template:
+          mappings:
+            date_detection: false
+            dynamic_templates:
+            - strings_as_keyword:
+                mapping:
+                  ignore_above: 1024
+                  type: keyword
+                match_mapping_type: string
+          settings:
+            index:
+              mapping:
+                total_fields:
+                  limit: 1500
+              number_of_replicas: 0
+              number_of_shards: 1
+              refresh_interval: 30s
+              sort:
+                field: '@timestamp'
+                order: desc
     so-common:
       close: 30
       delete: 365
@@ -8909,7 +8938,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 50
-            min_age: 30d    
+            min_age: 30d
     so-logs-ti_otx_x_threat:
       index_sorting: false
       index_template:
