@@ -22,6 +22,7 @@ so-soc:
       - sobridge:
         - ipv4_address: {{ DOCKER.containers['so-soc'].ip }}
     - binds:
+      - /nsm/rules:/nsm/rules:rw #Need to tighten this up?
       - /nsm/soc/jobs:/opt/sensoroni/jobs:rw
       - /nsm/soc/uploads:/nsm/soc/uploads:rw
       - /opt/so/log/soc/:/opt/sensoroni/logs/:rw
