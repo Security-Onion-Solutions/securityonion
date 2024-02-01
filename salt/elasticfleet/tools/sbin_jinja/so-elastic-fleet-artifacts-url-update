@@ -26,7 +26,7 @@ array_contains () {
 }
 
 # Query for the current Grid Nodes that are running Logstash (which includes Fleet Nodes)
-LOGSTASHNODES=$(salt-call --out=json pillar.get logstash:nodes | jq '.local')
+LOGSTASHNODES='{{ salt['pillar.get']('logstash:nodes', {}) | tojson }}'
 
 # Initialize an array for new hosts from Fleet Nodes
 declare -a NEW_LIST=()
@@ -40,34 +40,46 @@ if grep -q "fleet" <<< "$LOGSTASHNODES"; then
 fi
 
 # Create an array for expected hosts and their names
-declare -A expected_hosts=(
+declare -A expected_urls=(
     ["http://{{ GLOBALS.url_base }}:8443/artifacts/"]="FleetServer_{{ GLOBALS.hostname }}"
     ["https://artifacts.elastic.co/downloads/"]="Elastic Artifacts"
 )
 
-# Merge NEW_LIST into expected_hosts
+# Merge NEW_LIST into expected_urls
 for host in "${NEW_LIST[@]}"; do
-    expected_hosts[$host]="FleetServer"
+    expected_urls[$host]="FleetServer"
 done
 
 # Fetch the current hosts from the API
-current_hosts=$(curl -K /opt/so/conf/elasticsearch/curl.config 'http://localhost:5601/api/fleet/agent_download_sources' | jq -r .items[].host)
+current_urls=$(curl -K /opt/so/conf/elasticsearch/curl.config 'http://localhost:5601/api/fleet/agent_download_sources' | jq -r .items[].host)
 
 # Convert current hosts to an array
-IFS=$'\n' read -rd '' -a current_hosts_array <<<"$current_hosts"
+IFS=$'\n' read -rd '' -a current_urls_array <<<"$current_urls"
+
+# Flag to track if any host was added
+any_url_added=0
 
 # Check each expected host
-for host in "${!expected_hosts[@]}"; do
-    array_contains current_hosts_array "$host" || {
-        echo "$host (${expected_hosts[$host]}) is missing. Adding it..."
+for host in "${!expected_urls[@]}"; do
+    array_contains current_urls_array "$host" || {
+        echo "$host (${expected_urls[$host]}) is missing. Adding it..."
         
         # Prepare the JSON payload
         JSON_STRING=$( jq -n \
-                        --arg NAME "${expected_hosts[$host]}" \
+                        --arg NAME "${expected_urls[$host]}" \
                         --arg URL "$host" \
                         '{"name":$NAME,"host":$URL}' )
         
         # Create the missing host
         curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/agent_download_sources" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
+        
+        # Flag that an artifact URL was added
+        any_url_added=1
     }
+
 done
+
+
+if [[ $any_url_added -eq 0 ]]; then
+    echo "All expected artifact URLs are present. No updates needed."
+fi
