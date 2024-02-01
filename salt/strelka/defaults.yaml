@@ -17,9 +17,10 @@ strelka:
           mime_db: '/usr/lib/file/magic.mgc'
           yara_rules: '/etc/strelka/taste/'
         scanners:
-          'ScanBase64':
+          'ScanBase64PE':
             - positive:
-                filename: '^base64_'
+                flavors:
+                  - 'base64_pe'
               priority: 5
           'ScanBatch':
             - positive:
@@ -27,11 +28,26 @@ strelka:
                   - 'text/x-msdos-batch'
                   - 'batch_file'
               priority: 5
+          'ScanBmpEof':
+            - positive:
+                flavors:
+                  - 'image/x-ms-bmp'
+                  - 'bmp_file'
+              negative:
+                source:
+                  - 'ScanTranscode'
+              priority: 5
           'ScanBzip2':
             - positive:
                 flavors:
                   - 'application/x-bzip2'
                   - 'bzip2_file'
+              priority: 5
+          'ScanDmg':
+            - positive:
+                flavors:
+                  - 'dmg_disk_image'
+                  - 'hfsplus_disk_image'
               priority: 5
           'ScanDocx':
             - positive:
@@ -40,6 +56,11 @@ strelka:
               priority: 5
               options:
                 extract_text: False
+          'ScanDonut':
+            - positive:
+                flavors:
+                  - 'hacktool_win_shellcode_donut'
+              priority: 5
           'ScanElf':
             - positive:
                 flavors:
@@ -56,6 +77,26 @@ strelka:
                   - 'message/rfc822'
                   - 'email_file'
               priority: 5
+          'ScanEncryptedDoc':
+            - positive:
+                flavors:
+                  - 'encrypted_word_document'
+              priority: 5
+              options:
+                max_length: 5
+                scanner_timeout: 150
+                log_pws: True
+                password_file: "/etc/strelka/passwords.dat"
+          'ScanEncryptedZip':
+            - positive:
+                flavors:
+                  - 'encrypted_zip'
+              priority: 5
+              options:
+                max_length: 5
+                scanner_timeout: 150
+                log_pws: True
+                password_file: '/etc/strelka/passwords.dat'
           'ScanEntropy':
             - positive:
                 flavors:
@@ -111,6 +152,16 @@ strelka:
               priority: 5
               options:
                 tmp_directory: '/dev/shm/'
+          'ScanFooter':
+            - positive:
+                flavors:
+                  - '*'
+              priority: 5
+              options:
+                length: 50
+                encodings:
+                  - classic
+                  - backslash
           'ScanGif':
             - positive:
                 flavors:
@@ -144,13 +195,25 @@ strelka:
                   - 'html_file'
               priority: 5
               options:
-                parser: "html5lib"
+                max_hyperlinks: 50
+          'ScanIqy':
+            - positive:
+                flavors:
+                  - 'iqy_file'
+              priority: 5
           'ScanIni':
             - positive:
                 filename: '(\.([Cc][Ff][Gg]|[Ii][Nn][Ii])|PROJECT)$'
                 flavors:
                   - 'ini_file'
               priority: 5
+          'ScanIso':
+            - positive:
+                flavors:
+                  - 'application/x-iso9660-image'
+              priority: 5
+              options:
+                limit: 50
           'ScanJarManifest':
             - positive:
                 flavors:
@@ -198,6 +261,25 @@ strelka:
               priority: 5
               options:
                 limit: 1000
+          'ScanLNK':
+            - positive:
+                flavors:
+                  - 'lnk_file'
+              priority: 5
+          'ScanLsb':
+            - positive:
+                flavors:
+                  - 'image/png'
+                  - 'png_file'
+                  - 'image/jpeg'
+                  - 'jpeg_file'
+                  - 'image/x-ms-bmp'
+                  - 'bmp_file'
+                  - 'image/webp'
+              negative:
+                source:
+                  - 'ScanTranscode'
+              priority: 5
           'ScanLzma':
             - positive:
                 flavors:
@@ -214,6 +296,36 @@ strelka:
               priority: 5
               options:
                 tmp_directory: '/dev/shm/'
+          'ScanManifest':
+            - positive:
+                flavors:
+                  - 'browser_manifest'
+              priority: 5
+          'ScanMsi':
+            - positive:
+                flavors:
+                  - "image/vnd.fpx"
+                  - "application/vnd.ms-msi"
+                  - "application/x-msi"
+              priority: 5
+              options:
+                tmp_directory: '/dev/shm/'
+                keys:
+                  - 'Author'
+                  - 'Characters'
+                  - 'Company'
+                  - 'CreateDate'
+                  - 'LastModifiedBy'
+                  - 'Lines'
+                  - 'ModifyDate'
+                  - 'Pages'
+                  - 'Paragraphs'
+                  - 'RevisionNumber'
+                  - 'Software'
+                  - 'Template'
+                  - 'Title'
+                  - 'TotalEditTime'
+                  - 'Words'
           'ScanOcr':
             - positive:
                 flavors:
@@ -235,6 +347,13 @@ strelka:
                   - 'application/CDFV2'
                   - 'application/msword'
                   - 'olecf_file'
+              priority: 5
+          'ScanOnenote':
+            - positive:
+                flavors:
+                  - 'application/onenote'
+                  - 'application/msonenote'
+                  - 'onenote_file'
               priority: 5
           'ScanPdf':
             - positive:
@@ -285,6 +404,30 @@ strelka:
                   - 'ProgramArguments'
                   - 'RunAtLoad'
                   - 'StartInterval'
+          'ScanPngEof':
+            - positive:
+                flavors:
+                  - 'image/png'
+                  - 'png_file'
+              negative:
+                source:
+                  - 'ScanTranscode'
+              priority: 5
+          'ScanQr':
+            - positive:
+                flavors:
+                  - 'image/jpeg'
+                  - 'jpeg_file'
+                  - 'image/png'
+                  - 'png_file'
+                  - 'image/tiff'
+                  - 'type_is_tiff'
+                  - 'image/x-ms-bmp'
+                  - 'bmp_file'
+                  - 'image/webp'
+              priority: 5
+              options:
+                support_inverted: True
           'ScanRar':
             - positive:
                 flavors:
@@ -309,6 +452,19 @@ strelka:
               priority: 5
               options:
                 limit: 1000
+          'ScanSevenZip':
+            - positive:
+                flavors:
+                  - 'application/x-7z-compressed'
+                  - '_7zip_file'
+                  - "image/vnd.fpx"
+                  - "application/vnd.ms-msi"
+                  - "application/x-msi"
+              priority: 5
+              options:
+                scanner_timeout: 150
+                crack_pws: True
+                log_pws: True
           'ScanSwf':
             - positive:
                 flavors:
@@ -351,6 +507,7 @@ strelka:
                 flavors:
                   - 'vb_file'
                   - 'vbscript'
+                  - 'hta_file'
               priority: 5
           'ScanVba':
             - positive:
@@ -362,6 +519,20 @@ strelka:
               priority: 5
               options:
                 analyze_macros: True
+          'ScanVhd':
+            - positive:
+                flavors:
+                  - 'application/x-vhd'
+                  - 'vhd_file'
+                  - 'vhdx_file'
+              priority: 5
+              options:
+                limit: 100
+          'ScanVsto':
+            - positive:
+                flavors:
+                  - 'vsto_file'
+              priority: 5
           'ScanX509':
             - positive:
                 flavors:
@@ -391,6 +562,12 @@ strelka:
               priority: 5
               options:
                 location: '/etc/yara/'
+                compiled:
+                  enabled: False
+                  filename: "rules.compiled"
+                store_offset: True
+                offset_meta_key: "StrelkaHexDump"
+                offset_padding: 32
           'ScanZip':
             - positive:
                 flavors:
@@ -530,6 +707,20 @@ strelka:
         ttl: 1h
       response:
         log: "/var/log/strelka/strelka.log"
+      broker:
+        bootstrap: "PLACEHOLDER"
+        protocol: "PLACEHOLDER"
+        certlocation: "PLACEHOLDER"
+        keylocation: "PLACEHOLDER"
+        calocation: "PLACEHOLDER"
+        topic: "PLACEHOLDER"
+        s3redundancy: "PLACEHOLDER - This should be a boolean value"
+      s3:
+        accesskey: "PLACEHOLDER"
+        secretkey: "PLACEHOLDER"
+        bucketName: "PLACEHOLDER"
+        region: "PLACEHOLDER"
+        endpoint: "PLACEHOLDER"
   manager:
     enabled: False
     config:
