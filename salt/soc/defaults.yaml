@@ -64,7 +64,7 @@ soc:
         icon: fa-external-link-alt
         target: _blank
         links:
-          - 'https://{:sublime.url}/messages/{:sublime.message_group_id}' 
+          - 'https://{:sublime.url}/messages/{:sublime.message_group_id}'
     eventFields:
       default:
         - soc_timestamp
@@ -1756,3 +1756,53 @@ soc:
                   - amber+strict
                   - red
               customEnabled: false
+        detections:
+          viewEnabled: true
+          createLink: /detection/create
+          eventFetchLimit: 500
+          eventItemsPerPage: 50
+          groupFetchLimit: 50
+          mostRecentlyUsedLimit: 5
+          safeStringMaxLength: 100
+          queryBaseFilter: '_index:"*:so-detection" AND so_kind:detection'
+          eventFields:
+            default:
+              - so_detection.title
+              - so_detection.isEnabled
+              - so_detection.engine
+              - "@timestamp"
+          queries:
+            - name: "All Detections"
+              query: "_id:*"
+            - name: "Local Rules"
+              query: "so_detection.isCommunity:false"
+            - name: "Enabled"
+              query: "so_detection.isEnabled:true"
+            - name: "Disabled"
+              query: "so_detection.isEnabled:false"
+            - name: "Suricata"
+              query: "so_detection.engine:suricata"
+            - name: "ElastAlert"
+              query: "so_detection.engine:elastalert"
+            - name: "Strelka"
+              query: "so_detection.engine:strelka"
+        detection:
+          presets:
+            severity:
+                customEnabled: false
+                labels:
+                  - unknown
+                  - informational
+                  - low
+                  - medium
+                  - high
+                  - critical
+            engine:
+                customEnabled: false
+                labels:
+                  - suricata
+                  - elastalert
+                  - strelka
+          severityTranslations:
+            minor: low
+            major: high
