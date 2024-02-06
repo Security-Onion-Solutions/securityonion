@@ -45,7 +45,7 @@ def appendItem(content, key, listItem):
         try:
             content[key].append(listItem)
         except TypeError:
-            print("The contents key provided is likely not a list. No action was taken on the file.")
+            print("The key provided is likely not a list. No action was taken on the file.")
             return 1
 
 def append(args):
