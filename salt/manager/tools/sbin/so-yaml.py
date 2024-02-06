@@ -44,8 +44,11 @@ def appendItem(content, key, listItem):
     else:
         try:
             content[key].append(listItem)
-        except TypeError:
-            print("The key provided is likely not a list. No action was taken on the file.")
+        except AttributeError:
+            print("The key provided is not a list. No action was taken on the file.")
+            return 1
+        except KeyError:
+            print("The key provided does not exist. No action was taken on the file.")
             return 1
 
 def append(args):
