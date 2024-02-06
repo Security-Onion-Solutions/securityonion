@@ -187,7 +187,7 @@ class TestRemove(unittest.TestCase):
                 sys.argv = ["cmd", "append", filename, "key1", "h"]
                 soyaml.main()
                 sysmock.assert_called()
-                self.assertEqual(mock_stdout.getvalue(), "The key provided is not a list. No action was taken on the file.\n")
+                self.assertEqual(mock_stdout.getvalue(), "The existing value for the given key is not a list. No action was taken on the file.\n")
 
     def test_append_key_nonlist_deep(self):
         filename = "/tmp/so-yaml_test-append.yaml"
@@ -200,4 +200,4 @@ class TestRemove(unittest.TestCase):
                 sys.argv = ["cmd", "append", filename, "key1.child2.deep1", "h"]
                 soyaml.main()
                 sysmock.assert_called()
-                self.assertEqual(mock_stdout.getvalue(), "The key provided is not a list. No action was taken on the file.\n")
+                self.assertEqual(mock_stdout.getvalue(), "The existing value for the given key is not a list. No action was taken on the file.\n")

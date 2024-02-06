@@ -45,7 +45,7 @@ def appendItem(content, key, listItem):
         try:
             content[key].append(listItem)
         except AttributeError:
-            print("The key provided is not a list. No action was taken on the file.")
+            print("The existing value for the given key is not a list. No action was taken on the file.")
             return 1
         except KeyError:
             print("The key provided does not exist. No action was taken on the file.")
