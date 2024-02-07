@@ -594,6 +594,16 @@ up_to_2.4.50() {
   touch /opt/so/saltstack/local/pillar/stig/adv_stig.sls
   touch /opt/so/saltstack/local/pillar/stig/soc_stig.sls
 
+  # the file_roots need to be update due to salt 3006.6 upgrade not allowing symlinks outside the file_roots
+  # put new so-yaml in place
+  echo "Updating so-yaml"
+  \cp -v "$UPDATE_DIR/salt/manager/tools/sbin/so-yaml.py" "$DEFAULT_SALT_DIR/salt/manager/tools/sbin/"
+  \cp -v "$UPDATE_DIR/salt/manager/tools/sbin/so-yaml.py" /usr/sbin/
+  echo "Creating a backup of the salt-master config."
+  cp -v /etc/salt/master "/etc/salt/master.so-$INSTALLEDVERSION"
+  echo "Adding /opt/so/rules to file_roots using so-yaml"
+  so-yaml.py append /etc/salt/master file_roots.base /opt/so/rules
+
   INSTALLEDVERSION=2.4.50
 }
 
