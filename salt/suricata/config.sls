@@ -84,10 +84,12 @@ suridatadir:
     - mode: 770
     - makedirs: True
 
+# salt:// would resolve to /opt/so/rules because of the defined file_roots and
+# nids not existing under /opt/so/saltstack/local/salt or /opt/so/saltstack/default/salt
 surirulesync:
   file.recurse:
     - name: /opt/so/conf/suricata/rules/
-    - source: salt://suricata/rules/
+    - source: salt://nids/
     - user: 940
     - group: 940
     - show_changes: False
