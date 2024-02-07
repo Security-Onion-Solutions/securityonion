@@ -947,9 +947,6 @@ main() {
 
     systemctl_func "stop" "$cron_service_name"
 
-    # update mine items prior to stopping salt-minion and salt-master
-    update_salt_mine
-
     echo "Updating dockers to $NEWVERSION."
     if [[ $is_airgap -eq 0 ]]; then
       airgap_update_dockers
@@ -1024,6 +1021,9 @@ main() {
     echo "Ensuring salt-minion configs are up-to-date."
     salt-call state.apply salt.minion -l info queue=True
     echo ""
+
+    # ensure the mine is updated and populated before highstates run, following the salt-master restart
+    update_salt_mine
 
     enable_highstate
 
