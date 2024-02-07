@@ -57,6 +57,22 @@ socmotd:
     - mode: 600
     - template: jinja
 
+socsigmafinalpipeline:
+  file.managed:
+    - name: /opt/so/conf/soc/sigma_final_pipeline.yaml
+    - source: salt://soc/files/soc/sigma_final_pipeline.yaml
+    - user: 939
+    - group: 939
+    - mode: 600
+
+socsigmasopipeline:
+  file.managed:
+    - name: /opt/so/conf/soc/sigma_so_pipeline.yaml
+    - source: salt://soc/files/soc/sigma_so_pipeline.yaml
+    - user: 939
+    - group: 939
+    - mode: 600
+
 socbanner:
   file.managed:
     - name: /opt/so/conf/soc/banner.md
