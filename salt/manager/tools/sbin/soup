@@ -600,8 +600,11 @@ up_to_2.4.50() {
   \cp -v "$UPDATE_DIR/salt/manager/tools/sbin/so-yaml.py" "$DEFAULT_SALT_DIR/salt/manager/tools/sbin/"
   \cp -v "$UPDATE_DIR/salt/manager/tools/sbin/so-yaml.py" /usr/sbin/
   echo "Creating a backup of the salt-master config."
-  cp -v /etc/salt/master "/etc/salt/master.so-$INSTALLEDVERSION"
-  echo "Adding /opt/so/rules to file_roots using so-yaml"
+  # INSTALLEDVERSION is 2.4.40 at this point, but we want the backup to have the version
+  # so was at prior to starting upgrade. use POSTVERSION here since it doesnt change until
+  # post upgrade changes. POSTVERSION set to INSTALLEDVERSION at start of soup
+  cp -v /etc/salt/master "/etc/salt/master.so-$POSTVERSION.bak"
+  echo "Adding /opt/so/rules to file_roots in /etc/salt/master using so-yaml"
   so-yaml.py append /etc/salt/master file_roots.base /opt/so/rules
 
   INSTALLEDVERSION=2.4.50
