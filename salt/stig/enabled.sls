@@ -50,7 +50,7 @@ update_stig_profile:
 run_initial_scan:
   module.run:
   - name: openscap.xccdf
-  - params: 'eval --remediate --profile {{ OSCAP_PROFILE_NAME }} --results {{ OSCAP_OUTPUT_DIR }}/pre-oscap-results.xml --report {{ OSCAP_OUTPUT_DIR }}/pre-oscap-report.html {{ OSCAP_PROFILE_LOCATION }}'
+  - params: 'eval --profile {{ OSCAP_PROFILE_NAME }} --results {{ OSCAP_OUTPUT_DIR }}/pre-oscap-results.xml --report {{ OSCAP_OUTPUT_DIR }}/pre-oscap-report.html {{ OSCAP_PROFILE_LOCATION }}'
 {% endif %}
 
 run_remediate:

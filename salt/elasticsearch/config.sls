@@ -118,6 +118,19 @@ esingestconf:
     - user: 930
     - group: 939
 
+# Auto-generate Elasticsearch ingest node pipelines from pillar
+{% for pipeline, config in ELASTICSEARCHMERGED.pipelines.items() %}
+es_ingest_conf_{{pipeline}}:
+  file.managed:
+    - name: /opt/so/conf/elasticsearch/ingest/{{ pipeline }}
+    - source: salt://elasticsearch/base-template.json.jinja
+    - defaults:
+      TEMPLATE_CONFIG: {{ config }}
+    - template: jinja
+    - onchanges_in:
+      - file: so-pipelines-reload
+{%     endfor %}
+
 eslog4jfile:
   file.managed:
     - name: /opt/so/conf/elasticsearch/log4j2.properties
