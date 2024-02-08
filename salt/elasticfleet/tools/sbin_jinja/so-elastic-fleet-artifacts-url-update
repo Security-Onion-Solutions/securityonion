@@ -35,7 +35,9 @@ declare -a NEW_LIST=()
 if grep -q "fleet" <<< "$LOGSTASHNODES"; then
     readarray -t FLEETNODES < <(jq -r '.fleet | keys_unsorted[]' <<< "$LOGSTASHNODES")
     for NODE in "${FLEETNODES[@]}"; do
-        NEW_LIST+=("http://$NODE:8443/artifacts/")
+        URL="http://$NODE:8443/artifacts/"
+        NAME="FleetServer_$NODE"
+        NEW_LIST+=("$URL=$NAME")
     done
 fi
 
@@ -46,8 +48,11 @@ declare -A expected_urls=(
 )
 
 # Merge NEW_LIST into expected_urls
-for host in "${NEW_LIST[@]}"; do
-    expected_urls[$host]="FleetServer"
+for entry in "${NEW_LIST[@]}"; do
+    # Extract URL and Name from each entry
+    IFS='=' read -r URL NAME <<< "$entry"
+    # Add to expected_urls, automatically handling URL as key and NAME as value
+    expected_urls["$URL"]="$NAME"
 done
 
 # Fetch the current hosts from the API
