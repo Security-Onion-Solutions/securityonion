@@ -45,12 +45,6 @@ so-elastic-fleet-auto-configure-artifact-urls:
     - name: /usr/sbin/so-elastic-fleet-artifacts-url-update
     - retry: True 
 
-elasticagentartifactssymlink:
-  file.symlink:
-    - name: /opt/so/saltstack/local/salt/beats
-    - target: /nsm/elastic-fleet/artifacts/beats
-    - user: socore
-    - group: socore
 {% endif %}
 
 # Sync Elastic Agent artifacts to Fleet Node
@@ -58,7 +52,7 @@ elasticagentartifactssymlink:
 elasticagent_syncartifacts:
   file.recurse:
     - name: /nsm/elastic-fleet/artifacts/beats
-    - source: salt://beats
+    - source: salt://beats?saltenv=elasticartifacts
 {% endif %}
 
 {%   if SERVICETOKEN != '' %}
