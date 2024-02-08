@@ -5,7 +5,7 @@
 
 {% from 'docker/docker.map.jinja' import DOCKER %}
 {% from 'vars/globals.map.jinja' import GLOBALS %}
-
+{% import_yaml 'docker/version.yaml' as VERSION %}
 # include ssl since docker service requires the intca
 include:
   - ssl
@@ -20,30 +20,30 @@ dockergroup:
 dockerheldpackages:
   pkg.installed:
     - pkgs:
-      - containerd.io: 1.6.21-1
-      - docker-ce: 5:24.0.3-1~debian.12~bookworm
-      - docker-ce-cli: 5:24.0.3-1~debian.12~bookworm
-      - docker-ce-rootless-extras: 5:24.0.3-1~debian.12~bookworm
+      - containerd.io: {{ VERSION.containerd.bookworm.version }}
+      - docker-ce: {{ VERSION.dockerce.bookworm.version }}
+      - docker-ce-cli: {{ VERSION.dockerce.bookworm.version }}
+      - docker-ce-rootless-extras: {{ VERSION.dockerce.bookworm.version }}
     - hold: True
     - update_holds: True
 {%    elif grains.oscodename == 'jammy' %}
 dockerheldpackages:
   pkg.installed:
     - pkgs:
-      - containerd.io: 1.6.21-1
-      - docker-ce: 5:24.0.2-1~ubuntu.22.04~jammy
-      - docker-ce-cli: 5:24.0.2-1~ubuntu.22.04~jammy
-      - docker-ce-rootless-extras: 5:24.0.2-1~ubuntu.22.04~jammy
+      - containerd.io: {{ VERSION.containerd.jammy.version}}
+      - docker-ce: {{ VERSION.dockerce.jammy.version }}
+      - docker-ce-cli: {{ VERSION.dockerce.jammy.version }}
+      - docker-ce-rootless-extras: {{ VERSION.dockerce.jammy.version }}
     - hold: True
     - update_holds: True
 {%    else %}
 dockerheldpackages:
   pkg.installed:
     - pkgs:
-      - containerd.io: 1.4.9-1
-      - docker-ce: 5:20.10.8~3-0~ubuntu-focal
-      - docker-ce-cli: 5:20.10.5~3-0~ubuntu-focal
-      - docker-ce-rootless-extras: 5:20.10.5~3-0~ubuntu-focal
+      - containerd.io: {{ VERSION.containerd.focal.version }}
+      - docker-ce: {{ VERSION.dockerce.focal.version }}
+      - docker-ce-cli: {{ VERSION.dockerce.focal.version }}
+      - docker-ce-rootless-extras: {{ VERSION.dockerce.focal.version }}
     - hold: True
     - update_holds: True
 {% endif %}
@@ -51,10 +51,10 @@ dockerheldpackages:
 dockerheldpackages:
   pkg.installed:
     - pkgs:
-      - containerd.io: 1.6.21-3.1.el9
-      - docker-ce: 24.0.4-1.el9
-      - docker-ce-cli: 24.0.4-1.el9
-      - docker-ce-rootless-extras: 24.0.4-1.el9
+      - containerd.io: {{ VERSION.containerd.oracle.version }}
+      - docker-ce: {{ VERSION.dockerce.oracle.version }}
+      - docker-ce-cli: {{ VERSION.dockerce.oracle.version }}
+      - docker-ce-rootless-extras: {{ VERSION.dockerce.oracle.version }}
     - hold: True
     - update_holds: True
 {% endif %}

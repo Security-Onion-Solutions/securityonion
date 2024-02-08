@@ -10,5 +10,19 @@ NOROOT=1
 set -e
 
 curl --retry 5 --retry-delay 60 -A "reposync/$(sync_options)" https://sigs.securityonion.net/checkup --output /tmp/checkup
-dnf reposync --norepopath -g --delete -m -c /opt/so/conf/reposync/repodownload.conf --repoid=securityonionsync --download-metadata -p /nsm/repo/
+dnf reposync --norepopath -g --delete -m --newest-only -c /opt/so/conf/reposync/repodownload.conf --repoid=securityonionsync --download-metadata -p /nsm/repo/
+
+SALTVERSION=$(egrep 'version: [0-9]{4}' $DEFAULT_SALT_DIR/salt/salt/master.defaults.yaml | sed 's/^.*version: //')
+DOCKERCE=$(grep -A2 'dockerce' $DEFAULT_SALT_DIR/salt/docker/version.yaml | grep -A1 'oracle' | grep -v 'oracle' | sed 's/^.*version: //')
+CONTAINERD=$(grep -A2 'containerd' $DEFAULT_SALT_DIR/salt/docker/version.yaml | grep -A1 'oracle' | grep -v 'oracle' | sed 's/^.*version: //')
+LOCKED_PKGS=(
+  	"docker-ce-$DOCKERCE"
+	"docker-ce-cli-$DOCKERCE"
+	"docker-ce-rootless-extras-$DOCKERCE"
+	"containerd.io-$CONTAINERD"
+	"salt-$SALTVERSION"
+	"salt-minion-$SALTVERSION"
+	"salt-master-$SALTVERSION"
+)
+dnf download -c /opt/so/conf/reposync/repodownload.conf --repoid=securityonionsync --downloaddir=/nsm/repo/ "${LOCKED_PKGS[@]}"
 createrepo /nsm/repo
