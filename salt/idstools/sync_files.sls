@@ -21,7 +21,7 @@ idstoolsetcsync:
 
 rulesdir:
   file.directory:
-    - name: /opt/so/rules/nids
+    - name: /opt/so/rules/nids/suri
     - user: 939
     - group: 939
     - makedirs: True
@@ -29,7 +29,7 @@ rulesdir:
 # Don't show changes because all.rules can be large
 synclocalnidsrules:
   file.recurse:
-    - name: /opt/so/rules/nids/
+    - name: /opt/so/rules/nids/suri/
     - source: salt://idstools/rules/
     - user: 939
     - group: 939
