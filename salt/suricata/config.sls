@@ -89,7 +89,7 @@ suridatadir:
 surirulesync:
   file.recurse:
     - name: /opt/so/conf/suricata/rules/
-    - source: salt://suricata/
+    - source: salt://suri/
     - user: 940
     - group: 940
     - show_changes: False
