@@ -52,7 +52,7 @@ so-elastic-fleet-auto-configure-artifact-urls:
 elasticagent_syncartifacts:
   file.recurse:
     - name: /nsm/elastic-fleet/artifacts/beats
-    - source: salt://beats?saltenv=elasticartifacts
+    - source: salt://beats
 {% endif %}
 
 {%   if SERVICETOKEN != '' %}
