@@ -17,6 +17,11 @@ include:
   - elasticfleet.sostatus
   - ssl
 
+# Wait for Elasticsearch to be ready - no reason to try running Elastic Fleet server if ES is not ready
+wait_for_elasticsearch:
+  cmd.run:
+    - name: so-elasticsearch-wait
+
 # If enabled, automatically update Fleet Logstash Outputs
 {% if ELASTICFLEETMERGED.config.server.enable_auto_configuration and grains.role not in ['so-import', 'so-eval', 'so-fleet'] %}
 so-elastic-fleet-auto-configure-logstash-outputs:
