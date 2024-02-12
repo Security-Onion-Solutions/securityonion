@@ -1600,6 +1600,9 @@ reinstall_init() {
 			salt-call -l info saltutil.kill_all_jobs --local
 		fi
 
+		logCmd "salt-call state.apply ca.remove -linfo --local --file-root=../salt"
+		logCmd "salt-call state.apply ssl.remove -linfo --local --file-root=../salt"
+
 		# Kill any salt processes (safely)
 		for service in "${salt_services[@]}"; do
 			# Stop the service in the background so we can exit after a certain amount of time
@@ -1620,9 +1623,6 @@ reinstall_init() {
 				((count++))
 			done
 		done
-
-		logCmd "salt-call state.apply ca.remove -linfo --local --file-root=../salt"
-		logCmd "salt-call state.apply ssl.remove -linfo --local --file-root=../salt"
 
 		# Remove all salt configs
 		rm -rf /etc/salt/engines/* /etc/salt/grains /etc/salt/master /etc/salt/master.d/* /etc/salt/minion /etc/salt/minion.d/* /etc/salt/pki/* /etc/salt/proxy /etc/salt/proxy.d/* /var/cache/salt/
