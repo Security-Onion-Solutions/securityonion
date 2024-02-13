@@ -63,7 +63,7 @@ copy_soup_sbin:
 
 copy_so-firewall_sbin:
   file.copy:
-    - name: /usr/so-firewall
+    - name: /usr/sbin/so-firewall
     - source: {{UPDATE_DIR}}/salt/manager/tools/sbin/so-firewall
     - force: True
     - preserve: True
