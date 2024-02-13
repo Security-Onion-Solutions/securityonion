@@ -18,7 +18,7 @@ include:
   - ssl
 
 # Wait for Elasticsearch to be ready - no reason to try running Elastic Fleet server if ES is not ready
-wait_for_elasticsearch:
+wait_for_elasticsearch_elasticfleet:
   cmd.run:
     - name: so-elasticsearch-wait
 
