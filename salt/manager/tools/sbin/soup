@@ -797,6 +797,14 @@ verify_latest_update_script() {
 
     salt-call state.apply common.soup_scripts queue=True -linfo --file-root=$UPDATE_DIR/salt --local
 
+    get_soup_script_hashes
+    if [[ "$CURRENTSOUP" == "$GITSOUP" && "$CURRENTCMN" == "$GITCMN" && "$CURRENTIMGCMN" == "$GITIMGCMN" && "$CURRENTSOFIREWALL" == "$GITSOFIREWALL" ]]; then
+      echo "Succesfully updated soup scripts."
+    else
+      echo "There was a problem updating soup scripts. Trying to rerun script update."
+      salt-call state.apply common.soup_scripts queue=True -linfo --file-root=$UPDATE_DIR/salt --local
+    fi
+
     echo ""
     echo "The soup script has been modified. Please run soup again to continue the upgrade."
     exit 0
