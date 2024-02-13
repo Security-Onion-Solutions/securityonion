@@ -9,9 +9,16 @@
 include:
   - manager.sync_es_users
 
+socdirtest:
+  file.directory:
+    - name: /opt/so/rules/elastalert/rules
+    - user: 939
+    - group: 939
+    - makedirs: True
+
 socdir:
   file.directory:
-    - name: /opt/so/conf/soc
+    - name: /opt/so/conf/soc/fingerprints
     - user: 939
     - group: 939
     - makedirs: True
