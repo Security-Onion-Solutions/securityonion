@@ -12,18 +12,58 @@ remove_common_so-firewall:
 {%   set UPDATE_DIR='/tmp/sogh/securityonion'%}
 {% endif %}
 
-copy_common_tools_sbin:
-  cmd.run:
-    - name: "rsync -avh {{UPDATE_DIR}}/salt/common/tools/sbin/* /opt/so/saltstack/default/salt/common/tools/sbin/"
+copy_so-common_common_tools_sbin:
+  file.copy:
+    - name: /opt/so/saltstack/default/salt/common/tools/sbin/so-common
+    - source: {{UPDATE_DIR}}/salt/common/tools/sbin/so-common
+    - force: True
+    - preserve: True
 
-copy_manager_tools_sbin:
-  cmd.run:
-    - name: "rsync -avh {{UPDATE_DIR}}/salt/manager/tools/sbin/* /opt/so/saltstack/default/salt/manager/tools/sbin/"
+copy_so-image-common_common_tools_sbin:
+  file.copy:
+    - name: /opt/so/saltstack/default/salt/common/tools/sbin/so-image-common
+    - source: {{UPDATE_DIR}}/salt/common/tools/sbin/so-image-common
+    - force: True
+    - preserve: True
 
-copy_common_sbin:
-  cmd.run:
-    - name: "rsync -avh {{UPDATE_DIR}}/salt/common/tools/sbin/* /usr/sbin/"
+copy_soup_manager_tools_sbin:
+  file.copy:
+    - name: /opt/so/saltstack/default/salt/manager/tools/sbin/soup
+    - source: {{UPDATE_DIR}}/salt/manager/tools/sbin/soup
+    - force: True
+    - preserve: True
 
-copy_manager_sbin:
-  cmd.run:
-    - name: "rsync -avh {{UPDATE_DIR}}/salt/manager/tools/sbin/* /usr/sbin/"
+copy_so-firewall_manager_tools_sbin:
+  file.copy:
+    - name: /opt/so/saltstack/default/salt/manager/tools/sbin/so-firewall
+    - source: {{UPDATE_DIR}}/salt/manager/tools/sbin/so-firewall
+    - force: True
+    - preserve: True
+
+copy_so-common_sbin:
+  file.copy:
+    - name: /usr/sbin/so-common
+    - source: {{UPDATE_DIR}}/salt/common/tools/sbin/so-common
+    - force: True
+    - preserve: True
+
+copy_so-image-common_sbin:
+  file.copy:
+    - name: /usr/sbin/so-image-common
+    - source: {{UPDATE_DIR}}/salt/common/tools/sbin/so-image-common
+    - force: True
+    - preserve: True
+
+copy_soup_sbin:
+  file.copy:
+    - name: /usr/sbin/soup
+    - source: {{UPDATE_DIR}}/salt/manager/tools/sbin/soup
+    - force: True
+    - preserve: True
+
+copy_so-firewall_sbin:
+  file.copy:
+    - name: /usr/so-firewall
+    - source: {{UPDATE_DIR}}/salt/manager/tools/sbin/so-firewall
+    - force: True
+    - preserve: True
