@@ -14,8 +14,8 @@ remove_common_so-firewall:
 
 copy_common:
   cmd.run:
-    - name: "cp {{ UPDATE_DIR }}/salt/common/tools/sbin/* /usr/sbin/."
+    - name: "cp {{ UPDATE_DIR }}/salt/common/tools/sbin/* /usr/sbin/.""
 
 copy_manager:
   cmd.run:
-    - name: "cp {{ UPDATE_DIR }}"/salt/manager/tools/sbin/* /usr/sbin/."
+    - name: "cp {{ UPDATE_DIR }}/salt/manager/tools/sbin/* /usr/sbin/."
