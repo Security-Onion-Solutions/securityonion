@@ -6,19 +6,16 @@ remove_common_so-firewall:
   file.absent:
     - name: /opt/so/saltstack/default/salt/common/tools/sbin/so-firewall
 
-# Sync some Utilities
-soup_scripts:
-  file.recurse:
-    - name: /usr/sbin
-    - user: root
-    - group: root
-    - file_mode: 755
-    - source: salt://common/tools/sbin
+{% if pillar.global.airgap %}
+{%   set UPDATE_DIR='/tmp/soagupdate/securityonion'%}
+{% else %}
+{%   set UPDATE_DIR='/tmp/sogh/securityonion'%}
+{% endif %}
 
-soup_manager_scripts:
-  file.recurse:
-    - name: /usr/sbin
-    - user: root
-    - group: root
-    - file_mode: 755
-    - source: salt://manager/tools/sbin
+copy_common:
+  cmd.run:
+    - name: "\cp " ~ {{ $UPDATE_DIR }} ~ "/salt/common/tools/sbin/* /usr/sbin/."
+
+copy_manager:
+  cmd.run:
+    - name: "\cp " ~ {{ $UPDATE_DIR }} ~ "/salt/manager/tools/sbin/* /usr/sbin/."
