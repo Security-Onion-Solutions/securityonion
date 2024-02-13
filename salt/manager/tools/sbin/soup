@@ -794,21 +794,18 @@ verify_latest_update_script() {
     echo "This version of the soup script is up to date. Proceeding."
   else
     echo "You are not running the latest soup version. Updating soup and its components. This might take multiple runs to complete."
-    cp $UPDATE_DIR/salt/manager/tools/sbin/soup $DEFAULT_SALT_DIR/salt/manager/tools/sbin/
-    cp $UPDATE_DIR/salt/common/tools/sbin/so-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
-    cp $UPDATE_DIR/salt/common/tools/sbin/so-image-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
-    cp $UPDATE_DIR/salt/manager/tools/sbin/so-firewall $DEFAULT_SALT_DIR/salt/manager/tools/sbin/
+
     salt-call state.apply common.soup_scripts queue=True -linfo --file-root=$UPDATE_DIR/salt --local
+
     # Verify that soup scripts updated as expected
     get_soup_script_hashes
     if [[ "$CURRENTSOUP" == "$GITSOUP" && "$CURRENTCMN" == "$GITCMN" && "$CURRENTIMGCMN" == "$GITIMGCMN" && "$CURRENTSOFIREWALL" == "$GITSOFIREWALL" ]]; then
       echo "Succesfully updated soup scripts."
     else
-      # When STIGs are enabled soup scripts will fail to update using --file-root --local.
-      # After checking that the expected hashes are not present, retry updating soup scripts using salt master.
-      echo "There was a problem updating soup scripts.. Trying to rerun script update"
-      salt-call state.apply common.soup_scripts queue=True -linfo
+      echo "There was a problem updating soup scripts. Trying to rerun script update."
+      salt-call state.apply common.soup_scripts queue=True -linfo --file-root=$UPDATE_DIR/salt --local
     fi
+
     echo ""
     echo "The soup script has been modified. Please run soup again to continue the upgrade."
     exit 0

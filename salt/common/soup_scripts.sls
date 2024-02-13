@@ -1,23 +1,69 @@
-# Sync some Utilities
-soup_scripts:
-  file.recurse:
-    - name: /usr/sbin
-    - user: root
-    - group: root
-    - file_mode: 755
-    - source: salt://common/tools/sbin
-    - include_pat:
-        - so-common
-        - so-image-common
+remove_common_soup:
+  file.absent:
+    - name: /opt/so/saltstack/default/salt/common/tools/sbin/soup
 
-soup_manager_scripts:
-  file.recurse:
-    - name: /usr/sbin
-    - user: root
-    - group: root
-    - file_mode: 755
-    - source: salt://manager/tools/sbin
-    - include_pat:
-        - so-firewall
-        - so-repo-sync
-        - soup
+remove_common_so-firewall:
+  file.absent:
+    - name: /opt/so/saltstack/default/salt/common/tools/sbin/so-firewall
+
+{% if salt['pillar.get']('global:airgap') %}
+{%   set UPDATE_DIR='/tmp/soagupdate/SecurityOnion'%}
+{% else %}
+{%   set UPDATE_DIR='/tmp/sogh/securityonion'%}
+{% endif %}
+
+copy_so-common_common_tools_sbin:
+  file.copy:
+    - name: /opt/so/saltstack/default/salt/common/tools/sbin/so-common
+    - source: {{UPDATE_DIR}}/salt/common/tools/sbin/so-common
+    - force: True
+    - preserve: True
+
+copy_so-image-common_common_tools_sbin:
+  file.copy:
+    - name: /opt/so/saltstack/default/salt/common/tools/sbin/so-image-common
+    - source: {{UPDATE_DIR}}/salt/common/tools/sbin/so-image-common
+    - force: True
+    - preserve: True
+
+copy_soup_manager_tools_sbin:
+  file.copy:
+    - name: /opt/so/saltstack/default/salt/manager/tools/sbin/soup
+    - source: {{UPDATE_DIR}}/salt/manager/tools/sbin/soup
+    - force: True
+    - preserve: True
+
+copy_so-firewall_manager_tools_sbin:
+  file.copy:
+    - name: /opt/so/saltstack/default/salt/manager/tools/sbin/so-firewall
+    - source: {{UPDATE_DIR}}/salt/manager/tools/sbin/so-firewall
+    - force: True
+    - preserve: True
+
+copy_so-common_sbin:
+  file.copy:
+    - name: /usr/sbin/so-common
+    - source: {{UPDATE_DIR}}/salt/common/tools/sbin/so-common
+    - force: True
+    - preserve: True
+
+copy_so-image-common_sbin:
+  file.copy:
+    - name: /usr/sbin/so-image-common
+    - source: {{UPDATE_DIR}}/salt/common/tools/sbin/so-image-common
+    - force: True
+    - preserve: True
+
+copy_soup_sbin:
+  file.copy:
+    - name: /usr/sbin/soup
+    - source: {{UPDATE_DIR}}/salt/manager/tools/sbin/soup
+    - force: True
+    - preserve: True
+
+copy_so-firewall_sbin:
+  file.copy:
+    - name: /usr/sbin/so-firewall
+    - source: {{UPDATE_DIR}}/salt/manager/tools/sbin/so-firewall
+    - force: True
+    - preserve: True
