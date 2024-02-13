@@ -7,7 +7,7 @@ remove_common_so-firewall:
     - name: /opt/so/saltstack/default/salt/common/tools/sbin/so-firewall
 
 {% if pillar.global.airgap %}
-{%   set UPDATE_DIR='/tmp/soagupdate/securityonion'%}
+{%   set UPDATE_DIR='/tmp/soagupdate/SecurityOnion'%}
 {% else %}
 {%   set UPDATE_DIR='/tmp/sogh/securityonion'%}
 {% endif %}
