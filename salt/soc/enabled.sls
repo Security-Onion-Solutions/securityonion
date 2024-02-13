@@ -23,7 +23,7 @@ so-soc:
         - ipv4_address: {{ DOCKER.containers['so-soc'].ip }}
     - binds:
       - /nsm/rules:/nsm/rules:rw #Need to tighten this up?
-      - /opt/so/rules/yara:/opt/sensoroni/yara:rw
+      - /opt/so/conf/strelka:/opt/sensoroni/yara:rw
       - /opt/so/rules/elastalert/rules:/opt/sensoroni/elastalert:rw
       - /opt/so/conf/soc/fingerprints:/opt/sensoroni/fingerprints:rw
       - /nsm/soc/jobs:/opt/sensoroni/jobs:rw
