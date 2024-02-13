@@ -12,10 +12,18 @@ remove_common_so-firewall:
 {%   set UPDATE_DIR='/tmp/sogh/securityonion'%}
 {% endif %}
 
-copy_common:
+copy_common_tools_sbin:
   cmd.run:
-    - name: "cp {{UPDATE_DIR}}/salt/common/tools/sbin/* /usr/sbin/."
+    - name: "rsync -avh {{UPDATE_DIR}}/salt/common/tools/sbin/* /opt/so/saltstack/default/salt/common/tools/sbin/"
 
-copy_manager:
+copy_manager_tools_sbin:
   cmd.run:
-    - name: "cp {{UPDATE_DIR}}/salt/manager/tools/sbin/* /usr/sbin/."
+    - name: "rsync -avh {{UPDATE_DIR}}/salt/manager/tools/sbin/* /opt/so/saltstack/default/salt/manager/tools/sbin/"
+
+copy_common_sbin:
+  cmd.run:
+    - name: "rsync -avh {{UPDATE_DIR}}/salt/common/tools/sbin/* /usr/sbin/"
+
+copy_manager_sbin:
+  cmd.run:
+    - name: "rsync -avh {{UPDATE_DIR}}/salt/manager/tools/sbin/* /usr/sbin/"
