@@ -6,8 +6,12 @@ remove_common_so-firewall:
   file.absent:
     - name: /opt/so/saltstack/default/salt/common/tools/sbin/so-firewall
 
-{# this pillar isn't defined anywhere. it is passed in from soup when the state is called #}
-{% set UPDATE_DIR= salt['pillar.get']('UPDATE_DIR') %}
+{% import_yaml '/opt/so/saltstack/local/pillar/global/soc_global.sls' as SOC_GLOBAL %}
+{% if SOC_GLOBAL.global.airgap %}
+{%   set UPDATE_DIR='/tmp/soagupdate/SecurityOnion' %}
+{% else %}
+{%   set UPDATE_DIR='/tmp/sogh/securityonion' %}
+{% endif %}
 
 copy_so-common_common_tools_sbin:
   file.copy:
