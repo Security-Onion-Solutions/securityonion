@@ -1,3 +1,10 @@
+{% import_yaml '/opt/so/saltstack/local/pillar/global/soc_global.sls' as SOC_GLOBAL %}
+{% if SOC_GLOBAL.global.airgap %}
+{%   set UPDATE_DIR='/tmp/soagupdate/SecurityOnion' %}
+{% else %}
+{%   set UPDATE_DIR='/tmp/sogh/securityonion' %}
+{% endif %}
+
 remove_common_soup:
   file.absent:
     - name: /opt/so/saltstack/default/salt/common/tools/sbin/soup
@@ -5,12 +12,6 @@ remove_common_soup:
 remove_common_so-firewall:
   file.absent:
     - name: /opt/so/saltstack/default/salt/common/tools/sbin/so-firewall
-
-{% if salt['pillar.get']('global:airgap') %}
-{%   set UPDATE_DIR='/tmp/soagupdate/SecurityOnion'%}
-{% else %}
-{%   set UPDATE_DIR='/tmp/sogh/securityonion'%}
-{% endif %}
 
 copy_so-common_common_tools_sbin:
   file.copy:
