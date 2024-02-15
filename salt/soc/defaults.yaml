@@ -9,7 +9,7 @@ soc:
         icon: fa-crosshairs
         target:
         links:
-          - '/#/hunt?q="{value|escape}" | groupby event.module* event.dataset'
+          - '/#/hunt?q="{value|escape}" | groupby event.module* | groupby -sankey event.module* event.dataset | groupby event.dataset | groupby source.ip source.port destination.ip destination.port | groupby network.protocol | groupby source_geo.organization_name source.geo.country_name | groupby destination_geo.organization_name destination.geo.country_name | groupby rule.name rule.category event.severity_label | groupby dns.query.name | groupby file.mime_type | groupby http.virtual_host http.uri | groupby notice.note notice.message notice.sub_message | groupby ssl.server_name | groupby source.ip host.hostname user.name event.action event.type process.executable process.pid'
       - name: actionAddToCase
         description: actionAddToCaseHelp
         icon: fa-briefcase
@@ -23,13 +23,13 @@ soc:
         icon: fab fa-searchengin
         target: ''
         links:
-          - '/#/hunt?q=("{:log.id.fuid}" OR "{:log.id.uid}" OR "{:network.community_id}") | groupby event.module* event.dataset'
-          - '/#/hunt?q=("{:log.id.fuid}" OR "{:log.id.uid}") | groupby event.module* event.dataset'
-          - '/#/hunt?q=("{:log.id.fuid}" OR "{:network.community_id}") | groupby event.module* event.dataset'
-          - '/#/hunt?q=("{:log.id.uid}" OR "{:network.community_id}") | groupby event.module* event.dataset'
-          - '/#/hunt?q="{:log.id.fuid}" | groupby event.module* event.dataset'
-          - '/#/hunt?q="{:log.id.uid}" | groupby event.module* event.dataset'
-          - '/#/hunt?q="{:network.community_id}" | groupby event.module* event.dataset'
+          - '/#/hunt?q=("{:log.id.fuid}" OR "{:log.id.uid}" OR "{:network.community_id}") | groupby event.module* | groupby -sankey event.module* event.dataset | groupby event.dataset | groupby source.ip source.port destination.ip destination.port | groupby network.protocol | groupby source_geo.organization_name source.geo.country_name | groupby destination_geo.organization_name destination.geo.country_name | groupby rule.name rule.category event.severity_label | groupby dns.query.name | groupby file.mime_type | groupby http.virtual_host http.uri | groupby notice.note notice.message notice.sub_message | groupby ssl.server_name | groupby source.ip host.hostname user.name event.action event.type process.executable process.pid'
+          - '/#/hunt?q=("{:log.id.fuid}" OR "{:log.id.uid}") | groupby event.module* | groupby -sankey event.module* event.dataset | groupby event.dataset | groupby source.ip source.port destination.ip destination.port | groupby network.protocol | groupby source_geo.organization_name source.geo.country_name | groupby destination_geo.organization_name destination.geo.country_name | groupby rule.name rule.category event.severity_label | groupby dns.query.name | groupby file.mime_type | groupby http.virtual_host http.uri | groupby notice.note notice.message notice.sub_message | groupby ssl.server_name | groupby source.ip host.hostname user.name event.action event.type process.executable process.pid'
+          - '/#/hunt?q=("{:log.id.fuid}" OR "{:network.community_id}") | groupby event.module* | groupby -sankey event.module* event.dataset | groupby event.dataset | groupby source.ip source.port destination.ip destination.port | groupby network.protocol | groupby source_geo.organization_name source.geo.country_name | groupby destination_geo.organization_name destination.geo.country_name | groupby rule.name rule.category event.severity_label | groupby dns.query.name | groupby file.mime_type | groupby http.virtual_host http.uri | groupby notice.note notice.message notice.sub_message | groupby ssl.server_name | groupby source.ip host.hostname user.name event.action event.type process.executable process.pid'
+          - '/#/hunt?q=("{:log.id.uid}" OR "{:network.community_id}") | groupby event.module* | groupby -sankey event.module* event.dataset | groupby event.dataset | groupby source.ip source.port destination.ip destination.port | groupby network.protocol | groupby source_geo.organization_name source.geo.country_name | groupby destination_geo.organization_name destination.geo.country_name | groupby rule.name rule.category event.severity_label | groupby dns.query.name | groupby file.mime_type | groupby http.virtual_host http.uri | groupby notice.note notice.message notice.sub_message | groupby ssl.server_name | groupby source.ip host.hostname user.name event.action event.type process.executable process.pid'
+          - '/#/hunt?q="{:log.id.fuid}" | groupby event.module* | groupby -sankey event.module* event.dataset | groupby event.dataset | groupby source.ip source.port destination.ip destination.port | groupby network.protocol | groupby source_geo.organization_name source.geo.country_name | groupby destination_geo.organization_name destination.geo.country_name | groupby rule.name rule.category event.severity_label | groupby dns.query.name | groupby file.mime_type | groupby http.virtual_host http.uri | groupby notice.note notice.message notice.sub_message | groupby ssl.server_name | groupby source.ip host.hostname user.name event.action event.type process.executable process.pid'
+          - '/#/hunt?q="{:log.id.uid}" | groupby event.module* | groupby -sankey event.module* event.dataset | groupby event.dataset | groupby source.ip source.port destination.ip destination.port | groupby network.protocol | groupby source_geo.organization_name source.geo.country_name | groupby destination_geo.organization_name destination.geo.country_name | groupby rule.name rule.category event.severity_label | groupby dns.query.name | groupby file.mime_type | groupby http.virtual_host http.uri | groupby notice.note notice.message notice.sub_message | groupby ssl.server_name | groupby source.ip host.hostname user.name event.action event.type process.executable process.pid'
+          - '/#/hunt?q="{:network.community_id}" | groupby event.module* | groupby -sankey event.module* event.dataset | groupby event.dataset | groupby source.ip source.port destination.ip destination.port | groupby network.protocol | groupby source_geo.organization_name source.geo.country_name | groupby destination_geo.organization_name destination.geo.country_name | groupby rule.name rule.category event.severity_label | groupby dns.query.name | groupby file.mime_type | groupby http.virtual_host http.uri | groupby notice.note notice.message notice.sub_message | groupby ssl.server_name | groupby source.ip host.hostname user.name event.action event.type process.executable process.pid'
       - name: actionPcap
         description: actionPcapHelp
         icon: fa-stream
@@ -59,12 +59,18 @@ soc:
         target: _blank
         links:
           - 'https://www.virustotal.com/gui/search/{value}'
-      - name: Sublime Platform Email Review
-        description: Review email in Sublime Platform
+      - name: actionSublime
+        description: actionSublimeHelp
         icon: fa-external-link-alt
         target: _blank
         links:
-          - 'https://{:sublime.url}/messages/{:sublime.message_group_id}'
+          - 'https://{:sublime.url}/messages/{:sublime.message_group_id}' 
+      - name: actionProcessAncestors
+        description: actionProcessAncestorsHelp
+        icon: fa-people-roof
+        target: ''
+        links:
+          - '/#/hunt?q=(process.entity_id:"{:process.entity_id}" OR process.entity_id:"{:process.Ext.ancestry|processAncestors}") | groupby process.parent.name | groupby -sankey process.parent.name process.name | groupby process.name | groupby event.module event.dataset | table soc_timestamp event.dataset host.name user.name process.parent.name process.name process.working_directory'
     eventFields:
       default:
         - soc_timestamp
@@ -1425,7 +1431,7 @@ soc:
               query: 'event.category: network AND _exists_:process.executable  AND (_exists_:dns.question.name OR _exists_:dns.answers.data)  | groupby -sankey host.name dns.question.name | groupby event.dataset event.type | groupby host.name | groupby process.executable | groupby dns.question.name | groupby dns.answers.data'
             - name: Host Process Activity
               description: Process activity captured on an endpoint
-              query: 'event.category:process | groupby -sankey host.name user.name*  | groupby event.dataset event.action | groupby host.name | groupby user.name | groupby process.working_directory | groupby process.executable | groupby process.command_line | groupby process.parent.executable | groupby process.parent.command_line | groupby -sankey process.parent.executable process.executable'
+              query: 'event.category:process | groupby -sankey host.name user.name*  | groupby event.dataset event.action | groupby host.name | groupby user.name | groupby process.working_directory | groupby process.executable | groupby process.command_line | groupby process.parent.executable | groupby process.parent.command_line | groupby -sankey process.parent.executable process.executable | table soc_timestamp event.dataset host.name user.name process.parent.name process.name process.working_directory'
             - name: Host File Activity
               description: File activity captured on an endpoint
               query: 'event.category: file AND _exists_:process.executable | groupby -sankey host.name process.executable | groupby host.name | groupby event.dataset event.action event.type | groupby file.name | groupby process.executable'
@@ -1438,8 +1444,11 @@ soc:
             - name: Zeek Notice
               description: Zeek notice logs
               query: 'event.dataset:zeek.notice | groupby -sankey notice.note destination.ip | groupby notice.note | groupby notice.message | groupby notice.sub_message | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
-            - name: Connections
-              description: Network connection metadata
+            - name: Connections and Metadata with community_id
+              description: Network connections that include community_id
+              query: '_exists_:network.community_id | groupby event.module* | groupby -sankey event.module* event.dataset | groupby event.dataset | groupby source.ip source.port destination.ip destination.port | groupby network.protocol | groupby source_geo.organization_name source.geo.country_name | groupby destination_geo.organization_name destination.geo.country_name | groupby rule.name rule.category event.severity_label | groupby dns.query.name | groupby http.virtual_host http.uri | groupby notice.note notice.message notice.sub_message | groupby source.ip host.hostname user.name event.action event.type process.executable process.pid'
+            - name: Connections seen by Zeek or Suricata
+              description: Network connections logged by Zeek or Suricata
               query: 'tags:conn | groupby source.ip | groupby destination.ip | groupby destination.port | groupby -sankey destination.port network.protocol | groupby network.protocol | groupby network.transport | groupby connection.history | groupby connection.state | groupby connection.state_description | groupby source.geo.country_name | groupby destination.geo.country_name | groupby client.ip_bytes | groupby server.ip_bytes | groupby client.oui'
             - name: DCE_RPC
               description: DCE_RPC (Distributed Computing Environment / Remote Procedure Calls) network metadata
@@ -1576,6 +1585,9 @@ soc:
             - name: Firewall
               description: Firewall logs
               query: 'observer.type:firewall | groupby -sankey event.action observer.ingress.interface.name | groupby event.action | groupby observer.ingress.interface.name | groupby network.type | groupby network.transport | groupby source.ip | groupby destination.ip | groupby destination.port'
+            - name: Firewall Auth
+              description: Firewall authentication logs
+              query: 'observer.type:firewall AND event.category:authentication | groupby user.name | groupby -sankey user.name source.ip | groupby source.ip | table soc_timestamp user.name source.ip message'
             - name: VLAN
               description: VLAN (Virtual Local Area Network) tagged logs
               query: '* AND _exists_:network.vlan.id | groupby network.vlan.id | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby event.dataset | groupby event.module | groupby observer.name | groupby source.geo.country_name | groupby destination.geo.country_name'

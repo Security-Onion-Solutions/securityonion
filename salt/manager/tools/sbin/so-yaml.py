@@ -16,12 +16,14 @@ lockFile = "/tmp/so-yaml.lock"
 def showUsage(args):
     print('Usage: {} <COMMAND> <YAML_FILE> [ARGS...]'.format(sys.argv[0]))
     print('  General commands:')
+    print('    append         - Append a list item to a yaml key, if it exists and is a list. Requires KEY and LISTITEM args.')
     print('    remove         - Removes a yaml key, if it exists. Requires KEY arg.')
     print('    help           - Prints this usage information.')
     print('')
     print('  Where:')
     print('   YAML_FILE       - Path to the file that will be modified. Ex: /opt/so/conf/service/conf.yaml')
     print('   KEY             - YAML key, does not support \' or " characters at this time. Ex: level1.level2')
+    print('   LISTITEM        - Item to add to the list.')
     sys.exit(1)
 
 
@@ -35,6 +37,35 @@ def writeYaml(filename, content):
     file = open(filename, "w")
     return yaml.dump(content, file)
 
+def appendItem(content, key, listItem):
+    pieces = key.split(".", 1)
+    if len(pieces) > 1:
+        appendItem(content[pieces[0]], pieces[1], listItem)
+    else:
+        try:
+            content[key].append(listItem)
+        except AttributeError:
+            print("The existing value for the given key is not a list. No action was taken on the file.")
+            return 1
+        except KeyError:
+            print("The key provided does not exist. No action was taken on the file.")
+            return 1
+
+def append(args):
+    if len(args) != 3:
+        print('Missing filename, key arg, or list item to append', file=sys.stderr)
+        showUsage(None)
+        return
+
+    filename = args[0]
+    key = args[1]
+    listItem = args[2]
+
+    content = loadYaml(filename)
+    appendItem(content, key, listItem)
+    writeYaml(filename, content)
+
+    return 0
 
 def removeKey(content, key):
     pieces = key.split(".", 1)
@@ -69,6 +100,7 @@ def main():
 
     commands = {
         "help": showUsage,
+        "append": append,
         "remove": remove,
     }
 

@@ -4,7 +4,6 @@
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 
 include:
-  - common.soup_scripts
   - common.packages
 {% if GLOBALS.role in GLOBALS.manager_roles %}
   - manager.elasticsearch # needed for elastic_curl_config state
@@ -133,6 +132,18 @@ common_sbin_jinja:
     - group: 939 
     - file_mode: 755
     - template: jinja
+
+{% if not GLOBALS.is_manager%}
+# prior to 2.4.50 these scripts were in common/tools/sbin on the manager because of soup and distributed to non managers
+# these two states remove the scripts from non manager nodes
+remove_soup:
+  file.absent:
+    - name: /usr/sbin/soup
+
+remove_so-firewall:
+  file.absent:
+    - name: /usr/sbin/so-firewall
+{% endif %}
 
 so-status_script:
   file.managed:
