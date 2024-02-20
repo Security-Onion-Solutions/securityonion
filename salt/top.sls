@@ -1,5 +1,5 @@
 # Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
-# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
@@ -46,6 +46,7 @@ base:
     - zeek
     - strelka
     - elasticfleet.install_agent_grid
+    - stig
 
   '*_eval and G@saltversion:{{saltversion}}':
     - match: compound
@@ -110,6 +111,7 @@ base:
     - soctopus
     - playbook
     - elasticfleet
+    - stig
 
   '*_standalone and G@saltversion:{{saltversion}}':
     - match: compound
@@ -128,7 +130,7 @@ base:
     - sensoroni
     - telegraf
     - idstools
-    - suricata.manager    
+    - suricata.manager
     - healthcheck
     - mysql
     - elasticsearch
@@ -146,6 +148,7 @@ base:
     - soctopus
     - playbook
     - elasticfleet
+    - stig
 
   '*_searchnode and G@saltversion:{{saltversion}}':
     - match: compound
@@ -157,6 +160,7 @@ base:
     - elasticsearch
     - logstash
     - elasticfleet.install_agent_grid
+    - stig
 
   '*_managersearch and G@saltversion:{{saltversion}}':
     - match: compound
@@ -187,6 +191,7 @@ base:
     - soctopus
     - playbook
     - elasticfleet
+    - stig
 
   '*_heavynode and G@saltversion:{{saltversion}}':
     - match: compound
@@ -206,7 +211,7 @@ base:
     - zeek
     - elasticfleet.install_agent_grid
     - elasticagent
-  
+
   '*_import and G@saltversion:{{saltversion}}':
     - match: compound
     - salt.master
@@ -259,6 +264,7 @@ base:
     - telegraf
     - firewall
     - logstash
+    - nginx
     - elasticfleet
     - elasticfleet.install_agent_grid
     - schedule

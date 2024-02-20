@@ -1,0 +1,92 @@
+{
+  "description": "RITA Beacons",
+  "processors": [
+    {
+      "set": {
+        "field": "event.dataset",
+        "value": "beacon",
+        "override": true
+      }
+    },
+    {
+      "csv": {
+        "field": "message",
+        "target_fields": [
+          "beacon.score",
+          "source.ip",
+          "destination.ip",
+          "network.connections",
+          "network.average_bytes",
+          "network.bytes",
+          "beacon.ts_score",
+          "beacon.ds_score",
+          "beacon.duration_score",
+          "beacon.historical_score",
+          "beacon.interval.top"
+        ]
+      }
+    },
+    {
+      "convert": {
+        "field": "beacon.ds_score",
+        "type": "float"
+      }
+    },
+    {
+      "convert": {
+        "field": "beacon.duration_score",
+        "type": "float"
+      }
+    },
+    {
+      "convert": {
+        "field": "beacon.historical_score",
+        "type": "float"
+      }
+    },
+    {
+      "convert": {
+        "field": "beacon.score",
+        "type": "float"
+      }
+    },
+    {
+      "convert": {
+        "field": "beacon.ts_score",
+        "type": "float"
+      }
+    },
+    {
+      "convert": {
+        "field": "network.average_bytes",
+        "type": "float"
+      }
+    },
+    {
+      "convert": {
+        "field": "network.connections",
+        "type": "integer"
+      }
+    },
+    {
+      "convert": {
+        "field": "beacon.interval.top",
+        "type": "integer"
+      }
+    },
+    {
+      "convert": {
+        "field": "network.bytes",
+        "type": "integer"
+      }
+    },
+    { "set":         { "if": "ctx.beacon?.score == 1", "field": "dataset",        "value": "alert", "override": true }},
+    { "set":         { "if": "ctx.beacon?.score == 1", "field": "rule.name",        "value": "Potential C2 Beacon Activity", "override": true }},
+    { "set":         { "if": "ctx.beacon?.score == 1", "field": "event.severity",        "value": 3, "override": true }},
+    {
+      "pipeline": {
+        "name": "common"
+      }
+    }
+  ]
+}

@@ -39,7 +39,7 @@ so-idstools:
     {% endif %}
     - binds:
       - /opt/so/conf/idstools/etc:/opt/so/idstools/etc:ro
-      - /opt/so/rules/nids:/opt/so/rules/nids:rw
+      - /opt/so/rules/nids/suri:/opt/so/rules/nids/suri:rw
       - /nsm/rules/:/nsm/rules/:rw
     {% if DOCKER.containers['so-idstools'].custom_bind_mounts %}
       {% for BIND in DOCKER.containers['so-idstools'].custom_bind_mounts %}

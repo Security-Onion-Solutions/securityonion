@@ -17,6 +17,11 @@ include:
   - elasticfleet.sostatus
   - ssl
 
+# Wait for Elasticsearch to be ready - no reason to try running Elastic Fleet server if ES is not ready
+wait_for_elasticsearch_elasticfleet:
+  cmd.run:
+    - name: so-elasticsearch-wait
+
 # If enabled, automatically update Fleet Logstash Outputs
 {% if ELASTICFLEETMERGED.config.server.enable_auto_configuration and grains.role not in ['so-import', 'so-eval', 'so-fleet'] %}
 so-elastic-fleet-auto-configure-logstash-outputs:
@@ -33,12 +38,26 @@ so-elastic-fleet-auto-configure-server-urls:
     - retry: True
 {% endif %}
 
-# Automatically update Fleet Server Elasticsearch URLs
+# Automatically update Fleet Server Elasticsearch URLs & Agent Artifact URLs
 {% if grains.role not in ['so-fleet'] %}
 so-elastic-fleet-auto-configure-elasticsearch-urls:
   cmd.run:
     - name: /usr/sbin/so-elastic-fleet-es-url-update
     - retry: True
+
+so-elastic-fleet-auto-configure-artifact-urls:
+  cmd.run:
+    - name: /usr/sbin/so-elastic-fleet-artifacts-url-update
+    - retry: True 
+
+{% endif %}
+
+# Sync Elastic Agent artifacts to Fleet Node
+{% if grains.role in ['so-fleet'] %}
+elasticagent_syncartifacts:
+  file.recurse:
+    - name: /nsm/elastic-fleet/artifacts/beats
+    - source: salt://beats
 {% endif %}
 
 {%   if SERVICETOKEN != '' %}

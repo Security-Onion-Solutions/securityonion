@@ -63,6 +63,20 @@ lspipelinedir:
     - user: 931
     - group: 939
 
+# Auto-generate Logstash pipeline config
+{% for pipeline, config in LOGSTASH_MERGED.pipeline_config.items() %}
+{% for assigned_pipeline in ASSIGNED_PIPELINES %}
+{% set custom_pipeline = 'custom/' + pipeline + '.conf' %}
+{% if custom_pipeline in LOGSTASH_MERGED.defined_pipelines[assigned_pipeline] %}
+ls_custom_pipeline_conf_{{assigned_pipeline}}_{{pipeline}}:
+  file.managed:
+    - name: /opt/so/conf/logstash/pipelines/{{assigned_pipeline}}/{{ pipeline }}.conf
+    - contents: LOGSTASH_MERGED.pipeline_config.{{pipeline}}
+{% endif %}
+{% endfor %}
+{% endfor %}
+
+
 {% for assigned_pipeline in ASSIGNED_PIPELINES %}
     {% for CONFIGFILE in LOGSTASH_MERGED.defined_pipelines[assigned_pipeline] %}
 ls_pipeline_{{assigned_pipeline}}_{{CONFIGFILE.split('.')[0] | replace("/","_") }}:

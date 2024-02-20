@@ -372,6 +372,17 @@ enable_highstate() {
     echo ""
 }
 
+get_soup_script_hashes() {
+  CURRENTSOUP=$(md5sum /usr/sbin/soup | awk '{print $1}')
+  GITSOUP=$(md5sum $UPDATE_DIR/salt/manager/tools/sbin/soup | awk '{print $1}')
+  CURRENTCMN=$(md5sum /usr/sbin/so-common | awk '{print $1}')
+  GITCMN=$(md5sum $UPDATE_DIR/salt/common/tools/sbin/so-common | awk '{print $1}')
+  CURRENTIMGCMN=$(md5sum /usr/sbin/so-image-common | awk '{print $1}')
+  GITIMGCMN=$(md5sum $UPDATE_DIR/salt/common/tools/sbin/so-image-common | awk '{print $1}')
+  CURRENTSOFIREWALL=$(md5sum /usr/sbin/so-firewall | awk '{print $1}')
+  GITSOFIREWALL=$(md5sum $UPDATE_DIR/salt/manager/tools/sbin/so-firewall | awk '{print $1}')
+}
+
 highstate() {
   # Run a highstate.
   salt-call state.highstate -l info queue=True
@@ -405,6 +416,7 @@ preupgrade_changes() {
     [[ "$INSTALLEDVERSION" == 2.4.10 ]] && up_to_2.4.20
     [[ "$INSTALLEDVERSION" == 2.4.20 ]] && up_to_2.4.30
     [[ "$INSTALLEDVERSION" == 2.4.30 ]] && up_to_2.4.40
+    [[ "$INSTALLEDVERSION" == 2.4.40 ]] && up_to_2.4.50
     true
 }
 
@@ -419,6 +431,7 @@ postupgrade_changes() {
     [[ "$POSTVERSION" == 2.4.10 ]] && post_to_2.4.20
     [[ "$POSTVERSION" == 2.4.20 ]] && post_to_2.4.30
     [[ "$POSTVERSION" == 2.4.30 ]] && post_to_2.4.40
+    [[ "$POSTVERSION"  == 2.4.40 ]] && post_to_2.4.50
     true
 }
 
@@ -468,6 +481,11 @@ post_to_2.4.30() {
 post_to_2.4.40() {
   echo "Nothing to apply"
   POSTVERSION=2.4.40
+}
+
+post_to_2.4.50() {
+  echo "Nothing to apply"
+  POSTVERSION=2.4.50
 }
 
 repo_sync() {
@@ -568,6 +586,35 @@ up_to_2.4.40() {
   rm -f /opt/so/conf/navigator/layers/nav_layer_playbook.json
 
   INSTALLEDVERSION=2.4.40
+}
+
+up_to_2.4.50() {
+  echo "Creating additional pillars.."
+  mkdir -p /opt/so/saltstack/local/pillar/stig/
+  touch /opt/so/saltstack/local/pillar/stig/adv_stig.sls
+  touch /opt/so/saltstack/local/pillar/stig/soc_stig.sls
+
+  # the file_roots need to be update due to salt 3006.6 upgrade not allowing symlinks outside the file_roots
+  # put new so-yaml in place
+  echo "Updating so-yaml"
+  \cp -v "$UPDATE_DIR/salt/manager/tools/sbin/so-yaml.py" "$DEFAULT_SALT_DIR/salt/manager/tools/sbin/"
+  \cp -v "$UPDATE_DIR/salt/manager/tools/sbin/so-yaml.py" /usr/sbin/
+  echo "Creating a backup of the salt-master config."
+  # INSTALLEDVERSION is 2.4.40 at this point, but we want the backup to have the version
+  # so was at prior to starting upgrade. use POSTVERSION here since it doesnt change until
+  # post upgrade changes. POSTVERSION set to INSTALLEDVERSION at start of soup
+  cp -v /etc/salt/master "/etc/salt/master.so-$POSTVERSION.bak"
+  echo "Adding /opt/so/rules to file_roots in /etc/salt/master using so-yaml"
+  so-yaml.py append /etc/salt/master file_roots.base /opt/so/rules/nids
+  echo "Moving Suricata rules"
+  mkdir /opt/so/rules/nids/suri
+  chown socore:socore /opt/so/rules/nids/suri
+  mv -v /opt/so/rules/nids/*.rules /opt/so/rules/nids/suri/.
+  
+  echo "Adding /nsm/elastic-fleet/artifacts to file_roots in /etc/salt/master using so-yaml"
+  so-yaml.py append /etc/salt/master file_roots.base  /nsm/elastic-fleet/artifacts
+
+  INSTALLEDVERSION=2.4.50
 }
 
 determine_elastic_agent_upgrade() {
@@ -742,31 +789,29 @@ upgrade_salt() {
 }
 
 verify_latest_update_script() {
-  # Check to see if the update scripts match. If not run the new one.
-  CURRENTSOUP=$(md5sum /usr/sbin/soup | awk '{print $1}')
-  GITSOUP=$(md5sum $UPDATE_DIR/salt/manager/tools/sbin/soup | awk '{print $1}')
-  CURRENTCMN=$(md5sum /usr/sbin/so-common | awk '{print $1}')
-  GITCMN=$(md5sum $UPDATE_DIR/salt/common/tools/sbin/so-common | awk '{print $1}')
-  CURRENTIMGCMN=$(md5sum /usr/sbin/so-image-common | awk '{print $1}')
-  GITIMGCMN=$(md5sum $UPDATE_DIR/salt/common/tools/sbin/so-image-common | awk '{print $1}')
-  CURRENTSOFIREWALL=$(md5sum /usr/sbin/so-firewall | awk '{print $1}')
-  GITSOFIREWALL=$(md5sum $UPDATE_DIR/salt/manager/tools/sbin/so-firewall | awk '{print $1}')
-
+  get_soup_script_hashes
   if [[ "$CURRENTSOUP" == "$GITSOUP" && "$CURRENTCMN" == "$GITCMN" && "$CURRENTIMGCMN" == "$GITIMGCMN" && "$CURRENTSOFIREWALL" == "$GITSOFIREWALL" ]]; then
     echo "This version of the soup script is up to date. Proceeding."
   else
     echo "You are not running the latest soup version. Updating soup and its components. This might take multiple runs to complete."
-    cp $UPDATE_DIR/salt/manager/tools/sbin/soup $DEFAULT_SALT_DIR/salt/common/tools/sbin/
-    cp $UPDATE_DIR/salt/common/tools/sbin/so-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
-    cp $UPDATE_DIR/salt/common/tools/sbin/so-image-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
-    cp $UPDATE_DIR/salt/manager/tools/sbin/so-firewall $DEFAULT_SALT_DIR/salt/common/tools/sbin/
+
     salt-call state.apply common.soup_scripts queue=True -linfo --file-root=$UPDATE_DIR/salt --local
+
+    # Verify that soup scripts updated as expected
+    get_soup_script_hashes
+    if [[ "$CURRENTSOUP" == "$GITSOUP" && "$CURRENTCMN" == "$GITCMN" && "$CURRENTIMGCMN" == "$GITIMGCMN" && "$CURRENTSOFIREWALL" == "$GITSOFIREWALL" ]]; then
+      echo "Succesfully updated soup scripts."
+    else
+      echo "There was a problem updating soup scripts. Trying to rerun script update."
+      salt-call state.apply common.soup_scripts queue=True -linfo --file-root=$UPDATE_DIR/salt --local
+    fi
+
     echo ""
     echo "The soup script has been modified. Please run soup again to continue the upgrade."
     exit 0
   fi
-}
 
+}
 # Keeping this block in case we need to do a hotfix that requires salt update
 apply_hotfix() {
   if [[ "$INSTALLEDVERSION" == "2.4.20" ]] ; then
@@ -909,9 +954,6 @@ main() {
 
     systemctl_func "stop" "$cron_service_name"
 
-    # update mine items prior to stopping salt-minion and salt-master
-    update_salt_mine
-
     echo "Updating dockers to $NEWVERSION."
     if [[ $is_airgap -eq 0 ]]; then
       airgap_update_dockers
@@ -986,6 +1028,9 @@ main() {
     echo "Ensuring salt-minion configs are up-to-date."
     salt-call state.apply salt.minion -l info queue=True
     echo ""
+
+    # ensure the mine is updated and populated before highstates run, following the salt-master restart
+    update_salt_mine
 
     enable_highstate
 

@@ -1413,7 +1413,7 @@ make_some_dirs() {
 	mkdir -p $local_salt_dir/salt/firewall/portgroups
 	mkdir -p $local_salt_dir/salt/firewall/ports
 
-	for THEDIR in bpf pcap elasticsearch ntp firewall redis backup influxdb strelka sensoroni soc soctopus docker zeek suricata nginx telegraf logstash soc manager kratos idstools idh elastalert global;do
+	for THEDIR in bpf pcap elasticsearch ntp firewall redis backup influxdb strelka sensoroni soc soctopus docker zeek suricata nginx telegraf logstash soc manager kratos idstools idh elastalert stig global;do
 	mkdir -p $local_salt_dir/pillar/$THEDIR
 	touch $local_salt_dir/pillar/$THEDIR/adv_$THEDIR.sls
 	touch $local_salt_dir/pillar/$THEDIR/soc_$THEDIR.sls
@@ -1600,6 +1600,9 @@ reinstall_init() {
 			salt-call -l info saltutil.kill_all_jobs --local
 		fi
 
+		logCmd "salt-call state.apply ca.remove -linfo --local --file-root=../salt"
+		logCmd "salt-call state.apply ssl.remove -linfo --local --file-root=../salt"
+
 		# Kill any salt processes (safely)
 		for service in "${salt_services[@]}"; do
 			# Stop the service in the background so we can exit after a certain amount of time
@@ -1620,9 +1623,6 @@ reinstall_init() {
 				((count++))
 			done
 		done
-
-		logCmd "salt-call state.apply ca.remove -linfo --local --file-root=../salt"
-		logCmd "salt-call state.apply ssl.remove -linfo --local --file-root=../salt"
 
 		# Remove all salt configs
 		rm -rf /etc/salt/engines/* /etc/salt/grains /etc/salt/master /etc/salt/master.d/* /etc/salt/minion /etc/salt/minion.d/* /etc/salt/pki/* /etc/salt/proxy /etc/salt/proxy.d/* /var/cache/salt/
@@ -1933,7 +1933,11 @@ saltify() {
 			logCmd "dnf -y install salt-$SALTVERSION salt-master-$SALTVERSION salt-minion-$SALTVERSION"
 		else
 			# We just need the minion
-			logCmd "dnf -y install salt-$SALTVERSION salt-minion-$SALTVERSION"
+			if [[ $is_airgap ]]; then
+			    logCmd "dnf -y install salt salt-minion"
+			else
+			    logCmd "dnf -y install salt-$SALTVERSION salt-minion-$SALTVERSION"
+			fi
 		fi
 	fi
 
@@ -2148,11 +2152,12 @@ set_default_log_size() {
 	esac
 
 	local disk_dir="/"
-	if [ -d /nsm ]; then
+	if mountpoint -q /nsm; then
 		disk_dir="/nsm"
 	fi
-	if [ -d /nsm/elasticsearch ]; then
+	if mountpoint -q /nsm/elasticsearch; then
 		disk_dir="/nsm/elasticsearch"
+		percentage=80
 	fi
 	
 	local disk_size_1k
