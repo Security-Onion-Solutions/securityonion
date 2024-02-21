@@ -75,6 +75,20 @@ yara_update_scripts:
     - defaults:
         EXCLUDEDRULES: {{ STRELKAMERGED.rules.excluded }}
 
+so-repo-file:
+  file.managed:
+    - name: /opt/so/conf/reposync/repodownload.conf
+    - source: salt://manager/files/repodownload.conf
+    - user: socore
+    - group: socore
+
+so-repo-mirrorlist:
+  file.managed:
+    - name: /opt/so/conf/reposync/mirror.txt
+    - source: salt://manager/files/mirror.txt
+    - user: socore
+    - group: socore
+
 so-repo-sync:
   {%     if MANAGERMERGED.reposync.enabled %}
   cron.present:
