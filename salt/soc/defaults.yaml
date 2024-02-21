@@ -64,7 +64,7 @@ soc:
         icon: fa-external-link-alt
         target: _blank
         links:
-          - 'https://{:sublime.url}/messages/{:sublime.message_group_id}' 
+          - 'https://{:sublime.url}/messages/{:sublime.message_group_id}'
       - name: actionProcessAncestors
         description: actionProcessAncestorsHelp
         icon: fa-people-roof
@@ -1008,6 +1008,13 @@ soc:
           jobDir: jobs
         kratos:
           hostUrl:
+        elastalertengine:
+          communityRulesImportFrequencySeconds: 180
+          elastAlertRulesFolder: /opt/sensoroni/elastalert
+          rulesFingerprintFile: /opt/sensoroni/fingerprints/sigma.fingerprint
+          sigmaRulePackages:
+            - core
+            - emerging_threats_addon
         elastic:
           hostUrl:
           remoteHostUrls: []
@@ -1049,6 +1056,15 @@ soc:
             - rbac/custom_roles
           userFiles:
             - rbac/users_roles
+        strelkaengine:
+          compileYaraPythonScriptPath: /opt/so/conf/strelka/compile_yara.py
+          reposFolder: /opt/sensoroni/yara/repos
+          rulesRepos:
+          - https://github.com/Security-Onion-Solutions/securityonion-yara
+          yaraRulesFolder: /opt/sensoroni/yara/rules
+        suricataengine:
+          communityRulesFile: /nsm/rules/suricata/emerging-all.rules
+          rulesFingerprintFile: /opt/sensoroni/fingerprints/emerging-all.fingerprint
       client:
         enableReverseLookup: false
         docsUrl: /docs/
@@ -1754,3 +1770,55 @@ soc:
                   - amber+strict
                   - red
               customEnabled: false
+        detections:
+          viewEnabled: true
+          createLink: /detection/create
+          eventFetchLimit: 500
+          eventItemsPerPage: 50
+          groupFetchLimit: 50
+          mostRecentlyUsedLimit: 5
+          safeStringMaxLength: 100
+          queryBaseFilter: '_index:"*:so-detection" AND so_kind:detection'
+          eventFields:
+            default:
+              - so_detection.title
+              - so_detection.isEnabled
+              - so_detection.language
+              - so_detection.severity
+          queries:
+            - name: "All Detections"
+              query: "_id:*"
+            - name: "Custom Detections"
+              query: "so_detection.isCommunity:false"
+            - name: "All Detections - Enabled"
+              query: "so_detection.isEnabled:true"
+            - name: "All Detections - Disabled"
+              query: "so_detection.isEnabled:false"
+            - name: "Detection Type - Suricata (NIDS)"
+              query: "so_detection.language:suricata"
+            - name: "Detection Type - Sigma - All"
+              query: "so_detection.language:sigma"
+            - name: "Detection Type - Sigma - Windows"
+              query: 'so_detection.language:sigma AND so_detection.content: "*product: windows*"'
+            - name: "Detection Type - Yara (Strelka)"
+              query: "so_detection.language:yara"
+        detection:
+          presets:
+            severity:
+                customEnabled: false
+                labels:
+                  - unknown
+                  - informational
+                  - low
+                  - medium
+                  - high
+                  - critical
+            language:
+                customEnabled: false
+                labels:
+                  - suricata
+                  - sigma
+                  - yara
+          severityTranslations:
+            minor: low
+            major: high
