@@ -34,6 +34,12 @@
 {%   do SOCMERGED.config.server.client.inactiveTools.append('toolPlaybook') %}
 {% endif %}
 
+{# if system is Airgap, don't autoupdate Yara & Sigma rules #}
+{% if pillar.global.airgap %}
+  {%   do SOCMERGED.config.server.modules.elastalertengine.update({'autoUpdateEnabled': false}) %}
+  {%   do SOCMERGED.config.server.modules.strelkaengine.update({'autoUpdateEnabled': false}) %}
+{% endif %}
+
 {% set standard_actions = SOCMERGED.config.pop('actions') %}
 
 {% if pillar.global.endgamehost != '' %}
