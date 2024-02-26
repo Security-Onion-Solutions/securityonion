@@ -50,10 +50,12 @@ so-suricata:
       - file: surithresholding
       - file: /opt/so/conf/suricata/rules/
       - file: /opt/so/conf/suricata/bpf
+      - file: suriclassifications
     - require:
       - file: suriconfig
       - file: surithresholding
       - file: suribpf
+      - file: suriclassifications
 
 delete_so-suricata_so-status.disabled:
   file.uncomment:
