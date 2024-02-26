@@ -12,7 +12,41 @@ transformations:
         sid: rule.uuid
         answer: answers
         query: dns.query.name
-        src_ip: destination.ip.keyword
+        src_ip: source.ip.keyword
         src_port: source.port
         dst_ip: destination.ip.keyword
         dst_port: destination.port
+        winlog.event_data.User: user.name   
+    - id: hashes_process-creation
+      type: field_name_mapping
+      mapping:
+        winlog.event_data.sha256: process.hash.sha256
+        winlog.event_data.sha1: process.hash.sha1
+        winlog.event_data.md5: process.hash.md5
+        winlog.event_data.Imphash: process.pe.imphash
+      rule_conditions:
+      - type: logsource
+        product: windows
+        category: process_creation
+    - id: hashes_image-load
+      type: field_name_mapping
+      mapping:
+        winlog.event_data.sha256: dll.hash.sha256
+        winlog.event_data.sha1: dll.hash.sha1
+        winlog.event_data.md5: dll.hash.md5
+        winlog.event_data.Imphash: dll.pe.imphash
+      rule_conditions:
+      - type: logsource
+        product: windows
+        category: image_load
+    - id: hashes_driver-load
+      type: field_name_mapping
+      mapping:
+        winlog.event_data.sha256: dll.hash.sha256
+        winlog.event_data.sha1: dll.hash.sha1
+        winlog.event_data.md5: dll.hash.md5
+        winlog.event_data.Imphash: dll.pe.imphash
+      rule_conditions:
+      - type: logsource
+        product: windows
+        category: driver_load
