@@ -27,6 +27,7 @@ so-suricata:
     - binds:
       - /opt/so/conf/suricata/suricata.yaml:/etc/suricata/suricata.yaml:ro
       - /opt/so/conf/suricata/threshold.conf:/etc/suricata/threshold.conf:ro
+      - /opt/so/conf/suricata/classification.config:/etc/suricata/classification.config:ro
       - /opt/so/conf/suricata/rules:/etc/suricata/rules:ro
       - /opt/so/log/suricata/:/var/log/suricata/:rw
       - /nsm/suricata/:/nsm/:rw

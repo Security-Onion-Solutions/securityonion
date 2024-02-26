@@ -129,6 +129,13 @@ surithresholding:
     - group: 940
     - template: jinja
 
+suriclassifications:
+  file.managed:
+    - name: /opt/so/conf/suricata/classification.config
+    - source: salt://suricata/classification/classification.config
+    - user: 940
+    - group: 940
+
 # BPF compilation and configuration
 {% if SURICATABPF %}
    {% set BPF_CALC = salt['cmd.script']('salt://common/tools/sbin/so-bpf-compile', GLOBALS.sensor.interface + ' ' + SURICATABPF|join(" "),cwd='/root') %}
