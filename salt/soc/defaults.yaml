@@ -65,12 +65,18 @@ soc:
         target: _blank
         links:
           - 'https://{:sublime.url}/messages/{:sublime.message_group_id}'
+      - name: actionProcessInfo
+        description: actionProcessInfoHelp
+        icon: fa-person-running
+        target: ''
+        links:
+          - '/#/hunt?q=(process.entity_id:"{:process.entity_id}") | groupby event.dataset | groupby -sankey event.dataset event.action | groupby event.action | groupby process.name | groupby host.name user.name | groupby source.ip source.port destination.ip destination.port | groupby dns.question.name | groupby dns.answers.data | groupby file.path | groupby registry.path | groupby dll.path'
       - name: actionProcessAncestors
         description: actionProcessAncestorsHelp
         icon: fa-people-roof
         target: ''
         links:
-          - '/#/hunt?q=(process.entity_id:"{:process.entity_id}" OR process.entity_id:"{:process.Ext.ancestry|processAncestors}") | groupby process.parent.name | groupby -sankey process.parent.name process.name | groupby process.name | groupby event.module event.dataset | table soc_timestamp event.dataset host.name user.name process.parent.name process.name process.working_directory'
+          - '/#/hunt?q=(process.entity_id:"{:process.entity_id}" OR process.entity_id:"{:process.Ext.ancestry|processAncestors}") | groupby event.dataset | groupby -sankey event.dataset event.action | groupby event.action | groupby process.parent.name | groupby -sankey process.parent.name process.name | groupby process.name | groupby host.name user.name | groupby source.ip source.port destination.ip destination.port | groupby dns.question.name | groupby dns.answers.data | groupby file.path | groupby registry.path | groupby dll.path'
     eventFields:
       default:
         - soc_timestamp
@@ -995,6 +1001,69 @@ soc:
         -  tds.header_type
         -  log.id.uid
         -  event.dataset
+      ':endpoint:events_x_api':
+        -  soc_timestamp
+        -  host.name
+        -  user.name
+        -  process.name
+        -  process.Ext.api.name
+        -  process.thread.Ext.call_stack_final_user_module.path
+        -  event.dataset
+      ':endpoint:events_x_file':
+        -  soc_timestamp
+        -  host.name
+        -  user.name
+        -  process.name
+        -  event.action
+        -  file.path
+        -  event.dataset
+      ':endpoint:events_x_library':
+        -  soc_timestamp
+        -  host.name
+        -  user.name
+        -  process.name
+        -  event.action
+        -  dll.path
+        -  dll.code_signature.status
+        -  dll.code_signature.subject_name
+        -  event.dataset
+      ':endpoint:events_x_network':
+        -  soc_timestamp
+        -  host.name
+        -  user.name
+        -  process.name
+        -  event.action
+        -  source.ip
+        -  source.port
+        -  destination.ip
+        -  destination.port
+        -  network.community_id
+        -  event.dataset
+      ':endpoint:events_x_process':
+        -  soc_timestamp
+        -  host.name
+        -  user.name
+        -  process.parent.name
+        -  process.name
+        -  event.action
+        -  process.working_directory
+        -  event.dataset
+      ':endpoint:events_x_registry':
+        -  soc_timestamp
+        -  host.name
+        -  user.name
+        -  process.name
+        -  event.action
+        -  registry.path
+        -  event.dataset
+      ':endpoint:events_x_security':
+        -  soc_timestamp
+        -  host.name
+        -  user.name
+        -  process.executable
+        -  event.action
+        -  event.outcome
+        -  event.dataset
     server:
       bindAddress: 0.0.0.0:9822
       baseUrl: /
@@ -1435,13 +1504,22 @@ soc:
               query: 'event.category: network AND _exists_:process.executable  AND (_exists_:dns.question.name OR _exists_:dns.answers.data)  | groupby -sankey host.name dns.question.name | groupby event.dataset event.type | groupby host.name | groupby process.executable | groupby dns.question.name | groupby dns.answers.data'
             - name: Host Process Activity
               description: Process activity captured on an endpoint
-              query: 'event.category:process | groupby -sankey host.name user.name*  | groupby event.dataset event.action | groupby host.name | groupby user.name | groupby process.working_directory | groupby process.executable | groupby process.command_line | groupby process.parent.executable | groupby process.parent.command_line | groupby -sankey process.parent.executable process.executable | table soc_timestamp event.dataset host.name user.name process.parent.name process.name process.working_directory'
+              query: 'event.category:process | groupby -sankey host.name user.name*  | groupby event.dataset event.action | groupby host.name | groupby user.name | groupby process.working_directory | groupby process.executable | groupby process.command_line | groupby process.parent.executable | groupby process.parent.command_line | groupby -sankey process.parent.executable process.executable | table soc_timestamp host.name user.name process.parent.name process.name event.action process.working_directory event.dataset'
             - name: Host File Activity
               description: File activity captured on an endpoint
               query: 'event.category: file AND _exists_:process.executable | groupby -sankey host.name process.executable | groupby host.name | groupby event.dataset event.action event.type | groupby file.name | groupby process.executable'
             - name: Host Network & Process Mappings
               description: Network activity mapped to originating processes
               query: 'event.category: network AND _exists_:process.executable | groupby -sankey event.action host.name | groupby -sankey host.name user.name | groupby event.dataset* event.type* event.action* | groupby host.name | groupby user.name | groupby dns.question.name | groupby process.executable | groupby winlog.event_data.TargetObject | groupby process.name | groupby source.ip | groupby destination.ip | groupby destination.port'
+            - name: Host API Events
+              description: API (Application Programming Interface) events from endpoints
+              query: 'event.dataset:endpoint.events.api | groupby host.name | groupby -sankey host.name user.name | groupby user.name | groupby process.name | groupby process.Ext.api.name'
+            - name: Host Library Events
+              description: Library events from endpoints
+              query: 'event.dataset:endpoint.events.library | groupby host.name | groupby -sankey host.name user.name | groupby user.name | groupby process.name | groupby event.action | groupby dll.path | groupby dll.code_signature.status | groupby dll.code_signature.subject_name'
+            - name: Host Security Events
+              description: Security events from endpoints
+              query: 'event.dataset:endpoint.events.security | groupby host.name | groupby -sankey host.name user.name | groupby user.name | groupby process.executable | groupby event.action | groupby event.outcome'
             - name: Strelka
               description: Strelka file analysis
               query: 'event.module:strelka | groupby file.mime_type | groupby -sankey file.mime_type file.source | groupby file.source | groupby file.name'
