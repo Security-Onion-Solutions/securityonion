@@ -603,6 +603,10 @@ update_airgap_rules() {
   if [ -d /nsm/repo/rules/sigma ]; then
     rsync -av $UPDATE_DIR/agrules/sigma/* /nsm/repo/rules/sigma/
   fi
+
+  # SOC Detections Airgap
+  rsync -av $UPDATE_DIR/agrules/detect-sigma/* /nsm/rules/detect-sigma/
+  rsync -av $UPDATE_DIR/agrules/detect-yara/* /nsm/rules/detect-yara/
 }
 
 update_airgap_repo() {
@@ -931,10 +935,8 @@ main() {
     preupgrade_changes
     echo ""
 
-    if [[ $is_airgap -eq 0 ]]; then
-      echo "Updating Rule Files to the Latest."
-      update_airgap_rules
-    fi
+    echo "Updating Airgap Rule Files to the Latest."
+    update_airgap_rules
 
     # since we don't run the backup.config_backup state on import we wont snapshot previous version states and pillars
     if [[ ! "$MINIONID" =~ "_import" ]]; then
