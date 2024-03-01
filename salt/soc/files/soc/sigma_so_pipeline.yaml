@@ -16,7 +16,25 @@ transformations:
         src_port: source.port
         dst_ip: destination.ip.keyword
         dst_port: destination.port
-        winlog.event_data.User: user.name   
+        winlog.event_data.User: user.name
+    # Maps "antivirus" category to Windows Defender logs shipped by Elastic Agent Winlog Integration
+    # winlog.event_data.threat_name has to be renamed prior to ingestion, it is originally winlog.event_data.Threat Name
+    - id: antivirus_field-mappings_windows-defender
+      type: field_name_mapping
+      mapping:
+        Signature: winlog.event_data.threat_name
+      rule_conditions:
+      - type: logsource
+        category: antivirus
+    - id: antivirus_add-fields_windows-defender
+      type: add_condition
+      conditions:
+        winlog.channel: 'Microsoft-Windows-Windows Defender/Operational'
+        winlog.provider_name: 'Microsoft-Windows-Windows Defender'
+        event.code: "1116"
+      rule_conditions:
+      - type: logsource
+        category: antivirus
     - id: hashes_process-creation
       type: field_name_mapping
       mapping:
