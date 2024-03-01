@@ -35,6 +35,17 @@ transformations:
       rule_conditions:
       - type: logsource
         category: antivirus
+    # Drops the Hashes field which is specific to Sysmon logs
+    # Ingested sysmon logs will have the Hashes field mapped to ECS specific fields
+    - id: hashes_drop_sysmon-specific-field
+      type: drop_detection_item
+      field_name_conditions:
+        - type: include_fields
+          fields:
+          - winlog.event_data.Hashes
+      rule_conditions:
+      - type: logsource
+        product: windows
     - id: hashes_process-creation
       type: field_name_mapping
       mapping:
