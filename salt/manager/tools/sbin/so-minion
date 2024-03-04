@@ -80,28 +80,27 @@ function getinstallinfo() {
 }
 
 function pcapspace() {
-
-	local NSMSIZE=$(salt '$MINION_ID' disk.usage --out=json | jq -r '.[]."/nsm"."1K-blocks" ')
-	local ROOTSIZE=$(salt '$MINION_ID' disk.usage --out=json | jq -r '.[]."/"."1K-blocks" ')
-
-	if [[ "$NSMSIZE" == "null" ]]; then
-		# Looks like there is no dedicated nsm partition. Using root
-		local SPACESIZE=$ROOTSIZE
+	if [[ "$OPERATION" == "setup" ]]; then
+		local SPACESIZE=$(df -h /nsm | tail -1 | awk '{print $2}')
 	else
-		local SPACESIZE=$NSMSIZE
+
+		local NSMSIZE=$(salt '$MINION_ID' disk.usage --out=json | jq -r '.[]."/nsm"."1K-blocks" ')
+		local ROOTSIZE=$(salt '$MINION_ID' disk.usage --out=json | jq -r '.[]."/"."1K-blocks" ')
+	
+		if [[ "$NSMSIZE" == "null" ]]; then
+			# Looks like there is no dedicated nsm partition. Using root
+			local SPACESIZE=$ROOTSIZE
+		else
+			local SPACESIZE=$NSMSIZE
+		fi
 	fi
 
 	local s=$(( $SPACESIZE / 1000000 ))
 	local s1=$(( $s / 2 ))
 	local s2=$(( $s1 / $lb_procs ))
 
-	printf '%s\n'\
-		"suricata:"\
-		"  config:"\
-		"    output:"\
-		"      pcap-log:"\
-		"        max-files: $s" >> $PILLARFILE
-	
+	MAXPCAPFILES=$s2
+
 }
 
 function testMinion() {
@@ -272,6 +271,11 @@ function add_sensor_to_minion() {
 	echo "  config:" >> $PILLARFILE
 	echo "    af-packet:" >> $PILLARFILE
 	echo "      threads: '$CORECOUNT'" >> $PILLARFILE
+	if [[ $is_pcaplimit ]]; then
+		echo "    output:" >> $PILLARFILE
+		echo "      pcap-log:" >> $PILLARFILE
+		echo "        max-files: '$MAXPCAPFILES'" >> $PILLARFILE
+	fi
 	echo "pcap:" >> $PILLARFILE
 	echo "  enabled: True" >> $PILLARFILE
 	if [[ $is_pcaplimit ]]; then
@@ -448,6 +452,7 @@ function updateMine() {
 
 function createEVAL() {
 	is_pcaplimit=true
+	pcapspace
 	add_elasticsearch_to_minion
 	add_sensor_to_minion
 	add_strelka_to_minion
@@ -468,6 +473,7 @@ function createEVAL() {
 
 function createSTANDALONE() {
 	is_pcaplimit=true
+	pcapspace
 	add_elasticsearch_to_minion
 	add_logstash_to_minion
 	add_sensor_to_minion
@@ -557,6 +563,7 @@ function createIDH() {
 
 function createHEAVYNODE() {
 	is_pcaplimit=true
+	pcapspace
 	add_elasticsearch_to_minion
 	add_elastic_agent_to_minion
 	add_logstash_to_minion
@@ -567,6 +574,8 @@ function createHEAVYNODE() {
 }
 
 function createSENSOR() {
+	is_pcaplimit=true
+	pcapspace
 	add_sensor_to_minion
 	add_strelka_to_minion
 	add_telegraf_to_minion
