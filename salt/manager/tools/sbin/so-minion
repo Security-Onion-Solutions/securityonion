@@ -84,8 +84,8 @@ function pcapspace() {
 		local SPACESIZE=$(df -k /nsm | tail -1 | awk '{print $2}' | tr -d \n)
 	else
 
-		local NSMSIZE=$(salt '$MINION_ID' disk.usage --out=json | jq -r '.[]."/nsm"."1K-blocks" ')
-		local ROOTSIZE=$(salt '$MINION_ID' disk.usage --out=json | jq -r '.[]."/"."1K-blocks" ')
+		local NSMSIZE=$(salt "$MINION_ID" disk.usage --out=json | jq -r '.[]."/nsm"."1K-blocks" ')
+		local ROOTSIZE=$(salt "$MINION_ID" disk.usage --out=json | jq -r '.[]."/"."1K-blocks" ')
 	
 		if [[ "$NSMSIZE" == "null" ]]; then
 			# Looks like there is no dedicated nsm partition. Using root
@@ -97,7 +97,7 @@ function pcapspace() {
 
 	local s=$(( $SPACESIZE / 1000000 ))
 	local s1=$(( $s / 2 ))
-	local s2=$(( $s1 / $lb_procs ))
+	local s2=$(( $s1 / $CORECOUNT ))
 
 	MAXPCAPFILES=$s2
 
