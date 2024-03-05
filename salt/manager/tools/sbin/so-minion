@@ -81,6 +81,8 @@ function getinstallinfo() {
 
 function pcapspace() {
 	if [[ "$OPERATION" == "setup" ]]; then
+		# Manager types should use 25%
+		local PCAP_MULTIPLIER=1
 		local SPACESIZE=$(df -k /nsm | tail -1 | awk '{print $2}' | tr -d \n)
 	else
 
@@ -96,7 +98,7 @@ function pcapspace() {
 	fi
 
 	local s=$(( $SPACESIZE / 1000000 ))
-	local s1=$(( $s / 4 ))
+	local s1=$(( $s / 4 * $PCAP_MULTIPLIER ))
 	local s2=$(( $s1 / $lb_procs ))
 
 	MAXPCAPFILES=$s2
@@ -563,6 +565,7 @@ function createIDH() {
 
 function createHEAVYNODE() {
 	is_pcaplimit=true
+	PCAP_MULTIPLIER=1
 	pcapspace
 	add_elasticsearch_to_minion
 	add_elastic_agent_to_minion
@@ -575,6 +578,7 @@ function createHEAVYNODE() {
 
 function createSENSOR() {
 	is_pcaplimit=true
+	PCAP_MULTIPLIER=3
 	pcapspace
 	add_sensor_to_minion
 	add_strelka_to_minion
