@@ -63,6 +63,18 @@
 {# before we change outputs back to list, enable pcap-log if suricata is the pcapengine #}
 {% if GLOBALS.pcap_engine == "SURICATA" %}
 {%   do SURICATAMERGED.config.outputs['pcap-log'].update({'enabled': 'yes'}) %}
+{#   move the items in suricata.pcap into suricata.config.outputs.pcap-log. these items were placed under suricata.config for ease of access in SOC #}
+{%   do SURICATAMERGED.config.outputs['pcap-log'].update({'compression': SURICATAMERGED.pcap.compression}) %}
+{%   do SURICATAMERGED.config.outputs['pcap-log'].update({'lz4-checksum': SURICATAMERGED.pcap['lz4-checksum']}) %}
+{%   do SURICATAMERGED.config.outputs['pcap-log'].update({'lz4-level': SURICATAMERGED.pcap['lz4-level']}) %}
+{%   do SURICATAMERGED.config.outputs['pcap-log'].update({'filename': SURICATAMERGED.pcap.filename}) %}
+{%   do SURICATAMERGED.config.outputs['pcap-log'].update({'limit': SURICATAMERGED.pcap.filesize}) %}
+{%   do SURICATAMERGED.config.outputs['pcap-log'].update({'mode': SURICATAMERGED.pcap.mode}) %}
+{%   do SURICATAMERGED.config.outputs['pcap-log'].update({'max-stream-depth': SURICATAMERGED.pcap['max-stream-depth']}) %}
+{%   do SURICATAMERGED.config.outputs['pcap-log'].update({'conditional': SURICATAMERGED.pcap.conditional}) %}
+{%   do SURICATAMERGED.config.outputs['pcap-log'].update({'dir': SURICATAMERGED.pcap.dir}) %}
+{%   set maxfiles = (SURICATAMERGED.pcap.maxsize / SURICATAMERGED.pcap.filesize) | round | int %}
+{%   do SURICATAMERGED.config.outputs['pcap-log'].update({'max-files': maxfiles}) %}
 {% endif %}
 
 {# outputs is a list but we convert to dict in defaults to work with ui #}
