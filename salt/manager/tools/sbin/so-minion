@@ -81,6 +81,8 @@ function getinstallinfo() {
 
 function pcapspace() {
 	if [[ "$OPERATION" == "setup" ]]; then
+		# Use 25% for PCAP
+		PCAP_PERCENTAGE=1
 		local SPACESIZE=$(df -k /nsm | tail -1 | awk '{print $2}' | tr -d \n)
 	else
 
@@ -96,10 +98,9 @@ function pcapspace() {
 	fi
 
 	local s=$(( $SPACESIZE / 1000000 ))
-	local s1=$(( $s / 4 ))
-	local s2=$(( $s1 / $CORECOUNT ))
+	local s1=$(( $s / 4 * $PCAP_PERCENTAGE ))
 
-	MAXPCAPFILES=$s2
+	MAX_PCAP_SPACE=$s1
 
 }
 
@@ -271,17 +272,12 @@ function add_sensor_to_minion() {
 	echo "  config:" >> $PILLARFILE
 	echo "    af-packet:" >> $PILLARFILE
 	echo "      threads: '$CORECOUNT'" >> $PILLARFILE
-	if [[ $is_pcaplimit ]]; then
-		echo "    output:" >> $PILLARFILE
-		echo "      pcap-log:" >> $PILLARFILE
-		echo "        max-files: '$MAXPCAPFILES'" >> $PILLARFILE
-	fi
 	echo "pcap:" >> $PILLARFILE
 	echo "  enabled: True" >> $PILLARFILE
 	if [[ $is_pcaplimit ]]; then
 		echo "  config:" >> $PILLARFILE
 		echo "    diskfreepercentage: 75" >> $PILLARFILE
-		pcapspace
+		echo "    suripcapmaxsize: $MAX_PCAP_SPACE" >> $PILLARFILE
 	fi
 	echo "  " >> $PILLARFILE
 }
@@ -563,6 +559,7 @@ function createIDH() {
 
 function createHEAVYNODE() {
 	is_pcaplimit=true
+	PCAP_PERCENTAGE=1
 	pcapspace
 	add_elasticsearch_to_minion
 	add_elastic_agent_to_minion
@@ -575,6 +572,7 @@ function createHEAVYNODE() {
 
 function createSENSOR() {
 	is_pcaplimit=true
+	PCAP_PERCENTAGE=3
 	pcapspace
 	add_sensor_to_minion
 	add_strelka_to_minion
