@@ -85,7 +85,7 @@ remove_nullok_from_system_auth_auth:
 
 run_post_scan:
   cmd.run:
-    - name: 'oscap xccdf eval --profile {{ OSCAP_PROFILE_NAME }} --results {{ OSCAP_OUTPUT_DIR }}/post-oscap-results.xml --report {{ OSCAP_OUTPUT_DIR }}/post-oscap-report.html {{ OSCAP_PROFILE_LOCATION }}'
+    - name: 'oscap xccdf eval --profile {{ OSCAP_PROFILE_NAME }} --results {{ OSCAP_OUTPUT_DIR }}/post-oscap-results.xml --report {{ OSCAP_OUTPUT_DIR }}/post-oscap-report.html /usr/share/xml/scap/ssg/content/ssg-ol9-ds.xml'
     - success_retcodes:
       - 2
 
