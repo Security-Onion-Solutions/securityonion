@@ -70,10 +70,11 @@
 {%   do SURICATAMERGED.config.outputs['pcap-log'].update({'filename': SURICATAMERGED.pcap.filename}) %}
 {%   do SURICATAMERGED.config.outputs['pcap-log'].update({'limit': SURICATAMERGED.pcap.filesize}) %}
 {%   do SURICATAMERGED.config.outputs['pcap-log'].update({'mode': SURICATAMERGED.pcap.mode}) %}
-{%   do SURICATAMERGED.config.outputs['pcap-log'].update({'max-stream-depth': SURICATAMERGED.pcap['max-stream-depth']}) %}
+{%   do SURICATAMERGED.config.outputs['pcap-log'].update({'use-stream-depth': SURICATAMERGED.pcap['use-stream-depth']}) %}
 {%   do SURICATAMERGED.config.outputs['pcap-log'].update({'conditional': SURICATAMERGED.pcap.conditional}) %}
 {%   do SURICATAMERGED.config.outputs['pcap-log'].update({'dir': SURICATAMERGED.pcap.dir}) %}
-{%   set maxfiles = (SURICATAMERGED.pcap.maxsize / SURICATAMERGED.pcap.filesize) | round | int %}
+{#   multiply maxsize by 1000 since it is saved in GB, i.e. 52 = 52000MB. filesize is also saved in MB and we strip the MB and convert to int #}
+{%   set maxfiles = (SURICATAMERGED.pcap.maxsize * 1000 / SURICATAMERGED.pcap.filesize[:-2] | int) | round | int %}
 {%   do SURICATAMERGED.config.outputs['pcap-log'].update({'max-files': maxfiles}) %}
 {% endif %}
 
