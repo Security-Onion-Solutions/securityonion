@@ -12,9 +12,6 @@
 include:
   - suricata.config
   - suricata.sostatus
-{%   if GLOBALS.pcap_engine == "SURICATA" %}
-  - suricata.pcap
-{%   endif %}
 
 so-suricata:
   docker_container.running:
@@ -36,9 +33,7 @@ so-suricata:
       - /nsm/suricata/:/nsm/:rw
       - /nsm/suricata/extracted:/var/log/suricata//filestore:rw
       - /opt/so/conf/suricata/bpf:/etc/suricata/bpf:ro
-      {% if GLOBALS.pcap_engine == "SURICATA" %}
       - /nsm/suripcap/:/nsm/suripcap:rw
-      {% endif %}
       {% if DOCKER.containers['so-suricata'].custom_bind_mounts %}
         {% for BIND in DOCKER.containers['so-suricata'].custom_bind_mounts %}
       - {{ BIND }}
