@@ -1,6 +1,5 @@
-{%- from 'vars/globals.map.jinja' import GLOBALS %}
-{%- from 'sensoroni/map.jinja' import SENSORONIMERGED %}
-{%- from 'pcap/config.map.jinja' import PCAPMERGED %}
+{%  from 'vars/globals.map.jinja' import GLOBALS %}
+{%- from 'sensoroni/map.jinja' import SENSORONIMERGED -%}
 {
   "logFilename": "/opt/sensoroni/logs/sensoroni.log",
   "logLevel":"info",
@@ -23,13 +22,27 @@
       "importer": {},
       "statickeyauth": {
         "apiKey": "{{ GLOBALS.sensoroni_key }}"
-{%- if PCAPMERGED.enabled %} 
+{%  if GLOBALS.is_sensor %}
+{%    from 'pcap/config.map.jinja' import PCAPMERGED %}
+{%    from 'suricata/map.jinja' import SURICATAMERGED %}
+{#    if PCAPMERGED.enabled is true then we know that steno is the pcap engine #}
+{#    if it is false, then user has steno disabled in ui or has selected suricata for pcap engine #}
+{%-   if PCAPMERGED.enabled %}
       },     
       "stenoquery": {
         "executablePath": "/opt/sensoroni/scripts/stenoquery.sh",
         "pcapInputPath": "/nsm/pcap",
         "pcapOutputPath": "/nsm/pcapout"
       }
+{%-   elif GLOBALS.pcap_engine == "SURICATA" and SURICATAMERGED.enabled %}
+      },     
+      "suriquery": {
+        "executablePath": "/opt/sensoroni/scripts/suriquery.sh",
+        "pcapInputPath": "/nsm/suripcap",
+        "pcapOutputPath": "/nsm/pcapout",
+        "pcapMaxCount": {{ SENSORONIMERGED.config.suripcap.pcapMaxCount }}
+      }
+{%    endif %}
 {%- else %}
       }
 {%- endif %}

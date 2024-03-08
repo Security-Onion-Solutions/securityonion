@@ -10,8 +10,8 @@
 # if this script isn't already running
 if [[ ! "`pidof -x $(basename $0) -o %PPID`" ]]; then
 
-    CHECKIT=$(grep "Thread 0" /var/log/stenographer/stenographer.log |tac |head -2|wc -l)
-    STENOGREP=$(grep "Thread 0" /var/log/stenographer/stenographer.log |tac |head -2)
+    CHECKIT=$(grep "Thread 0 stats" /var/log/stenographer/stenographer.log |tac |head -2|wc -l)
+    STENOGREP=$(grep "Thread 0 stats" /var/log/stenographer/stenographer.log |tac |head -2)
 
     declare RESULT=($STENOGREP)
 

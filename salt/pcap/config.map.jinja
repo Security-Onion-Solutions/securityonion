@@ -2,6 +2,12 @@
    or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
    https://securityonion.net/license; you may not use this file except in compliance with the
    Elastic License 2.0. #}
-   
+
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 {% import_yaml 'pcap/defaults.yaml' as PCAPDEFAULTS %}
 {% set PCAPMERGED = salt['pillar.get']('pcap', PCAPDEFAULTS.pcap, merge=True) %}
+
+{# disable stenographer if the pcap engine is set to SURICATA #}
+{% if GLOBALS.pcap_engine == "SURICATA" %}
+{%   do PCAPMERGED.update({'enabled': False}) %}
+{% endif %}
