@@ -11,7 +11,7 @@ suripcapdir:
     - mode: 775
     - makedirs: True
 
-{%   if GLOBALS.pcap_engine == "SURICATA" %}
+{%   if GLOBALS.pcap_engine in ["SURICATA", "TRANSITION"] %}
 
 {# there should only be 1 interface in af-packet so we can just reference the first list item #}
 {% for i in range(1, SURICATAMERGED.config['af-packet'][0].threads + 1) %}

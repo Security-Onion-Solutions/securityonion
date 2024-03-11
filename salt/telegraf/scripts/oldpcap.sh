@@ -5,7 +5,7 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-{%- if GLOBALS.pcap_engine == "SURICATA" %}
+{%- if GLOBALS.pcap_engine in ["SURICATA", "TRANSITION"] %}
 PCAPLOC=/host/nsm/suripcap
 {%- else %}
 PCAPLOC=/host/nsm/pcap
