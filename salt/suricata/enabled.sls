@@ -27,11 +27,13 @@ so-suricata:
     - binds:
       - /opt/so/conf/suricata/suricata.yaml:/etc/suricata/suricata.yaml:ro
       - /opt/so/conf/suricata/threshold.conf:/etc/suricata/threshold.conf:ro
+      - /opt/so/conf/suricata/classification.config:/etc/suricata/classification.config:ro
       - /opt/so/conf/suricata/rules:/etc/suricata/rules:ro
       - /opt/so/log/suricata/:/var/log/suricata/:rw
       - /nsm/suricata/:/nsm/:rw
       - /nsm/suricata/extracted:/var/log/suricata//filestore:rw
       - /opt/so/conf/suricata/bpf:/etc/suricata/bpf:ro
+      - /nsm/suripcap/:/nsm/suripcap:rw
       {% if DOCKER.containers['so-suricata'].custom_bind_mounts %}
         {% for BIND in DOCKER.containers['so-suricata'].custom_bind_mounts %}
       - {{ BIND }}
@@ -49,10 +51,12 @@ so-suricata:
       - file: surithresholding
       - file: /opt/so/conf/suricata/rules/
       - file: /opt/so/conf/suricata/bpf
+      - file: suriclassifications
     - require:
       - file: suriconfig
       - file: surithresholding
       - file: suribpf
+      - file: suriclassifications
 
 delete_so-suricata_so-status.disabled:
   file.uncomment:

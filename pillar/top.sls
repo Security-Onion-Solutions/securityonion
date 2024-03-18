@@ -65,6 +65,7 @@ base:
     - soctopus.adv_soctopus
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
+    - stig.soc_stig
 
   '*_sensor':
     - healthcheck.sensor
@@ -80,6 +81,8 @@ base:
     - suricata.adv_suricata
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
+    - stig.soc_stig
+    - soc.license
 
   '*_eval':
     - secrets
@@ -180,6 +183,7 @@ base:
     - suricata.adv_suricata
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
+    - stig.soc_stig
 
   '*_heavynode':
     - elasticsearch.auth
@@ -222,6 +226,8 @@ base:
     - redis.adv_redis
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
+    - stig.soc_stig
+    - soc.license
 
   '*_receiver':
     - logstash.nodes

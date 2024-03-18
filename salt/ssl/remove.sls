@@ -2,6 +2,10 @@ trusttheca:
   file.absent:
     - name: /etc/pki/tls/certs/intca.crt
 
+symlinkca:
+  file.absent:
+    - name: /etc/ssl/certs/intca.crt
+
 influxdb_key:
   file.absent:
     - name: /etc/pki/influxdb.key

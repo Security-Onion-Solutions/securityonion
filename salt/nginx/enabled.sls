@@ -14,6 +14,9 @@ include:
   - nginx.config
   - nginx.sostatus
 
+
+{%   if grains.role not in ['so-fleet'] %}
+
 {#   if the user has selected to replace the crt and key in the ui #}
 {%   if NGINXMERGED.ssl.replace_cert %}
 
@@ -88,6 +91,15 @@ make-rule-dir-nginx:
     - recurse:
       - user
       - group
+      
+{%   endif %}
+
+{# if this is an so-fleet node then we want to use the port bindings, custom bind mounts defined for fleet #}
+{% if GLOBALS.role == 'so-fleet' %}
+{%   set container_config = 'so-nginx-fleet-node' %}
+{% else %}
+{%   set container_config = 'so-nginx' %}
+{% endif %}
 
 so-nginx:
   docker_container.running:
@@ -95,11 +107,11 @@ so-nginx:
     - hostname: so-nginx
     - networks:
       - sobridge:
-        - ipv4_address: {{ DOCKER.containers['so-nginx'].ip }}
+        - ipv4_address: {{ DOCKER.containers[container_config].ip }}
     - extra_hosts:
       - {{ GLOBALS.manager }}:{{ GLOBALS.manager_ip }}
-    {% if DOCKER.containers['so-nginx'].extra_hosts %}
-      {% for XTRAHOST in DOCKER.containers['so-nginx'].extra_hosts %}
+    {% if DOCKER.containers[container_config].extra_hosts %}
+      {% for XTRAHOST in DOCKER.containers[container_config].extra_hosts %}
       - {{ XTRAHOST }}
       {% endfor %}
     {% endif %}
@@ -119,20 +131,20 @@ so-nginx:
       - /nsm/repo:/opt/socore/html/repo:ro
       - /nsm/rules:/nsm/rules:ro
       {% endif %}
-      {% if DOCKER.containers['so-nginx'].custom_bind_mounts %}
-        {% for BIND in DOCKER.containers['so-nginx'].custom_bind_mounts %}
+      {% if DOCKER.containers[container_config].custom_bind_mounts %}
+        {% for BIND in DOCKER.containers[container_config].custom_bind_mounts %}
       - {{ BIND }}
         {% endfor %}
       {% endif %}
-    {% if DOCKER.containers['so-nginx'].extra_env %}
+    {% if DOCKER.containers[container_config].extra_env %}
     - environment:
-      {% for XTRAENV in DOCKER.containers['so-nginx'].extra_env %}
+      {% for XTRAENV in DOCKER.containers[container_config].extra_env %}
       - {{ XTRAENV }}
       {% endfor %}
     {% endif %}
     - cap_add: NET_BIND_SERVICE
     - port_bindings:
-      {% for BINDING in DOCKER.containers['so-nginx'].port_bindings %}
+      {% for BINDING in DOCKER.containers[container_config].port_bindings %}
       - {{ BINDING }}
       {% endfor %}
     - watch:

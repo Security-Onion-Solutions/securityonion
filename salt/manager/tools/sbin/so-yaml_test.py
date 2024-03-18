@@ -105,3 +105,99 @@ class TestRemove(unittest.TestCase):
                 self.assertEqual(actual, expected)
                 sysmock.assert_called_once_with(1)
                 self.assertIn(mock_stdout.getvalue(), "Missing filename or key arg\n")
+
+    def test_append(self):
+        filename = "/tmp/so-yaml_test-remove.yaml"
+        file = open(filename, "w")
+        file.write("{key1: { child1: 123, child2: abc }, key2: false, key3: [a,b,c]}")
+        file.close()
+
+        soyaml.append([filename, "key3", "d"])
+
+        file = open(filename, "r")
+        actual = file.read()
+        file.close()
+        expected = "key1:\n  child1: 123\n  child2: abc\nkey2: false\nkey3:\n- a\n- b\n- c\n- d\n"
+        self.assertEqual(actual, expected)
+
+    def test_append_nested(self):
+        filename = "/tmp/so-yaml_test-remove.yaml"
+        file = open(filename, "w")
+        file.write("{key1: { child1: 123, child2: [a,b,c] }, key2: false, key3: [e,f,g]}")
+        file.close()
+
+        soyaml.append([filename, "key1.child2", "d"])
+
+        file = open(filename, "r")
+        actual = file.read()
+        file.close()
+
+        expected = "key1:\n  child1: 123\n  child2:\n  - a\n  - b\n  - c\n  - d\nkey2: false\nkey3:\n- e\n- f\n- g\n"
+        self.assertEqual(actual, expected)
+
+    def test_append_nested_deep(self):
+        filename = "/tmp/so-yaml_test-remove.yaml"
+        file = open(filename, "w")
+        file.write("{key1: { child1: 123, child2: { deep1: 45, deep2: [a,b,c] } }, key2: false, key3: [e,f,g]}")
+        file.close()
+
+        soyaml.append([filename, "key1.child2.deep2", "d"])
+
+        file = open(filename, "r")
+        actual = file.read()
+        file.close()
+
+        expected = "key1:\n  child1: 123\n  child2:\n    deep1: 45\n    deep2:\n    - a\n    - b\n    - c\n    - d\nkey2: false\nkey3:\n- e\n- f\n- g\n"
+        self.assertEqual(actual, expected)
+
+    def test_append_key_noexist(self):
+        filename = "/tmp/so-yaml_test-append.yaml"
+        file = open(filename, "w")
+        file.write("{key1: { child1: 123, child2: { deep1: 45, deep2: [a,b,c] } }, key2: false, key3: [e,f,g]}")
+        file.close()
+
+        with patch('sys.exit', new=MagicMock()) as sysmock:
+            with patch('sys.stdout', new=StringIO()) as mock_stdout:
+                sys.argv = ["cmd", "append", filename, "key4", "h"]
+                soyaml.main()
+                sysmock.assert_called()
+                self.assertEqual(mock_stdout.getvalue(), "The key provided does not exist. No action was taken on the file.\n")
+
+    def test_append_key_noexist_deep(self):
+        filename = "/tmp/so-yaml_test-append.yaml"
+        file = open(filename, "w")
+        file.write("{key1: { child1: 123, child2: { deep1: 45, deep2: [a,b,c] } }, key2: false, key3: [e,f,g]}")
+        file.close()
+
+        with patch('sys.exit', new=MagicMock()) as sysmock:
+            with patch('sys.stdout', new=StringIO()) as mock_stdout:
+                sys.argv = ["cmd", "append", filename, "key1.child2.deep3", "h"]
+                soyaml.main()
+                sysmock.assert_called()
+                self.assertEqual(mock_stdout.getvalue(), "The key provided does not exist. No action was taken on the file.\n")
+
+    def test_append_key_nonlist(self):
+        filename = "/tmp/so-yaml_test-append.yaml"
+        file = open(filename, "w")
+        file.write("{key1: { child1: 123, child2: { deep1: 45, deep2: [a,b,c] } }, key2: false, key3: [e,f,g]}")
+        file.close()
+
+        with patch('sys.exit', new=MagicMock()) as sysmock:
+            with patch('sys.stdout', new=StringIO()) as mock_stdout:
+                sys.argv = ["cmd", "append", filename, "key1", "h"]
+                soyaml.main()
+                sysmock.assert_called()
+                self.assertEqual(mock_stdout.getvalue(), "The existing value for the given key is not a list. No action was taken on the file.\n")
+
+    def test_append_key_nonlist_deep(self):
+        filename = "/tmp/so-yaml_test-append.yaml"
+        file = open(filename, "w")
+        file.write("{key1: { child1: 123, child2: { deep1: 45, deep2: [a,b,c] } }, key2: false, key3: [e,f,g]}")
+        file.close()
+
+        with patch('sys.exit', new=MagicMock()) as sysmock:
+            with patch('sys.stdout', new=StringIO()) as mock_stdout:
+                sys.argv = ["cmd", "append", filename, "key1.child2.deep1", "h"]
+                soyaml.main()
+                sysmock.assert_called()
+                self.assertEqual(mock_stdout.getvalue(), "The existing value for the given key is not a list. No action was taken on the file.\n")

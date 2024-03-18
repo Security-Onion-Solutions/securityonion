@@ -30,6 +30,17 @@
 {# since cases is not a valid soc config item and only used for the map files, remove it from being placed in the config #}
 {% do SOCMERGED.config.server.modules.pop('cases') %}
 
+{# remove these modules if detections is disabled #}
+{% if not SOCMERGED.config.server.client.detectionsEnabled %}
+{%   do SOCMERGED.config.server.modules.pop('elastalertengine') %}
+{%   do SOCMERGED.config.server.modules.pop('strelkaengine') %}
+{%   do SOCMERGED.config.server.modules.pop('suricataengine') %}
+{% elif pillar.global.airgap %}
+  {# if system is Airgap, don't autoupdate Yara & Sigma rules #}
+  {%   do SOCMERGED.config.server.modules.elastalertengine.update({'autoUpdateEnabled': false}) %}
+  {%   do SOCMERGED.config.server.modules.strelkaengine.update({'autoUpdateEnabled': false}) %}
+{% endif %}
+
 {% if pillar.manager.playbook == 0 %}
 {%   do SOCMERGED.config.server.client.inactiveTools.append('toolPlaybook') %}
 {% endif %}
@@ -66,6 +77,14 @@
 {%   do SOCMERGED.config.server.client.alerts.update({'actions': standard_actions}) %}
 {%   do SOCMERGED.config.server.client.cases.update({'actions': standard_actions}) %}
 
+{# replace the _x_ with . for soc ui to config conversion #}
+{% do SOCMERGED.config.eventFields.update({':endpoint:events.api': SOCMERGED.config.eventFields.pop(':endpoint:events_x_api') }) %}
+{% do SOCMERGED.config.eventFields.update({':endpoint:events.file': SOCMERGED.config.eventFields.pop(':endpoint:events_x_file') }) %}
+{% do SOCMERGED.config.eventFields.update({':endpoint:events.library': SOCMERGED.config.eventFields.pop(':endpoint:events_x_library') }) %}
+{% do SOCMERGED.config.eventFields.update({':endpoint:events.network': SOCMERGED.config.eventFields.pop(':endpoint:events_x_network') }) %}
+{% do SOCMERGED.config.eventFields.update({':endpoint:events.process': SOCMERGED.config.eventFields.pop(':endpoint:events_x_process') }) %}
+{% do SOCMERGED.config.eventFields.update({':endpoint:events.registry': SOCMERGED.config.eventFields.pop(':endpoint:events_x_registry') }) %}
+{% do SOCMERGED.config.eventFields.update({':endpoint:events.security': SOCMERGED.config.eventFields.pop(':endpoint:events_x_security') }) %}
 {% set standard_eventFields = SOCMERGED.config.pop('eventFields') %}
 {%   do SOCMERGED.config.server.client.hunt.update({'eventFields': standard_eventFields}) %}
 {%   do SOCMERGED.config.server.client.dashboards.update({'eventFields': standard_eventFields}) %}

@@ -41,6 +41,8 @@ tgraf_sync_script_{{script}}:
     - mode: 770
     - template: jinja
     - source: salt://telegraf/scripts/{{script}}
+    - defaults:
+        GLOBALS: {{ GLOBALS }}
 {% endfor %}
 
 telegraf_sbin:

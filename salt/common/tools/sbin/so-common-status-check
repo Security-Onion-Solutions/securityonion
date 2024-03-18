@@ -8,6 +8,7 @@
 import sys
 import subprocess
 import os
+import json
 
 sys.path.append('/opt/saltstack/salt/lib/python3.10/site-packages/')
 import salt.config
@@ -36,17 +37,67 @@ def check_needs_restarted():
   with open(outfile, 'w') as f:
     f.write(val)
 
+def check_for_fps():
+    feat = 'fps'
+    feat_full = feat.replace('ps', 'ips')
+    fps = 0
+    try:
+        result = subprocess.run([feat_full + '-mode-setup', '--is-enabled'], stdout=subprocess.PIPE)
+        if result.returncode == 0:
+            fps = 1
+    except FileNotFoundError:
+        fn = '/proc/sys/crypto/' + feat_full + '_enabled'
+        try:
+          with open(fn, 'r') as f:
+              contents = f.read()
+              if '1' in contents:
+                  fps = 1
+        except:
+          # Unknown, so assume 0
+          fps = 0
+
+    with open('/opt/so/log/sostatus/fps_enabled', 'w') as f:
+       f.write(str(fps))
+
+def check_for_lks():
+    feat = 'Lks'
+    feat_full = feat.replace('ks', 'uks')
+    lks = 0
+    result = subprocess.run(['lsblk', '-p', '-J'], check=True, stdout=subprocess.PIPE)
+    data = json.loads(result.stdout)
+    for device in data['blockdevices']:
+        if 'children' in device:
+            for gc in device['children']:
+                if 'children' in gc:
+                    try:
+                        arg = 'is' + feat_full
+                        result = subprocess.run(['cryptsetup', arg, gc['name']], stdout=subprocess.PIPE)
+                        if result.returncode == 0:
+                           lks = 1
+                    except FileNotFoundError:
+                        for ggc in gc['children']:
+                            if 'crypt' in ggc['type']:
+                                lks = 1
+        if lks:
+            break
+    with open('/opt/so/log/sostatus/lks_enabled', 'w') as f:
+       f.write(str(lks))
+
 def fail(msg):
   print(msg, file=sys.stderr)
   sys.exit(1)
-
 
 def main():
   proc = subprocess.run(['id', '-u'], stdout=subprocess.PIPE, encoding="utf-8")
   if proc.stdout.strip() != "0":
     fail("This program must be run as root")
-
+  # Ensure that umask is 0022 so that files created by this script have rw-r-r permissions
+  org_umask = os.umask(0o022)
   check_needs_restarted()
+  check_for_fps()
+  check_for_lks()
+  # Restore umask to whatever value was set before this script was run. SXIG sets to 0077 rw---
+  os.umask(org_umask)
 
 if __name__ == "__main__":
   main()

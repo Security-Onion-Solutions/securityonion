@@ -22,12 +22,18 @@ so-soc:
       - sobridge:
         - ipv4_address: {{ DOCKER.containers['so-soc'].ip }}
     - binds:
+      - /nsm/rules:/nsm/rules:rw
+      - /opt/so/conf/strelka:/opt/sensoroni/yara:rw
+      - /opt/so/rules/elastalert/rules:/opt/sensoroni/elastalert:rw
+      - /opt/so/conf/soc/fingerprints:/opt/sensoroni/fingerprints:rw
       - /nsm/soc/jobs:/opt/sensoroni/jobs:rw
       - /nsm/soc/uploads:/nsm/soc/uploads:rw
       - /opt/so/log/soc/:/opt/sensoroni/logs/:rw
       - /opt/so/conf/soc/soc.json:/opt/sensoroni/sensoroni.json:ro
       - /opt/so/conf/soc/motd.md:/opt/sensoroni/html/motd.md:ro
       - /opt/so/conf/soc/banner.md:/opt/sensoroni/html/login/banner.md:ro
+      - /opt/so/conf/soc/sigma_so_pipeline.yaml:/opt/sensoroni/sigma_so_pipeline.yaml:ro
+      - /opt/so/conf/soc/sigma_final_pipeline.yaml:/opt/sensoroni/sigma_final_pipeline.yaml:rw
       - /opt/so/conf/soc/custom.js:/opt/sensoroni/html/js/custom.js:ro
       - /opt/so/conf/soc/custom_roles:/opt/sensoroni/rbac/custom_roles:ro
       - /opt/so/conf/soc/soc_users_roles:/opt/sensoroni/rbac/users_roles:rw
