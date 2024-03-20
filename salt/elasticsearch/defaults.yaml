@@ -198,6 +198,35 @@ elasticsearch:
               sort:
                 field: '@timestamp'
                 order: desc
+    so-detection:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - detection-mappings
+        - detection-settings
+        index_patterns:
+        - so-detection*
+        priority: 500
+        template:
+          mappings:
+            date_detection: false
+            dynamic_templates:
+            - strings_as_keyword:
+                mapping:
+                  ignore_above: 1024
+                  type: keyword
+                match_mapping_type: string
+          settings:
+            index:
+              mapping:
+                total_fields:
+                  limit: 1500
+              number_of_replicas: 0
+              number_of_shards: 1
+              refresh_interval: 30s
+              sort:
+                field: '@timestamp'
+                order: desc
     so-common:
       close: 30
       delete: 365
@@ -1078,6 +1107,50 @@ elasticsearch:
               set_priority:
                 priority: 50
             min_age: 30d
+    so-logs-aws_x_cloudfront_logs:
+      index_sorting: False
+      index_template:
+        index_patterns:
+          - "logs-aws.cloudfront_logs-*"
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-logs-aws.cloudfront_logs-logs
+              number_of_replicas: 0
+        composed_of:
+          - "logs-aws.cloudfront_logs@package"
+          - "logs-aws.cloudfront_logs@custom"
+          - "so-fleet_globals-1"
+          - "so-fleet_agent_id_verification-1"
+        priority: 501
+        data_stream:
+          hidden: false
+          allow_custom_routing: false
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 30d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
     so-logs-aws_x_cloudtrail:
       index_sorting: false
       index_template:
@@ -1298,6 +1371,94 @@ elasticsearch:
               set_priority:
                 priority: 50
             min_age: 30d
+    so-logs-aws_x_guardduty:
+      index_sorting: False
+      index_template:
+        index_patterns:
+          - "logs-aws.guardduty-*"
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-logs-aws.guardduty-logs
+              number_of_replicas: 0
+        composed_of:
+          - "logs-aws.guardduty@package"
+          - "logs-aws.guardduty@custom"
+          - "so-fleet_globals-1"
+          - "so-fleet_agent_id_verification-1"
+        priority: 501
+        data_stream:
+          hidden: false
+          allow_custom_routing: false
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 30d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
+    so-logs-aws_x_inspector:
+      index_sorting: False
+      index_template:
+        index_patterns:
+          - "logs-aws.inspector-*"
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-logs-aws.inspector-logs
+              number_of_replicas: 0
+        composed_of:
+          - "logs-aws.inspector@package"
+          - "logs-aws.inspector@custom"
+          - "so-fleet_globals-1"
+          - "so-fleet_agent_id_verification-1"
+        priority: 501
+        data_stream:
+          hidden: false
+          allow_custom_routing: false
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 30d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
     so-logs-aws_x_route53_public_logs:
       index_sorting: false
       index_template:
@@ -1406,6 +1567,94 @@ elasticsearch:
               lifecycle:
                 name: so-logs-aws.s3access-logs
               number_of_replicas: 0
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 30d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
+    so-logs-aws_x_securityhub_findings:
+      index_sorting: False
+      index_template:
+        index_patterns:
+          - "logs-aws.securityhub_findings-*"
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-logs-aws.securityhub_findings-logs
+              number_of_replicas: 0
+        composed_of:
+          - "logs-aws.securityhub_findings@package"
+          - "logs-aws.securityhub_findings@custom"
+          - "so-fleet_globals-1"
+          - "so-fleet_agent_id_verification-1"
+        priority: 501
+        data_stream:
+          hidden: false
+          allow_custom_routing: false
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 30d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
+    so-logs-aws_x_securityhub_insights:
+      index_sorting: False
+      index_template:
+        index_patterns:
+          - "logs-aws.securityhub_insights-*"
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-logs-aws.securityhub_insights-logs
+              number_of_replicas: 0
+        composed_of:
+          - "logs-aws.securityhub_insights@package"
+          - "logs-aws.securityhub_insights@custom"
+          - "so-fleet_globals-1"
+          - "so-fleet_agent_id_verification-1"
+        priority: 501
+        data_stream:
+          hidden: false
+          allow_custom_routing: false
       policy:
         phases:
           cold:
@@ -3897,7 +4146,7 @@ elasticsearch:
           allow_custom_routing: false
           hidden: false
         index_patterns:
-        - logs-endpoint.diagnostic.collection-*
+        - .logs-endpoint.diagnostic.collection-*
         priority: 501
         template:
           settings:
@@ -8990,7 +9239,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 50
-            min_age: 30d    
+            min_age: 30d
     so-logs-ti_otx_x_threat:
       index_sorting: false
       index_template:
@@ -10568,7 +10817,7 @@ elasticsearch:
           hot:
             actions:
               rollover:
-                max_age: 30d
+                max_age: 1d
                 max_primary_shard_size: 50gb
               set_priority:
                 priority: 100

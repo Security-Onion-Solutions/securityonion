@@ -50,15 +50,15 @@ backend_taste:
     - user: 939
     - group: 939
 
-{%   if STRELKAMERGED.rules.enabled %}
+{% if STRELKAMERGED.rules.enabled %}
 strelkarules:
-  file.recurse:
-    - name: /opt/so/conf/strelka/rules
-    - source: salt://strelka/rules
-    - user: 939
-    - group: 939
-    - clean: True
-{%   endif %}
+   file.recurse:
+     - name: /opt/so/conf/strelka/rules
+     - source: salt://strelka/rules
+     - user: 939
+     - group: 939
+     - clean: True
+{% endif %}
 
 {% else %}
 

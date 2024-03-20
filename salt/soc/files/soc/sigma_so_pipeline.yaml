@@ -1,0 +1,81 @@
+name: Security Onion Baseline Pipeline
+priority: 90
+transformations:
+    - id: baseline_field_name_mapping
+      type: field_name_mapping
+      mapping:
+        cs-method: http.method
+        c-uri: http.uri
+        c-useragent: http.useragent
+        cs-version: http.version
+        uid: user.uid
+        sid: rule.uuid
+        answer: answers
+        query: dns.query.name
+        src_ip: source.ip.keyword
+        src_port: source.port
+        dst_ip: destination.ip.keyword
+        dst_port: destination.port
+        winlog.event_data.User: user.name
+    # Maps "antivirus" category to Windows Defender logs shipped by Elastic Agent Winlog Integration
+    # winlog.event_data.threat_name has to be renamed prior to ingestion, it is originally winlog.event_data.Threat Name
+    - id: antivirus_field-mappings_windows-defender
+      type: field_name_mapping
+      mapping:
+        Signature: winlog.event_data.threat_name
+      rule_conditions:
+      - type: logsource
+        category: antivirus
+    - id: antivirus_add-fields_windows-defender
+      type: add_condition
+      conditions:
+        winlog.channel: 'Microsoft-Windows-Windows Defender/Operational'
+        winlog.provider_name: 'Microsoft-Windows-Windows Defender'
+        event.code: "1116"
+      rule_conditions:
+      - type: logsource
+        category: antivirus
+    # Drops the Hashes field which is specific to Sysmon logs
+    # Ingested sysmon logs will have the Hashes field mapped to ECS specific fields
+    - id: hashes_drop_sysmon-specific-field
+      type: drop_detection_item
+      field_name_conditions:
+        - type: include_fields
+          fields:
+          - winlog.event_data.Hashes
+      rule_conditions:
+      - type: logsource
+        product: windows
+    - id: hashes_process-creation
+      type: field_name_mapping
+      mapping:
+        winlog.event_data.sha256: process.hash.sha256
+        winlog.event_data.sha1: process.hash.sha1
+        winlog.event_data.md5: process.hash.md5
+        winlog.event_data.Imphash: process.pe.imphash
+      rule_conditions:
+      - type: logsource
+        product: windows
+        category: process_creation
+    - id: hashes_image-load
+      type: field_name_mapping
+      mapping:
+        winlog.event_data.sha256: dll.hash.sha256
+        winlog.event_data.sha1: dll.hash.sha1
+        winlog.event_data.md5: dll.hash.md5
+        winlog.event_data.Imphash: dll.pe.imphash
+      rule_conditions:
+      - type: logsource
+        product: windows
+        category: image_load
+    - id: hashes_driver-load
+      type: field_name_mapping
+      mapping:
+        winlog.event_data.sha256: dll.hash.sha256
+        winlog.event_data.sha1: dll.hash.sha1
+        winlog.event_data.md5: dll.hash.md5
+        winlog.event_data.Imphash: dll.pe.imphash
+      rule_conditions:
+      - type: logsource
+        product: windows
+        category: driver_load

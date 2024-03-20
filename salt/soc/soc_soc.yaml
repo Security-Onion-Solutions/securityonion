@@ -32,6 +32,14 @@ soc:
         global: True
         advanced: True
         helpLink: soc-customization.html
+      sigma_final_pipeline__yaml:
+        title: Final Sigma Pipeline
+        description: Final Processing Pipeline for Sigma Rules (future use, not yet complete)
+        syntax: yaml
+        file: True
+        global: True
+        advanced: True
+        helpLink: soc-customization.html
   config:
     licenseKey:
       title: License Key
@@ -47,10 +55,17 @@ soc:
       global: True
       forcedType: "[]{}"
     eventFields:
-      default:
-        description: Event fields mappings are defined by the format ":event.module:event.dataset". For example, to customize which fields show for 'syslog' events originating from 'zeek', find the eventField item in the left panel that looks like ':zeek:syslog'. This 'default' entry is used for all events that do not match an existing mapping defined in the list to the left.
+      default: &eventFields
+        description: Event fields mappings are defined by the format ":event.module:event.dataset". For example, to customize which fields show for 'syslog' events originating from 'zeek', find the eventField item in the left panel that looks like ':zeek:syslog'. The 'default' entry is used for all events that do not match an existing mapping defined in the list to the left.
         global: True
         advanced: True
+      ':endpoint:events_x_api': *eventFields
+      ':endpoint:events_x_file': *eventFields
+      ':endpoint:events_x_library': *eventFields
+      ':endpoint:events_x_network': *eventFields
+      ':endpoint:events_x_process': *eventFields
+      ':endpoint:events_x_registry': *eventFields
+      ':endpoint:events_x_security': *eventFields
     server:
       srvKey:
         description: Unique key for protecting the integrity of user submitted data via the web browser.
@@ -62,6 +77,15 @@ soc:
         global: True
         advanced: True
       modules:
+        elastalertengine:
+          sigmaRulePackages:
+            description: 'Defines the Sigma Community Ruleset you want to run. One of these (core | core+ | core++ | all ) as well as an optional Add-on (emerging_threats_addon). WARNING! Changing the ruleset will remove all existing Sigma rules of the previous ruleset and their associated overrides. This removal cannot be undone. (future use, not yet complete)'
+            global: True
+            advanced: False
+          autoUpdateEnabled:
+            description: 'Set to true to enable automatic Internet-connected updates of the Sigma Community Ruleset. If this is an Airgap system, this setting will be overridden and set to false. (future use, not yet complete)'
+            global: True
+            advanced: True
         elastic:
           index:
             description: Comma-separated list of indices or index patterns (wildcard "*" supported) that SOC will search for records.
@@ -102,6 +126,9 @@ soc:
             description: Maximum number of events that can be acknowledged synchronously. When acknowledging large numbers of events, where the count exceeds this value, the acknowledge update will be performed in the background, as it can take several minutes to complete.
             global: True
             advanced: True
+          lookupTunnelParent:
+            description: When true, if a pivoted event appears to be encapsulated, such as in a VXLAN packet, then SOC will pivot to the VXLAN packet stream. When false, SOC will attempt to pivot to the encapsulated packet stream itself, but at the risk that it may be unable to locate it in the stored PCAP data.
+            global: True
         sostatus:
           refreshIntervalMs:
             description: Duration (in milliseconds) between refreshes of the grid status. Shortening this duration may not have expected results, as the backend systems feeding this sostatus data will continue their updates as scheduled.
@@ -118,6 +145,11 @@ soc:
             advanced: True
           relayTimeoutMs:
             description: Duration (in milliseconds) to wait for a response from the Salt API when executing common grid management tasks before giving up and showing an error on the SOC UI.
+            global: True
+            advanced: True
+        strelkaengine:
+          autoUpdateEnabled:
+            description: 'Set to true to enable automatic Internet-connected updates of the Yara rulesets. If this is an Airgap system, this setting will be overridden and set to false. (future use, not yet complete)'
             global: True
             advanced: True
       client:
@@ -141,6 +173,9 @@ soc:
           advanced: True
         casesEnabled:
           description: Set to true to enable case management in SOC.
+          global: True
+        detectionsEnabled:
+          description: Set to true to enable the Detections module in SOC. (future use, not yet complete)
           global: True
         inactiveTools:
           description: List of external tools to remove from the SOC UI.

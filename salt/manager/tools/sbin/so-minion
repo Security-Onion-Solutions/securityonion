@@ -79,6 +79,32 @@ function getinstallinfo() {
 	source <(echo $INSTALLVARS)
 }
 
+function pcapspace() {
+	if [[ "$OPERATION" == "setup" ]]; then
+		# Use 25% for PCAP
+		PCAP_PERCENTAGE=1
+		DFREEPERCENT=21
+		local SPACESIZE=$(df -k /nsm | tail -1 | awk '{print $2}' | tr -d \n)
+	else
+
+		local NSMSIZE=$(salt "$MINION_ID" disk.usage --out=json | jq -r '.[]."/nsm"."1K-blocks" ')
+		local ROOTSIZE=$(salt "$MINION_ID" disk.usage --out=json | jq -r '.[]."/"."1K-blocks" ')
+	
+		if [[ "$NSMSIZE" == "null" ]]; then
+			# Looks like there is no dedicated nsm partition. Using root
+			local SPACESIZE=$ROOTSIZE
+		else
+			local SPACESIZE=$NSMSIZE
+		fi
+	fi
+
+	local s=$(( $SPACESIZE / 1000000 ))
+	local s1=$(( $s / 4 * $PCAP_PERCENTAGE ))
+
+	MAX_PCAP_SPACE=$s1
+
+}
+
 function testMinion() {
 	# Always run on the host, since this is going to be the manager of a distributed grid, or an eval/standalone.
 	# Distributed managers must run this in order for the sensor nodes to have access to the so-tcpreplay image.
@@ -244,6 +270,10 @@ function add_sensor_to_minion() {
 	echo "      lb_procs: '$CORECOUNT'" >> $PILLARFILE
 	echo "suricata:" >> $PILLARFILE
 	echo "  enabled: True " >> $PILLARFILE
+	if [[ $is_pcaplimit ]]; then
+	echo "  pcap:" >> $PILLARFILE
+	echo "    maxsize: $MAX_PCAP_SPACE" >> $PILLARFILE
+	fi
 	echo "  config:" >> $PILLARFILE
 	echo "    af-packet:" >> $PILLARFILE
 	echo "      threads: '$CORECOUNT'" >> $PILLARFILE
@@ -251,7 +281,7 @@ function add_sensor_to_minion() {
 	echo "  enabled: True" >> $PILLARFILE
 	if [[ $is_pcaplimit ]]; then
 		echo "  config:" >> $PILLARFILE
-		echo "    diskfreepercentage: 60" >> $PILLARFILE
+		echo "    diskfreepercentage: $DFREEPERCENT" >> $PILLARFILE
 	fi
 	echo "  " >> $PILLARFILE
 }
@@ -422,6 +452,7 @@ function updateMine() {
 
 function createEVAL() {
 	is_pcaplimit=true
+	pcapspace
 	add_elasticsearch_to_minion
 	add_sensor_to_minion
 	add_strelka_to_minion
@@ -442,6 +473,7 @@ function createEVAL() {
 
 function createSTANDALONE() {
 	is_pcaplimit=true
+	pcapspace
 	add_elasticsearch_to_minion
 	add_logstash_to_minion
 	add_sensor_to_minion
@@ -531,6 +563,9 @@ function createIDH() {
 
 function createHEAVYNODE() {
 	is_pcaplimit=true
+	PCAP_PERCENTAGE=1
+	DFREEPERCENT=21
+	pcapspace
 	add_elasticsearch_to_minion
 	add_elastic_agent_to_minion
 	add_logstash_to_minion
@@ -541,6 +576,10 @@ function createHEAVYNODE() {
 }
 
 function createSENSOR() {
+	is_pcaplimit=true
+	DFREEPERCENT=10
+	PCAP_PERCENTAGE=3
+	pcapspace
 	add_sensor_to_minion
 	add_strelka_to_minion
 	add_telegraf_to_minion

@@ -9,9 +9,16 @@
 include:
   - manager.sync_es_users
 
+socdirtest:
+  file.directory:
+    - name: /opt/so/rules/elastalert/rules
+    - user: 939
+    - group: 939
+    - makedirs: True
+
 socdir:
   file.directory:
-    - name: /opt/so/conf/soc
+    - name: /opt/so/conf/soc/fingerprints
     - user: 939
     - group: 939
     - makedirs: True
@@ -56,6 +63,22 @@ socmotd:
     - group: 939
     - mode: 600
     - template: jinja
+
+socsigmafinalpipeline:
+  file.managed:
+    - name: /opt/so/conf/soc/sigma_final_pipeline.yaml
+    - source: salt://soc/files/soc/sigma_final_pipeline.yaml
+    - user: 939
+    - group: 939
+    - mode: 600
+
+socsigmasopipeline:
+  file.managed:
+    - name: /opt/so/conf/soc/sigma_so_pipeline.yaml
+    - source: salt://soc/files/soc/sigma_so_pipeline.yaml
+    - user: 939
+    - group: 939
+    - mode: 600
 
 socbanner:
   file.managed:
@@ -113,6 +136,13 @@ socuploaddir:
     - user: 939
     - group: 939
     - makedirs: True
+
+socsigmarepo:
+  file.directory:
+    - name: /opt/so/rules
+    - user: 939
+    - group: 939
+    - mode: 775
 
 {% else %}
 

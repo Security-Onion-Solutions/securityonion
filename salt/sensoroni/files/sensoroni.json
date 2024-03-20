@@ -1,6 +1,5 @@
-{%- from 'vars/globals.map.jinja' import GLOBALS %}
-{%- from 'sensoroni/map.jinja' import SENSORONIMERGED %}
-{%- from 'pcap/config.map.jinja' import PCAPMERGED %}
+{%  from 'vars/globals.map.jinja' import GLOBALS %}
+{%- from 'sensoroni/map.jinja' import SENSORONIMERGED -%}
 {
   "logFilename": "/opt/sensoroni/logs/sensoroni.log",
   "logLevel":"info",
@@ -23,16 +22,19 @@
       "importer": {},
       "statickeyauth": {
         "apiKey": "{{ GLOBALS.sensoroni_key }}"
-{%- if PCAPMERGED.enabled %} 
+{%  if GLOBALS.is_sensor %}
       },     
       "stenoquery": {
         "executablePath": "/opt/sensoroni/scripts/stenoquery.sh",
         "pcapInputPath": "/nsm/pcap",
         "pcapOutputPath": "/nsm/pcapout"
-      }
-{%- else %}
-      }
+      },     
+      "suriquery": {
+        "pcapInputPath": "/nsm/suripcap",
+        "pcapOutputPath": "/nsm/pcapout",
+        "pcapMaxCount": {{ SENSORONIMERGED.config.suripcap.pcapMaxCount }}
 {%- endif %}
+      }
     }
   }
 }

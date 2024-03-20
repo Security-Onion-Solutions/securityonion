@@ -1,5 +1,6 @@
 {% import 'vars/init.map.jinja' as INIT %}
 {% from 'docker/docker.map.jinja' import DOCKER %}
+{% from 'global/map.jinja' import GLOBALMERGED %}
 
 {% from 'vars/' ~ INIT.GRAINS.role.split('-')[1] ~ '.map.jinja' import ROLE_GLOBALS %} {# role is so-role so we have to split off the 'so' #}
 
@@ -7,6 +8,7 @@
   set GLOBALS = {
     'hostname': INIT.GRAINS.nodename,
     'is_manager': false,
+    'is_sensor': false,
     'manager': INIT.GRAINS.master,
     'minion_id': INIT.GRAINS.id,
     'main_interface': INIT.PILLAR.host.mainint,
@@ -20,6 +22,7 @@
     'influxdb_host': INIT.PILLAR.global.influxdb_host,
     'manager_ip': INIT.PILLAR.global.managerip,
     'md_engine': INIT.PILLAR.global.mdengine,
+    'pcap_engine': GLOBALMERGED.pcapengine,
     'pipeline': INIT.PILLAR.global.pipeline,
     'so_version': INIT.PILLAR.global.soversion,
     'so_docker_gateway': DOCKER.gateway,
@@ -61,5 +64,8 @@
 {%   do GLOBALS.update({'is_manager': true}) %}
 {% endif %}
 
+{% if GLOBALS.role in GLOBALS.sensor_roles %}
+{%   do GLOBALS.update({'is_sensor': true}) %}
+{% endif %}
 
 {% do salt['defaults.merge'](GLOBALS, ROLE_GLOBALS, merge_lists=False, in_place=True) %}
