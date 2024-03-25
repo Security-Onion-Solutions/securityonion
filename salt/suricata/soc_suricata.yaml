@@ -11,6 +11,60 @@ suricata:
       multiline: True
       title: SIDS
       helpLink: suricata.html
+  classification:
+    classification__config:
+      description: Classifications config file.
+      file: True
+      global: True
+      multiline: True
+      title: Classifications
+      helpLink: suricata.html
+  pcap:
+    filesize: 
+      description: Maximum file size for individual PCAP files written by Suricata. Increasing this number could improve write performance at the expense of pcap retrieval time.
+      advanced: True
+      helpLink: suricata.html 
+    maxsize:
+      description: Maximum size in GB for total disk usage of all PCAP files written by Suricata.
+      helpLink: suricata.html
+    compression: 
+      description: Enable compression of Suricata PCAP files.
+      advanced: True
+      helpLink: suricata.html
+    lz4-checksum: 
+      description: Enable PCAP lz4 checksum.
+      advanced: True
+      helpLink: suricata.html
+    lz4-level: 
+      description: lz4 compression level of PCAP files. Set to 0 for no compression. Set to 16 for maximum compression.
+      advanced: True
+      helpLink: suricata.html
+    filename:
+      description: Filename output for Suricata PCAP files.
+      advanced: True
+      readonly: True
+      helpLink: suricata.html
+    mode: 
+      description: Suricata PCAP mode. Currently only multi is supported.
+      advanced: True
+      readonly: True
+      helpLink: suricata.html
+    use-stream-depth: 
+      description: Set to "no" to ignore the stream depth and capture the entire flow. Set to "yes" to truncate the flow based on the stream depth.
+      advanced: True
+      regex: ^(yes|no)$
+      regexFailureMessage: You must enter either yes or no.
+      helpLink: suricata.html
+    conditional: 
+      description: Set to "all" to record PCAP for all flows. Set to "alerts" to only record PCAP for Suricata alerts. Set to "tag" to only record PCAP for tagged rules.
+      regex: ^(all|alerts|tag)$
+      regexFailureMessage: You must enter either all, alert or tag.
+      helpLink: suricata.html
+    dir:
+      description: Parent directory to store PCAP.
+      advanced: True
+      readonly: True
+      helpLink: suricata.html
   config:
     af-packet:
       interface:
@@ -40,10 +94,41 @@ suricata:
         description: Buffer size for packets per thread.
         forcedType: int
         helpLink: suricata.html
+      block-size:
+        description: This must be configured to a sufficiently high value to accommodate a significant number of packets, considering byte size and MTU constraints. Ensure it aligns with a power of 2 and is a multiple of the page size.
+        advanced: True
+        forcedType: int
+        helpLink: suricata.html
+      block-timeout:
+        description: If a block remains unfilled after the specified block-timeout milliseconds, it is passed to userspace.
+        advanced: True
+        forcedType: int
+        helpLink: suricata.html
+      use-emergency-flush:
+        description: In high-traffic environments, enabling this option to 'yes' aids in recovering from packet drop occurrences. However, it may lead to some packets, possibly at max ring flush, not being inspected.
+        advanced: True
+        regex: ^(yes|no)$
+        helpLink: suricata.html
+      buffer-size:
+        description: Increasing the value of the receive buffer may improve performance.
+        advanced: True
+        forcedType: int
+        helpLink: suricata.html
+      disable-promisc:
+        description: Promiscuous mode can be disabled by setting this to "yes".
+        advanced: True
+        regex: ^(yes|no)$
+        helpLink: suricata.html
+      checksum-checks:
+        description: "Opt for the checksum verification mode suitable for the interface. During capture, it's possible that some packets may exhibit invalid checksums due to the network card handling the checksum computation. You have several options: 'kernel': Relies on indications sent by the kernel for each packet (default). 'yes': Enforces checksum validation. 'no': Disables checksum validation. 'auto': Suricata employs a statistical approach to detect checksum offloading."
+        advanced: True
+        regex: ^(kernel|yes|no|auto)$
+        helpLink: suricata.html
     threading:
       set-cpu-affinity:
         description: Bind(yes) or unbind(no) management and worker threads to a core or range of cores.
         regex: ^(yes|no)$
+        regexFailureMessage: You must enter either yes or no.
         helpLink: suricata.html
       cpu-affinity:
         management-cpu-set:
@@ -153,6 +238,12 @@ suricata:
               header:
                 description: Header name where the actual IP address will be reported.
                 helpLink: suricata.html
+      pcap-log:
+        enabled:
+          description: This value is ignored by SO. pcapengine in globals takes precidence.
+          readonly: True
+          helpLink: suricata.html
+          advanced: True        
     asn1-max-frames:
       description: Maximum nuber of asn1 frames to decode.
       helpLink: suricata.html
@@ -208,6 +299,9 @@ suricata:
       reassembly:
         memcap:
           description: Can be specified in kb,mb,gb.
+          helpLink: suricata.html
+        depth:
+          description: Controls how far into a stream that reassembly is done.  
           helpLink: suricata.html
     host:
       hash-size:

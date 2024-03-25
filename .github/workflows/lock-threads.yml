@@ -1,0 +1,25 @@
+name: 'Lock Threads'
+
+on:
+  schedule:
+    - cron: '50 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  pull-requests: write
+  discussions: write
+
+concurrency:
+  group: lock-threads
+
+jobs:
+  lock-threads:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: jertel/lock-threads@main
+        with:
+          include-discussion-currently-open: true
+          discussion-inactive-days: 90
+          issue-inactive-days: 30
+          pr-inactive-days: 30

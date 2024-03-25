@@ -10,3 +10,4 @@ salt_bootstrap:
     - name: /usr/sbin/bootstrap-salt.sh
     - source: salt://salt/scripts/bootstrap-salt.sh
     - mode: 755
+    - show_changes: False

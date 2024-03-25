@@ -35,6 +35,7 @@ desktop_packages:
       - bluez-libs
       - bluez-obexd
       - bolt
+      - brasero
       - bzip2
       - bzip2-libs
       - c-ares
@@ -333,6 +334,7 @@ desktop_packages:
       - pulseaudio-libs
       - pulseaudio-libs-glib2
       - pulseaudio-utils
+      - putty
       - sane-airscan
       - sane-backends
       - sane-backends-drivers-cameras

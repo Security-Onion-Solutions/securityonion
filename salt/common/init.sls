@@ -4,7 +4,6 @@
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 
 include:
-  - common.soup_scripts
   - common.packages
 {% if GLOBALS.role in GLOBALS.manager_roles %}
   - manager.elasticsearch # needed for elastic_curl_config state
@@ -134,6 +133,18 @@ common_sbin_jinja:
     - file_mode: 755
     - template: jinja
 
+{% if not GLOBALS.is_manager%}
+# prior to 2.4.50 these scripts were in common/tools/sbin on the manager because of soup and distributed to non managers
+# these two states remove the scripts from non manager nodes
+remove_soup:
+  file.absent:
+    - name: /usr/sbin/soup
+
+remove_so-firewall:
+  file.absent:
+    - name: /usr/sbin/so-firewall
+{% endif %}
+
 so-status_script:
   file.managed:
     - name: /usr/sbin/so-status
@@ -178,6 +189,14 @@ so-status_check_cron:
     - daymonth: '*'
     - month: '*'
     - dayweek: '*'
+
+# This cronjob/script runs a check if the node needs restarted, but should be used for future status checks as well
+common_status_check_cron:
+  cron.present:
+    - name: '/usr/sbin/so-common-status-check > /dev/null 2>&1'
+    - identifier: common_status_check
+    - user: root
+    - minute: '*/10'
 
 remove_post_setup_cron:
   cron.absent:

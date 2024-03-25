@@ -366,6 +366,13 @@ is_feature_enabled() {
 	return 1
 }
 
+read_feat() {
+	if [ -f /opt/so/log/sostatus/lks_enabled ]; then
+		lic_id=$(cat /opt/so/saltstack/local/pillar/soc/license.sls | grep license_id: | awk '{print $2}')
+		echo "$lic_id/$(cat /opt/so/log/sostatus/lks_enabled)/$(cat /opt/so/log/sostatus/fps_enabled)"
+	fi
+}
+
 require_manager() {
 	if is_manager_node; then
 		echo "This is a manager, so we can proceed."
@@ -557,6 +564,14 @@ set_version() {
 
 status () {
     printf "\n=========================================================================\n$(date) | $1\n=========================================================================\n"
+}
+
+sync_options() {
+	set_version
+	set_os
+	salt_minion_count
+	
+	echo "$VERSION/$OS/$(uname -r)/$MINIONCOUNT/$(read_feat)"
 }
 
 systemctl_func() {

@@ -4,15 +4,15 @@
       {
         "dissect": {
                 "field": "real_message",
-                "pattern" : "%{rule.uuid},%{rule.sub_uuid},%{firewall.anchor},%{firewall.tracker_id},%{interface.name},%{rule.reason},%{rule.action},%{network.direction},%{ip.version},%{firewall.sub_message}",
+                "pattern" : "%{rule.uuid},%{rule.sub_uuid},%{firewall.anchor},%{rule.id},%{observer.ingress.interface.name},%{event.reason},%{event.action},%{network.direction},%{ip.version},%{firewall.sub_message}",
                 "on_failure" : [ {"set" : {"field" : "error.message","value" : "{{ _ingest.on_failure_message }}"}}]
         }
      },
      {
         "dissect": {
-                "if": "ctx.ip.version == '4'",
+                "if": "ctx.ip?.version == '4'",
                 "field": "firewall.sub_message",
-                "pattern" : "%{ip.tos},%{ip.ecn},%{ip.ttl},%{ip.id},%{ip.offset},%{ip.flags},%{network.transport_id},%{network.transport},%{data.length},%{source.ip},%{destination.ip},%{ip_sub_msg}",
+                "pattern" : "%{pfsense.ip.tos},%{pfsense.ip.ecn},%{pfsense.ip.ttl},%{pfsense.ip.id},%{pfsense.ip.offset},%{pfsense.ip.flags},%{network.iana_number},%{network.transport},%{network.bytes},%{source.address},%{destination.address},%{ip_sub_msg}",
                 "on_failure" : [ {"set" : {"field" : "error.message","value" : "{{ _ingest.on_failure_message }}"}}]
        }
      },
@@ -20,7 +20,7 @@
         "dissect": {
                 "if": "ctx.ip?.version == '6'",
                 "field": "firewall.sub_message",
-                "pattern" : "%{network.class},%{network.flow_label},%{network.hop_limit},%{network.transport},%{network.transport_id},%{data.length},%{source.ip},%{destination.ip},%{ip_sub_msg}",
+                "pattern" : "%{pfsense.ip.tos},%{pfsense.ip.flow_label},%{network.hop_limit},%{network.transport},%{network.iana_number},%{network.bytes},%{source.address},%{destination.address},%{ip_sub_msg}",
                 "on_failure" : [ {"set" : {"field" : "error.message","value" : "{{ _ingest.on_failure_message }}"}}]
         }
      },
@@ -28,7 +28,7 @@
         "dissect": {
                 "if": "ctx.network?.transport == 'tcp'",
                 "field": "ip_sub_msg",
-                "pattern" : "%{source.port},%{destination.port},%{data.length},%{tcp.flags},",
+                "pattern" : "%{source.port},%{destination.port},%{pfsense.tcp.length},%{pfsense.tcp.flags},",
                 "on_failure" : [ {"set" : {"field" : "error.message","value" : "{{ _ingest.on_failure_message }}"}}]
         }
      },
@@ -36,24 +36,33 @@
         "dissect": {
                 "if": "ctx.network?.transport == 'udp'",
                 "field": "ip_sub_msg",
-                "pattern" : "%{source.port},%{destination.port},%{data.length}",
+                "pattern" : "%{source.port},%{destination.port},%{pfsense.udp.length}",
                 "on_failure" : [ {"set" : {"field" : "error.message","value" : "{{ _ingest.on_failure_message }}"}}]
         }
      },
      {
         "split": {
-                "if": "ctx.ip.version =='6' && ctx.network?.transport == 'Options'",
+                "if": "ctx.ip?.version =='6' && ctx.network?.transport == 'Options'",
                 "field": "ip_sub_msg",
                 "target_field": "ip.options",
                 "separator" : ",",
                 "on_failure" : [ {"set" : {"field" : "error.message","value" : "{{ _ingest.on_failure_message }}"}}]
         }
      },
-     { "set":         { "if": "ctx.network?.transport_id == '0'", "field": "network.transport",        "value": "icmp", "override": true           } },
-     { "community_id": {} },
-     { "set":         { "field": "event.module",	"value": "pfsense",	"override": true	} },
-     { "set":         { "field": "event.dataset",	"value": "firewall",	"override": true	} },
-     { "set":         { "field": "category",	"value": "network",	"override": true	} },
-     { "remove":      { "field": ["real_message", "ip_sub_msg", "firewall.sub_message"],     "ignore_failure": true  } }
+     { "lowercase":   { "field": "network.transport",								"ignore_failure": true			} },
+     { "set":         { "field": "destination.ip",			"value": "{{{destination.address}}}",	"override": true			} },
+     { "set":         { "field": "source.ip",				"value": "{{{source.address}}}",	"override": true			} },
+     { "set":         { "if": "ctx.ip?.version == '4'",			"field": "network.type",		"value": "ipv4", 	"override": true} },
+     { "set":         { "if": "ctx.ip?.version == '6'", 		"field": "network.type",		"value": "ipv6", 	"override": true} },
+     { "set":         { "if": "ctx.network?.direction == 'in'",		"field": "network.direction",		"value": "inbound",	"override": true} },
+     { "set":         { "if": "ctx.network?.direction == 'out'",	"field": "network.direction",		"value": "outbound",	"override": true} },
+     { "set":         { "field": "category",				"value": "network",			"override": true			} },
+     { "set":         { "field": "event.dataset",			"value": "firewall",			"override": true			} },
+     { "set":         { "field": "event.kind",				"value": "event",			"override": true			} },
+     { "set":         { "field": "event.module",			"value": "pfsense",			"override": true			} },
+     { "set":         { "field": "event.provider",			"value": "filterlog",			"override": true			} },
+     { "set":         { "field": "observer.type",			"value": "firewall",			"override": true			} },
+     { "community_id":{																	} },
+     { "remove":      { "field": ["real_message", "ip_sub_msg", "firewall.sub_message"],			"ignore_failure": true			} }
   ]
 }

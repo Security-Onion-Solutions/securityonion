@@ -15,3 +15,12 @@ include:
 {% else %}
   - pcap.disabled
 {% endif %}
+
+# This directory needs to exist regardless of whether STENO is enabled or not, in order for
+# Sensoroni to be able to look at old steno PCAP data
+pcapdir:
+  file.directory:
+    - name: /nsm/pcap
+    - user: 941
+    - group: 941
+    - makedirs: True

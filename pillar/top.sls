@@ -61,13 +61,12 @@ base:
     - elastalert.adv_elastalert
     - backup.soc_backup
     - backup.adv_backup
-    - curator.soc_curator
-    - curator.adv_curator
     - soctopus.soc_soctopus
     - soctopus.adv_soctopus
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
     - kafka.nodes
+    - stig.soc_stig
 
   '*_sensor':
     - healthcheck.sensor
@@ -83,6 +82,8 @@ base:
     - suricata.adv_suricata
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
+    - stig.soc_stig
+    - soc.license
 
   '*_eval':
     - secrets
@@ -114,8 +115,6 @@ base:
     - kibana.adv_kibana
     - strelka.soc_strelka
     - strelka.adv_strelka
-    - curator.soc_curator
-    - curator.adv_curator
     - kratos.soc_kratos
     - kratos.adv_kratos
     - redis.soc_redis
@@ -173,8 +172,6 @@ base:
     - kibana.adv_kibana
     - strelka.soc_strelka
     - strelka.adv_strelka
-    - curator.soc_curator
-    - curator.adv_curator
     - backup.soc_backup
     - backup.adv_backup
     - zeek.soc_zeek
@@ -187,6 +184,7 @@ base:
     - suricata.adv_suricata
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
+    - stig.soc_stig
 
   '*_heavynode':
     - elasticsearch.auth
@@ -195,8 +193,6 @@ base:
     - logstash.adv_logstash
     - elasticsearch.soc_elasticsearch
     - elasticsearch.adv_elasticsearch
-    - curator.soc_curator
-    - curator.adv_curator
     - redis.soc_redis
     - redis.adv_redis
     - zeek.soc_zeek
@@ -231,6 +227,8 @@ base:
     - redis.adv_redis
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
+    - stig.soc_stig
+    - soc.license
 
   '*_receiver':
     - logstash.nodes
@@ -278,8 +276,6 @@ base:
     - soctopus.adv_soctopus
     - kibana.soc_kibana
     - kibana.adv_kibana
-    - curator.soc_curator
-    - curator.adv_curator
     - backup.soc_backup
     - backup.adv_backup
     - kratos.soc_kratos
