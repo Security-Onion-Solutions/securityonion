@@ -67,7 +67,6 @@ base:
     - idstools
     - suricata.manager
     - healthcheck
-    - mysql
     - elasticsearch
     - elastic-fleet-package-registry
     - kibana
@@ -78,8 +77,6 @@ base:
     - curator.disabled
     - elastalert
     - utility
-    - soctopus
-    - playbook
     - elasticfleet
 
   '*_manager and G@saltversion:{{saltversion}}':
@@ -99,7 +96,6 @@ base:
     - backup.config_backup
     - idstools
     - suricata.manager
-    - mysql
     - elasticsearch
     - logstash
     - redis
@@ -108,8 +104,6 @@ base:
     - curator.disabled
     - elastalert
     - utility
-    - soctopus
-    - playbook
     - elasticfleet
     - stig
 
@@ -132,7 +126,6 @@ base:
     - idstools
     - suricata.manager
     - healthcheck
-    - mysql
     - elasticsearch
     - logstash
     - redis
@@ -145,8 +138,6 @@ base:
     - curator.disabled
     - elastalert
     - utility
-    - soctopus
-    - playbook
     - elasticfleet
     - stig
 
@@ -179,7 +170,6 @@ base:
     - backup.config_backup
     - idstools
     - suricata.manager
-    - mysql
     - elasticsearch
     - logstash
     - redis
@@ -188,8 +178,6 @@ base:
     - kibana
     - elastalert
     - utility
-    - soctopus
-    - playbook
     - elasticfleet
     - stig
 

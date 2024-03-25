@@ -155,15 +155,11 @@ if [[ $EXCLUDE_KNOWN_ERRORS == 'Y' ]]; then
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|fail\\(error\\)"              # redis/python generic stack line, rely on other lines for actual error
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|urlerror"                     # idstools connection timeout
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|timeouterror"                 # idstools connection timeout
-    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|forbidden"                    # playbook
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|_ml"                          # Elastic ML errors 
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|context canceled"             # elastic agent during shutdown
-    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|exited with code 128"         # soctopus errors during forced restart by highstate
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|geoip databases update"       # airgap can't update GeoIP DB
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|filenotfounderror"            # bug in 2.4.10 filecheck salt state caused duplicate cronjobs
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|salt-minion-check"            # bug in early 2.4 place Jinja script in non-jinja salt dir causing cron output errors
-    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|generating elastalert config" # playbook expected error
-    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|activerecord"                 # playbook expected error
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|monitoring.metrics"           # known issue with elastic agent casting the field incorrectly if an integer value shows up before a float
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|repodownload.conf"            # known issue with reposync on pre-2.4.20 
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|missing versions record"      # stenographer corrupt index
@@ -211,7 +207,6 @@ RESULT=0
 CONTAINER_IDS=$(docker ps -q)
 exclude_container so-kibana   # kibana error logs are too verbose with large varieties of errors most of which are temporary
 exclude_container so-idstools # ignore due to known issues and noisy logging
-exclude_container so-playbook # ignore due to several playbook known issues
 
 for container_id in $CONTAINER_IDS; do
     container_name=$(docker ps --format json | jq ". | select(.ID==\"$container_id\")|.Names")
