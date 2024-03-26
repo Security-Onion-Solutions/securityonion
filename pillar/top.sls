@@ -43,8 +43,6 @@ base:
     - soc.soc_soc
     - soc.adv_soc
     - soc.license
-    - soctopus.soc_soctopus
-    - soctopus.adv_soctopus
     - kibana.soc_kibana
     - kibana.adv_kibana
     - kratos.soc_kratos
@@ -61,8 +59,6 @@ base:
     - elastalert.adv_elastalert
     - backup.soc_backup
     - backup.adv_backup
-    - soctopus.soc_soctopus
-    - soctopus.adv_soctopus
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
     - stig.soc_stig
@@ -108,8 +104,6 @@ base:
     - soc.soc_soc
     - soc.adv_soc
     - soc.license
-    - soctopus.soc_soctopus
-    - soctopus.adv_soctopus
     - kibana.soc_kibana
     - kibana.adv_kibana
     - strelka.soc_strelka
@@ -165,8 +159,6 @@ base:
     - soc.soc_soc
     - soc.adv_soc
     - soc.license
-    - soctopus.soc_soctopus
-    - soctopus.adv_soctopus
     - kibana.soc_kibana
     - kibana.adv_kibana
     - strelka.soc_strelka
@@ -262,8 +254,6 @@ base:
     - soc.soc_soc
     - soc.adv_soc
     - soc.license
-    - soctopus.soc_soctopus
-    - soctopus.adv_soctopus
     - kibana.soc_kibana
     - kibana.adv_kibana
     - backup.soc_backup
