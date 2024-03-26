@@ -9,7 +9,14 @@
 include:
   - manager.sync_es_users
 
-socdirtest:
+sigmarepodir:
+  file.directory:
+    - name: /opt/so/conf/sigma/repos
+    - user: 939
+    - group: 939
+    - makedirs: True
+
+socdirelastaertrules:
   file.directory:
     - name: /opt/so/rules/elastalert/rules
     - user: 939

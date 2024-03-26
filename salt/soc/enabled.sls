@@ -24,6 +24,7 @@ so-soc:
     - binds:
       - /nsm/rules:/nsm/rules:rw
       - /opt/so/conf/strelka:/opt/sensoroni/yara:rw
+      - /opt/so/conf/sigma:/opt/sensoroni/sigma:rw
       - /opt/so/rules/elastalert/rules:/opt/sensoroni/elastalert:rw
       - /opt/so/conf/soc/fingerprints:/opt/sensoroni/fingerprints:rw
       - /nsm/soc/jobs:/opt/sensoroni/jobs:rw
