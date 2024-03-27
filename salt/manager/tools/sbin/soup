@@ -589,51 +589,54 @@ up_to_2.4.70() {
   crontab -l | grep -v 'so-playbook-sync_cron' | crontab -
   crontab -l | grep -v 'so-playbook-ruleupdate_cron' | crontab -
 
-  # Check for active Elastalert rules
-  active_rules_count=$(find /opt/so/rules/elastalert/playbook/ -type f -name "*.yaml" | wc -l)
+  if grep -A 1 'playbook:'  /opt/so/saltstack/local/pillar/minions/* | grep -q 'enabled: True'; then
+  
+    # Check for active Elastalert rules
+    active_rules_count=$(find /opt/so/rules/elastalert/playbook/ -type f -name "*.yaml" | wc -l)
 
-  if [[ "$active_rules_count" -gt 0 ]]; then
-      # Prompt the user to AGREE if active Elastalert rules found
-      echo
-      echo "$active_rules_count Active Elastalert/Playbook rules found."
-      echo "In preparation for the new Detections module, they will be backed up and then disabled."
-      echo
-      echo "If you would like to proceed, then type AGREE and press ENTER."
-      echo
-      # Read user input
-      read INPUT
-      if [ "${INPUT^^}" != 'AGREE' ]; then exit 0; fi
+    if [[ "$active_rules_count" -gt 0 ]]; then
+        # Prompt the user to AGREE if active Elastalert rules found
+        echo
+        echo "$active_rules_count Active Elastalert/Playbook rules found."
+        echo "In preparation for the new Detections module, they will be backed up and then disabled."
+        echo
+        echo "If you would like to proceed, then type AGREE and press ENTER."
+        echo
+        # Read user input
+        read INPUT
+        if [ "${INPUT^^}" != 'AGREE' ]; then exit 0; fi
 
-      echo "Backing up the Elastalert rules..."
-      rsync -av --stats /opt/so/rules/elastalert/playbook/*.yaml /nsm/backup/detections-migration/elastalert/
+        echo "Backing up the Elastalert rules..."
+        rsync -av --stats /opt/so/rules/elastalert/playbook/*.yaml /nsm/backup/detections-migration/elastalert/
 
-      # Verify that rsync completed successfully
-      if [[ $? -eq 0 ]]; then
-          # Delete the Elastlaert rules
-          rm -f /opt/so/rules/elastalert/playbook/*.yaml
-          echo "Active Elastalert rules have been backed up."
-      else
-          echo "Error: rsync failed to copy the files. Active Elastalert rules have not been backed up."
-          exit 1
-      fi
+        # Verify that rsync completed successfully
+        if [[ $? -eq 0 ]]; then
+            # Delete the Elastlaert rules
+            rm -f /opt/so/rules/elastalert/playbook/*.yaml
+            echo "Active Elastalert rules have been backed up."
+        else
+            echo "Error: rsync failed to copy the files. Active Elastalert rules have not been backed up."
+            exit 1
+        fi
+    fi
+
+    echo
+    echo "Exporting Sigma rules from Playbook..."
+    MYSQLPW=$(awk '/mysql:/ {print $2}' /opt/so/saltstack/local/pillar/secrets.sls)
+
+    docker exec so-mysql sh -c "exec mysql -uroot -p${MYSQLPW} -D playbook -sN -e \"SELECT id, value FROM custom_values WHERE value LIKE '%View Sigma%'\"" | while read -r id value; do
+        echo -e "$value" > "/nsm/backup/detections-migration/sigma/rules/$id.yaml"
+    done
+
+    echo
+    echo "Exporting Sigma Filters from Playbook..."
+    docker exec so-mysql sh -c "exec mysql -uroot -p${MYSQLPW} -D playbook -sN -e \"SELECT issues.subject as title, custom_values.value as filter FROM issues JOIN custom_values ON issues.id = custom_values.customized_id WHERE custom_values.value LIKE '%sofilter%'\"" > /nsm/backup/detections-migration/sigma/custom-filters.txt
+
+    echo
+    echo "Backing up Playbook database..."
+    docker exec so-mysql sh -c "mysqldump -uroot -p${MYSQLPW} --databases playbook > /tmp/playbook-dump"
+    docker cp so-mysql:/tmp/playbook-dump /nsm/backup/detections-migration/sigma/playbook-dump.sql
   fi
-
-  echo
-  echo "Exporting Sigma rules from Playbook..."
-  MYSQLPW=$(lookup_pillar_secret mysql)
-
-  docker exec so-mysql sh -c "exec mysql -uroot -p${MYSQLPW} -D playbook -sN -e \"SELECT id, value FROM custom_values WHERE value LIKE '%View Sigma%'\"" | while read -r id value; do
-      echo -e "$value" > "/nsm/backup/detections-migration/sigma/rules/$id.yaml"
-  done
-
-  echo
-  echo "Exporting Sigma Filters from Playbook..."
-  docker exec so-mysql sh -c "exec mysql -uroot -p${MYSQLPW} -D playbook -sN -e \"SELECT issues.subject as title, custom_values.value as filter FROM issues JOIN custom_values ON issues.id = custom_values.customized_id WHERE custom_values.value LIKE '%sofilter%'\"" > /nsm/backup/detections-migration/sigma/custom-filters.txt
-
-  echo
-  echo "Backing up Playbook database..."
-  docker exec so-mysql sh -c "mysqldump -uroot -p${MYSQLPW} --databases playbook > /tmp/playbook-dump"
-  docker cp so-mysql:/tmp/playbook-dump /nsm/backup/detections-migration/sigma/playbook-dump.sql
 
   echo
   echo "Stopping Playbook services..."
