@@ -207,6 +207,9 @@ RESULT=0
 CONTAINER_IDS=$(docker ps -q)
 exclude_container so-kibana   # kibana error logs are too verbose with large varieties of errors most of which are temporary
 exclude_container so-idstools # ignore due to known issues and noisy logging
+exclude_container so-playbook # Playbook is removed as of 2.4.70, disregard output in stopped containers
+exclude_container so-mysql    # MySQL is removed as of 2.4.70, disregard output in stopped containers
+exclude_container so-soctopus # Soctopus is removed as of 2.4.70, disregard output in stopped containers
 
 for container_id in $CONTAINER_IDS; do
     container_name=$(docker ps --format json | jq ". | select(.ID==\"$container_id\")|.Names")
@@ -224,10 +227,12 @@ exclude_log "kibana.log"   # kibana error logs are too verbose with large variet
 exclude_log "spool"        # disregard zeek analyze logs as this is data specific
 exclude_log "import"       # disregard imported test data the contains error strings
 exclude_log "update.log"   # ignore playbook updates due to several known issues
-exclude_log "playbook.log" # ignore due to several playbook known issues
 exclude_log "cron-cluster-delete.log" # ignore since Curator has been removed
 exclude_log "cron-close.log" # ignore since Curator has been removed
-exclude_log "curator.log" # ignore since Curator has been removed
+exclude_log "curator.log"  # ignore since Curator has been removed
+exclude_log "playbook.log" # Playbook is removed as of 2.4.70, logs may still be on disk
+exclude_log "mysqld.log"   # MySQL is removed as of 2.4.70, logs may still be on disk
+exclude_log "soctopus.log" # Soctopus is removed as of 2.4.70, logs may still be on disk
 
 for log_file in $(cat /tmp/log_check_files); do
     status "Checking log file $log_file"
