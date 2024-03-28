@@ -604,7 +604,7 @@ up_to_2.4.70() {
         echo
         # Read user input
         read INPUT
-        if [ "${INPUT^^}" != 'AGREE' ]; then exit 0; fi
+        if [ "${INPUT^^}" != 'AGREE' ]; then fail "SOUP canceled."; fi
 
         echo "Backing up the Elastalert rules..."
         rsync -av --stats /opt/so/rules/elastalert/playbook/*.yaml /nsm/backup/detections-migration/elastalert/
@@ -615,8 +615,7 @@ up_to_2.4.70() {
             rm -f /opt/so/rules/elastalert/playbook/*.yaml
             echo "Active Elastalert rules have been backed up."
         else
-            echo "Error: rsync failed to copy the files. Active Elastalert rules have not been backed up."
-            exit 1
+            fail "Error: rsync failed to copy the files. Active Elastalert rules have not been backed up."
         fi
     fi
 
@@ -639,14 +638,13 @@ up_to_2.4.70() {
   fi
 
   echo
-  echo "Stopping Playbook services..."
-  so-playbook-stop
-  so-mysql-stop
-  so-soctopus-stop
+  echo "Stopping Playbook services & cleaning up..."
+  docker stop so-playbook 2>/dev/null
+  docker stop so-mysql 2>/dev/null
+  docker stop so-soctopus 2>/dev/null
   sed -i '/so-playbook\|so-soctopus\|so-mysql/d' /opt/so/conf/so-status/so-status.conf
+  rm -f /usr/sbin/so-playbook-* /usr/sbin/so-soctopus-* /usr/sbin/so-mysql-*
 
-
-  # What about cleaning up various so-utilities like so-playbook-restart?
   echo
   echo "Playbook Migration is complete...."
 
