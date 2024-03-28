@@ -639,9 +639,11 @@ up_to_2.4.70() {
 
   echo
   echo "Stopping Playbook services & cleaning up..."
-  docker stop so-playbook 2>/dev/null
-  docker stop so-mysql 2>/dev/null
-  docker stop so-soctopus 2>/dev/null
+  for container in so-playbook so-mysql so-soctopus; do
+      if [ -n "$(docker ps -q -f name=^${container}$)" ]; then
+          docker stop $container
+      fi
+  done
   sed -i '/so-playbook\|so-soctopus\|so-mysql/d' /opt/so/conf/so-status/so-status.conf
   rm -f /usr/sbin/so-playbook-* /usr/sbin/so-soctopus-* /usr/sbin/so-mysql-*
 
