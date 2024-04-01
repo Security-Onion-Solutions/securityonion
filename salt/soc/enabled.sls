@@ -8,6 +8,7 @@
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 {%   from 'docker/docker.map.jinja' import DOCKER %}
 {%   from 'soc/merged.map.jinja' import DOCKER_EXTRA_HOSTS %}
+{%   from 'soc/merged.map.jinja' import SOCMERGED %}
 
 include:
   - soc.config
@@ -31,6 +32,9 @@ so-soc:
       - /nsm/soc/uploads:/nsm/soc/uploads:rw
       - /opt/so/log/soc/:/opt/sensoroni/logs/:rw
       - /opt/so/conf/soc/soc.json:/opt/sensoroni/sensoroni.json:ro
+{% if SOCMERGED.telemetryEnabled and not GLOBALS.airgap %}
+      - /opt/so/conf/soc/analytics.js:/opt/sensoroni/html/js/analytics.js:ro
+{% endif %}
       - /opt/so/conf/soc/motd.md:/opt/sensoroni/html/motd.md:ro
       - /opt/so/conf/soc/banner.md:/opt/sensoroni/html/login/banner.md:ro
       - /opt/so/conf/soc/sigma_so_pipeline.yaml:/opt/sensoroni/sigma_so_pipeline.yaml:ro
@@ -67,6 +71,7 @@ so-soc:
       - file: socdatadir
       - file: soclogdir
       - file: socconfig
+      - file: socanalytics
       - file: socmotd
       - file: socbanner
       - file: soccustom

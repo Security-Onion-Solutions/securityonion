@@ -357,6 +357,7 @@ preupgrade_changes() {
     [[ "$INSTALLEDVERSION" == 2.4.30 ]] && up_to_2.4.40
     [[ "$INSTALLEDVERSION" == 2.4.40 ]] && up_to_2.4.50
     [[ "$INSTALLEDVERSION" == 2.4.50 ]] && up_to_2.4.60
+    [[ "$INSTALLEDVERSION" == 2.4.60 ]] && up_to_2.4.70
     true
 }
 
@@ -373,6 +374,7 @@ postupgrade_changes() {
     [[ "$POSTVERSION" == 2.4.30 ]] && post_to_2.4.40
     [[ "$POSTVERSION"  == 2.4.40 ]] && post_to_2.4.50
     [[ "$POSTVERSION"  == 2.4.50 ]] && post_to_2.4.60
+    [[ "$POSTVERSION"  == 2.4.60 ]] && post_to_2.4.70
     true
 }
 
@@ -433,6 +435,11 @@ post_to_2.4.60() {
   echo "Regenerating Elastic Agent Installers..."
   so-elastic-agent-gen-installers
   POSTVERSION=2.4.60
+}
+
+post_to_2.4.70() {
+  echo "Nothing to apply"
+  POSTVERSION=2.4.70
 }
 
 repo_sync() {
@@ -572,6 +579,41 @@ up_to_2.4.60() {
   chown socore:socore /opt/so/saltstack/local/salt/suricata/classification
 
   INSTALLEDVERSION=2.4.60
+}
+
+up_to_2.4.70() {
+  if [[ -z $UNATTENDED && $is_airgap -ne 0 ]]; then
+    cat << ASSIST_EOF
+
+--------------- SOC Telemetry ---------------
+
+The Security Onion development team could use your help! Enabling SOC
+Telemetry will help the team understand which UI features are being
+used and enables informed prioritization of future development.
+
+Adjust this setting at anytime via the SOC Configuration screen.
+
+For more information visit https://docs.securityonion.net/telemetry.rst.
+
+ASSIST_EOF
+
+    echo -n "Continue the upgrade with SOC Telemetry enabled [Y/n]? "
+  
+    read -r input
+    input=$(echo "${input,,}" | xargs echo -n)
+    echo ""
+    if [[ ${#input} -eq 0 || "$input" == "yes" || "$input" == "y" || "$input" == "yy" ]]; then
+      echo "Thank you for helping improve Security Onion!"
+    else
+      if so-yaml.py replace /opt/so/saltstack/local/pillar/soc/soc_soc.sls soc.telemetryEnabled false; then
+        echo "Disabled SOC Telemetry."
+      else
+        fail "Failed to disable SOC Telemetry; aborting."
+      fi
+    fi
+    echo ""
+  fi
+  INSTALLEDVERSION=2.4.70
 }
 
 determine_elastic_agent_upgrade() {
