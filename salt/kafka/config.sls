@@ -16,7 +16,7 @@
 {% set nodes = salt['pillar.get']('kafka:nodes', {}) %}
 {% set combined = [] %}
 {% for hostname, data in nodes.items() %}
-  {% do combined.append(data.nodeid ~ "@" ~ hostname) %}
+  {% do combined.append(data.nodeid ~ "@" ~ hostname ~ ":9093") %}
 {% endfor %}
 {% set kraft_controller_quorum_voters = ','.join(combined) %}
 
@@ -55,6 +55,15 @@ kafka_sbin_tools:
     - group: 960
     - file_mode: 755 #}
 
+kafka_sbin_jinja_tools:
+  file.recurse:
+    - name: /usr/sbin
+    - source: salt://kafka/tools/sbin_jinja
+    - user: 960
+    - group: 960
+    - file_mode: 755
+    - template: jinja
+
 kakfa_log_dir:
   file.directory:
     - name: /opt/so/log/kafka
@@ -69,11 +78,10 @@ kafka_data_dir:
     - group: 960
     - makedirs: True
 
-{# When docker container is created an added to registry. Update so-kafka-generate-keystore script #}
 kafka_keystore_script:
   cmd.script:
     - source: salt://kafka/tools/sbin_jinja/so-kafka-generate-keystore
-    - tempalte: jinja
+    - template: jinja
     - cwd: /opt/so
     - defaults:
         GLOBALS: {{ GLOBALS }}
