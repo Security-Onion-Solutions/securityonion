@@ -7,6 +7,7 @@
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 {%   from 'docker/docker.map.jinja' import DOCKER %}
+{%   set KAFKANODES =  salt['pillar.get']('kafka:nodes', {}) %}
 
 include:
   - kafka.sostatus
@@ -15,7 +16,7 @@ include:
 
 so-kafka:
   docker_container.running:
-    - image: so-kafka
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-kafka:{{ GLOBALS.so_version }}
     - hostname: so-kafka
     - name: so-kafka
     - networks:
