@@ -106,6 +106,7 @@ base:
     - utility
     - elasticfleet
     - stig
+    - kafka
 
   '*_standalone and G@saltversion:{{saltversion}}':
     - match: compound
