@@ -561,7 +561,7 @@ soc:
         - process.executable
         - user.name
         - event.dataset
-      ':strelka:file':
+      ':strelka:':
         - soc_timestamp
         - file.name
         - file.size
@@ -570,6 +570,15 @@ soc:
         - file.mime_type
         - log.id.fuid
         - event.dataset
+      ':strelka:file':
+        - soc_timestamp
+        - file.name
+        - file.size
+        - hash.md5
+        - file.source
+        - file.mime_type
+        - log.id.fuid
+        - event.dataset  
       ':suricata:':
         - soc_timestamp
         - source.ip
@@ -1200,6 +1209,17 @@ soc:
         -  soc_timestamp
         -  event.dataset
         -  message
+      ':playbook:':
+        - soc_timestamp
+        - rule.name
+        - event.severity_label
+        - event_data.event.dataset
+        - event_data.source.ip
+        - event_data.source.port
+        - event_data.destination.host
+        - event_data.destination.port
+        - event_data.process.executable
+        - event_data.process.pid
     server:
       bindAddress: 0.0.0.0:9822
       baseUrl: /
@@ -1876,11 +1896,22 @@ soc:
               - soc_timestamp
               - rule.name
               - event.severity_label
-              - event_data.event.module
-              - event_data.event.category
+              - event_data.event.dataset
+              - event_data.source.ip
+              - event_data.source.port
+              - event_data.destination.host
+              - event_data.destination.port
               - event_data.process.executable
-              - event_data.process.pid
-              - event_data.winlog.computer_name
+              - event_data.process.pid    
+            ':strelka:':
+              - soc_timestamp
+              - file.name
+              - file.size
+              - hash.md5
+              - file.source
+              - file.mime_type
+              - log.id.fuid
+              - event.dataset
           queryBaseFilter: tags:alert
           queryToggleFilters:
             - name: acknowledged
@@ -2033,6 +2064,7 @@ soc:
               - so_detection.severity
               - so_detection.language
               - so_detection.ruleset
+              - soc_timestamp
           queries:
             - name: "All Detections"
               query: "_id:*"
@@ -2050,6 +2082,8 @@ soc:
               query: 'so_detection.language:sigma AND so_detection.content: "*product: windows*"'
             - name: "Detection Type - Yara (Strelka)"
               query: "so_detection.language:yara"
+            - name: "Security Onion - Grid Detections"
+              query: "so_detection.ruleset:securityonion-resources"
         detection:
           presets:
             severity:
