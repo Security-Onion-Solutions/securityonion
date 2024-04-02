@@ -664,6 +664,128 @@ elastickeyperms:
 
 {%- endif %}
 
+# Roles will need to be modified. Below is just for testing encrypted kafka pipelines
+# Remove so-manager. Just inplace for testing
+{% if grains['role'] in ['so-manager', 'so-kafkanode', 'so-searchnode'] %}
+# Create a cert for Redis encryption
+kafka_key:
+  x509.private_key_managed:
+    - name: /etc/pki/kafka.key
+    - keysize: 4096
+    - backup: True
+    - new: True
+    {% if salt['file.file_exists']('/etc/pki/kafka.key') -%}
+    - prereq:
+      - x509: /etc/pki/kafka.crt
+    {%- endif %}
+    - retry:
+        attempts: 5
+        interval: 30
+
+kafka_crt:
+  x509.certificate_managed:
+    - name: /etc/pki/kafka.crt
+    - ca_server: {{ ca_server }}
+    - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
+    - signing_policy: elasticfleet
+    - private_key: /etc/pki/kafka.key
+    - CN: {{ GLOBALS.hostname }}
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+    - timeout: 30
+    - retry:
+        attempts: 5
+        interval: 30
+  cmd.run:
+    - name: "/usr/bin/openssl pkcs12 -inkey /etc/pki/kafka.key -in /etc/pki/kafka.crt -export -out /etc/pki/kafka.p12 -nodes -passout pass:changeit"
+    - onchanges:
+      - x509: /etc/pki/kafka.key
+
+# Kafka needs a keystore so just creating a new key / cert for that purpose
+etc_kafka_logstash_key:
+  x509.private_key_managed:
+    - name: /etc/pki/kafka-logstash.key
+    - keysize: 4096
+    - backup: True
+    - new: True
+    {% if salt['file.file_exists']('/etc/pki/kakfa-logstash.key') -%}
+    - prereq:
+      - x509: etc_kafka_logstash_crt
+    {%- endif %}
+    - retry:
+        attempts: 5
+        interval: 30
+
+etc_kafka_logstash_crt:
+  x509.certificate_managed:
+    - name: /etc/pki/kafka-logstash.crt
+    - ca_server: {{ ca_server }}
+    - signing_policy: elasticfleet
+    - private_key: /etc/pki/kafka-logstash.key
+    - CN: {{ GLOBALS.hostname }}
+    - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+    - timeout: 30
+    - retry:
+        attempts: 5
+        interval: 30
+  cmd.run:
+    - name: "/usr/bin/openssl pkcs12 -inkey /etc/pki/kafka-logstash.key -in /etc/pki/kafka-logstash.crt -export -out /etc/pki/kafka-logstash.p12 -nodes -passout pass:"
+    - onchanges:
+      - x509: etc_kafka_logstash_key
+
+kafka_key_perms:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/kafka.key
+    - mode: 640
+    - user: 960
+    - group: 939
+
+kafka_crt_perms:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/kafka.crt
+    - mode: 640
+    - user: 960
+    - group: 939
+
+kafka_logstash_cert_perms:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/kafka-logstash.crt
+    - mode: 640
+    - user: 960
+    - group: 939
+
+kafka_logstash_key_perms:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/kafka-logstash.key
+    - mode: 640
+    - user: 960
+    - group: 939
+
+kafka_logstash_keystore_perms:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/kafka-logstash.p12
+    - mode: 640
+    - user: 960
+    - group: 939
+
+kafka_keystore_perms:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/kafka.p12
+    - mode: 640
+    - user: 960
+    - group: 939
+
+{% endif %}
 {% else %}
 
 {{sls}}_state_not_allowed:

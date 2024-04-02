@@ -1115,6 +1115,7 @@ generate_passwords(){
   REDISPASS=$(get_random_value)
   SOCSRVKEY=$(get_random_value 64)
   IMPORTPASS=$(get_random_value)
+  KAFKACLUSTERID=$(get_random_value 22)
 }
 
 generate_interface_vars() {
@@ -1142,7 +1143,7 @@ get_redirect() {
 get_minion_type() {
 	local minion_type
 	case "$install_type" in
-		'EVAL' | 'MANAGERSEARCH' | 'MANAGER' | 'SENSOR' | 'HEAVYNODE' | 'SEARCHNODE' | 'FLEET' | 'IDH' | 'STANDALONE' | 'IMPORT' | 'RECEIVER' | 'DESKTOP')
+		'EVAL' | 'MANAGERSEARCH' | 'MANAGER' | 'SENSOR' | 'HEAVYNODE' | 'SEARCHNODE' | 'FLEET' | 'IDH' | 'STANDALONE' | 'IMPORT' | 'RECEIVER' | 'DESKTOP' | 'KAFKANODE')
 			minion_type=$(echo "$install_type" | tr '[:upper:]' '[:lower:]')
 			;;
 	esac
@@ -1500,6 +1501,8 @@ process_installtype() {
 		is_import=true
 	elif [ "$install_type" = 'RECEIVER' ]; then
 		is_receiver=true
+	elif [ "$install_type" = 'KAFKANODE' ]; then
+		is_kafka=true
 	elif [ "$install_type" = 'DESKTOP' ]; then
 		is_desktop=true
 	fi
@@ -1941,7 +1944,8 @@ secrets_pillar(){
 	printf '%s\n'\
 		"secrets:"\
 		"  import_pass: $IMPORTPASS"\
-		"  influx_pass: $INFLUXPASS" > $local_salt_dir/pillar/secrets.sls
+		"  influx_pass: $INFLUXPASS"\
+		"  kafka_cluster_id: $KAFKACLUSTERID" > $local_salt_dir/pillar/secrets.sls
   fi
 }
 
