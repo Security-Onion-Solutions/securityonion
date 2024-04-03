@@ -702,27 +702,26 @@ kafka_crt:
     - onchanges:
       - x509: /etc/pki/kafka.key
 
-# Kafka needs a keystore so just creating a new key / cert for that purpose
-etc_kafka_logstash_key:
+elasticfleet_kafka_key:
   x509.private_key_managed:
-    - name: /etc/pki/kafka-logstash.key
+    - name: /etc/pki/elasticfleet-kafka.keyn
     - keysize: 4096
     - backup: True
     - new: True
-    {% if salt['file.file_exists']('/etc/pki/kakfa-logstash.key') -%}
+    {% if salt['file.file_exists']('/etc/pki/elasticfleet-kafka.key') -%}
     - prereq:
-      - x509: etc_kafka_logstash_crt
+      - x509: elasticfleet_kafka_crt
     {%- endif %}
     - retry:
         attempts: 5
         interval: 30
 
-etc_kafka_logstash_crt:
+elasticfleet_kafka_crt:
   x509.certificate_managed:
-    - name: /etc/pki/kafka-logstash.crt
+    - name: /etc/pki/elasticfleet-kafka.crt
     - ca_server: {{ ca_server }}
     - signing_policy: elasticfleet
-    - private_key: /etc/pki/kafka-logstash.key
+    - private_key: /etc/pki/elasticfleet-kafka.key
     - CN: {{ GLOBALS.hostname }}
     - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
     - days_remaining: 0
@@ -732,10 +731,6 @@ etc_kafka_logstash_crt:
     - retry:
         attempts: 5
         interval: 30
-  cmd.run:
-    - name: "/usr/bin/openssl pkcs12 -inkey /etc/pki/kafka-logstash.key -in /etc/pki/kafka-logstash.crt -export -out /etc/pki/kafka-logstash.p12 -nodes -passout pass:"
-    - onchanges:
-      - x509: etc_kafka_logstash_key
 
 kafka_key_perms:
   file.managed:
@@ -756,7 +751,7 @@ kafka_crt_perms:
 kafka_logstash_cert_perms:
   file.managed:
     - replace: False
-    - name: /etc/pki/kafka-logstash.crt
+    - name: /etc/pki/elasticfleet-kafka.crt
     - mode: 640
     - user: 960
     - group: 939
@@ -764,27 +759,10 @@ kafka_logstash_cert_perms:
 kafka_logstash_key_perms:
   file.managed:
     - replace: False
-    - name: /etc/pki/kafka-logstash.key
+    - name: /etc/pki/elasticfleet-kafka.key
     - mode: 640
     - user: 960
     - group: 939
-
-kafka_logstash_keystore_perms:
-  file.managed:
-    - replace: False
-    - name: /etc/pki/kafka-logstash.p12
-    - mode: 640
-    - user: 960
-    - group: 939
-
-kafka_keystore_perms:
-  file.managed:
-    - replace: False
-    - name: /etc/pki/kafka.p12
-    - mode: 640
-    - user: 960
-    - group: 939
-
 {% endif %}
 {% else %}
 
