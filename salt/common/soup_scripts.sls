@@ -68,3 +68,10 @@ copy_so-firewall_sbin:
     - source: {{UPDATE_DIR}}/salt/manager/tools/sbin/so-firewall
     - force: True
     - preserve: True
+
+copy_so-yaml_sbin:
+  file.copy:
+    - name: /usr/sbin/so-yaml.py
+    - source: {{UPDATE_DIR}}/salt/manager/tools/sbin/so-yaml.py
+    - force: True
+    - preserve: True
