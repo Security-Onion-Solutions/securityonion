@@ -1656,9 +1656,12 @@ soc:
             - name: Overview
               description: Overview of all events
               query: '* | groupby event.category | groupby -sankey event.category event.module | groupby event.module | groupby -sankey event.module event.dataset | groupby event.dataset | groupby observer.name | groupby host.name | groupby source.ip | groupby destination.ip | groupby destination.port'
-            - name: SOC Auth
-              description: SOC (Security Onion Console) authentication logs
+            - name: SOC Logins
+              description: SOC (Security Onion Console) logins
               query: 'event.dataset:kratos.audit AND msg:*authenticated* | groupby http_request.headers.x-real-ip | groupby -sankey http_request.headers.x-real-ip identity_id | groupby identity_id | groupby http_request.headers.user-agent'
+            - name: SOC Login Failures
+              description: SOC (Security Onion Console) login failures
+              query: 'event.dataset:kratos.audit AND msg:*Encountered*self-service*login*error* | groupby http_request.headers.x-real-ip | groupby -sankey http_request.headers.x-real-ip http_request.headers.user-agent | groupby http_request.headers.user-agent'
             - name: Elastalerts
               description: Elastalert logs
               query: '_index: "*:elastalert*" | groupby rule_name | groupby alert_info.type'
