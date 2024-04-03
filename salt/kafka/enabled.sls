@@ -23,6 +23,8 @@ so-kafka:
       - sobridge:
         - ipv4_address: {{ DOCKER.containers['so-kafka'].ip }}
     - user: kafka
+    - environment:
+      - KAFKA_HEAP_OPTS=-Xmx2G -Xms1G
     - extra_hosts:
     {% for node in KAFKANODES %}
       - {{ node }}:{{ KAFKANODES[node].ip }}
