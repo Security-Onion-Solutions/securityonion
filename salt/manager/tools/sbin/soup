@@ -229,7 +229,7 @@ check_local_mods() {
 # {% endraw %}
 
 check_pillar_items() {
-  local pillar_output=$(salt-call pillar.items --out=json)
+  local pillar_output=$(salt-call pillar.items -lerror --out=json)
 
   cond=$(jq '.local | has("_errors")' <<< "$pillar_output")
   if [[ "$cond" == "true" ]]; then
@@ -892,7 +892,7 @@ main() {
   echo ""
   require_manager
 
-  check_pillar_items > /dev/null
+  check_pillar_items
 
   echo "Checking to see if this is an airgap install."
   echo ""
