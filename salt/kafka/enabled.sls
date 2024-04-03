@@ -23,6 +23,15 @@ so-kafka:
       - sobridge:
         - ipv4_address: {{ DOCKER.containers['so-kafka'].ip }}
     - user: kafka
+    - extra_hosts:
+    {% for node in KAFKANODES %}
+      - {{ node }}:{{ KAFKANODES[node].ip }}
+    {% endfor %}
+    {% if DOCKER.containers['so-kafka'].extra_hosts %}
+    {%   for XTRAHOST in DOCKER.containers['so-kafka'].extra_hosts %}
+      - {{ XTRAHOST }}
+    {%   endfor %}
+    {% endif %}
     - port_bindings:
       {% for BINDING in DOCKER.containers['so-kafka'].port_bindings %}
       - {{ BINDING }}
