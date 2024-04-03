@@ -63,6 +63,8 @@ kafka_sbin_jinja_tools:
     - group: 960
     - file_mode: 755
     - template: jinja
+    - defaults:
+        GLOBALS: {{ GLOBALS }}
 
 kakfa_log_dir:
   file.directory:
@@ -79,12 +81,9 @@ kafka_data_dir:
     - makedirs: True
 
 kafka_keystore_script:
-  cmd.script:
-    - source: salt://kafka/tools/sbin_jinja/so-kafka-generate-keystore
-    - template: jinja
+  cmd.run:
+    - name: /usr/sbin/so-kafka-generate-keystore
     - cwd: /opt/so
-    - defaults:
-        GLOBALS: {{ GLOBALS }}
 
 kafka_kraft_server_properties:
   file.managed:
