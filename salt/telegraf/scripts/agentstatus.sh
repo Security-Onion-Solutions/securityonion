@@ -10,7 +10,7 @@
 # if this script isn't already running
 if [[ ! "`pidof -x $(basename $0) -o %PPID`" ]]; then
 
-    LOGFILE=$(/var/log/agents/agentstatus.log)
+    LOGFILE=/var/log/agents/agentstatus.log
     ONLINE=$(cat $LOGFILE | grep -wF online | awk '{print $2}' | tr -d ',')
     ERROR=$(cat $LOGFILE | grep -wF error | awk '{print $2}' | tr -d ',')
     INACTIVE=$(cat $LOGFILE | grep -wF inactive | awk '{print $2}' | tr -d ',')
