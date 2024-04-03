@@ -249,8 +249,11 @@ get_random_value() {
 }
 
 get_agent_count() {
-
-	AGENTCOUNT=$(/usr/sbin/so-elasticagent-status | grep -wF active | awk '{print $2}')
+	if [ -f /opt/so/log/agents/agentstatus.log ]; then
+		AGENTCOUNT=$(cat /opt/so/log/agents/agentstatus.log | grep -wF active | awk '{print $2}')
+	else
+		AGENTCOUNT=0
+	fi
 }
 
 gpg_rpm_import() {
