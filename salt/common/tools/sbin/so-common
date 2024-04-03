@@ -248,6 +248,11 @@ get_random_value() {
 	head -c 5000 /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w $length | head -n 1
 }
 
+get_agent_count() {
+
+	AGENTCOUNT=$(/usr/sbin/so-elasticagent-status | grep -wF active | awk '{print $2}')
+}
+
 gpg_rpm_import() {
 	if [[ $is_oracle ]]; then
 	    if [[ "$WHATWOULDYOUSAYYAHDOHERE" == "setup" ]]; then
@@ -570,8 +575,9 @@ sync_options() {
 	set_version
 	set_os
 	salt_minion_count
+	get_agent_count
 	
-	echo "$VERSION/$OS/$(uname -r)/$MINIONCOUNT/$(read_feat)"
+	echo "$VERSION/$OS/$(uname -r)/$MINIONCOUNT:$AGENTCOUNT/$(read_feat)"
 }
 
 systemctl_func() {
