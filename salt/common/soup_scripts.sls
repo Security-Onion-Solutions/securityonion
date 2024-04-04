@@ -1,11 +1,11 @@
 {% if '2.4' in salt['cp.get_file_str']('/etc/soversion') %}
 
-{% import_yaml '/opt/so/saltstack/local/pillar/global/soc_global.sls' as SOC_GLOBAL %}
-{% if SOC_GLOBAL.global.airgap %}
-{%   set UPDATE_DIR='/tmp/soagupdate/SecurityOnion' %}
-{% else %}
-{%   set UPDATE_DIR='/tmp/sogh/securityonion' %}
-{% endif %}
+{%   import_yaml '/opt/so/saltstack/local/pillar/global/soc_global.sls' as SOC_GLOBAL %}
+{%   if SOC_GLOBAL.global.airgap %}
+{%     set UPDATE_DIR='/tmp/soagupdate/SecurityOnion' %}
+{%   else %}
+{%     set UPDATE_DIR='/tmp/sogh/securityonion' %}
+{%   endif %}
 
 remove_common_soup:
   file.absent:
