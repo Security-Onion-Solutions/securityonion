@@ -704,7 +704,7 @@ kafka_crt:
 
 elasticfleet_kafka_key:
   x509.private_key_managed:
-    - name: /etc/pki/elasticfleet-kafka.keyn
+    - name: /etc/pki/elasticfleet-kafka.key
     - keysize: 4096
     - backup: True
     - new: True

@@ -43,6 +43,8 @@ so-kafka:
       - /opt/so/conf/ca/cacerts:/etc/pki/java/sos/cacerts
       - /nsm/kafka/data/:/nsm/kafka/data/:rw
       - /opt/so/conf/kafka/server.properties:/kafka/config/kraft/server.properties
+    - watch:
+      - file: kafka_kraft_server_properties
 
 delete_so-kafka_so-status.disabled:
   file.uncomment:
