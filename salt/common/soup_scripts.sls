@@ -1,9 +1,11 @@
-{% import_yaml '/opt/so/saltstack/local/pillar/global/soc_global.sls' as SOC_GLOBAL %}
-{% if SOC_GLOBAL.global.airgap %}
-{%   set UPDATE_DIR='/tmp/soagupdate/SecurityOnion' %}
-{% else %}
-{%   set UPDATE_DIR='/tmp/sogh/securityonion' %}
-{% endif %}
+{% if '2.4' in salt['cp.get_file_str']('/etc/soversion') %}
+
+{%   import_yaml '/opt/so/saltstack/local/pillar/global/soc_global.sls' as SOC_GLOBAL %}
+{%   if SOC_GLOBAL.global.airgap %}
+{%     set UPDATE_DIR='/tmp/soagupdate/SecurityOnion' %}
+{%   else %}
+{%     set UPDATE_DIR='/tmp/sogh/securityonion' %}
+{%   endif %}
 
 remove_common_soup:
   file.absent:
@@ -75,3 +77,12 @@ copy_so-yaml_sbin:
     - source: {{UPDATE_DIR}}/salt/manager/tools/sbin/so-yaml.py
     - force: True
     - preserve: True
+
+{% else %}
+fix_23_soup_sbin:
+  cmd.run:
+    - name: curl -s -f -o /usr/sbin/soup https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/2.3/main/salt/common/tools/sbin/soup
+fix_23_soup_salt:
+  cmd.run:
+    - name: curl -s -f -o /opt/so/saltstack/defalt/salt/common/tools/sbin/soup https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/2.3/main/salt/common/tools/sbin/soup
+{% endif %}
