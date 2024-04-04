@@ -1,5 +1,6 @@
 soc:
   enabled: False
+  telemetryEnabled: true
   config:
     logFilename: /opt/sensoroni/logs/sensoroni-server.log
     logLevel: info
@@ -70,13 +71,13 @@ soc:
         icon: fa-person-running
         target: ''
         links:
-          - '/#/hunt?q=(process.entity_id:"{:process.entity_id}") | groupby event.dataset | groupby -sankey event.dataset event.action | groupby event.action | groupby process.name | groupby host.name user.name | groupby source.ip source.port destination.ip destination.port | groupby dns.question.name | groupby dns.answers.data | groupby file.path | groupby registry.path | groupby dll.path'
+          - '/#/hunt?q=(process.entity_id:"{:process.entity_id}") | groupby event.dataset | groupby -sankey event.dataset event.action | groupby event.action | groupby process.name | groupby process.command_line | groupby host.name user.name | groupby source.ip source.port destination.ip destination.port | groupby dns.question.name | groupby dns.answers.data | groupby file.path | groupby registry.path | groupby dll.path'
       - name: actionProcessAncestors
         description: actionProcessAncestorsHelp
         icon: fa-people-roof
         target: ''
         links:
-          - '/#/hunt?q=(process.entity_id:"{:process.entity_id}" OR process.entity_id:"{:process.Ext.ancestry|processAncestors}") | groupby event.dataset | groupby -sankey event.dataset event.action | groupby event.action | groupby process.parent.name | groupby -sankey process.parent.name process.name | groupby process.name | groupby host.name user.name | groupby source.ip source.port destination.ip destination.port | groupby dns.question.name | groupby dns.answers.data | groupby file.path | groupby registry.path | groupby dll.path'
+          - '/#/hunt?q=(process.entity_id:"{:process.entity_id}" OR process.entity_id:"{:process.Ext.ancestry|processAncestors}") | groupby event.dataset | groupby -sankey event.dataset event.action | groupby event.action | groupby process.parent.name | groupby -sankey process.parent.name process.name | groupby process.name | groupby process.command_line | groupby host.name user.name | groupby source.ip source.port destination.ip destination.port | groupby dns.question.name | groupby dns.answers.data | groupby file.path | groupby registry.path | groupby dll.path'
     eventFields:
       default:
         - soc_timestamp
@@ -87,12 +88,13 @@ soc:
         - log.id.uid
         - network.community_id
         - event.dataset
-      ':kratos:audit':
+      ':kratos:':
         - soc_timestamp
         - http_request.headers.x-real-ip
         - identity_id
         - http_request.headers.user-agent
         - event.dataset
+        - msg
       '::conn':
         - soc_timestamp
         - source.ip
@@ -457,7 +459,7 @@ soc:
         - ssh.server
         - log.id.uid
         - event.dataset
-      '::ssl':
+      ':suricata:ssl':
         - soc_timestamp
         - source.ip
         - source.port
@@ -465,7 +467,27 @@ soc:
         - destination.port
         - ssl.server_name
         - ssl.certificate.subject
+        - ssl.version
+        - log.id.uid
+        - event.dataset
+      ':zeek:ssl':
+        - soc_timestamp
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - ssl.server_name
         - ssl.validation_status
+        - ssl.version
+        - log.id.uid
+        - event.dataset
+      '::ssl':
+        - soc_timestamp
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - ssl.server_name
         - ssl.version
         - log.id.uid
         - event.dataset
@@ -541,7 +563,7 @@ soc:
         - process.executable
         - user.name
         - event.dataset
-      ':strelka:file':
+      ':strelka:':
         - soc_timestamp
         - file.name
         - file.size
@@ -550,6 +572,15 @@ soc:
         - file.mime_type
         - log.id.fuid
         - event.dataset
+      ':strelka:file':
+        - soc_timestamp
+        - file.name
+        - file.size
+        - hash.md5
+        - file.source
+        - file.mime_type
+        - log.id.fuid
+        - event.dataset  
       ':suricata:':
         - soc_timestamp
         - source.ip
@@ -1180,6 +1211,17 @@ soc:
         -  soc_timestamp
         -  event.dataset
         -  message
+      ':playbook:':
+        - soc_timestamp
+        - rule.name
+        - event.severity_label
+        - event_data.event.dataset
+        - event_data.source.ip
+        - event_data.source.port
+        - event_data.destination.host
+        - event_data.destination.port
+        - event_data.process.executable
+        - event_data.process.pid
     server:
       bindAddress: 0.0.0.0:9822
       baseUrl: /
@@ -1196,11 +1238,16 @@ soc:
         elastalertengine:
           allowRegex: ''
           autoUpdateEnabled: true
+          autoEnabledSigmaRules:
+            - core+critical
+            - securityonion-resources+critical
+            - securityonion-resources+high
           communityRulesImportFrequencySeconds: 86400
           denyRegex: ''
           elastAlertRulesFolder: /opt/sensoroni/elastalert
           reposFolder: /opt/sensoroni/sigma/repos
           rulesFingerprintFile: /opt/sensoroni/fingerprints/sigma.fingerprint
+          stateFilePath: /opt/so/conf/soc/fingerprints/elastalertengine.state
           rulesRepos:
           - repo: https://github.com/Security-Onion-Solutions/securityonion-resources
             license: Elastic-2.0
@@ -1261,6 +1308,7 @@ soc:
           - repo: https://github.com/Security-Onion-Solutions/securityonion-yara
             license: DRL
           yaraRulesFolder: /opt/sensoroni/yara/rules
+          stateFilePath: /opt/so/conf/soc/fingerprints/strelkaengine.state
         suricataengine:
           allowRegex: ''
           autoUpdateEnabled: true
@@ -1268,6 +1316,7 @@ soc:
           communityRulesFile: /nsm/rules/suricata/emerging-all.rules
           denyRegex: ''
           rulesFingerprintFile: /opt/sensoroni/fingerprints/emerging-all.fingerprint
+          stateFilePath: /opt/so/conf/soc/fingerprints/suricataengine.state
       client:
         enableReverseLookup: false
         docsUrl: /docs/
@@ -1612,9 +1661,12 @@ soc:
             - name: Overview
               description: Overview of all events
               query: '* | groupby event.category | groupby -sankey event.category event.module | groupby event.module | groupby -sankey event.module event.dataset | groupby event.dataset | groupby observer.name | groupby host.name | groupby source.ip | groupby destination.ip | groupby destination.port'
-            - name: SOC Auth
-              description: SOC (Security Onion Console) authentication logs
+            - name: SOC Logins
+              description: SOC (Security Onion Console) logins
               query: 'event.dataset:kratos.audit AND msg:*authenticated* | groupby http_request.headers.x-real-ip | groupby -sankey http_request.headers.x-real-ip identity_id | groupby identity_id | groupby http_request.headers.user-agent'
+            - name: SOC Login Failures
+              description: SOC (Security Onion Console) login failures
+              query: 'event.dataset:kratos.audit AND msg:*Encountered*self-service*login*error* | groupby http_request.headers.x-real-ip | groupby -sankey http_request.headers.x-real-ip http_request.headers.user-agent | groupby http_request.headers.user-agent'
             - name: Elastalerts
               description: Elastalert logs
               query: '_index: "*:elastalert*" | groupby rule_name | groupby alert_info.type'
@@ -1740,7 +1792,13 @@ soc:
               query: 'tags:ssh | groupby ssh.client | groupby -sankey ssh.client source.ip | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby ssh.server | groupby ssh.version | groupby ssh.hassh_version | groupby ssh.direction | groupby source_geo.organization_name | groupby destination_geo.organization_name'
             - name: SSL
               description: SSL/TLS network metadata
-              query: 'tags:ssl | groupby ssl.version | groupby ssl.validation_status | groupby -sankey ssl.validation_status ssl.server_name | groupby ssl.server_name | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name | groupby ssl.certificate.issuer | groupby ssl.certificate.subject'
+              query: 'tags:ssl | groupby ssl.version | groupby -sankey ssl.version ssl.server_name | groupby ssl.server_name | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
+            - name: SSL - Suricata
+              description: SSL/TLS network metadata from Suricata
+              query: 'event.dataset:suricata.ssl | groupby ssl.version | groupby -sankey ssl.version ssl.server_name | groupby ssl.server_name | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name | groupby ssl.certificate.issuer | groupby ssl.certificate.subject'
+            - name: SSL - Zeek
+              description: SSL/TLS network metadata from Zeek
+              query: 'event.dataset:zeek.ssl | groupby ssl.version | groupby ssl.validation_status | groupby -sankey ssl.validation_status ssl.server_name | groupby ssl.server_name | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
             - name: STUN
               description: STUN (Session Traversal Utilities for NAT) network metadata
               query: 'tags:stun* | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby destination.geo.country_name | groupby event.dataset'
@@ -1850,11 +1908,22 @@ soc:
               - soc_timestamp
               - rule.name
               - event.severity_label
-              - event_data.event.module
-              - event_data.event.category
+              - event_data.event.dataset
+              - event_data.source.ip
+              - event_data.source.port
+              - event_data.destination.host
+              - event_data.destination.port
               - event_data.process.executable
-              - event_data.process.pid
-              - event_data.winlog.computer_name
+              - event_data.process.pid    
+            ':strelka:':
+              - soc_timestamp
+              - file.name
+              - file.size
+              - hash.md5
+              - file.source
+              - file.mime_type
+              - log.id.fuid
+              - event.dataset
           queryBaseFilter: tags:alert
           queryToggleFilters:
             - name: acknowledged
@@ -1993,6 +2062,13 @@ soc:
           mostRecentlyUsedLimit: 5
           safeStringMaxLength: 100
           queryBaseFilter: '_index:"*:so-detection" AND so_kind:detection'
+          presets:
+            manualSync:
+              customEnabled: false
+              labels:
+              - Suricata
+              - Strelka
+              - ElastAlert
           eventFields:
             default:
               - so_detection.title
@@ -2000,6 +2076,7 @@ soc:
               - so_detection.severity
               - so_detection.language
               - so_detection.ruleset
+              - soc_timestamp
           queries:
             - name: "All Detections"
               query: "_id:*"
@@ -2017,6 +2094,8 @@ soc:
               query: 'so_detection.language:sigma AND so_detection.content: "*product: windows*"'
             - name: "Detection Type - Yara (Strelka)"
               query: "so_detection.language:yara"
+            - name: "Security Onion - Grid Detections"
+              query: "so_detection.ruleset:securityonion-resources"
         detection:
           presets:
             severity:

@@ -12,6 +12,10 @@ To see all the latest features and fixes in this version of Security Onion, clic
 
 Want the best hardware for your enterprise deployment? Check out our [enterprise appliances](https://securityonionsolutions.com/hardware/)!
 
+## Premium Support
+
+Experiencing difficulties and need priority support or remote assistance? We offer a [premium support plan](https://securityonionsolutions.com/support/) to assist corporate, educational, and government organizations.
+
 ## Customize This Space
 
 Make this area your own by customizing the content in the [Config](/#/config?s=soc.files.soc.motd__md) interface.

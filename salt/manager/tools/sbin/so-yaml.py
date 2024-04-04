@@ -17,13 +17,16 @@ def showUsage(args):
     print('Usage: {} <COMMAND> <YAML_FILE> [ARGS...]'.format(sys.argv[0]))
     print('  General commands:')
     print('    append         - Append a list item to a yaml key, if it exists and is a list. Requires KEY and LISTITEM args.')
+    print('    add            - Add a new key and set its value. Fails if key already exists. Requires KEY and VALUE args.')
     print('    remove         - Removes a yaml key, if it exists. Requires KEY arg.')
+    print('    replace        - Replaces (or adds) a new key and set its value. Requires KEY and VALUE args.')
     print('    help           - Prints this usage information.')
     print('')
     print('  Where:')
     print('   YAML_FILE       - Path to the file that will be modified. Ex: /opt/so/conf/service/conf.yaml')
     print('   KEY             - YAML key, does not support \' or " characters at this time. Ex: level1.level2')
-    print('   LISTITEM        - Item to add to the list.')
+    print('   VALUE           - Value to set for a given key')
+    print('   LISTITEM        - Item to append to a given key\'s list value')
     sys.exit(1)
 
 
@@ -36,6 +39,7 @@ def loadYaml(filename):
 def writeYaml(filename, content):
     file = open(filename, "w")
     return yaml.dump(content, file)
+
 
 def appendItem(content, key, listItem):
     pieces = key.split(".", 1)
@@ -51,6 +55,30 @@ def appendItem(content, key, listItem):
             print("The key provided does not exist. No action was taken on the file.")
             return 1
 
+
+def convertType(value):
+    if len(value) > 0 and (not value.startswith("0") or len(value) == 1):
+        if "." in value:
+            try:
+                value = float(value)
+                return value
+            except ValueError:
+                pass
+
+        try:
+            value = int(value)
+            return value
+        except ValueError:
+            pass
+
+        lowered_value = value.lower()
+        if lowered_value == "false":
+            return False
+        elif lowered_value == "true":
+            return True
+    return value
+
+
 def append(args):
     if len(args) != 3:
         print('Missing filename, key arg, or list item to append', file=sys.stderr)
@@ -62,10 +90,40 @@ def append(args):
     listItem = args[2]
 
     content = loadYaml(filename)
-    appendItem(content, key, listItem)
+    appendItem(content, key, convertType(listItem))
     writeYaml(filename, content)
 
     return 0
+
+
+def addKey(content, key, value):
+    pieces = key.split(".", 1)
+    if len(pieces) > 1:
+        if not pieces[0] in content:
+            content[pieces[0]] = {}
+        addKey(content[pieces[0]], pieces[1], value)
+    elif key in content:
+        raise KeyError("key already exists")
+    else:
+        content[key] = value
+
+
+def add(args):
+    if len(args) != 3:
+        print('Missing filename, key arg, and/or value', file=sys.stderr)
+        showUsage(None)
+        return
+
+    filename = args[0]
+    key = args[1]
+    value = args[2]
+
+    content = loadYaml(filename)
+    addKey(content, key, convertType(value))
+    writeYaml(filename, content)
+
+    return 0
+
 
 def removeKey(content, key):
     pieces = key.split(".", 1)
@@ -91,6 +149,24 @@ def remove(args):
     return 0
 
 
+def replace(args):
+    if len(args) != 3:
+        print('Missing filename, key arg, and/or value', file=sys.stderr)
+        showUsage(None)
+        return
+
+    filename = args[0]
+    key = args[1]
+    value = args[2]
+
+    content = loadYaml(filename)
+    removeKey(content, key)
+    addKey(content, key, convertType(value))
+    writeYaml(filename, content)
+
+    return 0
+
+
 def main():
     args = sys.argv[1:]
 
@@ -100,8 +176,10 @@ def main():
 
     commands = {
         "help": showUsage,
+        "add": add,
         "append": append,
         "remove": remove,
+        "replace": replace,
     }
 
     code = 1
