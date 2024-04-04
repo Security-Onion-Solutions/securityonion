@@ -1,3 +1,5 @@
+{% if '2.4' in salt['cp.get_file_str']('/etc/soversion') %}
+
 {% import_yaml '/opt/so/saltstack/local/pillar/global/soc_global.sls' as SOC_GLOBAL %}
 {% if SOC_GLOBAL.global.airgap %}
 {%   set UPDATE_DIR='/tmp/soagupdate/SecurityOnion' %}
@@ -68,3 +70,8 @@ copy_so-firewall_sbin:
     - source: {{UPDATE_DIR}}/salt/manager/tools/sbin/so-firewall
     - force: True
     - preserve: True
+{% else %}
+fix_old_versions:
+  cmd.run:
+    - name: BRANCH=2.3/main soup -y
+{% endif %}
