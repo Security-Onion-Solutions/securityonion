@@ -144,6 +144,26 @@ whiptail_cancel() {
 	exit 1
 }
 
+whiptail_accept_telemetry() {
+
+	[ -n "$TESTING" ] && return
+
+	read -r -d '' message <<- EOM
+
+	The Security Onion development team could use your help! Enabling SOC
+	Telemetry will help the team understand which UI features are being
+	used and enables informed prioritization of future development.
+
+	Adjust this setting at anytime via the SOC Configuration screen.
+
+	Documentation: https://docs.securityonion.net/en/2.4/telemetry.html
+
+	Enable SOC Telemetry to help improve future releases?
+	EOM
+	whiptail --title "$whiptail_title" --yesno "$message" 15 75
+	telemetry=$?
+}
+
 whiptail_check_exitstatus() {
 	case $1 in
 		1)
@@ -429,6 +449,12 @@ whiptail_end_settings() {
 		for server in "${ntp_servers[@]}"; do
 			__append_end_msg "  - $server"
 		done
+	fi
+
+	if [[ $telemetry -eq 0 ]]; then
+		__append_end_msg "SOC Telemetry: enabled"
+	else
+		__append_end_msg "SOC Telemetry: disabled"
 	fi
 
 	# ADVANCED
