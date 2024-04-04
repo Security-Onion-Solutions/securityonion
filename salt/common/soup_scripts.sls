@@ -73,6 +73,6 @@ copy_so-firewall_sbin:
 {% else %}
 fix_old_versions:
   cmd.run:
-    - env: BRANCH=2.3/main
+    - env: "BRANCH=2.3/main"
     - name: soup -y
 {% endif %}
