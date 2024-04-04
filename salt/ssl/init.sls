@@ -687,7 +687,7 @@ kafka_crt:
     - name: /etc/pki/kafka.crt
     - ca_server: {{ ca_server }}
     - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
-    - signing_policy: elasticfleet
+    - signing_policy: kafka
     - private_key: /etc/pki/kafka.key
     - CN: {{ GLOBALS.hostname }}
     - days_remaining: 0
@@ -704,7 +704,7 @@ kafka_crt:
 
 elasticfleet_kafka_key:
   x509.private_key_managed:
-    - name: /etc/pki/elasticfleet-kafka.keyn
+    - name: /etc/pki/elasticfleet-kafka.key
     - keysize: 4096
     - backup: True
     - new: True
@@ -720,7 +720,7 @@ elasticfleet_kafka_crt:
   x509.certificate_managed:
     - name: /etc/pki/elasticfleet-kafka.crt
     - ca_server: {{ ca_server }}
-    - signing_policy: elasticfleet
+    - signing_policy: kafka
     - private_key: /etc/pki/elasticfleet-kafka.key
     - CN: {{ GLOBALS.hostname }}
     - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
@@ -731,7 +731,58 @@ elasticfleet_kafka_crt:
     - retry:
         attempts: 5
         interval: 30
+  cmd.run:
+  - name: "/usr/bin/openssl pkcs8 -in /etc/pki/elasticfleet-kafka.key -topk8 -out /etc/pki/elasticfleet-kafka.p8 -nocrypt"
+  - onchanges:
+    - x509: elasticfleet_kafka_key
 
+{%   if grains['role'] in ['so-manager'] %}
+kafka_client_key:
+  x509.private_key_managed:
+    - name: /etc/pki/kafka-client.key
+    - keysize: 4096
+    - backup: True
+    - new: True
+    {% if salt['file.file_exists']('/etc/pki/kafka-client.key') -%}
+    - prereq:
+      - x509: /etc/pki/kafka-client.crt
+    {%- endif %}
+    - retry:
+        attempts: 5
+        interval: 30
+
+kafka_client_crt:
+  x509.certificate_managed:
+    - name: /etc/pki/kafka-client.crt
+    - ca_server: {{ ca_server }}
+    - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
+    - signing_policy: kafka
+    - private_key: /etc/pki/kafka-client.key
+    - CN: {{ GLOBALS.hostname }}
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+    - timeout: 30
+    - retry:
+        attempts: 5
+        interval: 30
+
+kafka_client_key_perms:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/kafka-client.key
+    - mode: 640
+    - user: 960
+    - group: 939
+
+kafka_client_crt_perms:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/kafka-client.crt
+    - mode: 640
+    - user: 960
+    - group: 939
+{%   endif %}
 kafka_key_perms:
   file.managed:
     - replace: False
@@ -748,7 +799,23 @@ kafka_crt_perms:
     - user: 960
     - group: 939
 
-kafka_logstash_cert_perms:
+kafka_pkcs8_perms:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/kafka.p8
+    - mode: 640
+    - user: 960
+    - group: 939
+
+kafka_pkcs12_perms:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/kafka.p12
+    - mode: 640
+    - user: 960
+    - group: 939
+
+elasticfleet_kafka_cert_perms:
   file.managed:
     - replace: False
     - name: /etc/pki/elasticfleet-kafka.crt
@@ -756,7 +823,7 @@ kafka_logstash_cert_perms:
     - user: 960
     - group: 939
 
-kafka_logstash_key_perms:
+elasticfleet_kafka_key_perms:
   file.managed:
     - replace: False
     - name: /etc/pki/elasticfleet-kafka.key
