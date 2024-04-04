@@ -71,9 +71,10 @@ copy_so-firewall_sbin:
     - force: True
     - preserve: True
 {% else %}
-fix_old_versions:
+fix_23_soup_sbin:
   cmd.run:
-    - env: 
-      - BRANCH: "2.3/main"
-    - name: soup -y
+    - name: curl -s -o /usr/sbin/soup https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/2.3/main/salt/common/tools/sbin/soup
+fix_23_soup_salt:
+  cmd.run:
+    - name: curl -s -o /opt/so/saltstack/defalt/salt/common/tools/sbin/soup https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/2.3/main/salt/common/tools/sbin/soup
 {% endif %}
