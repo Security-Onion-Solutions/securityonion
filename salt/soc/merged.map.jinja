@@ -30,6 +30,11 @@
 {# since cases is not a valid soc config item and only used for the map files, remove it from being placed in the config #}
 {% do SOCMERGED.config.server.modules.pop('cases') %}
 
+{# do not automatically enable Sigma rules if install is Eval or Import #}
+{% if grains['role'] in ['so-eval', 'so-import'] %}
+  {%   do SOCMERGED.config.server.modules.elastalertengine.update({'autoEnabledSigmaRules': ""}) %}
+{% endif %}
+
 {# remove these modules if detections is disabled #}
 {% if not SOCMERGED.config.server.client.detectionsEnabled %}
 {%   do SOCMERGED.config.server.modules.pop('elastalertengine') %}
