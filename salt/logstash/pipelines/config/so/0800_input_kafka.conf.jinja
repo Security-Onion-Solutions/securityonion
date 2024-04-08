@@ -11,13 +11,10 @@
 {% endfor %}
 {% set bootstrap_servers = "','".join(broker_ips) %}
 
-
-#Run on searchnodes ingest kafka topic(s) group_id allows load balancing of event ingest to all searchnodes
 input {
     kafka {
         codec => json
-        #Can ingest multiple topics. Set to a value from SOC UI?
-        topics => ['ea-logs']
+        topics => ['default-logs', 'kratos-logs', 'soc-logs', 'strelka-logs', 'suricata-logs', 'zeek-logs']
         group_id => 'searchnodes'
         client_id => '{{ GLOBALS.hostname }}'
         security_protocol => 'SSL'
@@ -26,7 +23,15 @@ input {
         ssl_keystore_password => 'changeit'
         ssl_keystore_type => 'PKCS12'
         ssl_truststore_location => '/etc/pki/ca-trust/extracted/java/cacerts'
-        # Set password as a pillar to avoid bad optics? This is default truststore for grid
         ssl_truststore_password => 'changeit'
+        decorate_events => true
+        tags => [ "elastic-agent", "input-{{ GLOBALS.hostname}}", "kafka" ]
     }
+}
+filter {
+  if ![metadata] {
+    mutate {
+      rename => { "@metadata" => "metadata" }
+    }
+  }
 }
