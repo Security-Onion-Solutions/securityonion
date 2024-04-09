@@ -1,0 +1,15 @@
+{% import_yaml 'kafka/defaults.yaml' as KAFKADEFAULTS %}
+{% set KAFKAMERGED = salt['pillar.get']('kafka', KAFKADEFAULTS.kafka, merge=True) %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
+
+{% set KAFKAMERGED.config.server.node_x_id = salt['pillar.get']('kafka:nodes:' ~ GLOBALS.hostname ~ ':nodeid') %}
+{% set KAFKAMERGED.config.server.advertised_x_listeners = 'BROKER://' ~ GLOBALS.node_ip ~ ':9092' %}
+
+{% set nodes = salt['pillar.get']('kafka:nodes', {}) %}
+{% set combined = [] %}
+{% for hostname, data in nodes.items() %}
+  {% do combined.append(data.nodeid ~ "@" ~ hostname ~ ":9093") %}
+{% endfor %}
+{% set kraft_controller_quorum_voters = ','.join(combined) %}
+
+{% set KAFKAMERGED.config.server.controller_x_quorum_x_voters = kraft_controller_quorum_voters %}

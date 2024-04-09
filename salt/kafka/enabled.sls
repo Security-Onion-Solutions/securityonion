@@ -26,14 +26,14 @@ so-kafka:
     - environment:
       - KAFKA_HEAP_OPTS=-Xmx2G -Xms1G
     - extra_hosts:
-    {% for node in KAFKANODES %}
+      {% for node in KAFKANODES %}
       - {{ node }}:{{ KAFKANODES[node].ip }}
-    {% endfor %}
-    {% if DOCKER.containers['so-kafka'].extra_hosts %}
-    {%   for XTRAHOST in DOCKER.containers['so-kafka'].extra_hosts %}
+      {% endfor %}
+      {% if DOCKER.containers['so-kafka'].extra_hosts %}
+      {%   for XTRAHOST in DOCKER.containers['so-kafka'].extra_hosts %}
       - {{ XTRAHOST }}
-    {%   endfor %}
-    {% endif %}
+      {%   endfor %}
+      {% endif %}
     - port_bindings:
       {% for BINDING in DOCKER.containers['so-kafka'].port_bindings %}
       - {{ BINDING }}
@@ -43,8 +43,11 @@ so-kafka:
       - /opt/so/conf/ca/cacerts:/etc/pki/java/sos/cacerts
       - /nsm/kafka/data/:/nsm/kafka/data/:rw
       - /opt/so/conf/kafka/server.properties:/kafka/config/kraft/server.properties
+      - /opt/so/conf/kafka/client.properties:/kafka/config/kraft/client.properties
     - watch:
-      - file: kafka_kraft_server_properties
+      {% for sc in ['server', 'client'] %}
+      - file: kafka_kraft_{{sc}}_properties
+      {% endfor %}
 
 delete_so-kafka_so-status.disabled:
   file.uncomment:

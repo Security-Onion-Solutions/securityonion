@@ -94,19 +94,17 @@ kafka_keystore_perms:
     - user: 960
     - group: 939
 
-kafka_kraft_server_properties:
+{%   for sc in ['server', 'client'] %}
+kafka_kraft_{{type}}_properties:
   file.managed:
-    - source: salt://kafka/etc/server.properties.jinja
-    - name: /opt/so/conf/kafka/server.properties
+    - source: salt://kafka/etc/{{sc}}.properties.jinja
+    - name: /opt/so/conf/kafka/{{sc}}.properties
     - template: jinja
-    - defaults:
-        kafka_nodeid: {{ kafka_nodeid }}
-        kraft_controller_quorum_voters: {{ kraft_controller_quorum_voters }}
-        kafka_ip: {{ kafka_ip }}
     - user: 960
     - group: 960
     - makedirs: True
     - show_changes: False
+{%   endfor %}
 
 {% else %}
 
