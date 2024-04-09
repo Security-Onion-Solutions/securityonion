@@ -10,15 +10,7 @@
 {% set kafka_ips_logstash = [] %}
 {% set kafka_ips_kraft = [] %}
 {% set kafkanodes =  salt['pillar.get']('kafka:nodes', {}) %}
-{% set kafka_nodeid = salt['pillar.get']('kafka:nodes:' ~ GLOBALS.hostname ~ ':nodeid') %}
 {% set kafka_ip = GLOBALS.node_ip %}
-
-{% set nodes = salt['pillar.get']('kafka:nodes', {}) %}
-{% set combined = [] %}
-{% for hostname, data in nodes.items() %}
-  {% do combined.append(data.nodeid ~ "@" ~ hostname ~ ":9093") %}
-{% endfor %}
-{% set kraft_controller_quorum_voters = ','.join(combined) %}
 
 {# Create list for kafka <-> logstash/searchnode communcations #}
 {% for node, node_data in kafkanodes.items() %}
@@ -31,7 +23,6 @@
 {%   do kafka_ips_kraft.append(node_data['nodeid'] ~ "@" ~ node_data['ip'] ~ ":9093") %}
 {% endfor %}
 {% set kraft_server_list = "','".join(kafka_ips_kraft) %}
-
 
 include:
   - ssl
