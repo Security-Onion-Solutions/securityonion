@@ -95,7 +95,7 @@ kafka_keystore_perms:
     - group: 939
 
 {%   for sc in ['server', 'client'] %}
-kafka_kraft_{{type}}_properties:
+kafka_kraft_{{sc}}_properties:
   file.managed:
     - source: salt://kafka/etc/{{sc}}.properties.jinja
     - name: /opt/so/conf/kafka/{{sc}}.properties
