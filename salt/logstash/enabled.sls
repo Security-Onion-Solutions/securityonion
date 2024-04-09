@@ -78,8 +78,6 @@ so-logstash:
       {% if GLOBALS.role in ['so-manager', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-searchnode', 'so-kafkanode' ] %}
       - /opt/so/conf/ca/cacerts:/etc/pki/ca-trust/extracted/java/cacerts:ro
       - /opt/so/conf/ca/tls-ca-bundle.pem:/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:ro
-      {% endif %}
-      {% if GLOBALS.role in ['so-kafkanode'] %}
       - /etc/pki/kafka-logstash.p12:/usr/share/logstash/kafka-logstash.p12:ro
       {% endif %}
       {% if GLOBALS.role == 'so-eval' %}
