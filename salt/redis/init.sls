@@ -4,9 +4,10 @@
 # Elastic License 2.0.
 
 {% from 'redis/map.jinja' import REDISMERGED %}
+{% from 'kafka/map.jinja' import KAFKAMERGED %}
 
 include:
-{% if REDISMERGED.enabled %}
+{% if REDISMERGED.enabled and not KAFKAMERGED.enabled %}
   - redis.enabled
 {% else %}
   - redis.disabled

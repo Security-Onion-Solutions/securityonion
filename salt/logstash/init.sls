@@ -4,9 +4,10 @@
 # Elastic License 2.0.
 
 {% from 'logstash/map.jinja' import LOGSTASH_MERGED %}
+{% from 'kafka/map.jinja' import KAFKAMERGED %}
 
 include:
-{% if LOGSTASH_MERGED.enabled %}
+{% if LOGSTASH_MERGED.enabled and not KAFKAMERGED.enabled %}
   - logstash.enabled
 {% else %}
   - logstash.disabled
