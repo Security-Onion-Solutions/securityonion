@@ -52,6 +52,15 @@ socsaltdir:
     - mode: 770
     - makedirs: True
 
+socanalytics:
+  file.managed:
+    - name: /opt/so/conf/soc/analytics.js
+    - source: salt://soc/files/soc/analytics.js
+    - user: 939
+    - group: 939
+    - mode: 600
+    - show_changes: False
+
 socconfig:
   file.managed:
     - name: /opt/so/conf/soc/soc.json

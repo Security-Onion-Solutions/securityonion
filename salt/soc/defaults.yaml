@@ -1,5 +1,6 @@
 soc:
   enabled: False
+  telemetryEnabled: true
   config:
     logFilename: /opt/sensoroni/logs/sensoroni-server.log
     logLevel: info
@@ -87,12 +88,13 @@ soc:
         - log.id.uid
         - network.community_id
         - event.dataset
-      ':kratos:audit':
+      ':kratos:':
         - soc_timestamp
         - http_request.headers.x-real-ip
         - identity_id
         - http_request.headers.user-agent
         - event.dataset
+        - msg
       '::conn':
         - soc_timestamp
         - source.ip
@@ -1220,6 +1222,17 @@ soc:
         - event_data.destination.port
         - event_data.process.executable
         - event_data.process.pid
+      ':sigma:':
+        - soc_timestamp
+        - rule.name
+        - event.severity_label
+        - event_data.event.dataset
+        - event_data.source.ip
+        - event_data.source.port
+        - event_data.destination.host
+        - event_data.destination.port
+        - event_data.process.executable
+        - event_data.process.pid
     server:
       bindAddress: 0.0.0.0:9822
       baseUrl: /
@@ -1236,11 +1249,16 @@ soc:
         elastalertengine:
           allowRegex: ''
           autoUpdateEnabled: true
+          autoEnabledSigmaRules:
+            - core+critical
+            - securityonion-resources+critical
+            - securityonion-resources+high
           communityRulesImportFrequencySeconds: 86400
           denyRegex: ''
           elastAlertRulesFolder: /opt/sensoroni/elastalert
           reposFolder: /opt/sensoroni/sigma/repos
           rulesFingerprintFile: /opt/sensoroni/fingerprints/sigma.fingerprint
+          stateFilePath: /opt/so/conf/soc/fingerprints/elastalertengine.state
           rulesRepos:
           - repo: https://github.com/Security-Onion-Solutions/securityonion-resources
             license: Elastic-2.0
@@ -1301,6 +1319,7 @@ soc:
           - repo: https://github.com/Security-Onion-Solutions/securityonion-yara
             license: DRL
           yaraRulesFolder: /opt/sensoroni/yara/rules
+          stateFilePath: /opt/so/conf/soc/fingerprints/strelkaengine.state
         suricataengine:
           allowRegex: ''
           autoUpdateEnabled: true
@@ -1308,6 +1327,7 @@ soc:
           communityRulesFile: /nsm/rules/suricata/emerging-all.rules
           denyRegex: ''
           rulesFingerprintFile: /opt/sensoroni/fingerprints/emerging-all.fingerprint
+          stateFilePath: /opt/so/conf/soc/fingerprints/suricataengine.state
       client:
         enableReverseLookup: false
         docsUrl: /docs/
@@ -1652,21 +1672,42 @@ soc:
             - name: Overview
               description: Overview of all events
               query: '* | groupby event.category | groupby -sankey event.category event.module | groupby event.module | groupby -sankey event.module event.dataset | groupby event.dataset | groupby observer.name | groupby host.name | groupby source.ip | groupby destination.ip | groupby destination.port'
-            - name: SOC Auth
-              description: SOC (Security Onion Console) authentication logs
+            - name: SOC Logins
+              description: SOC (Security Onion Console) logins
               query: 'event.dataset:kratos.audit AND msg:*authenticated* | groupby http_request.headers.x-real-ip | groupby -sankey http_request.headers.x-real-ip identity_id | groupby identity_id | groupby http_request.headers.user-agent'
-            - name: Elastalerts
-              description: Elastalert logs
-              query: '_index: "*:elastalert*" | groupby rule_name | groupby alert_info.type'
+            - name: SOC Login Failures
+              description: SOC (Security Onion Console) login failures
+              query: 'event.dataset:kratos.audit AND msg:*Encountered*self-service*login*error* | groupby http_request.headers.x-real-ip | groupby -sankey http_request.headers.x-real-ip http_request.headers.user-agent | groupby http_request.headers.user-agent'
             - name: Alerts
               description: Overview of all alerts
               query: 'tags:alert | groupby event.module* | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby rule.name | groupby event.severity | groupby destination_geo.organization_name'
             - name: NIDS Alerts
               description: NIDS (Network Intrusion Detection System) alerts
               query: 'event.category:network AND tags:alert | groupby rule.category | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby rule.name | groupby rule.uuid | groupby rule.gid | groupby destination_geo.organization_name'
-            - name: Sysmon Overview
-              description: Overview of all Sysmon data types
-              query: 'event.dataset:windows.sysmon_operational | groupby event.action | groupby -sankey event.action host.name | groupby host.name | groupby -sankey host.name user.name | groupby user.name | groupby event.category event.action | groupby dns.question.name | groupby process.executable | groupby file.name | groupby source.ip | groupby destination.ip | groupby destination.port'
+            - name: Elastic Agent Overview
+              description: Overview of all events from Elastic Agents
+              query: 'event.module:endpoint | groupby event.dataset | groupby host.name | groupby -sankey host.name user.name | groupby user.name | groupby -sankey user.name process.name | groupby process.name'
+            - name: Elastic Agent API Events
+              description: API (Application Programming Interface) events from Elastic Agents
+              query: 'event.dataset:endpoint.events.api | groupby host.name | groupby -sankey host.name user.name | groupby user.name | groupby -sankey user.name process.name | groupby process.name | groupby process.Ext.api.name'
+            - name: Elastic Agent File Events
+              description: File events from Elastic Agents
+              query: 'event.dataset:endpoint.events.file | groupby host.name | groupby -sankey host.name user.name | groupby user.name | groupby -sankey user.name process.name | groupby process.name | groupby event.action | groupby file.path'
+            - name: Elastic Agent Library Events
+              description: Library events from Elastic Agents
+              query: 'event.dataset:endpoint.events.library | groupby host.name | groupby -sankey host.name user.name | groupby user.name | groupby -sankey user.name process.name | groupby process.name | groupby event.action | groupby dll.path | groupby dll.code_signature.status | groupby dll.code_signature.subject_name'
+            - name: Elastic Agent Network Events
+              description: Network events from Elastic Agents
+              query: 'event.dataset:endpoint.events.network | groupby host.name | groupby -sankey host.name user.name | groupby user.name | groupby -sankey user.name process.name | groupby process.name | groupby event.action | groupby source.ip | groupby destination.ip | groupby destination.port'
+            - name: Elastic Agent Process Events
+              description: Process events from Elastic Agents
+              query: 'event.dataset:endpoint.events.process | groupby host.name | groupby -sankey host.name user.name | groupby user.name | groupby -sankey user.name process.parent.name | groupby process.parent.name | groupby -sankey process.parent.name process.name | groupby process.name | groupby event.action | groupby process.working_directory'
+            - name: Elastic Agent Registry Events
+              description: Registry events from Elastic Agents
+              query: 'event.dataset:endpoint.events.registry | groupby host.name | groupby -sankey host.name user.name | groupby user.name | groupby -sankey user.name process.name | groupby process.name | groupby event.action | groupby registry.path'
+            - name: Elastic Agent Security Events
+              description: Security events from Elastic Agents
+              query: 'event.dataset:endpoint.events.security | groupby host.name | groupby -sankey host.name user.name | groupby user.name | groupby -sankey user.name process.executable | groupby process.executable | groupby event.action | groupby event.outcome'
             - name: Host Overview
               description: Overview of all host data types
               query: '((event.category:registry OR event.category:host OR event.category:process OR event.category:driver OR event.category:configuration) OR (event.category:file  AND _exists_:process.executable) OR (event.category:network AND _exists_:host.name)) | groupby event.dataset* event.category* event.action* | groupby event.type | groupby -sankey event.type host.name | groupby host.name | groupby user.name | groupby file.name | groupby process.executable'
@@ -1685,24 +1726,18 @@ soc:
             - name: Host Network & Process Mappings
               description: Network activity mapped to originating processes
               query: 'event.category: network AND _exists_:process.executable | groupby event.action | groupby -sankey event.action host.name | groupby host.name | groupby -sankey host.name user.name | groupby user.name | groupby event.dataset* event.type* event.action* | groupby dns.question.name | groupby process.executable | groupby process.name | groupby source.ip | groupby destination.ip | groupby destination.port'
-            - name: Host API Events
-              description: API (Application Programming Interface) events from endpoints
-              query: 'event.dataset:endpoint.events.api | groupby host.name | groupby -sankey host.name user.name | groupby user.name | groupby -sankey user.name process.name | groupby process.name | groupby process.Ext.api.name'
-            - name: Host Library Events
-              description: Library events from endpoints
-              query: 'event.dataset:endpoint.events.library | groupby host.name | groupby -sankey host.name user.name | groupby user.name | groupby -sankey user.name process.name | groupby process.name | groupby event.action | groupby dll.path | groupby dll.code_signature.status | groupby dll.code_signature.subject_name'
-            - name: Host Security Events
-              description: Security events from endpoints
-              query: 'event.dataset:endpoint.events.security | groupby host.name | groupby -sankey host.name user.name | groupby user.name | groupby -sankey user.name process.executable | groupby process.executable | groupby event.action | groupby event.outcome'
+            - name: Sysmon Overview
+              description: Overview of all Sysmon data types
+              query: 'event.dataset:windows.sysmon_operational | groupby event.action | groupby -sankey event.action host.name | groupby host.name | groupby -sankey host.name user.name | groupby user.name | groupby event.category event.action | groupby dns.question.name | groupby process.executable | groupby file.name | groupby source.ip | groupby destination.ip | groupby destination.port'
             - name: Strelka
               description: Strelka file analysis
               query: 'event.module:strelka | groupby file.mime_type | groupby -sankey file.mime_type file.source | groupby file.source | groupby -sankey file.source file.name | groupby file.name'
             - name: Zeek Notice
               description: Zeek notice logs
               query: 'event.dataset:zeek.notice | groupby notice.note | groupby -sankey notice.note source.ip | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby notice.message | groupby notice.sub_message | groupby source_geo.organization_name | groupby destination_geo.organization_name'
-            - name: Connections and Metadata with community_id
-              description: Network connections that include community_id
-              query: '_exists_:network.community_id | groupby event.module* | groupby -sankey event.module* event.dataset | groupby event.dataset | groupby source.ip source.port destination.ip destination.port | groupby network.protocol | groupby source_geo.organization_name source.geo.country_name | groupby destination_geo.organization_name destination.geo.country_name | groupby rule.name rule.category event.severity_label | groupby dns.query.name | groupby http.virtual_host http.uri | groupby notice.note notice.message notice.sub_message | groupby source.ip host.hostname user.name event.action event.type process.executable process.pid'
+            - name: Connections and Metadata with Community ID
+              description: Network connections that include network.community_id
+              query: '_exists_:network.community_id | groupby event.module* | groupby -sankey event.module* event.dataset | groupby event.dataset | groupby source.ip | groupby destination.ip | groupby destination.port | groupby network.protocol | groupby source_geo.organization_name | groupby source.geo.country_name | groupby destination_geo.organization_name | groupby destination.geo.country_name | groupby rule.name rule.category event.severity_label | groupby dns.query.name | groupby http.virtual_host http.uri | groupby notice.note notice.message notice.sub_message | groupby source.ip host.hostname user.name event.action event.type process.executable process.pid'
             - name: Connections seen by Zeek or Suricata
               description: Network connections logged by Zeek or Suricata
               query: 'tags:conn | groupby source.ip | groupby destination.ip | groupby destination.port | groupby -sankey destination.port network.protocol | groupby network.protocol | groupby network.transport | groupby connection.history | groupby connection.state | groupby connection.state_description | groupby source.geo.country_name | groupby destination.geo.country_name | groupby client.ip_bytes | groupby server.ip_bytes | groupby client.oui'
@@ -1903,6 +1938,17 @@ soc:
               - event_data.destination.port
               - event_data.process.executable
               - event_data.process.pid    
+            ':sigma:':
+              - soc_timestamp
+              - rule.name
+              - event.severity_label
+              - event_data.event.dataset
+              - event_data.source.ip
+              - event_data.source.port
+              - event_data.destination.host
+              - event_data.destination.port
+              - event_data.process.executable
+              - event_data.process.pid    
             ':strelka:':
               - soc_timestamp
               - file.name
@@ -2076,11 +2122,11 @@ soc:
               query: "so_detection.isEnabled:false"
             - name: "Detection Type - Suricata (NIDS)"
               query: "so_detection.language:suricata"
-            - name: "Detection Type - Sigma - All"
+            - name: "Detection Type - Sigma (Elastalert) - All"
               query: "so_detection.language:sigma"
-            - name: "Detection Type - Sigma - Windows"
+            - name: "Detection Type - Sigma (Elastalert) - Windows"
               query: 'so_detection.language:sigma AND so_detection.content: "*product: windows*"'
-            - name: "Detection Type - Yara (Strelka)"
+            - name: "Detection Type - YARA (Strelka)"
               query: "so_detection.language:yara"
             - name: "Security Onion - Grid Detections"
               query: "so_detection.ruleset:securityonion-resources"
