@@ -27,6 +27,15 @@ repo_log_dir:
       - user
       - group
 
+agents_log_dir:
+  file.directory:
+    - name: /opt/so/log/agents
+    - user: root
+    - group: root
+    - recurse:
+      - user
+      - group
+
 yara_log_dir:
   file.directory:
     - name: /opt/so/log/yarasync
@@ -100,6 +109,17 @@ so-repo-sync:
     - identifier: so-repo-sync
     - hour: '{{ MANAGERMERGED.reposync.hour }}'
     - minute: '{{ MANAGERMERGED.reposync.minute }}'
+
+so_fleetagent_status:
+  cron.present:
+    - name: /usr/sbin/so-elasticagent-status > /opt/so/log/agents/agentstatus.log 2>&1
+    - identifier: so_fleetagent_status
+    - user: root
+    - minute: '*/5'
+    - hour: '*'
+    - daymonth: '*'
+    - month: '*'
+    - dayweek: '*'
 
 socore_own_saltstack:
   file.directory:

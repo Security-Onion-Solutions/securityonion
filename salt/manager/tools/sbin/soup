@@ -229,7 +229,7 @@ check_local_mods() {
 # {% endraw %}
 
 check_pillar_items() {
-  local pillar_output=$(salt-call pillar.items --out=json)
+  local pillar_output=$(salt-call pillar.items -lerror --out=json)
 
   cond=$(jq '.local | has("_errors")' <<< "$pillar_output")
   if [[ "$cond" == "true" ]]; then
@@ -357,6 +357,7 @@ preupgrade_changes() {
     [[ "$INSTALLEDVERSION" == 2.4.30 ]] && up_to_2.4.40
     [[ "$INSTALLEDVERSION" == 2.4.40 ]] && up_to_2.4.50
     [[ "$INSTALLEDVERSION" == 2.4.50 ]] && up_to_2.4.60
+    [[ "$INSTALLEDVERSION" == 2.4.60 ]] && up_to_2.4.70
     true
 }
 
@@ -373,6 +374,7 @@ postupgrade_changes() {
     [[ "$POSTVERSION" == 2.4.30 ]] && post_to_2.4.40
     [[ "$POSTVERSION"  == 2.4.40 ]] && post_to_2.4.50
     [[ "$POSTVERSION"  == 2.4.50 ]] && post_to_2.4.60
+    [[ "$POSTVERSION"  == 2.4.60 ]] && post_to_2.4.70
     true
 }
 
@@ -433,6 +435,11 @@ post_to_2.4.60() {
   echo "Regenerating Elastic Agent Installers..."
   so-elastic-agent-gen-installers
   POSTVERSION=2.4.60
+}
+
+post_to_2.4.70() {
+  echo "Nothing to apply"
+  POSTVERSION=2.4.70
 }
 
 repo_sync() {
@@ -572,6 +579,116 @@ up_to_2.4.60() {
   chown socore:socore /opt/so/saltstack/local/salt/suricata/classification
 
   INSTALLEDVERSION=2.4.60
+}
+
+up_to_2.4.70() {
+  playbook_migration
+  toggle_telemetry
+  INSTALLEDVERSION=2.4.70
+}
+
+toggle_telemetry() {
+  if [[ -z $UNATTENDED && $is_airgap -ne 0 ]]; then
+    cat << ASSIST_EOF
+
+--------------- SOC Telemetry ---------------
+
+The Security Onion development team could use your help! Enabling SOC
+Telemetry will help the team understand which UI features are being
+used and enables informed prioritization of future development.
+
+Adjust this setting at anytime via the SOC Configuration screen.
+
+Documentation: https://docs.securityonion.net/en/2.4/telemetry.html
+
+ASSIST_EOF
+
+    echo -n "Continue the upgrade with SOC Telemetry enabled [Y/n]? "
+  
+    read -r input
+    input=$(echo "${input,,}" | xargs echo -n)
+    echo ""
+    if [[ ${#input} -eq 0 || "$input" == "yes" || "$input" == "y" || "$input" == "yy" ]]; then
+      echo "Thank you for helping improve Security Onion!"
+    else
+      if so-yaml.py replace /opt/so/saltstack/local/pillar/soc/soc_soc.sls soc.telemetryEnabled false; then
+        echo "Disabled SOC Telemetry."
+      else
+        fail "Failed to disable SOC Telemetry; aborting."
+      fi
+    fi
+    echo ""
+  fi
+}
+
+playbook_migration() {
+  # Start SOC Detections migration
+  mkdir -p /nsm/backup/detections-migration/{suricata,sigma/rules,elastalert}
+
+  # Remove cronjobs
+  crontab -l | grep -v 'so-playbook-sync_cron' | crontab -
+  crontab -l | grep -v 'so-playbook-ruleupdate_cron' | crontab -
+
+  if grep -A 1 'playbook:'  /opt/so/saltstack/local/pillar/minions/* | grep -q 'enabled: True'; then
+  
+    # Check for active Elastalert rules
+    active_rules_count=$(find /opt/so/rules/elastalert/playbook/ -type f -name "*.yaml" | wc -l)
+
+    if [[ "$active_rules_count" -gt 0 ]]; then
+        # Prompt the user to AGREE if active Elastalert rules found
+        echo
+        echo "$active_rules_count Active Elastalert/Playbook rules found."
+        echo "In preparation for the new Detections module, they will be backed up and then disabled."
+        echo
+        echo "If you would like to proceed, then type AGREE and press ENTER."
+        echo
+        # Read user input
+        read INPUT
+        if [ "${INPUT^^}" != 'AGREE' ]; then fail "SOUP canceled."; fi
+
+        echo "Backing up the Elastalert rules..."
+        rsync -av --stats /opt/so/rules/elastalert/playbook/*.yaml /nsm/backup/detections-migration/elastalert/
+
+        # Verify that rsync completed successfully
+        if [[ $? -eq 0 ]]; then
+            # Delete the Elastlaert rules
+            rm -f /opt/so/rules/elastalert/playbook/*.yaml
+            echo "Active Elastalert rules have been backed up."
+        else
+            fail "Error: rsync failed to copy the files. Active Elastalert rules have not been backed up."
+        fi
+    fi
+
+    echo
+    echo "Exporting Sigma rules from Playbook..."
+    MYSQLPW=$(awk '/mysql:/ {print $2}' /opt/so/saltstack/local/pillar/secrets.sls)
+
+    docker exec so-mysql sh -c "exec mysql -uroot -p${MYSQLPW} -D playbook -sN -e \"SELECT id, value FROM custom_values WHERE value LIKE '%View Sigma%'\"" | while read -r id value; do
+        echo -e "$value" > "/nsm/backup/detections-migration/sigma/rules/$id.yaml"
+    done || fail "Failed to export Sigma rules..."
+
+    echo
+    echo "Exporting Sigma Filters from Playbook..."
+    docker exec so-mysql sh -c "exec mysql -uroot -p${MYSQLPW} -D playbook -sN -e \"SELECT issues.subject as title, custom_values.value as filter FROM issues JOIN custom_values ON issues.id = custom_values.customized_id WHERE custom_values.value LIKE '%sofilter%'\"" > /nsm/backup/detections-migration/sigma/custom-filters.txt || fail "Failed to export Custom Sigma Filters."
+
+    echo
+    echo "Backing up Playbook database..."
+    docker exec so-mysql sh -c "mysqldump -uroot -p${MYSQLPW} --databases playbook > /tmp/playbook-dump" || fail "Failed to dump Playbook database."
+    docker cp so-mysql:/tmp/playbook-dump /nsm/backup/detections-migration/sigma/playbook-dump.sql || fail "Failed to backup Playbook database."
+  fi
+
+  echo
+  echo "Stopping Playbook services & cleaning up..."
+  for container in so-playbook so-mysql so-soctopus; do
+      if [ -n "$(docker ps -q -f name=^${container}$)" ]; then
+          docker stop $container
+      fi
+  done
+  sed -i '/so-playbook\|so-soctopus\|so-mysql/d' /opt/so/conf/so-status/so-status.conf
+  rm -f /usr/sbin/so-playbook-* /usr/sbin/so-soctopus-* /usr/sbin/so-mysql-*
+
+  echo
+  echo "Playbook Migration is complete...."
 }
 
 determine_elastic_agent_upgrade() {
@@ -756,7 +873,7 @@ verify_latest_update_script() {
   else
     echo "You are not running the latest soup version. Updating soup and its components. This might take multiple runs to complete."
 
-    salt-call state.apply common.soup_scripts queue=True -linfo --file-root=$UPDATE_DIR/salt --local
+    salt-call state.apply common.soup_scripts queue=True -lerror --file-root=$UPDATE_DIR/salt --local --out-file=/dev/null
 
     # Verify that soup scripts updated as expected
     get_soup_script_hashes
@@ -837,7 +954,6 @@ main() {
 
   echo "### Preparing soup at $(date) ###"
   echo ""
-
   set_os
 
   check_salt_master_status 1 || fail  "Could not talk to salt master: Please run 'systemctl status salt-master' to ensure the salt-master service is running and check the log at /opt/so/log/salt/master."

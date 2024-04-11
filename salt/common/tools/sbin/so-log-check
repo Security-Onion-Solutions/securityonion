@@ -198,6 +198,8 @@ if [[ $EXCLUDE_KNOWN_ERRORS == 'Y' ]]; then
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|req.LocalMeta.host.ip"        # known issue in GH
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|sendmail"                     # zeek
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|stats.log"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|Unknown column"               # Elastalert errors from running EQL queries
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|parsing_exception"            # Elastalert EQL parsing issue. Temp.
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|context deadline exceeded"
 fi
 
@@ -233,6 +235,7 @@ exclude_log "curator.log"  # ignore since Curator has been removed
 exclude_log "playbook.log" # Playbook is removed as of 2.4.70, logs may still be on disk
 exclude_log "mysqld.log"   # MySQL is removed as of 2.4.70, logs may still be on disk
 exclude_log "soctopus.log" # Soctopus is removed as of 2.4.70, logs may still be on disk
+exclude_log "agentstatus.log" # ignore this log since it tracks agents in error state
 
 for log_file in $(cat /tmp/log_check_files); do
     status "Checking log file $log_file"

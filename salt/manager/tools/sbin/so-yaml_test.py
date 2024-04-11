@@ -42,6 +42,14 @@ class TestRemove(unittest.TestCase):
                 sysmock.assert_called()
                 self.assertIn(mock_stdout.getvalue(), "Usage:")
 
+    def test_remove_missing_arg(self):
+        with patch('sys.exit', new=MagicMock()) as sysmock:
+            with patch('sys.stderr', new=StringIO()) as mock_stdout:
+                sys.argv = ["cmd", "help"]
+                soyaml.remove(["file"])
+                sysmock.assert_called()
+                self.assertIn(mock_stdout.getvalue(), "Missing filename or key arg\n")
+
     def test_remove(self):
         filename = "/tmp/so-yaml_test-remove.yaml"
         file = open(filename, "w")
@@ -105,6 +113,14 @@ class TestRemove(unittest.TestCase):
                 self.assertEqual(actual, expected)
                 sysmock.assert_called_once_with(1)
                 self.assertIn(mock_stdout.getvalue(), "Missing filename or key arg\n")
+
+    def test_append_missing_arg(self):
+        with patch('sys.exit', new=MagicMock()) as sysmock:
+            with patch('sys.stderr', new=StringIO()) as mock_stdout:
+                sys.argv = ["cmd", "help"]
+                soyaml.append(["file", "key"])
+                sysmock.assert_called()
+                self.assertIn(mock_stdout.getvalue(), "Missing filename, key arg, or list item to append\n")
 
     def test_append(self):
         filename = "/tmp/so-yaml_test-remove.yaml"
@@ -201,3 +217,146 @@ class TestRemove(unittest.TestCase):
                 soyaml.main()
                 sysmock.assert_called()
                 self.assertEqual(mock_stdout.getvalue(), "The existing value for the given key is not a list. No action was taken on the file.\n")
+
+    def test_add_key(self):
+        content = {}
+        soyaml.addKey(content, "foo", 123)
+        self.assertEqual(content, {"foo": 123})
+
+        try:
+            soyaml.addKey(content, "foo", "bar")
+            self.assertFail("expected key error since key already exists")
+        except KeyError:
+            pass
+
+        try:
+            soyaml.addKey(content, "foo.bar", 123)
+            self.assertFail("expected type error since key parent value is not a map")
+        except TypeError:
+            pass
+
+        content = {}
+        soyaml.addKey(content, "foo", "bar")
+        self.assertEqual(content, {"foo": "bar"})
+
+        soyaml.addKey(content, "badda.badda", "boom")
+        self.assertEqual(content, {"foo": "bar", "badda": {"badda": "boom"}})
+
+    def test_add_missing_arg(self):
+        with patch('sys.exit', new=MagicMock()) as sysmock:
+            with patch('sys.stderr', new=StringIO()) as mock_stdout:
+                sys.argv = ["cmd", "help"]
+                soyaml.add(["file", "key"])
+                sysmock.assert_called()
+                self.assertIn(mock_stdout.getvalue(), "Missing filename, key arg, and/or value\n")
+
+    def test_add(self):
+        filename = "/tmp/so-yaml_test-add.yaml"
+        file = open(filename, "w")
+        file.write("{key1: { child1: 123, child2: abc }, key2: false, key3: [a,b,c]}")
+        file.close()
+
+        soyaml.add([filename, "key4", "d"])
+
+        file = open(filename, "r")
+        actual = file.read()
+        file.close()
+        expected = "key1:\n  child1: 123\n  child2: abc\nkey2: false\nkey3:\n- a\n- b\n- c\nkey4: d\n"
+        self.assertEqual(actual, expected)
+
+    def test_add_nested(self):
+        filename = "/tmp/so-yaml_test-add.yaml"
+        file = open(filename, "w")
+        file.write("{key1: { child1: 123, child2: [a,b,c] }, key2: false, key3: [e,f,g]}")
+        file.close()
+
+        soyaml.add([filename, "key1.child3", "d"])
+
+        file = open(filename, "r")
+        actual = file.read()
+        file.close()
+
+        expected = "key1:\n  child1: 123\n  child2:\n  - a\n  - b\n  - c\n  child3: d\nkey2: false\nkey3:\n- e\n- f\n- g\n"
+        self.assertEqual(actual, expected)
+
+    def test_add_nested_deep(self):
+        filename = "/tmp/so-yaml_test-add.yaml"
+        file = open(filename, "w")
+        file.write("{key1: { child1: 123, child2: { deep1: 45 } }, key2: false, key3: [e,f,g]}")
+        file.close()
+
+        soyaml.add([filename, "key1.child2.deep2", "d"])
+
+        file = open(filename, "r")
+        actual = file.read()
+        file.close()
+
+        expected = "key1:\n  child1: 123\n  child2:\n    deep1: 45\n    deep2: d\nkey2: false\nkey3:\n- e\n- f\n- g\n"
+        self.assertEqual(actual, expected)
+
+    def test_replace_missing_arg(self):
+        with patch('sys.exit', new=MagicMock()) as sysmock:
+            with patch('sys.stderr', new=StringIO()) as mock_stdout:
+                sys.argv = ["cmd", "help"]
+                soyaml.replace(["file", "key"])
+                sysmock.assert_called()
+                self.assertIn(mock_stdout.getvalue(), "Missing filename, key arg, and/or value\n")
+
+    def test_replace(self):
+        filename = "/tmp/so-yaml_test-add.yaml"
+        file = open(filename, "w")
+        file.write("{key1: { child1: 123, child2: abc }, key2: false, key3: [a,b,c]}")
+        file.close()
+
+        soyaml.replace([filename, "key2", True])
+
+        file = open(filename, "r")
+        actual = file.read()
+        file.close()
+        expected = "key1:\n  child1: 123\n  child2: abc\nkey2: true\nkey3:\n- a\n- b\n- c\n"
+        self.assertEqual(actual, expected)
+
+    def test_replace_nested(self):
+        filename = "/tmp/so-yaml_test-add.yaml"
+        file = open(filename, "w")
+        file.write("{key1: { child1: 123, child2: [a,b,c] }, key2: false, key3: [e,f,g]}")
+        file.close()
+
+        soyaml.replace([filename, "key1.child2", "d"])
+
+        file = open(filename, "r")
+        actual = file.read()
+        file.close()
+
+        expected = "key1:\n  child1: 123\n  child2: d\nkey2: false\nkey3:\n- e\n- f\n- g\n"
+        self.assertEqual(actual, expected)
+
+    def test_replace_nested_deep(self):
+        filename = "/tmp/so-yaml_test-add.yaml"
+        file = open(filename, "w")
+        file.write("{key1: { child1: 123, child2: { deep1: 45 } }, key2: false, key3: [e,f,g]}")
+        file.close()
+
+        soyaml.replace([filename, "key1.child2.deep1", 46])
+
+        file = open(filename, "r")
+        actual = file.read()
+        file.close()
+
+        expected = "key1:\n  child1: 123\n  child2:\n    deep1: 46\nkey2: false\nkey3:\n- e\n- f\n- g\n"
+        self.assertEqual(actual, expected)
+
+    def test_convert(self):
+        self.assertEqual(soyaml.convertType("foo"), "foo")
+        self.assertEqual(soyaml.convertType("foo.bar"), "foo.bar")
+        self.assertEqual(soyaml.convertType("123"), 123)
+        self.assertEqual(soyaml.convertType("0"), 0)
+        self.assertEqual(soyaml.convertType("00"), "00")
+        self.assertEqual(soyaml.convertType("0123"), "0123")
+        self.assertEqual(soyaml.convertType("123.456"), 123.456)
+        self.assertEqual(soyaml.convertType("0123.456"), "0123.456")
+        self.assertEqual(soyaml.convertType("true"), True)
+        self.assertEqual(soyaml.convertType("TRUE"), True)
+        self.assertEqual(soyaml.convertType("false"), False)
+        self.assertEqual(soyaml.convertType("FALSE"), False)
+        self.assertEqual(soyaml.convertType(""), "")
