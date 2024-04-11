@@ -12,7 +12,7 @@
 
 include:
   - ssl
-  {% if GLOBALS.role not in ['so-receiver','so-fleet', 'so-kafkanode'] %}
+  {% if GLOBALS.role not in ['so-receiver','so-fleet'] %}
   - elasticsearch
   {% endif %}
 
