@@ -4,9 +4,10 @@
 # Elastic License 2.0.
 
 {% from 'kafka/map.jinja' import KAFKAMERGED %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 
 include:
-{% if KAFKAMERGED.enabled %}
+{% if GLOBALS.pipeline == "KAFKA" and KAFKAMERGED.enabled %}
   - kafka.enabled
 {% else %}
   - kafka.disabled
