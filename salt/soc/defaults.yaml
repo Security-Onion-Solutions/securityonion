@@ -2088,6 +2088,7 @@ soc:
                   - red
               customEnabled: false
         detections:
+          advanced: true
           viewEnabled: true
           createLink: /detection/create
           eventFetchLimit: 500
@@ -2113,23 +2114,35 @@ soc:
               - soc_timestamp
           queries:
             - name: "All Detections"
-              query: "_id:*"
+              query: "_id:* | groupby so_detection.language | groupby so_detection.ruleset so_detection.isEnabled"
+              description: Show all Detections, community and custom
             - name: "Custom Detections"
-              query: "so_detection.isCommunity:false"
+              query: "so_detection.isCommunity:false AND NOT so_detection.ruleset: securityonion-resources"
+              description: Show all custom detections
             - name: "All Detections - Enabled"
-              query: "so_detection.isEnabled:true"
+              query: "so_detection.isEnabled:true | groupby so_detection.language | groupby so_detection.ruleset so_detection.severity"
+              description: Show all enalbed Detections
             - name: "All Detections - Disabled"
-              query: "so_detection.isEnabled:false"
+              query: "so_detection.isEnabled:false | groupby so_detection.language | groupby so_detection.ruleset so_detection.severity"
+              description: Show all disabled Detections
             - name: "Detection Type - Suricata (NIDS)"
-              query: "so_detection.language:suricata"
+              query: "so_detection.language:suricata | groupby so_detection.ruleset so_detection.isEnabled"
+              description: Show all NIDS Detections, which are run with Suricata
             - name: "Detection Type - Sigma (Elastalert) - All"
-              query: "so_detection.language:sigma"
+              query: "so_detection.language:sigma | groupby so_detection.ruleset so_detection.isEnabled"
+              description: Show all Sigma Detections, which are run with Elastalert
             - name: "Detection Type - Sigma (Elastalert) - Windows"
-              query: 'so_detection.language:sigma AND so_detection.content: "*product: windows*"'
+              query: 'so_detection.language:sigma AND so_detection.content: "*product: windows*" | groupby so_detection.ruleset so_detection.isEnabled'
+              description: Show all Sigma Detections with a logsource of Windows
             - name: "Detection Type - YARA (Strelka)"
-              query: "so_detection.language:yara"
+              query: "so_detection.language:yara | groupby so_detection.ruleset so_detection.isEnabled"
+              description: Show all YARA detections, which are used by Strelka
             - name: "Security Onion - Grid Detections"
               query: "so_detection.ruleset:securityonion-resources"
+              description: Show Detections for this Security Onion Grid
+            - name: "Detections with Overrides"
+              query: "_exists_:so_detection.overrides | groupby so_detection.language | groupby so_detection.ruleset so_detection.isEnabled"
+              description: Show Detections that have Overrides
         detection:
           presets:
             severity:
