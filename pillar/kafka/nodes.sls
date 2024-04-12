@@ -1,4 +1,4 @@
-{% set current_kafkanodes = salt.saltutil.runner('mine.get', tgt='G@role:so-kafkanode or G@role:so-manager', fun='network.ip_addrs', tgt_type='compound') %}
+{% set current_kafkanodes = salt.saltutil.runner('mine.get', tgt='G@role:so-manager or G@role:so-managersearch or G@role:so-standalone or G@role:so-receiver', fun='network.ip_addrs', tgt_type='compound') %}
 {% set pillar_kafkanodes = salt['pillar.get']('kafka:nodes', default={}, merge=True) %}
 
 {% set existing_ids = [] %}
