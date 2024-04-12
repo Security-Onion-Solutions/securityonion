@@ -26,7 +26,7 @@
 
 include:
   - ssl
-g
+
 kafka_group:
   group.present:
     - name: kafka
