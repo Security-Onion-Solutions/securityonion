@@ -664,7 +664,8 @@ elastickeyperms:
 
 {%- endif %}
 
-{% if grains['role'] in ['so-manager', 'so-searchnode', 'so-receiver'] %}
+{% if grains['role'] in ['so-manager', 'so-receiver', 'so-searchnode'] %}
+
 kafka_key:
   x509.private_key_managed:
     - name: /etc/pki/kafka.key
@@ -767,7 +768,7 @@ kafka_logstash_crt:
     - onchanges:
       - x509: /etc/pki/kafka-logstash.key
 
-{%   if grains['role'] in ['so-manager'] %}
+{%   if grains['role'] in ['so-manager', 'so-managersearch', 'so-standalone', 'so-receiver'] %}
 kafka_client_key:
   x509.private_key_managed:
     - name: /etc/pki/kafka-client.key

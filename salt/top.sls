@@ -235,8 +235,8 @@ base:
     - firewall
     - logstash
     - redis
-    - kafka
     - elasticfleet.install_agent_grid
+    - kafka
 
   '*_idh and G@saltversion:{{saltversion}}':
     - match: compound
