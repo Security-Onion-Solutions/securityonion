@@ -803,6 +803,7 @@ create_manager_pillars() {
 	patch_pillar
 	nginx_pillar
 	kibana_pillar
+	kafka_pillar
 }
 
 create_repo() {
@@ -1189,6 +1190,18 @@ kibana_pillar() {
 	logCmd "mkdir -p $local_salt_dir/pillar/kibana"
 	logCmd "touch $adv_kibana_pillar_file"
 	logCmd "touch $kibana_pillar_file"
+}
+
+kafka_pillar() {
+	KAFKACLUSTERID=$(get_random_value 22)
+	KAFKAPASS=$(get_random_value)
+	logCmd "mkdir -p $local_salt_dir/pillar/kakfa"
+	logCmd "touch $adv_kafka_pillar_file"
+	logCmd "touch $kafka_pillar_file"
+	printf '%s\n'\
+		"kafka:"\
+		"  cluster_id: $KAFKACLUSTERID"\
+		"  certpass: $KAFKAPASS" > $kafka_pillar_file
 }
 
 logrotate_pillar() {

@@ -438,8 +438,25 @@ post_to_2.4.60() {
 }
 
 post_to_2.4.70() {
+  # Global pipeline changes to REDIS or KAFKA
   echo "Removing global.pipeline pillar configuration"
   sed -i '/pipeline:/d' /opt/so/saltstack/local/pillar/global/soc_global.sls
+
+  # Kafka configuration
+  mkdir -p /opt/so/saltstack/local/pillar/kafka
+  touch /opt/so/saltstack/local/pillar/kafka/soc_kafka.sls
+  touch /opt/so/saltstack/local/pillar/kafka/adv_kafka.sls
+  echo 'kafka: ' > /opt/so/saltstack/local/pillar/kafka/soc_kafka.sls
+
+  if ! grep -q "^  cluster_id:" $local_salt_dir/pillar/kafka/soc_kafka.sls; then
+    kafka_cluster_id=$(get_random_value 22)
+    echo '  cluster_id: '$kafka_cluster_id >> $local_salt_dir/pillar/kafka/soc_kafka.sls
+
+  if ! grep -q "^  certpass:" $local_salt_dir/pillar/kafka/soc_kafka.sls; then
+    kafkapass=$(get_random_value)
+    echo '  certpass: '$kafkapass >> $local_salt_dir/pillar/kafka/soc_kafka.sls
+  fi
+
   POSTVERSION=2.4.70
 }
 
