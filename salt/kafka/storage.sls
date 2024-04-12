@@ -6,17 +6,18 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
-{% set kafka_cluster_id = salt['pillar.get']('secrets:kafka_cluster_id', default=None) %}
+{%   set kafka_cluster_id = salt['pillar.get']('kafka:cluster_id', default=None) %}
 
-{% if kafka_cluster_id is none %}
+{%   if GLOBALS.role in ['so-manager', 'so-managersearch', 'so-standalone'] %}
+{%     if kafka_cluster_id is none %}
 generate_kafka_cluster_id:
   cmd.run:
     - name: /usr/sbin/so-kafka-clusterid
-{% endif %}
+{%     endif %}
+{%   endif %}
 
 {# Initialize kafka storage if it doesn't already exist. Just looking for meta.properties in /nsm/kafka/data #}
-{% if salt['file.file_exists']('/nsm/kafka/data/meta.properties') %}
-{% else %}
+{%   if not salt['file.file_exists']('/nsm/kafka/data/meta.properties') %}
 kafka_storage_init:
   cmd.run:
     - name: |
@@ -25,7 +26,7 @@ kafka_rm_kafkainit:
   cmd.run:
     - name: |
         docker rm so-kafkainit
-{% endif %}
+{%   endif %}
 
 
 {% else %}

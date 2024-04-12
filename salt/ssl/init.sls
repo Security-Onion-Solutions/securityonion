@@ -666,7 +666,7 @@ elastickeyperms:
 
 # Roles will need to be modified. Below is just for testing encrypted kafka pipelines
 # Remove so-manager. Just inplace for testing
-{% if grains['role'] in ['so-manager', 'so-kafkanode', 'so-searchnode'] %}
+{% if grains['role'] in ['so-manager', 'so-receiver', 'so-searchnode'] %}
 # Create a cert for Redis encryption
 kafka_key:
   x509.private_key_managed:
@@ -770,7 +770,7 @@ kafka_logstash_crt:
     - onchanges:
       - x509: /etc/pki/kafka-logstash.key
 
-{%   if grains['role'] in ['so-manager'] %}
+{%   if grains['role'] in ['so-manager', 'so-managersearch', 'so-standalone', 'so-receiver'] %}
 kafka_client_key:
   x509.private_key_managed:
     - name: /etc/pki/kafka-client.key

@@ -13,10 +13,11 @@ else
   source $(dirname $0)/../../../common/tools/sbin/so-common
 fi
 
-if ! grep -q "^  kafka_cluster_id:" $local_salt_dir/pillar/secrets.sls; then
+if ! grep -q "^  cluster_id:" $local_salt_dir/pillar/kafka/soc_kafka.sls; then
     kafka_cluster_id=$(get_random_value 22)
-    echo '  kafka_cluster_id: '$kafka_cluster_id >> $local_salt_dir/pillar/secrets.sls
+    echo 'kafka: ' > $local_salt_dir/pillar/kafka/soc_kafka.sls
+    echo '  cluster_id: '$kafka_cluster_id >> $local_salt_dir/pillar/kafka/soc_kafka.sls
 else
-    echo 'kafka_cluster_id exists'
-    salt-call pillar.get secrets
+    echo 'kafka:cluster_id pillar exists'
+    salt-call pillar.get kafka:cluster_id
 fi
