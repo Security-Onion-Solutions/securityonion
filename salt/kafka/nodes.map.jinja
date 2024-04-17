@@ -1,0 +1,50 @@
+{% set current_kafkanodes = salt.saltutil.runner('mine.get', tgt='G@role:so-manager or G@role:so-managersearch or G@role:so-standalone or G@role:so-receiver', fun='network.ip_addrs', tgt_type='compound') %}
+{% set STORED_KAFKANODES = salt['pillar.get']('kafka:nodes', {}) %}
+
+{% set existing_ids = [] %}
+
+{# Check STORED_KAFKANODES for existing kafka nodes and pull their IDs so they are not reused across the grid #}
+{% if STORED_KAFKANODES.get('nodes', {}).items() | length > 0 %}
+{%   for node, values in STORED_KAFKANODES.nodes.items() %}
+{%     if values.get('nodeid') %}
+{%       do existing_ids.append(values['nodeid']) %}
+{%     endif %}
+{%   endfor %}
+{% endif %}
+
+{# Create list of possible node ids #}
+{% set all_possible_ids = range(1, 65536)|list %}
+
+{# Don't like the below loop because the higher the range for all_possible_ids the more time spent on loop #}
+{# Create list of available node ids by looping through all_possible_ids and ensuring it isn't in existing_ids #}
+{% set available_ids = [] %}
+{% for id in all_possible_ids %}
+{%   if id not in existing_ids %}
+{%     do available_ids.append(id) %}
+{%   endif %}
+{% endfor %}
+
+{# Collect kafka eligible nodes and check if they're already in STORED_KAFKANODES to avoid potentially reassigning a nodeid #}
+{% set NEW_KAFKANODES = {} %}
+{% for minionid, ip in current_kafkanodes.items() %}
+{%   set hostname = minionid.split('_')[0] %}
+{%   if STORED_KAFKANODES.get('nodes', {}).items() | length > 0 and hostname not in STORED_KAFKANODES.nodes %}
+{%     set new_id = available_ids.pop(0) %}
+{%     do NEW_KAFKANODES.update({hostname: {'nodeid': new_id, 'ip': ip[0]}}) %}
+{%   endif %}
+{%   if hostname not in NEW_KAFKANODES %}
+{%     set new_id = available_ids.pop(0) %}
+{%     do NEW_KAFKANODES.update({hostname: {'nodeid': new_id, 'ip': ip[0]}}) %}
+{%   endif %}
+{% endfor %}
+
+{# Combine STORED_KAFKANODES and NEW_KAFKANODES for writing to the pillar/kafka/nodes.sls #}
+{% set COMBINED_KAFKANODES = {} %}
+{% for node, details in NEW_KAFKANODES.items() %}
+{%   do COMBINED_KAFKANODES.update({node: details}) %}
+{% endfor %}
+{% if STORED_KAFKANODES.get('nodes', {}).items() | length > 0 %}
+{%  for node, details in STORED_KAFKANODES.nodes.items() %}
+{%    do COMBINED_KAFKANODES.update({node: details}) %}
+{%  endfor %}
+{% endif %}

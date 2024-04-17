@@ -616,6 +616,10 @@ function updateMineAndApplyStates() {
 		salt $MINIONID state.apply elasticsearch queue=True --async
 		salt $MINIONID state.apply soc queue=True --async
 	fi
+	if [[ "$NODETYPE" == "RECEIVER" ]]; then
+		# Setup nodeid for Kafka
+		salt-call state.apply kafka.nodes queue=True
+	fi
 	# run this async so the cli doesn't wait for a return
 	salt "$MINION_ID" state.highstate --async queue=True
 }

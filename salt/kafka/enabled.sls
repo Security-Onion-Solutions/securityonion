@@ -1,5 +1,5 @@
 # Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
-# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
@@ -7,9 +7,12 @@
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 {%   from 'docker/docker.map.jinja' import DOCKER %}
-{%   set KAFKANODES = salt['pillar.get']('kafka:nodes', {}) %}
+{%   from 'kafka/nodes.map.jinja' import COMBINED_KAFKANODES as KAFKANODES %}
 
 include:
+  {% if grains.role in ['so-manager', 'so-managersearch', 'so-standalone'] %}
+  - kafka.nodes
+  {% endif %}
   - elasticsearch.ca
   - kafka.sostatus
   - kafka.config
