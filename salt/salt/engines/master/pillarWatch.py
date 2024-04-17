@@ -5,6 +5,7 @@ from time import sleep
 import os
 import salt.client
 import re
+from ast import literal_eval
 
 log = logging.getLogger(__name__)
 local = salt.client.LocalClient()
@@ -12,24 +13,26 @@ local = salt.client.LocalClient()
 def start(fpa, interval=10):
     log.info("##### PILLARWATCH STARTED #####")
 
+    # try to open the file that stores the previous runs data
+    # if the file doesn't exist, create a blank one
     try:
         # maybe change this location
         dataFile = open("/opt/so/state/pillarWatch.txt", "r+")
-        df = dataFile.read()
-        log.info("df: %s" % str(df))
     except FileNotFoundError:
         log.info("No previous pillarWatch data saved")
+        dataFile = open("/opt/so/state/pillarWatch.txt", "w+")
 
-    currentValues = []
+    df = dataFile.read()
+    log.info("df: %s" % str(df))
 
     log.info("FPA: %s" % str(fpa))
     for i in fpa:
         log.trace("files: %s" % i['files'])
         log.trace("pillar: %s" % i['pillar'])
-        log.trace("action: %s" % i['action'])
+        log.trace("action: %s" % i['actions'])
         pillarFiles = i['files']
         pillar = i['pillar']
-        action = i['action']
+        actions = i['actions']
 
         patterns = pillar.split(".")
         log.trace("pillar: %s" % pillar)
@@ -49,23 +52,45 @@ def start(fpa, interval=10):
                 if re.search(patterns[patternFound], line):
                     log.trace("PILLARWATCH FOUND: %s" % patterns[patternFound])
                     patternFound += 1
-                    # we have found the final key in the pillar that we are looking for, get the value
+                    # we have found the final key in the pillar that we are looking for, get the previous value then the current value
                     if patternFound == len(patterns):
+                        #  at this point, df is equal to the contents of the pillarWatch file that is used to tract the previous values of the pillars
+                        previousPillarValue = 'PREVIOUSPILLARVALUENOTSAVEDINDATAFILE'
                         for l in df.splitlines():
                             if pillar in l:
-                                previousPillarValue = l.split(":")[1]
-                                log.info("%s previousPillarValue:%s" % (pillar, str(previousPillarValue)))
+                                previousPillarValue = l.split(":")[1].strip()
+                        log.info("%s previousPillarValue: %s" % (pillar, str(previousPillarValue)))
                         currentPillarValue = str(line.split(":")[1]).strip()
                         log.info("%s currentPillarValue: %s" % (pillar,currentPillarValue))
                         if pillar in df:
                            df =  re.sub(r"\b{}\b.*".format(pillar), pillar + ': ' + currentPillarValue, df)
-                           #df = df.replace(pillar, pillar + ': ' + currentPillarValue)
                         else:
-                            df = pillar + ': ' + currentPillarValue
+                            df += pillar + ': ' + currentPillarValue + '\n'
                         log.info("df: %s" % df)
-                        #currentValues.append(pillar + ":" + currentPillarValue)
                         # we have found the pillar so we dont need to loop throught the file anymore
                         break
+        if currentPillarValue != previousPillarValue:
+            log.info("cPV != pPV: %s != %s" % (currentPillarValue,previousPillarValue))
+            if previousPillarValue in actions['from']:
+                ACTIONS=actions['from'][previousPillarValue]['to'][currentPillarValue]
+            elif '*' in actions['from']:
+                # need more logic here for to and from
+                ACTIONS=actions['from']['*']['to']['*']
+            else:
+                ACTIONS='FROM TO NOT DEFINED'
+            #for f in actions:
+            log.info("actions: %s" % actions['from'])
+            log.info("ACTIONS: %s" % ACTIONS)
+            for action in ACTIONS:
+                log.info(action)
+                for saltModule, args in action.items():
+                    log.info(saltModule)
+                    log.info(args)
+               # args=list(action.values())[0]
+               # log.info(args)
+                    whatHappened = __salt__[saltModule](**args)
+                    log.info("whatHappened: %s" % whatHappened)
+
     dataFile.seek(0)
     dataFile.write(df)
     dataFile.truncate()
