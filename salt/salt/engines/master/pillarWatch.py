@@ -26,8 +26,6 @@ def start(fpa, interval=10):
 
     df = dataFile.read()
     for i in fpa:
-        currentPillarValue = ''
-        previousPillarValue = ''
         log.trace("pillarWatch engine: files: %s" % i['files'])
         log.trace("pillarWatch engine: pillar: %s" % i['pillar'])
         log.trace("pillarWatch engine: actions: %s" % i['actions'])
@@ -36,9 +34,12 @@ def start(fpa, interval=10):
         actions = i['actions']
         # these are the keys that we are going to look for as we traverse the pillarFiles
         patterns = pillar.split(".")
-        # this var is used to track how many times the pattern has been found in the pillar file so that we can access the proper index later
-        patternFound = 0
-        for pillarFile in pillarFiles:
+        # check the pillar files in reveresed order to replicate the same hierarchy as the pillar top file
+        for pillarFile in reversed(pillarFiles):
+          currentPillarValue = ''
+          previousPillarValue = ''
+          # this var is used to track how many times the pattern has been found in the pillar file so that we can access the proper index later
+          patternFound = 0
           with open(pillarFile, "r") as file:
             log.info("pillarWatch engine: checking file: %s" % pillarFile)
             for line in file:
@@ -47,7 +48,7 @@ def start(fpa, interval=10):
                 # since we are looping line by line through a pillar file, the next line will check if each line matches the progression of keys through the pillar
                 # ex. if we are looking for the value of global.pipeline, then this will loop through the pillar file until 'global' is found, then it will look
                 # for pipeline. once pipeline is found, it will record the value
-                if re.search(patterns[patternFound] + ':', line):
+                if re.search('^' + patterns[patternFound] + ':', line.strip()):
                     # strip the newline because it makes the logs u-g-l-y
                     log.info("pillarWatch engine: found: %s" % line.strip('\n'))
                     patternFound += 1
@@ -70,8 +71,12 @@ def start(fpa, interval=10):
                         else:
                             df += pillar + ': ' + currentPillarValue + '\n'
                         log.trace("pillarWatch engine: df: %s" % df)
-                        # we have found the pillar so we dont need to loop throught the file anymore
+                        # we have found the pillar so we dont need to loop through the file anymore
                         break
+          # if key and value was found in the first file, then we don't want to look in
+          # any more files since we use the first file as the source of truth.
+          if patternFound == len(patterns):
+              break
         # if the pillar value changed, then we find what actions we should take
         log.info("pillarWatch engine: checking if currentPillarValue != previousPillarValue")
         log.info("pillarWatch engine: %s currentPillarValue: %s" % (pillar, currentPillarValue))
@@ -111,8 +116,9 @@ def start(fpa, interval=10):
                     for saltModule, args in action.items():
                         log.info("pillarWatch engine: saltModule: %s" % saltModule)
                         log.info("pillarWatch engine: args: %s" % args)
-                        actionReturn = __salt__[saltModule](**args)
-                        log.info("pillarWatch engine: actionReturn: %s" % actionReturn)
+                        __salt__[saltModule](**args)
+                        #actionReturn = __salt__[saltModule](**args)
+                        #log.info("pillarWatch engine: actionReturn: %s" % actionReturn)
 
     dataFile.seek(0)
     dataFile.write(df)
