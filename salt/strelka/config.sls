@@ -9,7 +9,7 @@
 # Strelka config
 strelkaconfdir:
   file.directory:
-    - name: /opt/so/conf/strelka
+    - name: /opt/so/conf/strelka/rules/compiled/
     - user: 939
     - group: 939
     - makedirs: True
