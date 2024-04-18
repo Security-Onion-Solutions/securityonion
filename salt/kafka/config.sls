@@ -7,23 +7,6 @@
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 
-{% set kafka_ips_logstash = [] %}
-{% set kafka_ips_kraft = [] %}
-{% set kafkanodes =  salt['pillar.get']('kafka:nodes', {}) %}
-{% set kafka_ip = GLOBALS.node_ip %}
-
-{# Create list for kafka <-> logstash/searchnode communcations #}
-{% for node, node_data in kafkanodes.items() %}
-{%   do kafka_ips_logstash.append(node_data['ip'] + ":9092") %}
-{% endfor %}
-{% set kafka_server_list = "','".join(kafka_ips_logstash) %}
-
-{# Create a list for kraft controller <-> kraft controller communications. Used for Kafka metadata management #}
-{% for node, node_data in kafkanodes.items() %}
-{%   do kafka_ips_kraft.append(node_data['nodeid'] ~ "@" ~ node_data['ip'] ~ ":9093") %}
-{% endfor %}
-{% set kraft_server_list = "','".join(kafka_ips_kraft) %}
-
 include:
   - ssl
 
