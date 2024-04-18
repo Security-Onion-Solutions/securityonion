@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 local = salt.client.LocalClient()
 
 def start(fpa, interval=10):
-    log.info("pillarWatch engine: started")
+    log.info("pillarWatch engine: checking watched pillars for changes")
 
     # try to open the file that stores the previous runs data
     # if the file doesn't exist, create a blank one
@@ -26,6 +26,8 @@ def start(fpa, interval=10):
 
     df = dataFile.read()
     for i in fpa:
+        currentPillarValue = ''
+        previousPillarValue = ''
         log.trace("pillarWatch engine: files: %s" % i['files'])
         log.trace("pillarWatch engine: pillar: %s" % i['pillar'])
         log.trace("pillarWatch engine: actions: %s" % i['actions'])
@@ -58,9 +60,9 @@ def start(fpa, interval=10):
                         for l in df.splitlines():
                             if pillar in l:
                                 previousPillarValue = str(l.split(":")[1].strip())
-                        log.info("pillarWatch engine: %s previousPillarValue: %s" % (pillar, previousPillarValue))
                         currentPillarValue = str(line.split(":")[1]).strip()
                         log.info("pillarWatch engine: %s currentPillarValue: %s" % (pillar, currentPillarValue))
+                        log.info("pillarWatch engine: %s previousPillarValue: %s" % (pillar, previousPillarValue))
                         # if the pillar we are checking for changes has been defined in the dataFile,
                         # replace the previousPillarValue with the currentPillarValue. if it isn't in there, append it.
                         if pillar in df:
@@ -86,7 +88,7 @@ def start(fpa, interval=10):
                     ACTIONS=actions['from'][previousPillarValue]['to']['*']
                 # no action was defined for us to take when we see the pillar change
                 else:
-                    ACTIONS='NO DEFINED ACTION FOR US TO TAKE'
+                    ACTIONS=['NO DEFINED ACTION FOR US TO TAKE']
             # if the previous pillar wasn't defined in the actions from, is there a wildcard defined for the pillar that we are changing from
             elif '*' in actions['from']:
                 # is the new pillar value defined for the wildcard match
@@ -97,19 +99,20 @@ def start(fpa, interval=10):
                 # need more logic here for to and from
                     ACTIONS=actions['from']['*']['to']['*']
                 else:
-                    ACTIONS='NO DEFINED ACTION FOR US TO TAKE'
+                    ACTIONS=['NO DEFINED ACTION FOR US TO TAKE']
             # a match for the previous pillar wasn't defined in the action in either the form of a direct match or wildcard
             else:
-                ACTIONS='NO DEFINED ACTION FOR US TO TAKE'
-            log.info("pillarWatch engine: actions: %s" % actions['from'])
-            log.info("pillarWatch engine: ACTIONS: %s" % ACTIONS)
+                ACTIONS=['NO DEFINED ACTION FOR US TO TAKE']
+            log.info("pillarWatch engine: all defined actions: %s" % actions['from'])
+            log.info("pillarWatch engine: ACTIONS: %s chosen based on previousPillarValue: %s switching to currentPillarValue: %s" % (ACTIONS, previousPillarValue, currentPillarValue))
             for action in ACTIONS:
                 log.info("pillarWatch engine: action: %s" % action)
-                for saltModule, args in action.items():
-                    log.info("pillarWatch engine: saltModule: %s" % saltModule)
-                    log.info("pillarWatch engine: args: %s" % args)
-                    actionReturn = __salt__[saltModule](**args)
-                    log.info("pillarWatch engine: actionReturn: %s" % actionReturn)
+                if action != 'NO DEFINED ACTION FOR US TO TAKE':
+                    for saltModule, args in action.items():
+                        log.info("pillarWatch engine: saltModule: %s" % saltModule)
+                        log.info("pillarWatch engine: args: %s" % args)
+                        actionReturn = __salt__[saltModule](**args)
+                        log.info("pillarWatch engine: actionReturn: %s" % actionReturn)
 
     dataFile.seek(0)
     dataFile.write(df)
