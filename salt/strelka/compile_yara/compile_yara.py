@@ -43,6 +43,7 @@ def compile_yara_rules(rules_dir):
                 "event.dataset": "soc.detections",
                 "log.level": "error",
                 "error.message": error_message,
+                "error.analysis": "syntax error",
                 "detection_type": "yara",
                 "rule.uuid": rule_id,
                 "error.type": "runtime_status"
