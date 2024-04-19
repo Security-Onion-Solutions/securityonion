@@ -9,7 +9,15 @@
 # Strelka config
 strelkaconfdir:
   file.directory:
-    - name: /opt/so/conf/strelka
+    - name: /opt/so/conf/strelka/rules/compiled/
+    - user: 939
+    - group: 939
+    - makedirs: True
+
+strelkacompileyara:
+  file.managed:
+    - name: /opt/so/conf/strelka/compile_yara.py
+    - source: salt://strelka/compile_yara/compile_yara.py
     - user: 939
     - group: 939
     - makedirs: True
