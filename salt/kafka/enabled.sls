@@ -13,6 +13,7 @@ include:
   {% if grains.role in ['so-manager', 'so-managersearch', 'so-standalone'] %}
   - kafka.nodes
   {% endif %}
+  - kafka.controllers
   - elasticsearch.ca
   - kafka.sostatus
   - kafka.config
