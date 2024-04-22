@@ -1211,6 +1211,13 @@ soc:
         -  soc_timestamp
         -  event.dataset
         -  message
+      ':kismet:':
+        - soc_timestamp
+        - device.manufacturer
+        - client.mac
+        - network.wireless.ssid
+        - network.wireless.bssid
+        - event.dataset
       ':playbook:':
         - soc_timestamp
         - rule.name
@@ -1902,6 +1909,9 @@ soc:
             - name: GeoIP - Source Organizations
               description: GeoIP tagged logs visualized by source organizations
               query: '* AND _exists_:source_geo.organization_name | groupby source_geo.organization_name | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby source.geo.country_name | groupby event.dataset | groupby event.module'
+            - name: Kismet - WiFi Devices
+              description: WiFi devices seen by Kismet sensors
+              query: 'event.module: kismet | groupby network.wireless.ssid | groupby device.manufacturer | groupby -pie device.manufacturer | groupby event.dataset'
         job:
         alerts:
           advanced: false
