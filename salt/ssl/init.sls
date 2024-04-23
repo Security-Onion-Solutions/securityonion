@@ -856,10 +856,10 @@ kafka_logstash_pkcs12_perms:
     - user: 960
     - group: 931
 
-kafka_pkcs8_perms:
+elasticfleet_kafka_pkcs8_perms:
   file.managed:
     - replace: False
-    - name: /etc/pki/kafka.p8
+    - name: /etc/pki/elasticfleet-kafka.p8
     - mode: 640
     - user: 960
     - group: 939
