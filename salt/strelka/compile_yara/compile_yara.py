@@ -39,14 +39,14 @@ def compile_yara_rules(rules_dir):
             # Extract just the UUID from the rule file name
             rule_id = os.path.splitext(os.path.basename(rule_file))[0]
             log_entry = {
-                "event.module": "soc",
-                "event.dataset": "soc.detections",
+                "event_module": "soc",
+                "event_dataset": "soc.detections",
                 "log.level": "error",
-                "error.message": error_message,
-                "error.analysis": "syntax error",
-                "detection_type": "yara",
-                "rule.uuid": rule_id,
-                "error.type": "runtime_status"
+                "error_message": error_message,
+                "error_analysis": "Syntax Error",
+                "detection_type": "YARA",
+                "rule_uuid": rule_id,
+                "error_type": "runtime_status"
             }
             with open('/opt/sensoroni/logs/detections_runtime-status_yara.log', 'a') as log_file:
                 json.dump(log_entry, log_file)
