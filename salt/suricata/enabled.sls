@@ -24,6 +24,12 @@ so-suricata:
       - {{ XTRAENV }}
         {% endfor %}
       {% endif %}
+    {% if DOCKER.containers['so-suricata'].ulimits %}
+    - ulimits:
+    {%   for ULIMIT in DOCKER.containers['so-suricata'].ulimits %}
+      - {{ ULIMIT }}
+    {%   endfor %}
+    {% endif %}
     - binds:
       - /opt/so/conf/suricata/suricata.yaml:/etc/suricata/suricata.yaml:ro
       - /opt/so/conf/suricata/threshold.conf:/etc/suricata/threshold.conf:ro
