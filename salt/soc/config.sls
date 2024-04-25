@@ -80,6 +80,17 @@ socmotd:
     - mode: 600
     - template: jinja
 
+crondetectionsruntime:
+  cron.present:
+    - name: /usr/local/bin/so-detections-runtime-status cron
+    - identifier: detections-runtime-status
+    - user: socore
+    - minute: '*/10'
+    - hour: '*'
+    - daymonth: '*'
+    - month: '*'
+    - dayweek: '*'
+
 socsigmafinalpipeline:
   file.managed:
     - name: /opt/so/conf/soc/sigma_final_pipeline.yaml
