@@ -36,9 +36,9 @@ while overlimit && [[ $ITERATION -lt $MAX_ITERATIONS ]]; do
 
   # We iterate through the closed and open indices
   CLOSED_SO_INDICES=$(/usr/sbin/so-elasticsearch-query _cat/indices?h=index,status | grep 'close$' | awk '{print $1}' | grep -E "(^logstash-.*|^so-.*)" | grep -vE "so-case|so-detection" | sort -t- -k3)
-  CLOSED_INDICES=$(/usr/sbin/so-elasticsearch-query _cat/indices?h=index,status | grep 'close$' | awk '{print $1}' | grep -E "^.ds-logs-.*" | sort -t- -k4)
+  CLOSED_INDICES=$(/usr/sbin/so-elasticsearch-query _cat/indices?h=index,status | grep 'close$' | awk '{print $1}' | grep -E "^.ds-logs-.*" | grep -v "suricata" | sort -t- -k4)
   OPEN_SO_INDICES=$(/usr/sbin/so-elasticsearch-query _cat/indices?h=index,status | grep 'open$' | awk '{print $1}' | grep -E "(^logstash-.*|^so-.*)" | grep -vE "so-case|so-detection" | sort -t- -k3)
-  OPEN_INDICES=$(/usr/sbin/so-elasticsearch-query _cat/indices?h=index,status | grep 'open$' | awk '{print $1}' | grep -E "^.ds-logs-.*" | sort -t- -k4)
+  OPEN_INDICES=$(/usr/sbin/so-elasticsearch-query _cat/indices?h=index,status | grep 'open$' | awk '{print $1}' | grep -E "^.ds-logs-.*" | grep -v "suricata" | sort -t- -k4)
 
   for INDEX in ${CLOSED_SO_INDICES} ${OPEN_SO_INDICES} ${CLOSED_INDICES} ${OPEN_INDICES}; do
     # Check if index is an older index. If it is an older index, delete it before moving on to newer indices.
