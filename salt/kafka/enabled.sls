@@ -10,7 +10,6 @@
 {% set KAFKANODES = salt['pillar.get']('kafka:nodes') %}
 
 include:
-  - kafka.controllers
   - elasticsearch.ca
   - kafka.sostatus
   - kafka.config
