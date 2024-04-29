@@ -7,6 +7,10 @@
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 
 include:
+{# Run kafka/nodes.sls before Kafka is enabled, so kafka nodes pillar is setup #}
+{% if grains.role in ['so-manager','so-managersearch', 'so-standalone'] %}
+  - kafka.nodes
+{% endif %}
 {% if GLOBALS.pipeline == "KAFKA" and KAFKAMERGED.enabled %}
   - kafka.enabled
 {% else %}
