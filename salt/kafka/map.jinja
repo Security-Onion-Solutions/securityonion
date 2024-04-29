@@ -3,18 +3,8 @@
    https://securityonion.net/license; you may not use this file except in compliance with the
    Elastic License 2.0. #}
 
+{# This is only used to determine if Kafka is enabled / disabled. Configuration is found in kafka/config.map.jinja #}
+{# kafka/config.map.jinja depends on there being a kafka nodes pillar being populated #}
+
 {% import_yaml 'kafka/defaults.yaml' as KAFKADEFAULTS %}
 {% set KAFKAMERGED = salt['pillar.get']('kafka', KAFKADEFAULTS.kafka, merge=True) %}
-{% from 'vars/globals.map.jinja' import GLOBALS %}
-{% from 'kafka/nodes.map.jinja' import COMBINED_KAFKANODES %}
-
-{% do KAFKAMERGED.config.server.update({ 'node_x_id': salt['pillar.get']('kafka:nodes:' ~ GLOBALS.hostname ~ ':nodeid')}) %}
-{% do KAFKAMERGED.config.server.update({'advertised_x_listeners': 'BROKER://' ~ GLOBALS.node_ip ~ ':9092'}) %}
-
-{% set combined = [] %}
-{% for hostname, data in COMBINED_KAFKANODES.items() %}
-  {% do combined.append(data.nodeid ~ "@" ~ hostname ~ ":9093") %}
-{% endfor %}
-{% set kraft_controller_quorum_voters = ','.join(combined) %}
-
-{% do KAFKAMERGED.config.server.update({'controller_x_quorum_x_voters': kraft_controller_quorum_voters}) %}

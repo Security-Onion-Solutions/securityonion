@@ -8,12 +8,15 @@ kafka:
     advanced: True
     sensitive: True
     helpLink: kafka.html
+  kafkapass:
+    description: The password to use for the Kafka certificates.
+    sensitive: True
+    helpLink: kafka.html
+  kafka_controllers:
+    description: A list of Security Onion grid members that should act as KRaft controllers for this Kafka cluster. By default, the grid manager will use a 'combined' role where it will act as both a broker and controller. All other nodes will default to broker roles.
+    helpLink: kafka.html
   config:
-    kafkapass:
-      description: The password to use for the Kafka certificates.
-      sensitive: True
-      helpLink: kafka.html
-    server:
+    broker:
       advertised_x_listeners:
         description: Specify the list of listeners (hostname and port) that Kafka brokers provide to clients for communication.
         title: advertised.listeners
@@ -22,14 +25,6 @@ kafka:
         description: Enable the auto creation of topics.
         title: auto.create.topics.enable
         forcedType: bool
-        helpLink: kafka.html
-      controller_x_listener_x_names:
-        description: Set listeners used by the controller in a comma-seperated list. 
-        title: controller.listener.names
-        helpLink: kafka.html
-      controller_x_quorum_x_voters:
-        description: A comma-seperated list of ID and endpoint information mapped for a set of voters.
-        title: controller.quorum.voters
         helpLink: kafka.html
       inter_x_broker_x_listener_x_name:
         description: The name of the listener used for inter-broker communication.
@@ -60,12 +55,6 @@ kafka:
         title: log.segment.bytes
         forcedType: int
         helpLink: kafka.html
-      node_x_id:
-        description: The node ID corresponds to the roles performed by this process whenever process.roles is populated.
-        title: node.id
-        forcedType: int
-        readonly: True
-        helpLink: kafka.html
       num_x_io_x_threads:
         description: The number of threads used by Kafka.
         title: num.io.threads
@@ -92,10 +81,9 @@ kafka:
         forcedType: int
         helpLink: kafka.html
       process_x_roles:
-        description: The roles performed by Kafka node. Default is to act as 'broker' only.
+        description: The role performed by Kafka brokers.
         title: process.roles
-        regex: ^(broker|controller|broker,controller|controller,broker)$
-        regexFailureMessage: Valid values include 'broker' 'controller' or 'broker,controller'
+        readonly: True
         helpLink: kafka.html
       socket_x_receive_x_buffer_x_bytes:
         description: Size, in bytes of the SO_RCVBUF buffer. A value of -1 will use the OS default.
@@ -173,4 +161,39 @@ kafka:
         description: The trust store file password. If null, the trust store file is still use, but integrity checking is disabled. Invalid for PEM format.
         title: ssl.truststore.password
         sensitive: True
+        helpLink: kafka.html
+    controller:
+      controller_x_listener_x_names:
+        description: Set listeners used by the controller in a comma-seperated list.
+        title: controller.listener.names
+        helpLink: kafka.html
+      listeners:
+        description: Set of URIs that is listened on and the listener names in a comma-seperated list.
+        helpLink: kafka.html
+      listener_x_security_x_protocol_x_map:
+        description: Comma-seperated mapping of listener name and security protocols.
+        title: listener.security.protocol.map
+        helpLink: kafka.html
+      log_x_dirs:
+        description: Where Kafka logs are stored within the Docker container.
+        title: log.dirs
+        helpLink: kafka.html
+      log_x_retention_x_check_x_interval_x_ms:
+        description: Frequency at which log files are checked if they are qualified for deletion.
+        title: log.retention.check.interval.ms
+        helpLink: kafka.html
+      log_x_retention_x_hours:
+        description: How long, in hours, a log file is kept.
+        title: log.retention.hours
+        forcedType: int
+        helpLink: kafka.html
+      log_x_segment_x_bytes:
+        description: The maximum allowable size for a log file.
+        title: log.segment.bytes
+        forcedType: int
+        helpLink: kafka.html
+      process_x_roles:
+        description: The role performed by KRaft controller node.
+        title: process.roles
+        readonly: True
         helpLink: kafka.html

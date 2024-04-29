@@ -7,12 +7,9 @@
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 {%   from 'docker/docker.map.jinja' import DOCKER %}
-{%   from 'kafka/nodes.map.jinja' import COMBINED_KAFKANODES as KAFKANODES %}
+{% set KAFKANODES = salt['pillar.get']('kafka:nodes') %}
 
 include:
-  {% if grains.role in ['so-manager', 'so-managersearch', 'so-standalone'] %}
-  - kafka.nodes
-  {% endif %}
   - kafka.controllers
   - elasticsearch.ca
   - kafka.sostatus
