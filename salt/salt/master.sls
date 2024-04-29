@@ -37,11 +37,6 @@ engines_config:
     - name: /etc/salt/master.d/engines.conf
     - source: salt://salt/files/engines.conf
 
-reactor_config:
-  file.managed:
-    - name: /etc/salt/master.d/reactor.conf
-    - source: salt://salt/files/reactor.conf
-
 salt_master_service:
   service.running:
     - name: salt-master
