@@ -6,15 +6,7 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
-{%   set kafka_cluster_id = salt['pillar.get']('kafka:cluster_id', default=None) %}
-
-{%   if GLOBALS.role in ['so-manager', 'so-managersearch', 'so-standalone'] %}
-{%     if kafka_cluster_id is none %}
-generate_kafka_cluster_id:
-  cmd.run:
-    - name: /usr/sbin/so-kafka-clusterid
-{%     endif %}
-{%   endif %}
+{%   set kafka_cluster_id = salt['pillar.get']('kafka:cluster_id') %}
 
 {# Initialize kafka storage if it doesn't already exist. Just looking for meta.properties in /nsm/kafka/data #}
 {%   if not salt['file.file_exists']('/nsm/kafka/data/meta.properties') %}

@@ -4,6 +4,7 @@
 # Elastic License 2.0.
 
 {% from 'kafka/nodes.map.jinja' import COMBINED_KAFKANODES %}
+{% set kafka_cluster_id = salt['pillar.get']('kafka:cluster_id', default=None) %}
 
 {# Write Kafka pillar, so all grid members have access to nodeid of other kafka nodes and their roles #}
 write_kafka_pillar_yaml:
@@ -15,3 +16,10 @@ write_kafka_pillar_yaml:
     - template: jinja
     - context:
         COMBINED_KAFKANODES: {{ COMBINED_KAFKANODES }}
+
+
+{% if kafka_cluster_id is none %}
+generate_kafka_cluster_id:
+  cmd.run:
+    - name: /usr/sbin/so-kafka-clusterid
+{% endif %}
