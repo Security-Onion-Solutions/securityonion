@@ -39,6 +39,12 @@
 {%   do KAFKAMERGED.config.broker.update({'controller_x_quorum_x_voters': kafka_controller_quorum_voters }) %}
 {%   do KAFKAMERGED.config.broker.update({'node_x_id': salt['pillar.get']('kafka:nodes:'+ GLOBALS.hostname +':nodeid') }) %}
 
+{# Nodes with only the 'broker' role need to have the below settings for communicating with controller nodes #}
+{%   do KAFKAMERGED.config.broker.update({'controller_x_listener_x_names': KAFKAMERGED.config.controller.controller_x_listener_x_names }) %}
+{%   do KAFKAMERGED.config.broker.update({
+       'listener_x_security_x_protocol_x_map': KAFKAMERGED.config.broker.listener_x_security_x_protocol_x_map
+        + ',' + KAFKAMERGED.config.controller.listener_x_security_x_protocol_x_map })
+  %}
 {% endif %}
 
 {% if node_type == 'controller' %}
@@ -50,6 +56,7 @@
 {# Kafka nodes of this type are not recommended for use outside of development / testing. #}
 {% if node_type == 'broker,controller' %}
 {%   do KAFKAMERGED.config.broker.update({'advertised_x_listeners': 'BROKER://'+ GLOBALS.node_ip +':9092' }) %}
+{%   do KAFKAMERGED.config.broker.update({'controller_x_listener_x_names': KAFKAMERGED.config.controller.controller_x_listener_x_names }) %}
 {%   do KAFKAMERGED.config.broker.update({'controller_x_quorum_x_voters': kafka_controller_quorum_voters }) %}
 {%   do KAFKAMERGED.config.broker.update({'node_x_id': salt['pillar.get']('kafka:nodes:'+ GLOBALS.hostname +':nodeid') }) %}
 {%   do KAFKAMERGED.config.broker.update({'process_x_roles': 'broker,controller' }) %}
