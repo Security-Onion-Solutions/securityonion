@@ -77,6 +77,23 @@ curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fl
 printf "\n\n"
 {%- endif %}
 
+printf "\nCreate Kafka Output Config if node is not an Import or Eval install\n"
+{% if grains.role not in ['so-import', 'so-eval'] %}
+KAFKACRT=$(openssl x509 -in /etc/pki/elasticfleet-kafka.crt)
+KAFKAKEY=$(openssl rsa -in  /etc/pki/elasticfleet-kafka.key)
+{# KAFKACA=$(openssl x509 -in  $INTCA) #}
+KAFKACA=$(openssl x509 -in  /etc/pki/tls/certs/intca.crt)
+KAFKA_OUTPUT_VERSION="2.6.0"
+JSON_STRING=$( jq -n \
+                  --arg KAFKACRT "$KAFKACRT" \
+                  --arg KAFKAKEY "$KAFKAKEY" \
+                  --arg KAFKACA "$KAFKACA" \
+                  --arg KAFKA_OUTPUT_VERSION "$KAFKA_OUTPUT_VERSION" \
+                  '{ "name": "grid_kafka", "type": "kafka", "hosts": [ "{{ GLOBALS.manager }}:9092", "{{ GLOBALS.manager_ip }}:9092" ], "is_default": false, "is_default_monitoring": false, "config_yaml": "", "ssl": { "certificate_authorities": [ $KAFKACA ], "certificate": $KAFKACRT, "key": $KAFKAKEY, "verification_mode": "full" }, "proxy_id": null, "client_id": "Elastic", "version": $KAFKA_OUTPUT_VERSION, "compression": "none", "auth_type": "ssl", "partition": "round_robin", "round_robin": { "group_events": 1 }, "topics": [ { "topic": "zeek-logs", "when": { "type": "equals", "condition": "event.module:zeek" } }, { "topic": "suricata-logs", "when": { "type": "equals", "condition": "event.module:suricata" } }, { "topic": "strelka-logs", "when": { "type": "equals", "condition": "event.module:strelka" } }, { "topic": "opencanary-logs", "when": { "type": "equals", "condition": "event.module:opencanary" } }, { "topic": "system-logs", "when": { "type": "equals", "condition": "event.module:system" } }, { "topic": "kratos-logs", "when": { "type": "equals", "condition": "event.module:kratos" } }, { "topic": "soc-logs", "when": { "type": "equals", "condition": "event.module:soc" } }, { "topic": "rita-logs", "when": { "type": "equals", "condition": "event.module:rita" } }, { "topic": "default-logs" } ], "headers": [ { "key": "", "value": "" } ], "timeout": 30, "broker_timeout": 30, "required_acks": 1 }'
+                  )
+curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/outputs" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
+{% endif %}
+
 # Add Manager Hostname & URL Base to Fleet Host URLs
 printf "\nAdd SO-Manager Fleet URL\n"
 if [ "{{ GLOBALS.hostname }}" = "{{ GLOBALS.url_base }}" ]; then
