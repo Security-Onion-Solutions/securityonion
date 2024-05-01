@@ -226,6 +226,7 @@ base:
     - minions.adv_{{ grains.id }}
     - stig.soc_stig
     - soc.license
+    - kafka.nodes
 
   '*_receiver':
     - logstash.nodes

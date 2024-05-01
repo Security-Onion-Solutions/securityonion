@@ -1,18 +1,17 @@
-{% set kafka_brokers = salt['pillar.get']('logstash:nodes:receiver', {}) %}
-{% set kafka_on_mngr = salt ['pillar.get']('logstash:nodes:manager', {}) %}
-{% set broker_ips = [] %}
-{% for node, node_data in kafka_brokers.items() %}
-  {% do broker_ips.append(node_data['ip'] + ":9092") %}
+{% set kafka_brokers = salt['pillar.get']('kafka:nodes', {}) %}
+{% set brokers = [] %}
+
+{% for key, values in kafka_brokers.items() %}
+{%   if 'broker' in values['role'] %}
+{%     do brokers.append(key ~ ':9092') %}
+{%   endif %}
 {% endfor %}
-{% for node, node_data in kafka_on_mngr.items() %}
-  {% do broker_ips.append(node_data['ip'] + ":9092") %}
-{% endfor %}
-{% set bootstrap_servers = "','".join(broker_ips) %}
+{% set bootstrap_servers = ','.join(brokers) %}
 
 input {
     kafka {
         codec => json
-        topics => ['default-logs', 'kratos-logs', 'soc-logs', 'strelka-logs', 'suricata-logs', 'zeek-logs']
+        topics => ['default-topic', 'kratos-topic', 'soc-topic', 'strelka-topic', 'suricata-topic', 'zeek-topic', 'rita-topic', 'opencanary-topic', 'syslog-topic']
         group_id => 'searchnodes'
         client_id => '{{ GLOBALS.hostname }}'
         security_protocol => 'SSL'
