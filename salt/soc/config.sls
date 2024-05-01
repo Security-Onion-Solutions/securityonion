@@ -82,7 +82,7 @@ socmotd:
 
 crondetectionsruntime:
   cron.present:
-    - name: /usr/local/bin/so-detections-runtime-status cron
+    - name: /usr/local/bin/so-detections-runtime-status cron > /opt/so/log/soc/detection-sync.log 2>&1
     - identifier: detections-runtime-status
     - user: socore
     - minute: '*/10'
