@@ -141,6 +141,7 @@ base:
     - utility
     - elasticfleet
     - stig
+    - kafka
 
   '*_searchnode and G@saltversion:{{saltversion}}':
     - match: compound
