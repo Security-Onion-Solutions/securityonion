@@ -613,11 +613,14 @@ function updateMineAndApplyStates() {
 	if [[ "$NODETYPE" == "SEARCHNODE" || "$NODETYPE" == "HEAVYNODE" ]]; then
 		# calls so-common and set_minionid sets MINIONID to local minion id
 		set_minionid
-		salt $MINIONID state.apply elasticsearch queue=True --async
-		salt $MINIONID state.apply soc queue=True --async
+		#salt $MINIONID state.apply elasticsearch queue=True --async
+	#	salt $MINIONID state.apply soc queue=True --async
+		# $MINIONID is the minion id of the manager and $MINION_ID is the target node or the node being configured
+		salt-run state.orch orch.deploy_searchnode pillar="{'setup': {'manager': $MINIONID, 'searchnode': $MINION_ID }}"
+	else
+		# run this async so the cli doesn't wait for a return
+		salt "$MINION_ID" state.highstate --async queue=True
 	fi
-	# run this async so the cli doesn't wait for a return
-	salt "$MINION_ID" state.highstate --async queue=True
 }
 
 function setupMinionFiles() {
