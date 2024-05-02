@@ -40,11 +40,13 @@ so-kafka:
       - {{ BINDING }}
       {% endfor %}
     - binds:
-      - /etc/pki/kafka.jks:/etc/pki/kafka.jks
+      - /etc/pki/kafka.p12:/etc/pki/kafka.p12
       - /opt/so/conf/ca/cacerts:/etc/pki/java/sos/cacerts
       - /nsm/kafka/data/:/nsm/kafka/data/:rw
       - /opt/so/conf/kafka/server.properties:/kafka/config/kraft/server.properties
+      {% if GLOBALS.is_manager %}
       - /opt/so/conf/kafka/client.properties:/kafka/config/kraft/client.properties
+      {% endif %}
     - watch:
       {% for sc in ['server', 'client'] %}
       - file: kafka_kraft_{{sc}}_properties

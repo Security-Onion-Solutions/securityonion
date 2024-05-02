@@ -54,20 +54,6 @@ kafka_data_dir:
     - group: 960
     - makedirs: True
 
-kafka_generate_keystore:
-  cmd.run:
-    - name: "/usr/sbin/so-kafka-generate-keystore"
-    - onchanges:
-      - x509: /etc/pki/kafka.key
-
-kafka_keystore_perms:
-  file.managed:
-    - replace: False
-    - name: /etc/pki/kafka.jks
-    - mode: 640
-    - user: 960
-    - group: 939
-
 {%   for sc in ['server', 'client'] %}
 kafka_kraft_{{sc}}_properties:
   file.managed:
