@@ -1732,16 +1732,16 @@ soc:
             - name: Host Registry Changes
               description: Windows Registry changes
               query: 'event.category: registry | groupby event.action | groupby -sankey event.action host.name | groupby host.name | groupby event.dataset event.action | groupby process.executable | groupby registry.path | groupby process.executable registry.path'
-            - name: Host DNS & Process Mappings
+            - name: Host DNS and Process Mappings
               description: DNS queries mapped to originating processes
               query: 'event.category: network AND _exists_:process.executable  AND (_exists_:dns.question.name OR _exists_:dns.answers.data)  | groupby host.name | groupby -sankey host.name dns.question.name | groupby dns.question.name | groupby event.dataset event.type | groupby process.executable | groupby dns.answers.data'
             - name: Host Process Activity
               description: Process activity captured on an endpoint
               query: 'event.category:process | groupby host.name | groupby -sankey host.name user.name* | groupby user.name | groupby event.dataset event.action | groupby process.working_directory | groupby process.executable | groupby process.command_line | groupby process.parent.executable | groupby process.parent.command_line | groupby -sankey process.parent.executable process.executable | table soc_timestamp host.name user.name process.parent.name process.name event.action process.working_directory event.dataset'
-            - name: Host File Activity
+            - name: Host File and Process Mappings
               description: File activity captured on an endpoint
-              query: 'event.category: file AND _exists_:process.executable | groupby host.name | groupby -sankey host.name process.executable | groupby process.executable | groupby event.dataset event.action event.type | groupby file.name'
-            - name: Host Network & Process Mappings
+              query: 'event.category: file AND _exists_:process.name AND _exists_:process.executable | groupby host.name | groupby -sankey host.name process.name | groupby process.name | groupby process.executable | groupby event.dataset event.action event.type | groupby file.name'
+            - name: Host Network and Process Mappings
               description: Network activity mapped to originating processes
               query: 'event.category: network AND _exists_:process.executable | groupby event.action | groupby -sankey event.action host.name | groupby host.name | groupby -sankey host.name user.name | groupby user.name | groupby event.dataset* event.type* event.action* | groupby dns.question.name | groupby process.executable | groupby process.name | groupby source.ip | groupby destination.ip | groupby destination.port'
             - name: Sysmon Overview
