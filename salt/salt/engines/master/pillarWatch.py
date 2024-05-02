@@ -70,7 +70,7 @@ def start(fpa, interval=10):
                         log.info("pillarWatch engine: actionReturn: %s" % actionReturn)
 
 
-    log.info("pillarWatch engine: #####     checking watched pillars for changes     #####")
+    log.debug("pillarWatch engine: #####     checking watched pillars for changes     #####")
 
     # try to open the file that stores the previous runs data
     # if the file doesn't exist, create a blank one
