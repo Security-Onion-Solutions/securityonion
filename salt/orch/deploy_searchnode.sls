@@ -10,7 +10,7 @@ manager_run_es_soc:
 
 searchnode_run_highstate:
   salt.state:
-    - tgt: {{ TARGET }}
+    - tgt: {{ SEARCHNODE }}
     - highstate: True
     - require:
       - salt: manager_run_es_soc
