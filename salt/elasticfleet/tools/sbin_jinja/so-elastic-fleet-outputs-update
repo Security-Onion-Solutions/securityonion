@@ -127,13 +127,27 @@ NEW_HASH=$(sha1sum <<< "$NEW_LIST_JSON" | awk '{print $1}')
 if [ "$NEW_HASH" = "$CURRENT_HASH" ]; then
     printf "\nHashes match - no update needed.\n"
     printf "Current List: $CURRENT_LIST\nNew List: $NEW_LIST_JSON\n"
+
+    # Since output can be KAFKA or LOGSTASH, we need to check if the policy set as default matches the value set in GLOBALS.pipeline and update if needed
+    printf "Checking if the correct output policy is set as default\n"
+    OUTPUT_DEFAULT=$(jq -r '.item.is_default' <<< $RAW_JSON)
+    if [ "$OUTPUT_DEFAULT" = "false" ]; then
+      printf "Default output policy needs to be updated.\n"
+    {%- if GLOBALS.pipeline == "KAFKA" %}
+      update_kafka_outputs
+    {%- else %}
+      update_logstash_outputs
+    {%- endif %}
+    else
+      printf "Default output policy is set - no update needed.\n"
+    fi
     exit 0
 else
     printf "\nHashes don't match - update needed.\n"
     printf "Current List: $CURRENT_LIST\nNew List: $NEW_LIST_JSON\n"
-{% if GLOBALS.pipeline == "KAFKA" %}
+    {%- if GLOBALS.pipeline == "KAFKA" %}
     update_kafka_outputs
-{% else %}
+    {%- else %}
     update_logstash_outputs
-{% endif %}
+    {%- endif %}
 fi
