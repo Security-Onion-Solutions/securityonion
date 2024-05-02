@@ -559,7 +559,7 @@ check_requirements() {
 	local num_nics=${#nic_list[@]}
 	
 	if [[ $is_eval ]]; then
-		req_mem=12
+		req_mem=8
 		req_cores=4
 		req_nics=2
 	elif [[ $is_standalone ]]; then
@@ -1342,6 +1342,10 @@ create_global() {
 	echo "  influxdb_host: '$HOSTNAME'" >> $global_pillar_file
 	echo "  registry_host: '$HOSTNAME'" >> $global_pillar_file
 	echo "  endgamehost: '$ENDGAMEHOST'" >> $global_pillar_file
+
+	if [ "$install_type" = 'EVAL' ]; then
+		echo "  pcapengine: SURICATA" >> $global_pillar_file
+	fi
 }
 
 create_sensoroni_pillar() {
@@ -1596,7 +1600,9 @@ reinstall_init() {
 		# Kill any salt processes (safely)
 		for service in "${salt_services[@]}"; do
 			# Stop the service in the background so we can exit after a certain amount of time
-			systemctl stop "$service" &
+			if check_service_status "$service"; then
+				systemctl stop "$service" &
+			fi
 			local pid=$!
 
 			local count=0

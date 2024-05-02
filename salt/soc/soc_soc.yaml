@@ -89,10 +89,13 @@ soc:
             advanced: True
             helpLink: sigma.html
           autoEnabledSigmaRules:
-            description: 'Sigma rules to automatically enable on initial import. Format is $Ruleset+$Level - for example, for the core community ruleset and critical level rules: core+critical'
-            global: True
-            advanced: True
-            helpLink: sigma.html
+            default: &autoEnabledSigmaRules
+              description: 'Sigma rules to automatically enable on initial import. Format is $Ruleset+$Level - for example, for the core community ruleset and critical level rules: core+critical. These will be applied based on role if defined and default if not.'
+              global: True
+              advanced: True
+              helpLink: sigma.html
+            so-eval: *autoEnabledSigmaRules
+            so-import: *autoEnabledSigmaRules
           denyRegex:
             description: 'Regex used to filter imported Sigma rules. Deny regex takes precedence over the Allow regex setting.'
             global: True
@@ -110,7 +113,7 @@ soc:
             forcedType: "[]{}"
             helpLink: sigma.html
           sigmaRulePackages:
-            description: 'Defines the Sigma Community Ruleset you want to run. One of these (core | core+ | core++ | all ) as well as an optional Add-on (emerging_threats_addon). WARNING! Changing the ruleset will remove all existing Sigma rules of the previous ruleset and their associated overrides. This removal cannot be undone.'
+            description: 'Defines the Sigma Community Ruleset you want to run. One of these (core | core+ | core++ | all ) as well as an optional Add-on (emerging_threats_addon). Once you have changed the ruleset here, you will need to wait for the rule update to take place (every 8 hours), or you can force the update by nagivating to Detections -->  Options dropdown menu --> Elastalert --> Full Update. WARNING! Changing the ruleset will remove all existing Sigma rules of the previous ruleset and their associated overrides. This removal cannot be undone.'
             global: True
             advanced: False
             helpLink: sigma.html
@@ -186,6 +189,11 @@ soc:
             global: True
             advanced: True
             helpLink: yara.html
+          autoEnabledYaraRules:
+            description: 'Yara rules to automatically enable on initial import. Format is $Ruleset - for example, for the default shipped ruleset: securityonion-yara'
+            global: True
+            advanced: True
+            helpLink: sigma.html
           autoUpdateEnabled:
             description: 'Set to true to enable automatic Internet-connected updates of the Yara rulesets. If this is an Airgap system, this setting will be overridden and set to false.'
             global: True
@@ -293,6 +301,7 @@ soc:
         alerts: *appSettings
         cases: *appSettings
         dashboards: *appSettings
+        detections: *appSettings
         grid:
           maxUploadSize:
             description: The maximum number of bytes for an uploaded PCAP import file.

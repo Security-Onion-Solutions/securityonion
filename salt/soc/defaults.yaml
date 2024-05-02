@@ -580,7 +580,7 @@ soc:
         - file.source
         - file.mime_type
         - log.id.fuid
-        - event.dataset  
+        - event.dataset
       ':suricata:':
         - soc_timestamp
         - source.ip
@@ -1211,6 +1211,13 @@ soc:
         -  soc_timestamp
         -  event.dataset
         -  message
+      ':kismet:':
+        - soc_timestamp
+        - device.manufacturer
+        - client.mac
+        - network.wireless.ssid
+        - network.wireless.bssid
+        - event.dataset
       ':playbook:':
         - soc_timestamp
         - rule.name
@@ -1250,19 +1257,27 @@ soc:
           allowRegex: ''
           autoUpdateEnabled: true
           autoEnabledSigmaRules:
-            - core+critical
-            - securityonion-resources+critical
-            - securityonion-resources+high
-          communityRulesImportFrequencySeconds: 86400
+            default:
+              - core+critical
+              - securityonion-resources+critical
+              - securityonion-resources+high
+            so-eval:
+              - securityonion-resources+critical
+              - securityonion-resources+high
+            so-import:
+              - securityonion-resources+critical
+              - securityonion-resources+high
+          communityRulesImportFrequencySeconds: 28800
           denyRegex: ''
           elastAlertRulesFolder: /opt/sensoroni/elastalert
           reposFolder: /opt/sensoroni/sigma/repos
           rulesFingerprintFile: /opt/sensoroni/fingerprints/sigma.fingerprint
-          stateFilePath: /opt/so/conf/soc/fingerprints/elastalertengine.state
+          stateFilePath: /opt/sensoroni/fingerprints/elastalertengine.state
           rulesRepos:
           - repo: https://github.com/Security-Onion-Solutions/securityonion-resources
             license: Elastic-2.0
             folder: sigma/stable
+            community: true
           sigmaRulePackages:
             - core
             - emerging_threats_addon
@@ -1310,24 +1325,27 @@ soc:
             - rbac/users_roles
         strelkaengine:
           allowRegex: ''
+          autoEnabledYaraRules:
+            - securityonion-yara
           autoUpdateEnabled: true
-          communityRulesImportFrequencySeconds: 86400
-          compileYaraPythonScriptPath: /opt/so/conf/strelka/compile_yara.py
+          communityRulesImportFrequencySeconds: 28800
+          compileYaraPythonScriptPath: /opt/sensoroni/yara/compile_yara.py
           denyRegex: ''
           reposFolder: /opt/sensoroni/yara/repos
           rulesRepos:
           - repo: https://github.com/Security-Onion-Solutions/securityonion-yara
             license: DRL
+            community: true
           yaraRulesFolder: /opt/sensoroni/yara/rules
-          stateFilePath: /opt/so/conf/soc/fingerprints/strelkaengine.state
+          stateFilePath: /opt/sensoroni/fingerprints/strelkaengine.state
         suricataengine:
           allowRegex: ''
           autoUpdateEnabled: true
-          communityRulesImportFrequencySeconds: 86400
+          communityRulesImportFrequencySeconds: 28800
           communityRulesFile: /nsm/rules/suricata/emerging-all.rules
           denyRegex: ''
           rulesFingerprintFile: /opt/sensoroni/fingerprints/emerging-all.fingerprint
-          stateFilePath: /opt/so/conf/soc/fingerprints/suricataengine.state
+          stateFilePath: /opt/sensoroni/fingerprints/suricataengine.state
       client:
         enableReverseLookup: false
         docsUrl: /docs/
@@ -1714,16 +1732,16 @@ soc:
             - name: Host Registry Changes
               description: Windows Registry changes
               query: 'event.category: registry | groupby event.action | groupby -sankey event.action host.name | groupby host.name | groupby event.dataset event.action | groupby process.executable | groupby registry.path | groupby process.executable registry.path'
-            - name: Host DNS & Process Mappings
+            - name: Host DNS and Process Mappings
               description: DNS queries mapped to originating processes
               query: 'event.category: network AND _exists_:process.executable  AND (_exists_:dns.question.name OR _exists_:dns.answers.data)  | groupby host.name | groupby -sankey host.name dns.question.name | groupby dns.question.name | groupby event.dataset event.type | groupby process.executable | groupby dns.answers.data'
             - name: Host Process Activity
               description: Process activity captured on an endpoint
               query: 'event.category:process | groupby host.name | groupby -sankey host.name user.name* | groupby user.name | groupby event.dataset event.action | groupby process.working_directory | groupby process.executable | groupby process.command_line | groupby process.parent.executable | groupby process.parent.command_line | groupby -sankey process.parent.executable process.executable | table soc_timestamp host.name user.name process.parent.name process.name event.action process.working_directory event.dataset'
-            - name: Host File Activity
-              description: File activity captured on an endpoint
-              query: 'event.category: file AND _exists_:process.executable | groupby host.name | groupby -sankey host.name process.executable | groupby process.executable | groupby event.dataset event.action event.type | groupby file.name'
-            - name: Host Network & Process Mappings
+            - name: Host File and Process Mappings
+              description: File activity mapped to originating processes
+              query: 'event.category: file AND _exists_:process.name AND _exists_:process.executable | groupby host.name | groupby -sankey host.name process.name | groupby process.name | groupby process.executable | groupby event.dataset event.action event.type | groupby file.name'
+            - name: Host Network and Process Mappings
               description: Network activity mapped to originating processes
               query: 'event.category: network AND _exists_:process.executable | groupby event.action | groupby -sankey event.action host.name | groupby host.name | groupby -sankey host.name user.name | groupby user.name | groupby event.dataset* event.type* event.action* | groupby dns.question.name | groupby process.executable | groupby process.name | groupby source.ip | groupby destination.ip | groupby destination.port'
             - name: Sysmon Overview
@@ -1900,6 +1918,15 @@ soc:
             - name: GeoIP - Source Organizations
               description: GeoIP tagged logs visualized by source organizations
               query: '* AND _exists_:source_geo.organization_name | groupby source_geo.organization_name | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby source.geo.country_name | groupby event.dataset | groupby event.module'
+            - name: Kismet - WiFi Devices
+              description: WiFi devices seen by Kismet sensors
+              query: 'event.module: kismet | groupby network.wireless.ssid | groupby device.manufacturer | groupby -pie device.manufacturer | groupby event.dataset'
+            - name: SOC Detections - Runtime Status
+              description: Runtime Status of Detections
+              query: 'event.dataset:soc.detections | groupby  soc.detection_type soc.error_type | groupby soc.error_analysis | groupby soc.rule.name | groupby soc.error_message'
+
+
+
         job:
         alerts:
           advanced: false
@@ -1937,18 +1964,19 @@ soc:
               - event_data.destination.host
               - event_data.destination.port
               - event_data.process.executable
-              - event_data.process.pid    
+              - event_data.process.pid
             ':sigma:':
               - soc_timestamp
               - rule.name
               - event.severity_label
               - event_data.event.dataset
+              - rule.category
               - event_data.source.ip
               - event_data.source.port
               - event_data.destination.host
               - event_data.destination.port
               - event_data.process.executable
-              - event_data.process.pid    
+              - event_data.process.pid
             ':strelka:':
               - soc_timestamp
               - file.name
@@ -2088,6 +2116,7 @@ soc:
                   - red
               customEnabled: false
         detections:
+          advanced: true
           viewEnabled: true
           createLink: /detection/create
           eventFetchLimit: 500
@@ -2113,23 +2142,32 @@ soc:
               - soc_timestamp
           queries:
             - name: "All Detections"
-              query: "_id:*"
+              query: "_id:* | groupby so_detection.language | groupby so_detection.ruleset so_detection.isEnabled"
+              description: Show all Detections, community and custom
             - name: "Custom Detections"
-              query: "so_detection.isCommunity:false"
+              query: "so_detection.isCommunity:false AND NOT so_detection.ruleset: securityonion-resources"
+              description: Show all custom detections
             - name: "All Detections - Enabled"
-              query: "so_detection.isEnabled:true"
+              query: "so_detection.isEnabled:true | groupby so_detection.language | groupby so_detection.ruleset so_detection.severity"
+              description: Show all enalbed Detections
             - name: "All Detections - Disabled"
-              query: "so_detection.isEnabled:false"
+              query: "so_detection.isEnabled:false | groupby so_detection.language | groupby so_detection.ruleset so_detection.severity"
+              description: Show all disabled Detections
             - name: "Detection Type - Suricata (NIDS)"
-              query: "so_detection.language:suricata"
+              query: "so_detection.language:suricata | groupby so_detection.ruleset so_detection.isEnabled | groupby so_detection.category"
+              description: Show all NIDS Detections, which are run with Suricata
             - name: "Detection Type - Sigma (Elastalert) - All"
-              query: "so_detection.language:sigma"
-            - name: "Detection Type - Sigma (Elastalert) - Windows"
-              query: 'so_detection.language:sigma AND so_detection.content: "*product: windows*"'
+              query: "so_detection.language:sigma | groupby so_detection.ruleset so_detection.isEnabled | groupby so_detection.category | groupby so_detection.product"
+              description: Show all Sigma Detections, which are run with Elastalert
             - name: "Detection Type - YARA (Strelka)"
-              query: "so_detection.language:yara"
+              query: "so_detection.language:yara | groupby so_detection.ruleset so_detection.isEnabled"
+              description: Show all YARA detections, which are used by Strelka
             - name: "Security Onion - Grid Detections"
               query: "so_detection.ruleset:securityonion-resources"
+              description: Show Detections for this Security Onion Grid
+            - name: "Detections with Overrides"
+              query: "_exists_:so_detection.overrides | groupby so_detection.language | groupby so_detection.ruleset so_detection.isEnabled"
+              description: Show Detections that have Overrides
         detection:
           presets:
             severity:

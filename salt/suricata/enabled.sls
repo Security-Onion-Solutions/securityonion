@@ -7,6 +7,7 @@
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 {%   from 'docker/docker.map.jinja' import DOCKER %}
+{%   from 'suricata/map.jinja' import SURICATAMERGED %}
 
 
 include:
@@ -24,6 +25,13 @@ so-suricata:
       - {{ XTRAENV }}
         {% endfor %}
       {% endif %}
+    {# we look at SURICATAMERGED.config['af-packet'][0] since we only allow one interface and therefore always the first list item #}
+    {% if SURICATAMERGED.config['af-packet'][0]['mmap-locked'] == "yes" and DOCKER.containers['so-suricata'].ulimits %}
+    - ulimits:
+    {%   for ULIMIT in DOCKER.containers['so-suricata'].ulimits %}
+      - {{ ULIMIT }}
+    {%   endfor %}
+    {% endif %}
     - binds:
       - /opt/so/conf/suricata/suricata.yaml:/etc/suricata/suricata.yaml:ro
       - /opt/so/conf/suricata/threshold.conf:/etc/suricata/threshold.conf:ro
