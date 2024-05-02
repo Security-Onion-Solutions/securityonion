@@ -27,6 +27,11 @@ checkmine_engine:
     - source: salt://salt/engines/master/checkmine.py
     - makedirs: True
 
+pillarWatch_engine:
+  file.managed:
+    - name: /etc/salt/engines/pillarWatch.py
+    - source: salt://salt/engines/master/pillarWatch.py
+
 engines_config:
   file.managed:
     - name: /etc/salt/master.d/engines.conf
@@ -38,6 +43,7 @@ salt_master_service:
     - enable: True
     - watch:
       - file: checkmine_engine
+      - file: pillarWatch_engine
       - file: engines_config
     - order: last
 
