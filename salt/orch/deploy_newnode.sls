@@ -21,9 +21,6 @@ manager_run_es_soc:
       - elasticsearch
       - soc
     - queue: True
-    - retry:
-        attempts: 3
-        interval: 60
     - require:
         - salt: {{NEWNODE}}_update_mine
 {% endif %}
@@ -33,15 +30,3 @@ manager_run_es_soc:
     - tgt: {{ NEWNODE }}
     - highstate: True
     - queue: True
-    - retry:
-        attempts: 5
-        interval: 60
-
-{{NEWNODE}}_set_highstate_cron:
-  salt.state:
-    - tgt: {{ NEWNODE }}
-    - sls:
-      - setup.highstate_cron
-    - queue: True
-    - onfail:
-        - salt: {{NEWNODE}}_run_highstate
