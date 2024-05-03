@@ -22,7 +22,7 @@ manager_run_es_soc:
         attempts: 30
         interval: 10
     - require:
-        - salt: new_node_update_mine
+        - salt: {{NEWNODE}}_update_mine
 {% endif %}
 
 {{NEWNODE}}_run_highstate:
