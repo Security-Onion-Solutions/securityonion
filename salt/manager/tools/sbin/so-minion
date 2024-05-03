@@ -426,10 +426,6 @@ function checkMine() {
 
 }
 
-function updateMine() {
-	retry 20 1 "salt '$MINION_ID' mine.update" True
-}
-
 function createEVAL() {
 	is_pcaplimit=true
 	pcapspace
@@ -604,23 +600,12 @@ function addMinion() {
 }
 
 function updateMineAndApplyStates() {
-	# tell the minion to populate the mine with data from mine_functions which is populated during setup
-	# this only needs to happen on non managers since they handle this during setup
-	# and they need to wait for ca creation to update the mine
-	#updateMine
+
 	#checkMine "network.ip_addrs"
-	# apply the elasticsearch state to the manager if a new searchnode was added
-	#if [[ "$NODETYPE" == "SEARCHNODE" || "$NODETYPE" == "HEAVYNODE" ]]; then
-		# calls so-common and set_minionid sets MINIONID to local minion id
+	# calls so-common and set_minionid sets MINIONID to local minion id
 	set_minionid
-		#salt $MINIONID state.apply elasticsearch queue=True --async
-	#	salt $MINIONID state.apply soc queue=True --async
-		# $MINIONID is the minion id of the manager and $MINION_ID is the target node or the node being configured
+	# $MINIONID is the minion id of the manager and $MINION_ID is the target node or the node being configured
 	salt-run state.orch orch.deploy_newnode pillar="{'setup': {'manager': $MINIONID, 'newnode': $MINION_ID }}"
-	#else
-		# run this async so the cli doesn't wait for a return
-	#	salt "$MINION_ID" state.highstate --async queue=True
-	#fi
 }
 
 function setupMinionFiles() {
