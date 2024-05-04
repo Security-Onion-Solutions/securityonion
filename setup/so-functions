@@ -1011,6 +1011,10 @@ elasticsearch_pillar() {
         "        bool:"\
         "          max_clause_count: 3500"\
                 "  index_settings: {}" > $elasticsearch_pillar_file
+        if "${elasticsearch_retain_more}"; then
+                printf "  retention:"\
+                       "    retention_pct: 80" >> $elasticsearch_pillar_file
+        fi
 }
 
 es_heapsize() {
@@ -2118,35 +2122,18 @@ set_progress_str() {
 }
 
 set_default_log_size() {
-	local percentage
 
 	case $install_type in
 		STANDALONE | EVAL | HEAVYNODE)
-			percentage=50
+			if mountpoint -q /nsm/elasticsearch; then
+				elasticsearch_retain_more=YES
+			fi
 		;;
 		*)
-			percentage=80
+			elasticsearch_retain_more=YES
 		;;
 	esac
 
-	local disk_dir="/"
-	if mountpoint -q /nsm; then
-		disk_dir="/nsm"
-	fi
-	if mountpoint -q /nsm/elasticsearch; then
-		disk_dir="/nsm/elasticsearch"
-		percentage=80
-	fi
-	
-	local disk_size_1k
-	disk_size_1k=$(df $disk_dir | grep -v "^Filesystem" | awk '{print $2}')
-
-	local ratio="1048576"
-
-	local disk_size_gb
-	disk_size_gb=$( echo "$disk_size_1k" "$ratio" | awk '{print($1/$2)}' )
-
-	log_size_limit=$( echo "$disk_size_gb" "$percentage" | awk '{printf("%.0f", $1 * ($2/100))}')
 }
 
 set_desktop_background() {
