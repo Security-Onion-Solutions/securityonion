@@ -63,7 +63,7 @@ delete_so-idstools_so-status.disabled:
 
 so-rule-update:
   cron.present:
-    - name: /usr/sbin/so-rule-update > /opt/so/log/idstools/download_cron.log 2>&1
+    - name: /usr/sbin/so-rule-update &>> /opt/so/log/idstools/download_cron.log
     - identifier: so-rule-update
     - user: root
     - minute: '1'
@@ -72,7 +72,7 @@ so-rule-update:
 # order this last to give so-idstools container time to be ready
 run_so-rule-update:
   cmd.run:
-    - name: '/usr/sbin/so-rule-update > /opt/so/log/idstools/download_idstools_state.log 2>&1'
+    - name: '/usr/sbin/so-rule-update &>> /opt/so/log/idstools/download_idstools_state.log'
     - require:
       - docker_container: so-idstools
     - onchanges:
