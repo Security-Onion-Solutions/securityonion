@@ -29,6 +29,15 @@ strelkarulesdir:
     - group: 939
     - makedirs: True
 
+{%- if grains.role in ['so-sensor', 'so-heavynode'] %}
+strelkasensorrules:
+  file.managed:
+    - name: /opt/so/conf/strelka/rules/compiled/rules.compiled
+    - source: salt://strelka/rules/compiled/rules.compiled
+    - user: 939
+    - group: 939
+{%- endif %}
+
 strelkareposdir:
   file.directory:
     - name: /opt/so/conf/strelka/repos
