@@ -87,6 +87,7 @@ base:
     - registry
     - nginx
     - influxdb
+    - strelka.manager
     - soc
     - kratos
     - firewall
@@ -161,6 +162,7 @@ base:
     - registry
     - nginx
     - influxdb
+    - strelka.manager
     - soc
     - kratos
     - firewall
@@ -210,6 +212,7 @@ base:
     - manager
     - nginx
     - influxdb
+    - strelka.manager
     - soc
     - kratos
     - sensoroni
