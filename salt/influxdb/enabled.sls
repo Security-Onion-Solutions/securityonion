@@ -86,7 +86,7 @@ metrics_link_file:
 # Install cron job to determine size of influxdb for telegraf
 get_influxdb_size:
   cron.present:
-    - name: 'du -s -k /nsm/influxdb | cut -f1 > /opt/so/log/telegraf/influxdb_size.log 2>&1'
+    - name: 'du -s -k /nsm/influxdb | cut -f1 &>> /opt/so/log/telegraf/influxdb_size.log'
     - identifier: get_influxdb_size
     - user: root
     - minute: '*/1'
