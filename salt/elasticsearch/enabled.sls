@@ -209,7 +209,7 @@ so-elasticsearch-roles-load:
 {%       endif %}
 so-elasticsearch-indices-delete:
   cron.{{ap}}:
-    - name: /usr/sbin/so-elasticsearch-indices-delete > /opt/so/log/elasticsearch/cron-elasticsearch-indices-delete.log 2>&1
+    - name: /usr/sbin/so-elasticsearch-indices-delete &>> /opt/so/log/elasticsearch/cron-elasticsearch-indices-delete.log
     - identifier: so-elasticsearch-indices-delete
     - user: root
     - minute: '*/5'
