@@ -491,6 +491,17 @@ soc:
         - ssl.version
         - log.id.uid
         - event.dataset
+      '::stun':
+        - soc_timestamp
+        - event.dataset
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - stun.class
+        - stun.method
+        - stun.attribute.types
+        - log.id.uid
       ':zeek:syslog':
         - soc_timestamp
         - source.ip
@@ -1841,7 +1852,7 @@ soc:
               query: 'event.dataset:zeek.ssl | groupby ssl.version | groupby ssl.validation_status | groupby -sankey ssl.validation_status ssl.server_name | groupby ssl.server_name | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
             - name: STUN
               description: STUN (Session Traversal Utilities for NAT) network metadata
-              query: 'tags:stun* | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby destination.geo.country_name | groupby event.dataset'
+              query: 'tags:stun* | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby destination.geo.country_name | groupby stun.class | groupby -sankey stun.class stun.method | groupby stun.method | groupby stun.attribute.types'
             - name: Syslog
               description: Syslog logs
               query: 'tags:syslog | groupby syslog.severity_label | groupby syslog.facility_label | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby network.protocol | groupby event.dataset'
