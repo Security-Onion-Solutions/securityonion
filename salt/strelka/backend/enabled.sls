@@ -42,8 +42,6 @@ strelka_backend:
       {% endfor %}
     {% endif %}
     - restart_policy: on-failure
-    #- watch:
-      #- file: strelkarules
 
 delete_so-strelka-backend_so-status.disabled:
   file.uncomment:
