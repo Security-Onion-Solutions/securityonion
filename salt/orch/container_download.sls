@@ -5,6 +5,8 @@
   salt.state:
     - tgt: {{ NEWNODE }}
     - sls:
+      - repo.client
+      - docker
       - logstash.download
       - elasticsearch.download
 {% endif %}
