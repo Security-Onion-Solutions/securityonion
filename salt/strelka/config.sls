@@ -31,11 +31,13 @@ strelkarulesdir:
 
 {%- if grains.role in ['so-sensor', 'so-heavynode'] %}
 strelkasensorrules:
-  file.managed:
-    - name: /opt/so/conf/strelka/rules/compiled/rules.compiled
-    - source: salt://strelka/rules/compiled/rules.compiled
+  file.recurse:
+    - name: /opt/so/conf/strelka/rules/compiled/
+    - source: salt://strelka/rules/compiled/
     - user: 939
     - group: 939
+    - file_mode: 755
+    - clean: True
 {%- endif %}
 
 strelkareposdir:
