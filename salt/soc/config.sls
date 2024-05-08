@@ -82,7 +82,7 @@ socmotd:
 
 crondetectionsruntime:
   cron.present:
-    - name: /usr/local/bin/so-detections-runtime-status cron 
+    - name: /usr/sbin/so-detections-runtime-status cron 
     - identifier: detections-runtime-status
     - user: root
     - minute: '*/10'
