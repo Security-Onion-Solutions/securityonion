@@ -86,18 +86,18 @@ base:
     - ssl
     - registry
     - nginx
-    - influxdb
     - strelka.manager
     - soc
     - kratos
     - firewall
     - manager
+    - elasticsearch
+    - influxdb
     - sensoroni
     - telegraf
     - backup.config_backup
     - idstools
     - suricata.manager
-    - elasticsearch
     - logstash
     - redis
     - elastic-fleet-package-registry
@@ -105,6 +105,7 @@ base:
     - curator.disabled
     - elastalert
     - utility
+    - elasticsearch.final
     - elasticfleet
     - stig
 
