@@ -36,7 +36,6 @@ strelkasensorrules:
     - source: salt://strelka/rules/compiled/
     - user: 939
     - group: 939
-    - file_mode: 755
     - clean: True
 {%- endif %}
 
