@@ -20,7 +20,7 @@ def check_syntax(rule_file):
 
 def compile_yara_rules(rules_dir):
     compiled_dir = os.path.join(rules_dir, "compiled")
-    compiled_rules_path = os.path.join(compiled_dir, "rules.compiled")
+    compiled_rules_path = [ os.path.join(compiled_dir, "rules.compiled"), "/opt/so/saltstack/default/salt/strelka/rules/compiled/rules.compiled" ]
     rule_files = glob.glob(os.path.join(rules_dir, '**/*.yar'), recursive=True)
     files_to_compile = {}
     removed_count = 0
@@ -57,8 +57,9 @@ def compile_yara_rules(rules_dir):
     # Compile all remaining valid rules into a single file
     if files_to_compile:
         compiled_rules = yara.compile(filepaths=files_to_compile)
-        compiled_rules.save(compiled_rules_path)
-        print(f"All remaining rules compiled and saved into {compiled_rules_path}")
+        for path in compiled_rules_path:
+          compiled_rules.save(path)
+          print(f"All remaining rules compiled and saved into {path}")
 
     # Print summary of compilation results
     print(f"Summary: {success_count} rules compiled successfully, {removed_count} rules removed due to errors.")

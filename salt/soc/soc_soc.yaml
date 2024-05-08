@@ -107,20 +107,17 @@ soc:
             advanced: True
             helpLink: sigma.html
           rulesRepos:
-            description: 'Custom Git repos to pull Sigma rules from. License field is required, folder is optional.'
-            global: True
-            advanced: True
-            forcedType: "[]{}"
-            helpLink: sigma.html
+            default: &eerulesRepos
+              description: "Custom Git repos to pull Sigma rules from. 'license' field is required, 'folder' is optional. 'community' disables some management options for the imported rules - they can't be deleted or edited, just tuned, duplicated and Enabled | Disabled."
+              global: True
+              advanced: True
+              forcedType: "[]{}"
+              helpLink: sigma.html
+            airgap: *eerulesRepos
           sigmaRulePackages:
             description: 'Defines the Sigma Community Ruleset you want to run. One of these (core | core+ | core++ | all ) as well as an optional Add-on (emerging_threats_addon). Once you have changed the ruleset here, you will need to wait for the rule update to take place (every 8 hours), or you can force the update by nagivating to Detections -->  Options dropdown menu --> Elastalert --> Full Update. WARNING! Changing the ruleset will remove all existing Sigma rules of the previous ruleset and their associated overrides. This removal cannot be undone.'
             global: True
             advanced: False
-            helpLink: sigma.html
-          autoUpdateEnabled:
-            description: 'Set to true to enable automatic Internet-connected updates of the Sigma Community Ruleset. If this is an Airgap system, this setting will be overridden and set to false.'
-            global: True
-            advanced: True
             helpLink: sigma.html
         elastic:
           index:
@@ -135,6 +132,7 @@ soc:
             description: Duration (in milliseconds) to wait for a response from the Elasticsearch host before giving up and showing an error on the SOC UI.
             global: True
             advanced: True
+            forcedType: int
           casesEnabled:
             description: Set to true if the SOC case management module, natively integrated with Elasticsearch, should be enabled.
             global: True
@@ -179,51 +177,47 @@ soc:
             description: Duration (in milliseconds) to wait for a response from the Salt API when executing tasks known for being long running before giving up and showing an error on the SOC UI.
             global: True
             advanced: True
+            forcedType: int
           relayTimeoutMs:
             description: Duration (in milliseconds) to wait for a response from the Salt API when executing common grid management tasks before giving up and showing an error on the SOC UI.
             global: True
             advanced: True
+            forcedType: int
         strelkaengine:
           allowRegex:
-            description: 'Regex used to filter imported Yara rules. Deny regex takes precedence over the Allow regex setting.'
+            description: 'Regex used to filter imported YARA rules. Deny regex takes precedence over the Allow regex setting.'
             global: True
             advanced: True
             helpLink: yara.html
-          autoEnabledYaraRules:
-            description: 'Yara rules to automatically enable on initial import. Format is $Ruleset - for example, for the default shipped ruleset: securityonion-yara'
+          autoEnabledYARARules:
+            description: 'YARA rules to automatically enable on initial import. Format is $Ruleset - for example, for the default shipped ruleset: securityonion-yara'
             global: True
             advanced: True
             helpLink: sigma.html
-          autoUpdateEnabled:
-            description: 'Set to true to enable automatic Internet-connected updates of the Yara rulesets. If this is an Airgap system, this setting will be overridden and set to false.'
-            global: True
-            advanced: True
           denyRegex:
-            description: 'Regex used to filter imported Yara rules. Deny regex takes precedence over the Allow regex setting.'
+            description: 'Regex used to filter imported YARA rules. Deny regex takes precedence over the Allow regex setting.'
             global: True
             advanced: True
             helpLink: yara.html
           communityRulesImportFrequencySeconds:
-            description: 'How often to check for new Yara rules (in seconds). This applies to both Community Rules and any configured Git repos.'
+            description: 'How often to check for new YARA rules (in seconds). This applies to both Community Rules and any configured Git repos.'
             global: True
             advanced: True
             helpLink: yara.html
           rulesRepos:
-            description: 'Custom Git repos to pull Yara rules from. License field is required'
-            global: True
-            advanced: True
-            forcedType: "[]{}"
-            helpLink: yara.html
+            default: &serulesRepos
+              description: "Custom Git repos to pull YARA rules from. 'license' field is required, 'folder' is optional. 'community' disables some management options for the imported rules - they can't be deleted or edited, just tuned, duplicated and Enabled | Disabled."
+              global: True
+              advanced: True
+              forcedType: "[]{}"
+              helpLink: yara.html
+            airgap: *serulesRepos
         suricataengine:
           allowRegex:
             description: 'Regex used to filter imported Suricata rules. Deny regex takes precedence over the Allow regex setting.'
             global: True
             advanced: True
             helpLink: suricata.html
-          autoUpdateEnabled:
-            description: 'Set to true to enable automatic Internet-connected updates of the Suricata rulesets. If this is an Airgap system, this setting will be overridden and set to false.'
-            global: True
-            advanced: True
           denyRegex:
             description: 'Regex used to filter imported Suricata rules. Deny regex takes precedence over the Allow regex setting.'
             global: True
@@ -242,17 +236,21 @@ soc:
           description: Duration (in milliseconds) to wait for a response from the SOC server API before giving up and showing an error on the SOC UI.
           global: True
           advanced: True
+          forcedType: int
         webSocketTimeoutMs:
           description: Duration (in milliseconds) to wait for a response from the SOC server websocket before giving up and reconnecting.
           global: True
           advanced: True
+          forcedType: int
         tipTimeoutMs:
           description: Duration (in milliseconds) to show the popup tips, which typically indicate a successful operation.
           global: True
+          forcedType: int
         cacheExpirationMs:
           description: Duration (in milliseconds) of cached data within the browser, including users and settings.
           global: True
           advanced: True
+          forcedType: int
         casesEnabled:
           description: Set to true to enable case management in SOC.
           global: True

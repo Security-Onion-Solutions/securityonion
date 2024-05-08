@@ -87,6 +87,7 @@ base:
     - registry
     - nginx
     - influxdb
+    - strelka.manager
     - soc
     - kratos
     - firewall
@@ -145,13 +146,13 @@ base:
 
   '*_searchnode and G@saltversion:{{saltversion}}':
     - match: compound
+    - firewall
     - ssl
+    - elasticsearch
+    - logstash
     - sensoroni
     - telegraf
     - nginx
-    - firewall
-    - elasticsearch
-    - logstash
     - elasticfleet.install_agent_grid
     - stig
 
@@ -163,6 +164,7 @@ base:
     - registry
     - nginx
     - influxdb
+    - strelka.manager
     - soc
     - kratos
     - firewall
@@ -212,6 +214,7 @@ base:
     - manager
     - nginx
     - influxdb
+    - strelka.manager
     - soc
     - kratos
     - sensoroni

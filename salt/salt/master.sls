@@ -43,6 +43,7 @@ salt_master_service:
     - enable: True
     - watch:
       - file: checkmine_engine
+      - file: pillarWatch_engine
       - file: engines_config
     - order: last
 
