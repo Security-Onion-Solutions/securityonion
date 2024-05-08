@@ -25,7 +25,8 @@ so-kafka:
         - ipv4_address: {{ DOCKER.containers['so-kafka'].ip }}
     - user: kafka
     - environment:
-      - KAFKA_HEAP_OPTS=-Xmx2G -Xms1G
+        KAFKA_HEAP_OPTS: -Xmx2G -Xms1G
+        KAFKA_OPTS: -javaagent:/jolokia/agents/jolokia-agent-jvm-javaagent.jar=port=8778,host={{ DOCKER.containers['so-kafka'].ip }},policyLocation=file:/jolokia/jolokia.xml
     - extra_hosts:
       {% for node in KAFKANODES %}
       - {{ node }}:{{ KAFKANODES[node].ip }}
@@ -40,10 +41,10 @@ so-kafka:
       - {{ BINDING }}
       {% endfor %}
     - binds:
-      - /etc/pki/kafka.p12:/etc/pki/kafka.p12
-      - /opt/so/conf/ca/cacerts:/etc/pki/java/sos/cacerts
+      - /etc/pki/kafka.p12:/etc/pki/kafka.p12:ro
+      - /opt/so/conf/ca/cacerts:/etc/pki/java/sos/cacerts:ro
       - /nsm/kafka/data/:/nsm/kafka/data/:rw
-      - /opt/so/conf/kafka/server.properties:/kafka/config/kraft/server.properties
+      - /opt/so/conf/kafka/server.properties:/kafka/config/kraft/server.properties:ro
       {% if GLOBALS.is_manager %}
       - /opt/so/conf/kafka/client.properties:/kafka/config/kraft/client.properties
       {% endif %}
