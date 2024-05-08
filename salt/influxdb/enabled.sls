@@ -69,20 +69,6 @@ delete_so-influxdb_so-status.disabled:
     - name: /opt/so/conf/so-status/so-status.conf
     - regex: ^so-influxdb$
 
-influxdb-setup:
-  cmd.run:
-    - name: /usr/sbin/so-influxdb-manage setup &>> /opt/so/log/influxdb/setup.log
-    - require:
-      - file: influxdbbucketsconf
-      - file: influxdb_curl_config
-      - docker_container: so-influxdb
-
-metrics_link_file:
-  cmd.run:
-    - name: so-influxdb-manage dashboardpath "Security Onion Performance" > /opt/so/saltstack/local/salt/influxdb/metrics_link.txt
-    - require:
-      - docker_container: so-influxdb
-
 # Install cron job to determine size of influxdb for telegraf
 get_influxdb_size:
   cron.present:

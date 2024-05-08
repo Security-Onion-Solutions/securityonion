@@ -106,6 +106,7 @@ base:
     - elastalert
     - utility
     - elasticsearch.final
+    - influxdb.final
     - elasticfleet
     - stig
 
