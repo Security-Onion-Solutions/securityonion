@@ -4,7 +4,8 @@
 # Elastic License 2.0.
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
-{% if sls in allowed_states %}
+{# if strelka.manager or strelka in allowed_states #}
+{% if sls in allowed_states or sls.split('.')[0] in allowed_states %}
 
 # Strelka config
 strelkarulesdir:
