@@ -5,45 +5,21 @@
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
+{%   from 'vars/globals.map.jinja' import GLOBALS %}
+
+{%   if GLOBALS.is_manager %}
+include:
+  - strelka.manager
+{% endif %}
 
 # Strelka config
-strelkaconfdir:
-  file.directory:
-    - name: /opt/so/conf/strelka/rules/compiled/
-    - user: 939
-    - group: 939
-    - makedirs: True
-
-strelkacompileyara:
-  file.managed:
-    - name: /opt/so/conf/strelka/compile_yara.py
-    - source: salt://strelka/compile_yara/compile_yara.py
-    - user: 939
-    - group: 939
-    - makedirs: True
-
-strelkarulesdir:
-  file.directory:
-    - name: /opt/so/conf/strelka/rules
-    - user: 939
-    - group: 939
-    - makedirs: True
-
-{%- if grains.role in ['so-sensor', 'so-heavynode'] %}
-strelkasensorrules:
+strelkasensorcompiledrules:
   file.recurse:
     - name: /opt/so/conf/strelka/rules/compiled/
     - source: salt://strelka/rules/compiled/
     - user: 939
     - group: 939
     - clean: True
-{%- endif %}
-
-strelkareposdir:
-  file.directory:
-    - name: /opt/so/conf/strelka/repos
-    - user: 939
-    - group: 939
     - makedirs: True
 
 strelkadatadir:

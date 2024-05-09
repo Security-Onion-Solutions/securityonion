@@ -43,7 +43,7 @@ strelka_backend:
     {% endif %}
     - restart_policy: on-failure
     - watch:
-      - file: strelkasensorrules
+      - file: strelkasensorcompiledrules
 
 delete_so-strelka-backend_so-status.disabled:
   file.uncomment:
