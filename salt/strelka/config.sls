@@ -34,7 +34,18 @@ strelkalogdir:
     - name: /nsm/strelka/log
     - user: 939
     - group: 939
-    - makedirs: True
+
+strelkagkredisdatadir:
+  file.directory:
+    - name: /nsm/strelka/gk-redis-data
+    - user: 939
+    - group: 939
+
+strelkacoordredisdatadir:
+  file.directory:
+    - name: /nsm/strelka/coord-redis-data
+    - user: 939
+    - group: 939
 
 strelka_sbin:
   file.recurse:
@@ -43,20 +54,6 @@ strelka_sbin:
     - user: 939
     - group: 939
     - file_mode: 755
-
-strelkagkredisdatadir:
-  file.directory:
-    - name: /nsm/strelka/gk-redis-data
-    - user: 939
-    - group: 939
-    - makedirs: True
-
-strelkacoordredisdatadir:
-  file.directory:
-    - name: /nsm/strelka/coord-redis-data
-    - user: 939
-    - group: 939
-    - makedirs: True
 
 {% else %}
 

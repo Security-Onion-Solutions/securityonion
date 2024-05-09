@@ -7,9 +7,9 @@
 {% if sls in allowed_states %}
 
 # Strelka config
-strelkaconfdir:
+strelkarulesdir:
   file.directory:
-    - name: /opt/so/conf/strelka/rules/compiled/
+    - name: /opt/so/conf/strelka/rules
     - user: 939
     - group: 939
     - makedirs: True
@@ -20,21 +20,12 @@ strelkacompileyara:
     - source: salt://strelka/compile_yara/compile_yara.py
     - user: 939
     - group: 939
-    - makedirs: True
-
-strelkarulesdir:
-  file.directory:
-    - name: /opt/so/conf/strelka/rules
-    - user: 939
-    - group: 939
-    - makedirs: True
 
 strelkareposdir:
   file.directory:
     - name: /opt/so/conf/strelka/repos
     - user: 939
     - group: 939
-    - makedirs: True
 
 {% else %}
 
