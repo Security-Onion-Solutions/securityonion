@@ -12,7 +12,7 @@ idh_sshd_selinux:
     - prereq:
       - file: openssh_config
     - require:
-      - file: python_selinux_mgmt_tools
+      - pkg: python_selinux_mgmt_tools
 {% endif %}
 
 openssh_config:
