@@ -584,7 +584,20 @@ up_to_2.4.60() {
 up_to_2.4.70() {
   playbook_migration
   toggle_telemetry
+  add_detection_test_pillars
   INSTALLEDVERSION=2.4.70
+}
+
+add_detection_test_pillars() {
+  if [[ -n "$SOUP_INTERNAL_TESTING" ]]; then
+    echo "Adding detection pillar values for automated testing"
+    so-yaml.py add /opt/so/saltstack/local/pillar/soc/soc_soc.sls soc.config.server.modules.elastalertengine.allowRegex SecurityOnion
+    so-yaml.py add /opt/so/saltstack/local/pillar/soc/soc_soc.sls soc.config.server.modules.elastalertengine.failAfterConsecutiveErrorCount 1
+    so-yaml.py add /opt/so/saltstack/local/pillar/soc/soc_soc.sls soc.config.server.modules.strelkaengine.allowRegex "EquationGroup_Toolset_Apr17__ELV_.*"
+    so-yaml.py add /opt/so/saltstack/local/pillar/soc/soc_soc.sls soc.config.server.modules.strelkaengine.failAfterConsecutiveErrorCount 1
+    so-yaml.py add /opt/so/saltstack/local/pillar/soc/soc_soc.sls soc.config.server.modules.suricataengine.allowRegex "(200033\\d|2100538|2102466)"
+    so-yaml.py add /opt/so/saltstack/local/pillar/soc/soc_soc.sls soc.config.server.modules.suricataengine.failAfterConsecutiveErrorCount 1
+  fi
 }
 
 toggle_telemetry() {
