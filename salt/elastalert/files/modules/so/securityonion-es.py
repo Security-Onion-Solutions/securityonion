@@ -56,7 +56,7 @@ class SecurityOnionESAlerter(Alerter):
                 "event_data": match,
                 "@timestamp": timestamp
             }
-            url = f"https://{self.rule['es_host']}:{self.rule['es_port']}/logs-playbook.alerts-so/_doc/"
+            url = f"https://{self.rule['es_host']}:{self.rule['es_port']}/logs-detections.alerts-so/_doc/"
             requests.post(url, data=json.dumps(payload), headers=headers, verify=False, auth=creds)
 
     def get_info(self):
