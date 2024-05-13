@@ -13,6 +13,9 @@ Dashboards
 Hunt
 ![Hunt](https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion-docs/2.4/images/56_hunt.png)
 
+Detections
+![Detections](https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion-docs/2.4/images/59_detections.png)
+
 PCAP
 ![PCAP](https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion-docs/2.4/images/62_pcap.png)
 
