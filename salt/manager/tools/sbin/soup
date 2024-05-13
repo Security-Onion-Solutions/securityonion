@@ -583,6 +583,7 @@ up_to_2.4.60() {
 
 up_to_2.4.70() {
   playbook_migration
+  suricata_idstools_migration
   toggle_telemetry
   add_detection_test_pillars
   INSTALLEDVERSION=2.4.70
@@ -632,6 +633,16 @@ ASSIST_EOF
     fi
     echo ""
   fi
+}
+
+suricata_idstools_migration() {
+  #Backup the pillars for idstools
+  mkdir -p /nsm/backup/detections-migration/idstools
+  rsync -av /opt/so/saltstack/local/pillar/idstools /nsm/backup/detections-migration/idstools
+
+  #Backup Thresholds
+  mkdir -p /nsm/backup/detections-migration/suricata
+  rsync -av /opt/so/saltstack/local/salt/suricata/thresholding /nsm/backup/detections-migration/suricata
 }
 
 playbook_migration() {
