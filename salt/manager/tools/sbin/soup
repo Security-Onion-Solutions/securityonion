@@ -438,7 +438,13 @@ post_to_2.4.60() {
 }
 
 post_to_2.4.70() {
-  echo "Nothing to apply"
+  echo "Removing idh.services from IDH node pillar files"
+  for file in /opt/so/saltstack/local/pillar/minions/*_idh.sls; do
+    if [[ ! $file =~ "/opt/so/saltstack/local/pillar/minions/adv_" ]]; then
+      echo "Removing idh.services from: $file"
+      so-yaml.py remove "$file" idh.services
+    fi
+  done
   POSTVERSION=2.4.70
 }
 
