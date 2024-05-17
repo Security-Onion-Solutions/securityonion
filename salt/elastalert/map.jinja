@@ -13,3 +13,8 @@
 {% do ELASTALERTDEFAULTS.elastalert.config.update({'es_password': pillar.elasticsearch.auth.users.so_elastic_user.pass}) %}
 
 {% set ELASTALERTMERGED = salt['pillar.get']('elastalert', ELASTALERTDEFAULTS.elastalert, merge=True) %}
+
+{% set params = ELASTALERTMERGED.alerter_parameters | load_yaml %}
+{% if params != None %}
+  {% do ELASTALERTMERGED.config.update(params) %}
+{% endif %}
