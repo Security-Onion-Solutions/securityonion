@@ -85,7 +85,7 @@ def compile_yara_rules(rules_dir):
     }
 
     # Write total
-    with open('/opt/sensoroni/logs/detections_yara_compilation-total.log', 'w+') as report_file:
+    with open('/opt/so/state/detections_yara_compilation-total.log', 'w+') as report_file:
         json.dump(compilation_report, report_file)
 
     # Print summary of compilation results
