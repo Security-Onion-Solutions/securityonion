@@ -1,0 +1,60 @@
+#!/bin/bash
+#
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0."
+
+# This script is intended to be used in the case the ISO install did not properly setup TPM decrypt for LUKS partitions at boot.
+
+check_for_tpm() {
+  echo -n "Checking for TPM: "
+  if [ -d /sys/class/tpm/tpm0 ]; then
+    echo -e "tpm0 found."
+    TPM="yes"
+    # Check if TPM is using sha1 or sha256
+    if [ -d /sys/class/tpm/tpm0/pcr-sha1 ]; then
+      echo -e "TPM is using sha1.\n"
+      TPM_PCR="sha1"
+    elif [ -d /sys/class/tpm/tpm0/pcr-sha256 ]; then
+      echo -e "TPM is using sha256.\n"
+      TPM_PCR="sha256"
+    fi
+  else
+    echo -e "No TPM found.\n"
+    exit 1
+  fi
+}
+
+check_for_luks_partitions() {
+  echo "Checking for LUKS partitions"
+  for part in $(lsblk -o NAME,FSTYPE -ln | grep crypto_LUKS | awk '{print $1}'); do
+    echo "Found LUKS partition: $part"
+    LUKS_PARTITIONS+=("$part")
+  done
+  if [ ${#LUKS_PARTITIONS[@]} -eq 0 ]; then
+    echo -e "No LUKS partitions found.\n"
+    exit 1
+  fi
+  echo ""
+}
+
+enroll_tpm_in_luks() {
+  read -s -p "Enter the LUKS passphrase used during ISO install: " LUKS_PASSPHRASE
+  echo ""
+  for part in "${LUKS_PARTITIONS[@]}"; do
+    echo "Enrolling TPM for LUKS device: /dev/$part"
+    if [ "$TPM_PCR" == "sha1" ]; then
+      clevis luks bind -d /dev/$part tpm2 '{"pcr_bank":"sha1","pcr_ids":"7"}' <<< $LUKS_PASSPHRASE
+    elif [ "$TPM_PCR" == "sha256" ]; then
+      clevis luks bind -d /dev/$part tpm2 '{"pcr_bank":"sha256","pcr_ids":"7"}' <<< $LUKS_PASSPHRASE
+    fi
+  done
+  echo "Running dracut"
+  dracut -fv --no-kernel
+}
+
+check_for_tpm
+check_for_luks_partitions
+enroll_tpm_in_luks
+echo -e "\nTPM enrollment complete. Reboot the system to verify the TPM is correctly decrypting the LUKS partition(s) at boot.\n"
