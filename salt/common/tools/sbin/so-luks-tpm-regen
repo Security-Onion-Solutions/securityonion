@@ -1,0 +1,98 @@
+#!/bin/bash
+#
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0."
+
+set -e
+# This script is intended to be used in the case the ISO install did not properly setup TPM decrypt for LUKS partitions at boot.
+if [ -z $NOROOT ]; then
+	# Check for prerequisites
+	if [ "$(id -u)" -ne 0 ]; then
+		echo "This script must be run using sudo!"
+		exit 1
+	fi
+fi
+ENROLL_TPM=N
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --enroll-tpm)
+      ENROLL_TPM=Y
+      ;;
+    *)
+      echo "Usage: $0 [options]"
+      echo ""
+      echo "where options are:"
+      echo "  --enroll-tpm            for when TPM enrollment was not selected during ISO install."
+      echo ""
+      exit 1
+      ;;
+  esac
+  shift
+done
+
+check_for_tpm() {
+  echo -n "Checking for TPM: "
+  if [ -d /sys/class/tpm/tpm0 ]; then
+    echo -e "tpm0 found."
+    TPM="yes"
+    # Check if TPM is using sha1 or sha256
+    if [ -d /sys/class/tpm/tpm0/pcr-sha1 ]; then
+      echo -e "TPM is using sha1.\n"
+      TPM_PCR="sha1"
+    elif [ -d /sys/class/tpm/tpm0/pcr-sha256 ]; then
+      echo -e "TPM is using sha256.\n"
+      TPM_PCR="sha256"
+    fi
+  else
+    echo -e "No TPM found.\n"
+    exit 1
+  fi
+}
+
+check_for_luks_partitions() {
+  echo "Checking for LUKS partitions"
+  for part in $(lsblk -o NAME,FSTYPE -ln | grep crypto_LUKS | awk '{print $1}'); do
+    echo "Found LUKS partition: $part"
+    LUKS_PARTITIONS+=("$part")
+  done
+  if [ ${#LUKS_PARTITIONS[@]} -eq 0 ]; then
+    echo -e "No LUKS partitions found.\n"
+    exit 1
+  fi
+  echo ""
+}
+
+enroll_tpm_in_luks() {
+  read -s -p "Enter the LUKS passphrase used during ISO install: " LUKS_PASSPHRASE
+  echo ""
+  for part in "${LUKS_PARTITIONS[@]}"; do
+    echo "Enrolling TPM for LUKS device: /dev/$part"
+    if [ "$TPM_PCR" == "sha1" ]; then
+      clevis luks bind -d /dev/$part tpm2 '{"pcr_bank":"sha1","pcr_ids":"7"}' <<< $LUKS_PASSPHRASE
+    elif [ "$TPM_PCR" == "sha256" ]; then
+      clevis luks bind -d /dev/$part tpm2 '{"pcr_bank":"sha256","pcr_ids":"7"}' <<< $LUKS_PASSPHRASE
+    fi
+  done
+ }
+
+regenerate_tpm_enrollment_token() {
+  for part in "${LUKS_PARTITIONS[@]}"; do
+    clevis luks regen -d /dev/$part -s 1 -q
+  done
+}
+
+check_for_tpm
+check_for_luks_partitions
+
+if [[ $ENROLL_TPM == "Y" ]]; then
+  enroll_tpm_in_luks
+else
+  regenerate_tpm_enrollment_token
+fi
+
+echo "Running dracut"
+dracut -fv
+echo -e "\nTPM configuration complete. Reboot the system to verify the TPM is correctly decrypting the LUKS partition(s) at boot.\n"
