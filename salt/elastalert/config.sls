@@ -97,7 +97,7 @@ elastacustomsync:
     - group: 933
     - makedirs: True
     - template: jinja
-    - mode: 660
+    - file_mode: 660
     - context:
         elastalert: {{ ELASTALERTMERGED }}
     - show_changes: False
@@ -109,6 +109,7 @@ elastapredefinedsync:
     - user: 933
     - group: 933
     - makedirs: True
+    - file_mode: 660
     - show_changes: False
 
 elastaconf:
