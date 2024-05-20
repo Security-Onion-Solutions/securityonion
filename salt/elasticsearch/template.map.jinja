@@ -2,11 +2,9 @@
 {% set DEFAULT_GLOBAL_OVERRIDES = ELASTICSEARCHDEFAULTS.elasticsearch.index_settings.pop('global_overrides') %}
 
 {% set PILLAR_GLOBAL_OVERRIDES = {} %}
-{% if salt['pillar.get']('elasticsearch:index_settings') is defined %}
-{%   set ES_INDEX_PILLAR = salt['pillar.get']('elasticsearch:index_settings') %}
-{%   if ES_INDEX_PILLAR.global_overrides is defined %}
-{%     set PILLAR_GLOBAL_OVERRIDES = ES_INDEX_PILLAR.pop('global_overrides') %}
-{%   endif %}
+{% set ES_INDEX_PILLAR = salt['pillar.get']('elasticsearch:index_settings', {}) %}
+{% if ES_INDEX_PILLAR.global_overrides is defined %}
+{%   set PILLAR_GLOBAL_OVERRIDES = ES_INDEX_PILLAR.pop('global_overrides') %}
 {% endif %}
 
 {% set ES_INDEX_SETTINGS_ORIG = ELASTICSEARCHDEFAULTS.elasticsearch.index_settings %}
@@ -19,6 +17,12 @@
 {% set ES_INDEX_SETTINGS = {} %}
 {% do ES_INDEX_SETTINGS_GLOBAL_OVERRIDES.update(salt['defaults.merge'](ES_INDEX_SETTINGS_GLOBAL_OVERRIDES, ES_INDEX_PILLAR, in_place=False)) %}
 {% for index, settings in ES_INDEX_SETTINGS_GLOBAL_OVERRIDES.items() %}
+{#   if policy isn't defined in the original index settings, then dont merge policy from the global_overrides #}
+{#   this will prevent so-elasticsearch-ilm-policy-load from trying to load policy on non ILM manged indices #}
+{%   if not ES_INDEX_SETTINGS_ORIG[index].policy is defined and ES_INDEX_SETTINGS_GLOBAL_OVERRIDES[index].policy is defined %}
+{%     do ES_INDEX_SETTINGS_GLOBAL_OVERRIDES[index].pop('policy') %}
+{%   endif %}
+
 {%   if settings.index_template is defined %}
 {%     if not settings.get('index_sorting', False) | to_bool and settings.index_template.template.settings.index.sort is defined %}
 {%       do settings.index_template.template.settings.index.pop('sort') %}

@@ -15,3 +15,9 @@ openssh:
     - enable: False
     - name: {{ openssh_map.service }}
   {% endif %}
+
+{% if grains.os_family == 'RedHat' %}
+python_selinux_mgmt_tools:
+  pkg.installed:
+    - name: policycoreutils-python-utils
+{% endif %}

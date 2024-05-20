@@ -78,6 +78,12 @@ soc:
         target: ''
         links:
           - '/#/hunt?q=(process.entity_id:"{:process.entity_id}" OR process.entity_id:"{:process.Ext.ancestry|processAncestors}") | groupby event.dataset | groupby -sankey event.dataset event.action | groupby event.action | groupby process.parent.name | groupby -sankey process.parent.name process.name | groupby process.name | groupby process.command_line | groupby host.name user.name | groupby source.ip source.port destination.ip destination.port | groupby dns.question.name | groupby dns.answers.data | groupby file.path | groupby registry.path | groupby dll.path'
+      - name: actionRelatedAlerts
+        description: actionRelatedAlertsHelp
+        icon: fa-bell
+        links:
+          - '/#/alerts?q=rule.uuid: {:so_detection.publicId|escape} | groupby rule.name event.module* event.severity_label'
+        target: ''
     eventFields:
       default:
         - soc_timestamp
@@ -1252,6 +1258,19 @@ soc:
         - event_data.destination.port
         - event_data.process.executable
         - event_data.process.pid
+      ':netflow:':
+        - soc_timestamp
+        - event.dataset
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - network.type
+        - network.transport
+        - network.direction
+        - netflow.type
+        - netflow.exporter.version
+        - observer.ip
     server:
       bindAddress: 0.0.0.0:9822
       baseUrl: /
@@ -1278,7 +1297,7 @@ soc:
             so-import:
               - securityonion-resources+critical
               - securityonion-resources+high
-          communityRulesImportFrequencySeconds: 28800
+          communityRulesImportFrequencySeconds: 86400
           communityRulesImportErrorSeconds: 300
           failAfterConsecutiveErrorCount: 10
           denyRegex: ''
@@ -1286,6 +1305,7 @@ soc:
           reposFolder: /opt/sensoroni/sigma/repos
           rulesFingerprintFile: /opt/sensoroni/fingerprints/sigma.fingerprint
           stateFilePath: /opt/sensoroni/fingerprints/elastalertengine.state
+          integrityCheckFrequencySeconds: 600
           rulesRepos:
             default:
               - repo: https://github.com/Security-Onion-Solutions/securityonion-resources
@@ -1347,7 +1367,7 @@ soc:
           autoEnabledYaraRules:
             - securityonion-yara
           autoUpdateEnabled: true
-          communityRulesImportFrequencySeconds: 28800
+          communityRulesImportFrequencySeconds: 86400
           communityRulesImportErrorSeconds: 300
           failAfterConsecutiveErrorCount: 10
           compileYaraPythonScriptPath: /opt/sensoroni/yara/compile_yara.py
@@ -1364,16 +1384,18 @@ soc:
                 community: true
           yaraRulesFolder: /opt/sensoroni/yara/rules
           stateFilePath: /opt/sensoroni/fingerprints/strelkaengine.state
+          integrityCheckFrequencySeconds: 600
         suricataengine:
           allowRegex: ''
           autoUpdateEnabled: true
-          communityRulesImportFrequencySeconds: 28800
+          communityRulesImportFrequencySeconds: 86400
           communityRulesImportErrorSeconds: 300
           failAfterConsecutiveErrorCount: 10
           communityRulesFile: /nsm/rules/suricata/emerging-all.rules
           denyRegex: ''
           rulesFingerprintFile: /opt/sensoroni/fingerprints/emerging-all.fingerprint
           stateFilePath: /opt/sensoroni/fingerprints/suricataengine.state
+          integrityCheckFrequencySeconds: 600
       client:
         enableReverseLookup: false
         docsUrl: /docs/
@@ -1925,6 +1947,9 @@ soc:
             - name: ICS S7
               description: S7 (Siemens) network metadata
               query: 'tags:s7* | groupby event.dataset | groupby -sankey event.dataset source.ip | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port'
+            - name: NetFlow
+              description: NetFlow records
+              query: 'event.module:netflow | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby network.type | groupby network.transport | groupby network.direction | groupby netflow.type | groupby netflow.exporter.version  | groupby observer.ip | groupby source.as.organization.name | groupby source.geo.country_name | groupby destination.as.organization.name | groupby destination.geo.country_name'
             - name: Firewall
               description: Firewall logs
               query: 'observer.type:firewall | groupby event.action | groupby -sankey event.action observer.ingress.interface.name | groupby observer.ingress.interface.name | groupby network.type | groupby network.transport | groupby source.ip | groupby destination.ip | groupby destination.port'
@@ -2160,9 +2185,9 @@ soc:
             manualSync:
               customEnabled: false
               labels:
-              - Suricata
-              - Strelka
               - ElastAlert
+              - Strelka
+              - Suricata
           eventFields:
             default:
               - so_detection.title
