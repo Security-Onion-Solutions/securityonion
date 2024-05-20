@@ -5,7 +5,33 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0."
 
+set -e
 # This script is intended to be used in the case the ISO install did not properly setup TPM decrypt for LUKS partitions at boot.
+if [ -z $NOROOT ]; then
+	# Check for prerequisites
+	if [ "$(id -u)" -ne 0 ]; then
+		echo "This script must be run using sudo!"
+		exit 1
+	fi
+fi
+ENROLL_TPM=N
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --enroll-tpm)
+      ENROLL_TPM=Y
+      ;;
+    *)
+      echo "Usage: $0 [options]"
+      echo ""
+      echo "where options are:"
+      echo "  --enroll-tpm            for when TPM enrollment was not selected during ISO install."
+      echo ""
+      exit 1
+      ;;
+  esac
+  shift
+done
 
 check_for_tpm() {
   echo -n "Checking for TPM: "
@@ -50,11 +76,23 @@ enroll_tpm_in_luks() {
       clevis luks bind -d /dev/$part tpm2 '{"pcr_bank":"sha256","pcr_ids":"7"}' <<< $LUKS_PASSPHRASE
     fi
   done
-  echo "Running dracut"
-  dracut -fv --no-kernel
+ }
+
+regenerate_tpm_enrollment_token() {
+  for part in "${LUKS_PARTITIONS[@]}"; do
+    clevis luks regen -d /dev/$part -s 1 -q
+  done
 }
 
 check_for_tpm
 check_for_luks_partitions
-enroll_tpm_in_luks
-echo -e "\nTPM enrollment complete. Reboot the system to verify the TPM is correctly decrypting the LUKS partition(s) at boot.\n"
+
+if [[ $ENROLL_TPM == "Y" ]]; then
+  enroll_tpm_in_luks
+else
+  regenerate_tpm_enrollment_token
+fi
+
+echo "Running dracut"
+dracut -fv
+echo -e "\nTPM configuration complete. Reboot the system to verify the TPM is correctly decrypting the LUKS partition(s) at boot.\n"
