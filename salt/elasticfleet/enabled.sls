@@ -23,37 +23,45 @@ wait_for_elasticsearch_elasticfleet:
     - name: so-elasticsearch-wait
 
 # If enabled, automatically update Fleet Logstash Outputs
-{% if ELASTICFLEETMERGED.config.server.enable_auto_configuration and grains.role not in ['so-import', 'so-eval', 'so-fleet'] %}
+{% if ELASTICFLEETMERGED.config.server.enable_auto_configuration %}
+{%   if GLOBALS.role not in ['so-import', 'so-eval', 'so-fleet'] %}
 so-elastic-fleet-auto-configure-logstash-outputs:
   cmd.run:
     - name: /usr/sbin/so-elastic-fleet-outputs-update
-    - retry: True
-{% endif %}
-
+    - retry:
+        attempts: 12
+        interval: 5
+{%   endif %}
 # If enabled, automatically update Fleet Server URLs & ES Connection
-{% if ELASTICFLEETMERGED.config.server.enable_auto_configuration and grains.role not in ['so-fleet'] %}
+{%   if GLOBALS.role != 'so-fleet' %}
 so-elastic-fleet-auto-configure-server-urls:
   cmd.run:
     - name: /usr/sbin/so-elastic-fleet-urls-update
-    - retry: True
+    - retry:
+        attempts: 12
+        interval: 5
+{%   endif %}
 {% endif %}
 
 # Automatically update Fleet Server Elasticsearch URLs & Agent Artifact URLs
-{% if grains.role not in ['so-fleet'] %}
+{% if GLOBALS.role != 'so-fleet' %}
 so-elastic-fleet-auto-configure-elasticsearch-urls:
   cmd.run:
     - name: /usr/sbin/so-elastic-fleet-es-url-update
-    - retry: True
+    - retry:
+        attempts: 12
+        interval: 5
 
 so-elastic-fleet-auto-configure-artifact-urls:
   cmd.run:
     - name: /usr/sbin/so-elastic-fleet-artifacts-url-update
-    - retry: True 
-
+    - retry:
+        attempts: 12
+        interval: 5
 {% endif %}
 
 # Sync Elastic Agent artifacts to Fleet Node
-{% if grains.role in ['so-fleet'] %}
+{% if GLOBALS.role == 'so-fleet' %}
 elasticagent_syncartifacts:
   file.recurse:
     - name: /nsm/elastic-fleet/artifacts/beats
@@ -133,14 +141,15 @@ so-elastic-fleet-integrations:
 so-elastic-agent-grid-upgrade:
   cmd.run:
     - name: /usr/sbin/so-elastic-agent-grid-upgrade
-    - retry: True
+    - retry:
+        attempts: 12
+        interval: 5
 {%  endif %}
 
 delete_so-elastic-fleet_so-status.disabled:
   file.uncomment:
     - name: /opt/so/conf/so-status/so-status.conf
     - regex: ^so-elastic-fleet$
-
 
 {% else %}
 
