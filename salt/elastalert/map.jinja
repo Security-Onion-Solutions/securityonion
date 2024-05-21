@@ -14,7 +14,22 @@
 
 {% set ELASTALERTMERGED = salt['pillar.get']('elastalert', ELASTALERTDEFAULTS.elastalert, merge=True) %}
 
-{% set params = ELASTALERTMERGED.alerter_parameters | load_yaml %}
-{% if params != None %}
-  {% do ELASTALERTMERGED.config.update(params) %}
+{% if 'ntf' in salt['pillar.get']('features', []) %}
+   {% set params = ELASTALERTMERGED.alerter_parameters | load_yaml %}
+   {% if params != None %}
+      {% do ELASTALERTMERGED.config.update(params) %}
+   {% endif %}
+
+   {% if ELASTALERTMERGED.smtp_user | length > 0 %}
+      {% do ELASTALERTMERGED.config.update({'smtp_auth_file': '/opt/elastalert/predefined/smtp_auth.yaml'}) %}
+   {% endif %}
+
+   {% if ELASTALERTMERGED.smtp_user | length > 0 %}
+      {% do ELASTALERTMERGED.config.update({'smtp_auth_file': '/opt/elastalert/predefined/smtp_auth.yaml'}) %}
+   {% endif %}
+
+   {% if ELASTALERTMERGED.jira_user | length > 0 or ELASTALERTMERGED.jira_key | length > 0 %}
+      {% do ELASTALERTMERGED.config.update({'jira_account_file': '/opt/elastalert/predefined/jira_auth.yaml'}) %}
+   {% endif %}
+
 {% endif %}
