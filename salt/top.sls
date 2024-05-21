@@ -84,16 +84,16 @@ base:
     - salt.master
     - ca
     - ssl
+    - firewall
     - registry
     - nginx
+    - elasticsearch
+    - kratos
     - strelka.manager
     - soc
-    - kratos
-    - firewall
     - manager
-    - elasticsearch
-    - influxdb
     - sensoroni
+    - influxdb
     - telegraf
     - backup.config_backup
     - idstools
