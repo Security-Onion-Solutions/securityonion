@@ -5,7 +5,7 @@
 {% set GRIDNODETOKENGENERAL = salt['pillar.get']('global:fleet_grid_enrollment_token_general') %}
 {% set GRIDNODETOKENHEAVY = salt['pillar.get']('global:fleet_grid_enrollment_token_heavy') %}
 
-{% if GLOBALS.role == 'so-heavynode' %}
+{% if grains.role == 'so-heavynode' %}
 {%   set GRIDNODETOKEN = salt['pillar.get']('global:fleet_grid_enrollment_token_heavy') %}
 {% else %}
 {%   set GRIDNODETOKEN = salt['pillar.get']('global:fleet_grid_enrollment_token_general') %}
