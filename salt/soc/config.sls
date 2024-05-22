@@ -80,6 +80,15 @@ socmotd:
     - mode: 600
     - template: jinja
 
+filedetectionsbackup:
+  file.managed:
+    - name: /opt/so/conf/soc/so-detections-backup.py
+    - source: salt://soc/files/soc/so-detections-backup.py
+    - user: 939
+    - group: 939
+    - mode: 600
+    - show_changes: False
+
 crondetectionsruntime:
   cron.present:
     - name: /usr/sbin/so-detections-runtime-status cron 
@@ -87,6 +96,17 @@ crondetectionsruntime:
     - user: root
     - minute: '*/10'
     - hour: '*'
+    - daymonth: '*'
+    - month: '*'
+    - dayweek: '*'
+
+crondetectionsbackup:
+  cron.present:
+    - name: python3 /opt/so/conf/soc/so-detections-backup.py 
+    - identifier: detections-backup
+    - user: root
+    - minute: '0'
+    - hour: '0'
     - daymonth: '*'
     - month: '*'
     - dayweek: '*'
