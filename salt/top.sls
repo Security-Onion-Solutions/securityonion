@@ -36,15 +36,15 @@ base:
     - match: compound
     - sensor
     - ssl
+    - firewall
     - sensoroni
     - telegraf
-    - firewall
     - nginx
-    - pcap
-    - suricata
     - healthcheck
-    - zeek
+    - pcap
     - strelka
+    - suricata
+    - zeek
     - elasticfleet.install_agent_grid
     - stig
 
@@ -54,30 +54,30 @@ base:
     - sensor
     - ca
     - ssl
-    - registry
-    - manager
-    - backup.config_backup
-    - nginx
-    - influxdb
-    - soc
-    - kratos
-    - sensoroni
-    - telegraf
     - firewall
+    - registry
+    - nginx
+    - manager
+    - elasticsearch
+    - kratos
+    - soc
+    - sensoroni
+    - influxdb
+    - telegraf
+    - backup.config_backup
     - idstools
     - suricata.manager
-    - healthcheck
-    - elasticsearch
     - elastic-fleet-package-registry
     - kibana
-    - pcap
-    - suricata
-    - zeek
-    - strelka
     - curator.disabled
     - elastalert
     - utility
     - elasticfleet
+    - healthcheck
+    - pcap
+    - strelka
+    - suricata
+    - zeek
 
   '*_manager and G@saltversion:{{saltversion}}':
     - match: compound
@@ -114,38 +114,38 @@ base:
     - sensor
     - ca
     - ssl
-    - registry
-    - manager
-    - backup.config_backup
-    - nginx
-    - influxdb
-    - soc
-    - kratos
     - firewall
+    - registry
+    - nginx
+    - manager
+    - elasticsearch
+    - kratos
+    - soc
     - sensoroni
+    - influxdb
     - telegraf
+    - backup.config_backup
     - idstools
     - suricata.manager
-    - healthcheck
-    - elasticsearch
     - logstash
     - redis
     - elastic-fleet-package-registry
     - kibana
-    - pcap
-    - suricata
-    - zeek
-    - strelka
     - curator.disabled
     - elastalert
     - utility
     - elasticfleet
+    - healthcheck
+    - pcap
+    - strelka
+    - suricata
+    - zeek
     - stig
 
   '*_searchnode and G@saltversion:{{saltversion}}':
     - match: compound
-    - firewall
     - ssl
+    - firewall
     - elasticsearch
     - logstash
     - sensoroni
@@ -159,25 +159,25 @@ base:
     - salt.master
     - ca
     - ssl
+    - firewall
     - registry
     - nginx
-    - influxdb
+    - manager
+    - elasticsearch
+    - kratos
     - strelka.manager
     - soc
-    - kratos
-    - firewall
-    - manager
     - sensoroni
+    - influxdb
     - telegraf
     - backup.config_backup
     - idstools
     - suricata.manager
-    - elasticsearch
     - logstash
     - redis
-    - curator.disabled
     - elastic-fleet-package-registry
     - kibana
+    - curator.disabled
     - elastalert
     - utility
     - elasticfleet
@@ -187,16 +187,16 @@ base:
     - match: compound
     - sensor
     - ssl
+    - firewall
     - sensoroni
     - telegraf
     - nginx
-    - firewall
     - elasticsearch
     - logstash
     - redis
     - curator.disabled
-    - strelka
     - pcap
+    - strelka
     - suricata
     - zeek
     - elasticfleet.install_agent_grid
@@ -208,33 +208,33 @@ base:
     - sensor
     - ca
     - ssl
+    - firewall
     - registry
-    - manager
     - nginx
-    - influxdb
+    - manager
+    - elasticsearch
+    - kratos
     - strelka.manager
     - soc
-    - kratos
     - sensoroni
+    - influxdb
     - telegraf
-    - firewall
     - idstools
     - suricata.manager
-    - pcap
-    - elasticsearch
     - elastic-fleet-package-registry
     - kibana
     - utility
+    - elasticfleet
+    - pcap
     - suricata
     - zeek
-    - elasticfleet
 
   '*_receiver and G@saltversion:{{saltversion}}':
     - match: compound
     - ssl
+    - firewall
     - sensoroni
     - telegraf
-    - firewall
     - logstash
     - redis
     - elasticfleet.install_agent_grid
@@ -242,23 +242,22 @@ base:
   '*_idh and G@saltversion:{{saltversion}}':
     - match: compound
     - ssl
+    - firewall
     - sensoroni
     - telegraf
-    - firewall
     - elasticfleet.install_agent_grid
     - idh
 
   '*_fleet and G@saltversion:{{saltversion}}':
     - match: compound
     - ssl
+    - firewall
     - sensoroni
     - telegraf
-    - firewall
     - logstash
     - nginx
     - elasticfleet
     - elasticfleet.install_agent_grid
-    - schedule
 
   '*_desktop and G@saltversion:{{saltversion}}':
     - ssl
