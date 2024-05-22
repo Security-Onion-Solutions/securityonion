@@ -13,7 +13,7 @@
 kafka_storage_init:
   cmd.run:
     - name: |
-        docker run -v /nsm/kafka/data:/nsm/kafka/data -v /opt/so/conf/kafka/server.properties:/kafka/config/kraft/newserver.properties --name so-kafkainit --user root --entrypoint /kafka/bin/kafka-storage.sh {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-kafka:{{ GLOBALS.so_version }} format -t {{ kafka_cluster_id }} -c /kafka/config/kraft/newserver.properties
+        docker run -v /nsm/kafka/data:/nsm/kafka/data -v /opt/so/conf/kafka/server.properties:/opt/kafka/config/kraft/newserver.properties --name so-kafkainit --user root --entrypoint /opt/kafka/bin/kafka-storage.sh {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-kafka:{{ GLOBALS.so_version }} format -t {{ kafka_cluster_id }} -c /opt/kafka/config/kraft/newserver.properties
 kafka_rm_kafkainit:
   cmd.run:
     - name: |
