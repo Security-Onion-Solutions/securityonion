@@ -87,11 +87,11 @@ base:
     - firewall
     - registry
     - nginx
+    - manager
     - elasticsearch
     - kratos
     - strelka.manager
     - soc
-    - manager
     - sensoroni
     - influxdb
     - telegraf
