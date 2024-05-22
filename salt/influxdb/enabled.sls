@@ -81,6 +81,22 @@ get_influxdb_size:
     - month: '*'
     - dayweek: '*'
 
+influxdb-setup:
+  cmd.run:
+    - name: /usr/sbin/so-influxdb-manage setup &>> /opt/so/log/influxdb/setup.log
+    - require:
+      - file: influxdbbucketsconf
+      - file: influxdb_curl_config
+      - docker_container: so-influxdb
+    - order: last
+
+metrics_link_file:
+  cmd.run:
+    - name: so-influxdb-manage dashboardpath "Security Onion Performance" > /opt/so/saltstack/local/salt/influxdb/metrics_link.txt
+    - require:
+      - docker_container: so-influxdb
+    - order: last
+
 {% else %}
 
 {{sls}}_state_not_allowed:
