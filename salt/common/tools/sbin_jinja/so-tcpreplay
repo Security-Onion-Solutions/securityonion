@@ -10,7 +10,7 @@
 . /usr/sbin/so-common
 . /usr/sbin/so-image-common
 
-REPLAYIFACE=${REPLAYIFACE:-$(lookup_pillar interface sensor)}
+REPLAYIFACE=${REPLAYIFACE:-"{{pillar.sensor.interface}}"}
 REPLAYSPEED=${REPLAYSPEED:-10}
 
 mkdir -p /opt/so/samples
@@ -57,8 +57,8 @@ if ! docker ps | grep -q so-tcpreplay; then
 fi
 
 if is_sensor_node; then
-	echo "Replaying PCAP(s) at ${REPLAYSPEED} Mbps on interface ${REPLAYIFACE}..."
-	docker exec so-tcpreplay /usr/bin/bash -c "/usr/local/bin/tcpreplay -i ${REPLAYIFACE} -M${REPLAYSPEED} $@"
+	echo "Replaying PCAP(s) at ${REPLAYSPEED} Mbps on interface $REPLAYIFACE..."
+	docker exec so-tcpreplay /usr/bin/bash -c "/usr/local/bin/tcpreplay -i $REPLAYIFACE -M${REPLAYSPEED} $@"
 
 	echo "Replay completed. Warnings shown above are typically expected."
 elif is_manager_node; then
