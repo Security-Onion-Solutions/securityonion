@@ -87,7 +87,6 @@ filedetectionsbackup:
     - user: 939
     - group: 939
     - mode: 600
-    - show_changes: False
 
 crondetectionsruntime:
   cron.present:
@@ -102,7 +101,7 @@ crondetectionsruntime:
 
 crondetectionsbackup:
   cron.present:
-    - name: python3 /opt/so/conf/soc/so-detections-backup.py 
+    - name: python3 /opt/so/conf/soc/so-detections-backup.py &>> /opt/so/log/soc/detections-backup.log
     - identifier: detections-backup
     - user: root
     - minute: '0'

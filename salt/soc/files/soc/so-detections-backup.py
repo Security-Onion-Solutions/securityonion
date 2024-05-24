@@ -86,6 +86,8 @@ def main():
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         print(f"Backing up Custom Detections and all Overrides to {OUTPUT_DIR} - {timestamp}\n")
         
+        os.makedirs(OUTPUT_DIR, exist_ok=True)
+
         auth_credentials = get_auth_credentials(AUTH_FILE)
         username, password = auth_credentials.split(':', 1)
         auth = HTTPBasicAuth(username, password)
