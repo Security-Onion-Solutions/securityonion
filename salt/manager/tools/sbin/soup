@@ -680,16 +680,15 @@ playbook_migration() {
     active_rules_count=$(find /opt/so/rules/elastalert/playbook/ -type f -name "*.yaml" | wc -l)
 
     if [[ "$active_rules_count" -gt 0 ]]; then
-        # Prompt the user to AGREE if active Elastalert rules found
+        # Prompt the user to press ENTER if active Elastalert rules found
         echo
         echo "$active_rules_count Active Elastalert/Playbook rules found."
         echo "In preparation for the new Detections module, they will be backed up and then disabled."
         echo
-        echo "If you would like to proceed, then type AGREE and press ENTER."
+        echo "Press ENTER to proceed."
         echo
         # Read user input
-        read INPUT
-        if [ "${INPUT^^}" != 'AGREE' ]; then fail "SOUP canceled."; fi
+        read -r
 
         echo "Backing up the Elastalert rules..."
         rsync -av --stats /opt/so/rules/elastalert/playbook/*.yaml /nsm/backup/detections-migration/elastalert/
