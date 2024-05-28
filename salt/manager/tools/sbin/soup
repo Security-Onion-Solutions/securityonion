@@ -677,7 +677,7 @@ playbook_migration() {
   if grep -A 1 'playbook:'  /opt/so/saltstack/local/pillar/minions/* | grep -q 'enabled: True'; then
   
     # Check for active Elastalert rules
-    active_rules_count=$(find /opt/so/rules/elastalert/playbook/ -type f -name "*.yaml" | wc -l)
+    active_rules_count=$(find /opt/so/rules/elastalert/playbook/ -type f \( -name "*.yaml" -o -name "*.yml" \) | wc -l)
 
     if [[ "$active_rules_count" -gt 0 ]]; then
         # Prompt the user to press ENTER if active Elastalert rules found
@@ -691,7 +691,8 @@ playbook_migration() {
         read -r
 
         echo "Backing up the Elastalert rules..."
-        rsync -av --stats /opt/so/rules/elastalert/playbook/*.yaml /nsm/backup/detections-migration/elastalert/
+        rsync -av --stats /opt/so/rules/elastalert/playbook/*.{yaml,yml} /nsm/backup/detections-migration/elastalert/
+    fi
 
         # Verify that rsync completed successfully
         if [[ $? -eq 0 ]]; then
