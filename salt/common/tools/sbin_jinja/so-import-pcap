@@ -89,6 +89,7 @@ function suricata() {
     -v ${LOG_PATH}:/var/log/suricata/:rw \
     -v ${NSM_PATH}/:/nsm/:rw \
     -v "$PCAP:/input.pcap:ro" \
+    -v /dev/null:/nsm/suripcap:rw \
     -v /opt/so/conf/suricata/bpf:/etc/suricata/bpf:ro \
     {{ MANAGER }}:5000/{{ IMAGEREPO }}/so-suricata:{{ VERSION }} \
     --runmode single -k none -r /input.pcap > $LOG_PATH/console.log 2>&1
@@ -247,7 +248,7 @@ fi
 START_OLDEST_SLASH=$(echo $START_OLDEST | sed -e 's/-/%2F/g')
 END_NEWEST_SLASH=$(echo $END_NEWEST | sed -e 's/-/%2F/g')
 if [[ $VALID_PCAPS_COUNT -gt 0 ]] || [[ $SKIPPED_PCAPS_COUNT -gt 0 ]]; then
-  URL="https://{{ URLBASE }}/#/dashboards?q=$HASH_FILTERS%20%7C%20groupby%20-sankey%20event.dataset%20event.category%2a%20%7C%20groupby%20-pie%20event.category%20%7C%20groupby%20-bar%20event.module%20%7C%20groupby%20event.dataset%20%7C%20groupby%20event.module%20%7C%20groupby%20event.category%20%7C%20groupby%20observer.name%20%7C%20groupby%20source.ip%20%7C%20groupby%20destination.ip%20%7C%20groupby%20destination.port&t=${START_OLDEST_SLASH}%2000%3A00%3A00%20AM%20-%20${END_NEWEST_SLASH}%2000%3A00%3A00%20AM&z=UTC"
+  URL="https://{{ URLBASE }}/#/dashboards?q=$HASH_FILTERS%20%7C%20groupby%20event.module*%20%7C%20groupby%20-sankey%20event.module*%20event.dataset%20%7C%20groupby%20event.dataset%20%7C%20groupby%20source.ip%20%7C%20groupby%20destination.ip%20%7C%20groupby%20destination.port%20%7C%20groupby%20network.protocol%20%7C%20groupby%20rule.name%20rule.category%20event.severity_label%20%7C%20groupby%20dns.query.name%20%7C%20groupby%20file.mime_type%20%7C%20groupby%20http.virtual_host%20http.uri%20%7C%20groupby%20notice.note%20notice.message%20notice.sub_message%20%7C%20groupby%20ssl.server_name%20%7C%20groupby%20source_geo.organization_name%20source.geo.country_name%20%7C%20groupby%20destination_geo.organization_name%20destination.geo.country_name&t=${START_OLDEST_SLASH}%2000%3A00%3A00%20AM%20-%20${END_NEWEST_SLASH}%2000%3A00%3A00%20AM&z=UTC"
 
   status "Import complete!"
   status

@@ -14,7 +14,7 @@ whiptail_airgap() {
 	[[ $is_manager || $is_import ]] && node_str='manager'
 
 	INTERWEBS=$(whiptail --title "$whiptail_title" --menu \
-	"How should this $node_str be installed?" 10 70 2 \
+	"How should this $node_str be installed?\n\nFor more information, please see:\n$DOC_BASE_URL/airgap.html" 13 70 2 \
 	"Standard    " "This $node_str has access to the Internet"  \
 	"Airgap      " "This $node_str does not have access to the Internet" 3>&1 1>&2 2>&3 )
 
@@ -142,6 +142,26 @@ whiptail_cancel() {
 	title "User cancelled setup."
 	
 	exit 1
+}
+
+whiptail_accept_telemetry() {
+
+	[ -n "$TESTING" ] && return
+
+	read -r -d '' message <<- EOM
+
+	The Security Onion development team could use your help! Enabling SOC
+	Telemetry will help the team understand which UI features are being
+	used and enables informed prioritization of future development.
+
+	Adjust this setting at anytime via the SOC Configuration screen.
+
+	Documentation: https://docs.securityonion.net/en/2.4/telemetry.html
+
+	Enable SOC Telemetry to help improve future releases?
+	EOM
+	whiptail --title "$whiptail_title" --yesno "$message" 15 75
+	telemetry=$?
 }
 
 whiptail_check_exitstatus() {
@@ -288,9 +308,9 @@ whiptail_dhcp_or_static() {
 	[ -n "$TESTING" ] && return
 
 	address_type=$(whiptail --title "$whiptail_title" --menu \
-	"Choose how to set up your management interface:" 20 78 4 \
-	"STATIC" "Set a static IPv4 address" \
-	"DHCP" "Use DHCP to configure the Management Interface" 3>&1 1>&2 2>&3 )
+	"Choose how to set up your management interface. We recommend using a static IP address." 20 78 4 \
+	"STATIC" "Set a static IPv4 address (recommended)" \
+	"DHCP" "Use DHCP to configure the management interface" 3>&1 1>&2 2>&3 )
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
 
@@ -431,6 +451,14 @@ whiptail_end_settings() {
 		done
 	fi
 
+	if [[ ! $is_airgap ]] && [[ $waitforstate ]]; then
+		if [[ $telemetry -eq 0 ]]; then
+			__append_end_msg "SOC Telemetry: enabled"
+		else
+			__append_end_msg "SOC Telemetry: disabled"
+		fi
+	fi
+
 	# ADVANCED
 	if [[ $MANAGERADV == 'ADVANCED' ]]; then
 		__append_end_msg "Advanced Manager Settings:"
@@ -447,7 +475,7 @@ whiptail_end_settings() {
 	read -r -d '' msg <<-EOM
 	$end_msg
 
-	Press the Tab key to select yes or no.
+	Press the TAB key to select yes or no.
 	EOM
 
 	whiptail --title "The following options have been set, would you like to proceed?" --yesno "$msg" 24 75 --scrolltext
@@ -564,8 +592,8 @@ whiptail_install_type() {
 			"IMPORT" "Import PCAP or log files " \
 			"EVAL" "Evaluation mode (not for production) " \
 			"STANDALONE" "Standalone production install " \
-			"DISTRIBUTED" "Distributed install submenu " \
-			"DESKTOP" "Install Security Onion Desktop" \
+			"DISTRIBUTED" "Distributed deployment " \
+			"DESKTOP" "Security Onion Desktop" \
 			3>&1 1>&2 2>&3
 		)
 	elif [[ "$OSVER" == "focal" ]]; then

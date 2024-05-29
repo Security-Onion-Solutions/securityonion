@@ -559,7 +559,7 @@ check_requirements() {
 	local num_nics=${#nic_list[@]}
 	
 	if [[ $is_eval ]]; then
-		req_mem=12
+		req_mem=8
 		req_cores=4
 		req_nics=2
 	elif [[ $is_standalone ]]; then
@@ -762,21 +762,6 @@ copy_salt_master_config() {
 	logCmd "systemctl restart salt-master"
 }
 
-create_local_directories() {
-	info "Creating local pillar and salt directories"
-	PILLARSALTDIR=${SCRIPTDIR::-5}
-	for i in "pillar" "salt"; do
-		for d in $(find $PILLARSALTDIR/$i -type d); do
-			suffixdir=${d//$PILLARSALTDIR/}
-			if [ ! -d "$local_salt_dir/$suffixdir" ]; then
-				logCmd "mkdir -pv $local_salt_dir$suffixdir"
-			fi
-		done
-		logCmd "chown -R socore:socore $local_salt_dir/$i"
-	done
-
-}
-
 create_local_nids_rules() {
 	title "Create a local.rules file so it doesn't get removed on updates"
 	logCmd "mkdir -p /opt/so/saltstack/local/salt/idstools"
@@ -792,7 +777,6 @@ create_manager_pillars() {
 	create_global
 	create_sensoroni_pillar
 	backup_pillar
-	soctopus_pillar
 	docker_pillar
 	redis_pillar
 	idstools_pillar
@@ -1109,10 +1093,6 @@ generate_ssl() {
 
 generate_passwords(){
   title "Generate Random Passwords"
-  MYSQLPASS=$(get_random_value)
-  PLAYBOOKDBPASS=$(get_random_value)
-  PLAYBOOKADMINPASS=$(get_random_value)
-  PLAYBOOKAUTOMATIONPASS=$(get_random_value)
   INFLUXPASS=$(get_random_value)
   INFLUXTOKEN=$(head -c 64 /dev/urandom | base64 --wrap=0)
   SENSORONIKEY=$(get_random_value)
@@ -1166,11 +1146,6 @@ install_cleanup() {
 	# All cleanup prior to this statement must be compatible with automated testing. Cleanup
 	# that will disrupt automated tests should be placed beneath this statement.
 	[ -n "$TESTING" ] && return
-
-	# If Mysql is running stop it
-	if docker ps --format "{{.Names}}" 2>&1 | grep -q "so-mysql"; then
-		logVmd "/usr/sbin/so-mysql-stop"
-	fi
 
 	if [[ $setup_type == 'iso' ]]; then
 		info "Removing so-setup permission entry from sudoers file"
@@ -1267,7 +1242,33 @@ soc_pillar() {
 		"  config:"\
 		"    server:"\
 		"      srvKey: '$SOCSRVKEY'"\
-		"" > "$soc_pillar_file"
+		"      modules:"\
+		"        elastalertengine:"\
+		"          allowRegex: '$ELASTALERT_ALLOW_REGEX'" > "$soc_pillar_file"
+	if [[ -n "$ELASTALERT_FAIL_ERROR_COUNT" ]]; then
+		printf '%s\n'\
+	    "          failAfterConsecutiveErrorCount: $ELASTALERT_FAIL_ERROR_COUNT" >> "$soc_pillar_file"
+	fi
+	
+	printf '%s\n'\
+		"        strelkaengine:"\
+		"          allowRegex: '$STRELKA_ALLOW_REGEX'" >> "$soc_pillar_file"
+	if [[ -n "$STRELKA_FAIL_ERROR_COUNT" ]]; then
+	 	printf '%s\n'\
+		"          failAfterConsecutiveErrorCount: $STRELKA_FAIL_ERROR_COUNT" >> "$soc_pillar_file"
+	fi
+	
+	printf '%s\n'\
+		"        suricataengine:"\
+		"          allowRegex: '$SURICATA_ALLOW_REGEX'" >> "$soc_pillar_file"
+	if [[ -n "$SURICATA_FAIL_ERROR_COUNT" ]]; then
+		printf '%s\n'\
+		"          failAfterConsecutiveErrorCount: $SURICATA_FAIL_ERROR_COUNT" >> "$soc_pillar_file"
+	fi
+
+	if [[ $telemetry -ne 0 ]]; then
+		echo "  telemetryEnabled: false" >> $soc_pillar_file
+	fi
 }
 
 telegraf_pillar() {
@@ -1279,17 +1280,11 @@ telegraf_pillar() {
 manager_pillar() {
 	touch $adv_manager_pillar_file
 	title "Create the manager pillar"
-	if [[ $is_import ]]; then
-		PLAYBOOK=0
-	else
-		PLAYBOOK=1
-	fi
 	printf '%s\n'\
 		"manager:"\
 		"  proxy: '$so_proxy'"\
 		"  no_proxy: '$no_proxy_string'"\
 		"  elastalert: 1"\
-		"  playbook: $PLAYBOOK"\
 		"" > "$manager_pillar_file"
 }
 
@@ -1342,6 +1337,10 @@ create_global() {
 	echo "  influxdb_host: '$HOSTNAME'" >> $global_pillar_file
 	echo "  registry_host: '$HOSTNAME'" >> $global_pillar_file
 	echo "  endgamehost: '$ENDGAMEHOST'" >> $global_pillar_file
+
+	if [ "$install_type" = 'EVAL' ]; then
+		echo "  pcapengine: SURICATA" >> $global_pillar_file
+	fi
 }
 
 create_sensoroni_pillar() {
@@ -1360,16 +1359,6 @@ create_sensoroni_pillar() {
 backup_pillar() {
 	title "Create the backup pillar file"
 	touch $adv_backup_pillar_file
-}
-
-soctopus_pillar() {
-	title "Create the soctopus pillar file"
-	touch $adv_soctopus_pillar_file
-	printf '%s\n'\
-		"soctopus:"\
-		"  playbook:"\
-		"    rulesets:"\
-		"      - windows" > "$soctopus_pillar_file"
 }
 
 docker_pillar() {
@@ -1413,7 +1402,7 @@ make_some_dirs() {
 	mkdir -p $local_salt_dir/salt/firewall/portgroups
 	mkdir -p $local_salt_dir/salt/firewall/ports
 
-	for THEDIR in bpf pcap elasticsearch ntp firewall redis backup influxdb strelka sensoroni soc soctopus docker zeek suricata nginx telegraf logstash soc manager kratos idstools idh elastalert stig global;do
+	for THEDIR in bpf pcap elasticsearch ntp firewall redis backup influxdb strelka sensoroni soc docker zeek suricata nginx telegraf logstash soc manager kratos idstools idh elastalert stig global;do
 	mkdir -p $local_salt_dir/pillar/$THEDIR
 	touch $local_salt_dir/pillar/$THEDIR/adv_$THEDIR.sls
 	touch $local_salt_dir/pillar/$THEDIR/soc_$THEDIR.sls
@@ -1606,7 +1595,9 @@ reinstall_init() {
 		# Kill any salt processes (safely)
 		for service in "${salt_services[@]}"; do
 			# Stop the service in the background so we can exit after a certain amount of time
-			systemctl stop "$service" &
+			if check_service_status "$service"; then
+				systemctl stop "$service" &
+			fi
 			local pid=$!
 
 			local count=0
@@ -1949,7 +1940,6 @@ saltify() {
 
 salt_install_module_deps() {
     logCmd "salt-pip install docker --no-index --only-binary=:all: --find-links files/salt_module_deps/docker/"
-    logCmd "salt-pip install pymysql --no-index --only-binary=:all: --find-links files/salt_module_deps/pymysql/"
 }
 
 salt_patch_x509_v2() {
@@ -1967,11 +1957,6 @@ secrets_pillar(){
 	mkdir -p $local_salt_dir/pillar
 	printf '%s\n'\
 		"secrets:"\
-		"  mysql: $MYSQLPASS"\
-		"  playbook_db: $PLAYBOOKDBPASS"\
-		"  playbook_admin: $PLAYBOOKADMINPASS"\
-		"  playbook_automation: $PLAYBOOKAUTOMATIONPASS"\
-		"  playbook_automation_api_key: "\
 		"  import_pass: $IMPORTPASS"\
 		"  influx_pass: $INFLUXPASS" > $local_salt_dir/pillar/secrets.sls
   fi

@@ -179,6 +179,21 @@ copy_new_files() {
   cd /tmp
 }
 
+create_local_directories() {
+	echo "Creating local pillar and salt directories if needed"
+	PILLARSALTDIR=$1
+	local_salt_dir="/opt/so/saltstack/local"
+	for i in "pillar" "salt"; do
+		for d in $(find $PILLARSALTDIR/$i -type d); do
+			suffixdir=${d//$PILLARSALTDIR/}
+			if [ ! -d "$local_salt_dir/$suffixdir" ]; then
+				mkdir -pv $local_salt_dir$suffixdir
+			fi
+		done
+		chown -R socore:socore $local_salt_dir/$i
+	done
+}
+
 disable_fastestmirror() {
 	sed -i 's/enabled=1/enabled=0/' /etc/yum/pluginconf.d/fastestmirror.conf
 }
@@ -246,6 +261,14 @@ fail() {
 get_random_value() {
 	length=${1:-20}
 	head -c 5000 /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w $length | head -n 1
+}
+
+get_agent_count() {
+	if [ -f /opt/so/log/agents/agentstatus.log ]; then
+		AGENTCOUNT=$(cat /opt/so/log/agents/agentstatus.log | grep -wF active | awk '{print $2}')
+	else
+		AGENTCOUNT=0
+	fi
 }
 
 gpg_rpm_import() {
@@ -329,7 +352,7 @@ lookup_salt_value() {
 		local=""
 	fi
 
-	salt-call --no-color  ${kind}.get ${group}${key} --out=${output} ${local}
+	salt-call -lerror --no-color  ${kind}.get ${group}${key} --out=${output} ${local}
 }
 
 lookup_pillar() {
@@ -570,8 +593,9 @@ sync_options() {
 	set_version
 	set_os
 	salt_minion_count
+	get_agent_count
 	
-	echo "$VERSION/$OS/$(uname -r)/$MINIONCOUNT/$(read_feat)"
+	echo "$VERSION/$OS/$(uname -r)/$MINIONCOUNT:$AGENTCOUNT/$(read_feat)"
 }
 
 systemctl_func() {

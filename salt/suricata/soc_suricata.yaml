@@ -4,13 +4,15 @@ suricata:
     helpLink: suricata.html
   thresholding:
     sids__yaml:
-      description: Threshold SIDS List
+      description: Threshold SIDS List. This setting is readonly; Use the Detections screen to modify rules.
       syntax: yaml
       file: True
       global: True
       multiline: True
       title: SIDS
       helpLink: suricata.html
+      readonlyUi: True
+      advanced: True
   classification:
     classification__config:
       description: Classifications config file.
@@ -21,14 +23,14 @@ suricata:
       helpLink: suricata.html
   pcap:
     filesize: 
-      description: Max file size for individual PCAP files written by Suricata. Increasing this number could improve write performance at the expense of pcap retrieval times.
+      description: Maximum file size for individual PCAP files written by Suricata. Increasing this number could improve write performance at the expense of pcap retrieval time.
       advanced: True
-      helplink: suricata.html 
+      helpLink: suricata.html 
     maxsize:
-      description: Size in GB for total usage size of PCAP on disk. 
-      helplink: suricata.html
+      description: Maximum size in GB for total disk usage of all PCAP files written by Suricata.
+      helpLink: suricata.html
     compression: 
-      description: Enable compression of Suricata PCAP.
+      description: Enable compression of Suricata PCAP files.
       advanced: True
       helpLink: suricata.html
     lz4-checksum: 
@@ -36,11 +38,11 @@ suricata:
       advanced: True
       helpLink: suricata.html
     lz4-level: 
-      description: lz4 compression level of PCAP. 0 for no compression 16 for max compression.
+      description: lz4 compression level of PCAP files. Set to 0 for no compression. Set to 16 for maximum compression.
       advanced: True
       helpLink: suricata.html
     filename:
-      description: Filename output for Suricata PCAP.
+      description: Filename output for Suricata PCAP files.
       advanced: True
       readonly: True
       helpLink: suricata.html
@@ -50,13 +52,13 @@ suricata:
       readonly: True
       helpLink: suricata.html
     use-stream-depth: 
-      description: Set to "no" to ignore the stream depth and capture the entire flow. Set this to "yes" to truncate the flow based on the stream depth. 
+      description: Set to "no" to ignore the stream depth and capture the entire flow. Set to "yes" to truncate the flow based on the stream depth.
       advanced: True
       regex: ^(yes|no)$
       regexFailureMessage: You must enter either yes or no.
       helpLink: suricata.html
     conditional: 
-      description: Set to "all" to capture PCAP for all flows. Set to "alerts" to capture PCAP just for alerts or set to "tag" to capture PCAP for just tagged rules.
+      description: Set to "all" to record PCAP for all flows. Set to "alerts" to only record PCAP for Suricata alerts. Set to "tag" to only record PCAP for tagged rules.
       regex: ^(all|alerts|tag)$
       regexFailureMessage: You must enter either all, alert or tag.
       helpLink: suricata.html
@@ -83,6 +85,11 @@ suricata:
       use-mmap:
         advanced: True
         readonly: True
+      mmap-locked:
+        description: Prevent swapping by locking the memory map.
+        advanced: True
+        regex: ^(yes|no)$
+        helpLink: suricata.html
       threads:
         description: The amount of worker threads.
         helpLink: suricata.html
@@ -93,6 +100,36 @@ suricata:
       ring-size:
         description: Buffer size for packets per thread.
         forcedType: int
+        helpLink: suricata.html
+      block-size:
+        description: This must be configured to a sufficiently high value to accommodate a significant number of packets, considering byte size and MTU constraints. Ensure it aligns with a power of 2 and is a multiple of the page size.
+        advanced: True
+        forcedType: int
+        helpLink: suricata.html
+      block-timeout:
+        description: If a block remains unfilled after the specified block-timeout milliseconds, it is passed to userspace.
+        advanced: True
+        forcedType: int
+        helpLink: suricata.html
+      use-emergency-flush:
+        description: In high-traffic environments, enabling this option to 'yes' aids in recovering from packet drop occurrences. However, it may lead to some packets, possibly at max ring flush, not being inspected.
+        advanced: True
+        regex: ^(yes|no)$
+        helpLink: suricata.html
+      buffer-size:
+        description: Increasing the value of the receive buffer may improve performance.
+        advanced: True
+        forcedType: int
+        helpLink: suricata.html
+      disable-promisc:
+        description: Promiscuous mode can be disabled by setting this to "yes".
+        advanced: True
+        regex: ^(yes|no)$
+        helpLink: suricata.html
+      checksum-checks:
+        description: "Opt for the checksum verification mode suitable for the interface. During capture, it's possible that some packets may exhibit invalid checksums due to the network card handling the checksum computation. You have several options: 'kernel': Relies on indications sent by the kernel for each packet (default). 'yes': Enforces checksum validation. 'no': Disables checksum validation. 'auto': Suricata employs a statistical approach to detect checksum offloading."
+        advanced: True
+        regex: ^(kernel|yes|no|auto)$
         helpLink: suricata.html
     threading:
       set-cpu-affinity:
@@ -113,84 +150,40 @@ suricata:
             helpLink: suricata.html
     vars:
       address-groups:
-        HOME_NET:
-          description: List of hosts or networks.
-          regex: ^(([0-9]{1,3}\.){3}[0-9]{1,3}(\/([0-9]|[1-2][0-9]|3[0-2]))?)?$
+        HOME_NET: &suriaddressgroup
+          description: Assign a list of hosts, or networks, using CIDR notation, to this Suricata variable. The variable can then be re-used within Suricata rules. This allows for a single adjustment to the variable that will then affect all rules referencing the variable.
+          regex: ^(((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\/([0-9]|[1-2][0-9]|3[0-2]))?$|^((([0-9A-Fa-f]{1,4}:){7}([0-9A-Fa-f]{1,4}|:))|(([0-9A-Fa-f]{1,4}:){6}(:[0-9A-Fa-f]{1,4}|((25[0-5]|(2[0-4]|1[0-9])[0-9]|0?[0-9][0-9]?)\.){3}(25[0-5]|(2[0-4]|1[0-9])[0-9]|0?[0-9][0-9]?))|:))|(([0-9A-Fa-f]{1,4}:){5}((:[0-9A-Fa-f]{1,4}){1,2}|:((25[0-5]|(2[0-4]|1[0-9])[0-9]|0?[0-9][0-9]?)\.){3}(25[0-5]|(2[0-4]|1[0-9])[0-9]|0?[0-9][0-9]?)|:))|(([0-9A-Fa-f]{1,4}:){4}((:[0-9A-Fa-f]{1,4}){1,3}|:((25[0-5]|(2[0-4]|1[0-9])[0-9]|0?[0-9][0-9]?)\.){3}(25[0-5]|(2[0-4]|1[0-9])[0-9]|0?[0-9][0-9]?)|:))|(([0-9A-Fa-f]{1,4}:){3}((:[0-9A-Fa-f]{1,4}){1,4}|:((25[0-5]|(2[0-4]|1[0-9])[0-9]|0?[0-9][0-9]?)\.){3}(25[0-5]|(2[0-4]|1[0-9])[0-9]|0?[0-9][0-9]?)|:))|(([0-9A-Fa-f]{1,4}:){2}((:[0-9A-Fa-f]{1,4}){1,5}|:((25[0-5]|(2[0-4]|1[0-9])[0-9]|0?[0-9][0-9]?)\.){3}(25[0-5]|(2[0-4]|1[0-9])[0-9]|0?[0-9][0-9]?)|:))|(([0-9A-Fa-f]{1,4}:){1}((:[0-9A-Fa-f]{1,4}){1,6}|:((25[0-5]|(2[0-4]|1[0-9])[0-9]|0?[0-9][0-9]?)\.){3}(25[0-5]|(2[0-4]|1[0-9])[0-9]|0?[0-9][0-9]?)|:))|(:((:[0-9A-Fa-f]{1,4}){1,7}|:)))(\/([0-9]|[1-9][0-9]|1[0-1][0-9]|12[0-8]))?$
           regexFailureMessage: You must enter a valid IP address or CIDR.
           helpLink: suricata.html
-        EXTERNAL_NET: 
-          description: List of hosts or networks.
-          helpLink: suricata.html
-        HTTP_SERVERS: 
-          description: List of hosts or networks.
-          helpLink: suricata.html
-        SMTP_SERVERS: 
-          description: List of hosts or networks.
-          helpLink: suricata.html
-        SQL_SERVERS: 
-          description: List of hosts or networks.
-          helpLink: suricata.html
-        DNS_SERVERS: 
-          description: List of hosts or networks.
-          helpLink: suricata.html
-        TELNET_SERVERS:
-          description: List of hosts or networks.
-          helpLink: suricata.html
-        AIM_SERVERS: 
-          description: List of hosts or networks.
-          helpLink: suricata.html
-        DC_SERVERS:
-          description: List of hosts or networks.
-          helpLink: suricata.html
-        DNP3_SERVER:
-          description: List of hosts or networks.
-          helpLink: suricata.html
-        DNP3_CLIENT: 
-          description: List of hosts or networks.
-          helpLink: suricata.html
-        MODBUS_CLIENT: 
-          description: List of hosts or networks.
-          helpLink: suricata.html
-        MODBUS_SERVER:
-          description: List of hosts or networks.
-          helpLink: suricata.html
-        ENIP_CLIENT:
-          description: List of hosts or networks.
-          helpLink: suricata.html
-        ENIP_SERVER:
-          description: List of hosts or networks. 
-          helpLink: suricata.html
+          duplicates: True
+        EXTERNAL_NET: *suriaddressgroup
+        HTTP_SERVERS: *suriaddressgroup
+        SMTP_SERVERS: *suriaddressgroup
+        SQL_SERVERS: *suriaddressgroup
+        DNS_SERVERS: *suriaddressgroup
+        TELNET_SERVERS: *suriaddressgroup
+        AIM_SERVERS: *suriaddressgroup
+        DC_SERVERS: *suriaddressgroup
+        DNP3_SERVER: *suriaddressgroup
+        DNP3_CLIENT: *suriaddressgroup
+        MODBUS_CLIENT: *suriaddressgroup
+        MODBUS_SERVER: *suriaddressgroup
+        ENIP_CLIENT: *suriaddressgroup
+        ENIP_SERVER: *suriaddressgroup
       port-groups:
-        HTTP_PORTS:
-          description: List of ports to look for HTTP traffic on.
+        HTTP_PORTS: &suriportgroup
+          description: Assign a list of network port numbers to this Suricata variable. The variable can then be re-used within Suricata rules. This allows for a single adjustment to the variable that will then affect all rules referencing the variable.
           helpLink: suricata.html
-        SHELLCODE_PORTS:
-          description: List of ports to look for SHELLCODE traffic on.
-          helpLink: suricata.html
-        ORACLE_PORTS: 
-          description: List of ports to look for ORACLE traffic on.
-          helpLink: suricata.html
-        SSH_PORTS:
-          description: List of ports to look for SSH traffic on.
-          helpLink: suricata.html
-        DNP3_PORTS:
-          description: List of ports to look for DNP3 traffic on.
-          helpLink: suricata.html
-        MODBUS_PORTS:
-          description: List of ports to look for MODBUS traffic on.
-          helpLink: suricata.html
-        FILE_DATA_PORTS: 
-          description: List of ports to look for FILE_DATA traffic on.
-          helpLink: suricata.html
-        FTP_PORTS:
-          description: List of ports to look for FTP traffic on.
-          helpLink: suricata.html
-        VXLAN_PORTS:
-          description: List of ports to look for VXLAN traffic on.
-          helpLink: suricata.html
-        TEREDO_PORTS:
-          description: List of ports to look for TEREDO traffic on.
-          helpLink: suricata.html
+          duplicates: True
+        SHELLCODE_PORTS: *suriportgroup
+        ORACLE_PORTS: *suriportgroup
+        SSH_PORTS: *suriportgroup
+        DNP3_PORTS: *suriportgroup
+        MODBUS_PORTS: *suriportgroup
+        FILE_DATA_PORTS: *suriportgroup
+        FTP_PORTS: *suriportgroup
+        VXLAN_PORTS: *suriportgroup
+        TEREDO_PORTS: *suriportgroup
     outputs:
       eve-log:
         types:

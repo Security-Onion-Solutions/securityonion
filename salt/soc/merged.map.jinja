@@ -30,6 +30,24 @@
 {# since cases is not a valid soc config item and only used for the map files, remove it from being placed in the config #}
 {% do SOCMERGED.config.server.modules.pop('cases') %}
 
+{# set Sigma rules based on role if defined and default if not #}
+{% if GLOBALS.role in SOCMERGED.config.server.modules.elastalertengine.autoEnabledSigmaRules %}
+{%   do SOCMERGED.config.server.modules.elastalertengine.update({'autoEnabledSigmaRules': SOCMERGED.config.server.modules.elastalertengine.autoEnabledSigmaRules[GLOBALS.role]}) %}
+{% else %}
+{%   do SOCMERGED.config.server.modules.elastalertengine.update({'autoEnabledSigmaRules': SOCMERGED.config.server.modules.elastalertengine.autoEnabledSigmaRules.default}) %}
+{% endif %}
+
+{# set elastalertengine.rulesRepos and strelkaengine.rulesRepos based on airgap or not #}
+{% if GLOBALS.airgap %}
+{%   do SOCMERGED.config.server.modules.elastalertengine.update({'rulesRepos': SOCMERGED.config.server.modules.elastalertengine.rulesRepos.airgap}) %}
+{%   do SOCMERGED.config.server.modules.strelkaengine.update({'rulesRepos': SOCMERGED.config.server.modules.strelkaengine.rulesRepos.airgap}) %}
+{%   do SOCMERGED.config.server.update({'airgapEnabled': true}) %}
+{% else %}
+{%   do SOCMERGED.config.server.modules.elastalertengine.update({'rulesRepos': SOCMERGED.config.server.modules.elastalertengine.rulesRepos.default}) %}
+{%   do SOCMERGED.config.server.modules.strelkaengine.update({'rulesRepos': SOCMERGED.config.server.modules.strelkaengine.rulesRepos.default}) %}
+{%   do SOCMERGED.config.server.update({'airgapEnabled': false}) %}
+{% endif %}
+
 {# remove these modules if detections is disabled #}
 {% if not SOCMERGED.config.server.client.detectionsEnabled %}
 {%   do SOCMERGED.config.server.modules.pop('elastalertengine') %}
@@ -39,10 +57,6 @@
   {# if system is Airgap, don't autoupdate Yara & Sigma rules #}
   {%   do SOCMERGED.config.server.modules.elastalertengine.update({'autoUpdateEnabled': false}) %}
   {%   do SOCMERGED.config.server.modules.strelkaengine.update({'autoUpdateEnabled': false}) %}
-{% endif %}
-
-{% if pillar.manager.playbook == 0 %}
-{%   do SOCMERGED.config.server.client.inactiveTools.append('toolPlaybook') %}
 {% endif %}
 
 {% set standard_actions = SOCMERGED.config.pop('actions') %}
@@ -76,6 +90,7 @@
 {%   do SOCMERGED.config.server.client.update({'job': {'actions': standard_actions}}) %}
 {%   do SOCMERGED.config.server.client.alerts.update({'actions': standard_actions}) %}
 {%   do SOCMERGED.config.server.client.cases.update({'actions': standard_actions}) %}
+{%   do SOCMERGED.config.server.client.detections.update({'actions': standard_actions}) %}
 
 {# replace the _x_ with . for soc ui to config conversion #}
 {% do SOCMERGED.config.eventFields.update({':endpoint:events.api': SOCMERGED.config.eventFields.pop(':endpoint:events_x_api') }) %}

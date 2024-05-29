@@ -13,3 +13,19 @@
 {% do ELASTALERTDEFAULTS.elastalert.config.update({'es_password': pillar.elasticsearch.auth.users.so_elastic_user.pass}) %}
 
 {% set ELASTALERTMERGED = salt['pillar.get']('elastalert', ELASTALERTDEFAULTS.elastalert, merge=True) %}
+
+{% if 'ntf' in salt['pillar.get']('features', []) %}
+   {% set params = ELASTALERTMERGED.get('alerter_parameters', '') | load_yaml %}
+   {% if params != None and params | length > 0 %}
+      {% do ELASTALERTMERGED.config.update(params) %}
+   {% endif %}
+
+   {% if ELASTALERTMERGED.get('smtp_user', '') | length > 0 %}
+      {% do ELASTALERTMERGED.config.update({'smtp_auth_file': '/opt/elastalert/predefined/smtp_auth.yaml'}) %}
+   {% endif %}
+
+   {% if ELASTALERTMERGED.get('jira_user', '') | length > 0 or ELASTALERTMERGED.get('jira_key', '') | length > 0 %}
+      {% do ELASTALERTMERGED.config.update({'jira_account_file': '/opt/elastalert/predefined/jira_auth.yaml'}) %}
+   {% endif %}
+
+{% endif %}

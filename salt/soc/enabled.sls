@@ -8,6 +8,7 @@
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 {%   from 'docker/docker.map.jinja' import DOCKER %}
 {%   from 'soc/merged.map.jinja' import DOCKER_EXTRA_HOSTS %}
+{%   from 'soc/merged.map.jinja' import SOCMERGED %}
 
 include:
   - soc.config
@@ -24,12 +25,16 @@ so-soc:
     - binds:
       - /nsm/rules:/nsm/rules:rw
       - /opt/so/conf/strelka:/opt/sensoroni/yara:rw
+      - /opt/so/conf/sigma:/opt/sensoroni/sigma:rw
       - /opt/so/rules/elastalert/rules:/opt/sensoroni/elastalert:rw
       - /opt/so/conf/soc/fingerprints:/opt/sensoroni/fingerprints:rw
       - /nsm/soc/jobs:/opt/sensoroni/jobs:rw
       - /nsm/soc/uploads:/nsm/soc/uploads:rw
       - /opt/so/log/soc/:/opt/sensoroni/logs/:rw
       - /opt/so/conf/soc/soc.json:/opt/sensoroni/sensoroni.json:ro
+{% if SOCMERGED.telemetryEnabled and not GLOBALS.airgap %}
+      - /opt/so/conf/soc/analytics.js:/opt/sensoroni/html/js/analytics.js:ro
+{% endif %}
       - /opt/so/conf/soc/motd.md:/opt/sensoroni/html/motd.md:ro
       - /opt/so/conf/soc/banner.md:/opt/sensoroni/html/login/banner.md:ro
       - /opt/so/conf/soc/sigma_so_pipeline.yaml:/opt/sensoroni/sigma_so_pipeline.yaml:ro
@@ -39,6 +44,9 @@ so-soc:
       - /opt/so/conf/soc/soc_users_roles:/opt/sensoroni/rbac/users_roles:rw
       - /opt/so/conf/soc/queue:/opt/sensoroni/queue:rw
       - /opt/so/saltstack:/opt/so/saltstack:rw
+      - /opt/so/conf/soc/migrations:/opt/so/conf/soc/migrations:rw
+      - /nsm/backup/detections-migration:/nsm/backup/detections-migration:ro
+      - /opt/so/state:/opt/so/state:rw
     - extra_hosts:
     {% for node in DOCKER_EXTRA_HOSTS %}
     {%   for hostname, ip in node.items() %}
@@ -66,6 +74,7 @@ so-soc:
       - file: socdatadir
       - file: soclogdir
       - file: socconfig
+      - file: socanalytics
       - file: socmotd
       - file: socbanner
       - file: soccustom

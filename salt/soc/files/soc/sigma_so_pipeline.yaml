@@ -17,6 +17,16 @@ transformations:
         dst_ip: destination.ip.keyword
         dst_port: destination.port
         winlog.event_data.User: user.name
+        logtype: event.code # OpenCanary
+    # Maps "opencanary" product to SO IDH logs
+    - id: opencanary_idh_add-fields
+      type: add_condition
+      conditions:
+        event.module: 'opencanary'
+        event.dataset: 'opencanary.idh'
+      rule_conditions:
+      - type: logsource
+        product: opencanary
     # Maps "antivirus" category to Windows Defender logs shipped by Elastic Agent Winlog Integration
     # winlog.event_data.threat_name has to be renamed prior to ingestion, it is originally winlog.event_data.Threat Name
     - id: antivirus_field-mappings_windows-defender
@@ -79,3 +89,20 @@ transformations:
       - type: logsource
         product: windows
         category: driver_load
+    - id: linux_security_add-fields
+      type: add_condition
+      conditions:
+        event.module: 'system'
+        event.dataset: 'system.auth'
+      rule_conditions:
+      - type: logsource
+        product: linux
+        service: auth
+    # event.code should always be a string
+    - id: convert_event_code_to_string
+      type: convert_type
+      target_type: 'str'
+      field_name_conditions:
+        - type: include_fields
+          fields:
+          - event.code

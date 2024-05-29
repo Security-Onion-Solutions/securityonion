@@ -201,11 +201,7 @@ function add_idh_to_minion() {
 	"idh:"\
 	"  enabled: True"\
 	"  restrict_management_ip: $IDH_MGTRESTRICT"\
-	"  services:" >> "$PILLARFILE"
-	IFS=',' read -ra IDH_SERVICES_ARRAY <<< "$IDH_SERVICES"
-	for service in ${IDH_SERVICES_ARRAY[@]}; do
-	  echo "    - $service" | tr '[:upper:]' '[:lower:]' | tr -d '"' >> "$PILLARFILE"
-	done
+	"  " >> $PILLARFILE
 }
 
 function add_logstash_to_minion() {
@@ -286,12 +282,6 @@ function add_sensor_to_minion() {
 	echo "  " >> $PILLARFILE
 }
 
-function add_playbook_to_minion() {
-    printf '%s\n'\
-    "playbook:"\
-    "  enabled: True"\
-	"  " >> $PILLARFILE
-}
 
 function add_elastalert_to_minion() {
     printf '%s\n'\
@@ -353,13 +343,6 @@ function add_nginx_to_minion() {
 	"  " >> $PILLARFILE
 }
 
-function add_soctopus_to_minion() {
-    printf '%s\n'\
-    "soctopus:"\
-    "  enabled: True"\
-	"  " >> $PILLARFILE
-}
-
 function add_soc_to_minion() {
     printf '%s\n'\
     "soc:"\
@@ -370,13 +353,6 @@ function add_soc_to_minion() {
 function add_registry_to_minion() {
     printf '%s\n'\
     "registry:"\
-    "  enabled: True"\
-	"  " >> $PILLARFILE
-}
-
-function add_mysql_to_minion() {
-    printf '%s\n'\
-    "mysql:"\
     "  enabled: True"\
 	"  " >> $PILLARFILE
 }
@@ -446,26 +422,19 @@ function checkMine() {
 
 }
 
-function updateMine() {
-	retry 20 1 "salt '$MINION_ID' mine.update" True
-}
-
 function createEVAL() {
 	is_pcaplimit=true
 	pcapspace
 	add_elasticsearch_to_minion
 	add_sensor_to_minion
 	add_strelka_to_minion
-	add_playbook_to_minion
 	add_elastalert_to_minion
 	add_kibana_to_minion
 	add_telegraf_to_minion
 	add_influxdb_to_minion
 	add_nginx_to_minion
-	add_soctopus_to_minion
 	add_soc_to_minion
 	add_registry_to_minion
-	add_mysql_to_minion
 	add_kratos_to_minion
 	add_idstools_to_minion
 	add_elastic_fleet_package_registry_to_minion
@@ -478,17 +447,14 @@ function createSTANDALONE() {
 	add_logstash_to_minion
 	add_sensor_to_minion
 	add_strelka_to_minion
-	add_playbook_to_minion
 	add_elastalert_to_minion
 	add_kibana_to_minion
 	add_redis_to_minion
 	add_telegraf_to_minion
 	add_influxdb_to_minion
 	add_nginx_to_minion
-	add_soctopus_to_minion
 	add_soc_to_minion
 	add_registry_to_minion
-	add_mysql_to_minion
 	add_kratos_to_minion
 	add_idstools_to_minion
 	add_elastic_fleet_package_registry_to_minion
@@ -497,17 +463,14 @@ function createSTANDALONE() {
 function createMANAGER() {
 	add_elasticsearch_to_minion
 	add_logstash_to_minion
-	add_playbook_to_minion
 	add_elastalert_to_minion
 	add_kibana_to_minion
 	add_redis_to_minion
 	add_telegraf_to_minion
 	add_influxdb_to_minion
 	add_nginx_to_minion
-	add_soctopus_to_minion
 	add_soc_to_minion
 	add_registry_to_minion
-	add_mysql_to_minion
 	add_kratos_to_minion
 	add_idstools_to_minion
 	add_elastic_fleet_package_registry_to_minion
@@ -516,17 +479,14 @@ function createMANAGER() {
 function createMANAGERSEARCH() {
 	add_elasticsearch_to_minion
 	add_logstash_to_minion
-	add_playbook_to_minion
 	add_elastalert_to_minion
 	add_kibana_to_minion
 	add_redis_to_minion
 	add_telegraf_to_minion
 	add_influxdb_to_minion
 	add_nginx_to_minion
-	add_soctopus_to_minion
 	add_soc_to_minion
 	add_registry_to_minion
-	add_mysql_to_minion
 	add_kratos_to_minion
 	add_idstools_to_minion
 	add_elastic_fleet_package_registry_to_minion
@@ -636,20 +596,16 @@ function addMinion() {
 }
 
 function updateMineAndApplyStates() {
-	# tell the minion to populate the mine with data from mine_functions which is populated during setup
-	# this only needs to happen on non managers since they handle this during setup
-	# and they need to wait for ca creation to update the mine
-	updateMine
-	checkMine "network.ip_addrs"
-	# apply the elasticsearch state to the manager if a new searchnode was added
+
+	#checkMine "network.ip_addrs"
+	# calls so-common and set_minionid sets MINIONID to local minion id
+	set_minionid
+	# if this is a searchnode or heavynode, start downloading logstash and elasticsearch containers while the manager prepares for the new node
 	if [[ "$NODETYPE" == "SEARCHNODE" || "$NODETYPE" == "HEAVYNODE" ]]; then
-		# calls so-common and set_minionid sets MINIONID to local minion id
-		set_minionid
-		salt $MINIONID state.apply elasticsearch queue=True --async
-		salt $MINIONID state.apply soc queue=True --async
+		salt-run state.orch orch.container_download pillar="{'setup': {'newnode': $MINION_ID }}" > /dev/null 2>&1 &
 	fi
-	# run this async so the cli doesn't wait for a return
-	salt "$MINION_ID" state.highstate --async queue=True
+	# $MINIONID is the minion id of the manager and $MINION_ID is the target node or the node being configured
+	salt-run state.orch orch.deploy_newnode pillar="{'setup': {'manager': $MINIONID, 'newnode': $MINION_ID }}" > /dev/null 2>&1 &
 }
 
 function setupMinionFiles() {

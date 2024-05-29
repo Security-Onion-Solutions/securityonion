@@ -2,7 +2,7 @@ name: 'Lock Threads'
 
 on:
   schedule:
-    - cron: '50 1 * * *'
+    - cron: '50 2 * * *'
   workflow_dispatch:
 
 permissions:
@@ -14,24 +14,8 @@ concurrency:
   group: lock-threads
 
 jobs:
-  close-threads:
-    runs-on: ubuntu-latest
-    permissions:
-      issues: write
-      pull-requests: write
-    steps:
-      - uses: actions/stale@v5
-        with:
-          days-before-issue-stale: -1
-          days-before-issue-close: 60
-          stale-issue-message: "This issue is stale because it has been inactive for an extended period. Stale issues convey that the issue, while important to someone, is not critical enough for the author, or other community members to work on, sponsor, or otherwise shepherd the issue through to a resolution."
-          close-issue-message: "This issue was closed because it has been stale for an extended period. It will be automatically locked in 30 days, after which no further commenting will be available."
-          days-before-pr-stale: 45
-          days-before-pr-close: 60
-          stale-pr-message: "This PR is stale because it has been inactive for an extended period. The longer a PR remains stale the more out of date with the main branch it becomes."
-          close-pr-message: "This PR was closed because it has been stale for an extended period. It will be automatically locked in 30 days. If there is still a commitment to finishing this PR re-open it before it is locked."
-
   lock-threads:
+    if: github.repository_owner == 'security-onion-solutions'
     runs-on: ubuntu-latest
     steps:
       - uses: jertel/lock-threads@main

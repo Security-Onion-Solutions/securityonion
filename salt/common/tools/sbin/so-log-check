@@ -122,6 +122,7 @@ if [[ $EXCLUDE_STARTUP_ERRORS == 'Y' ]]; then
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|error while communicating"    # Elasticsearch MS -> HN "sensor" temporarily unavailable
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|tls handshake error"          # Docker registry container when new node comes onlines
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|Unable to get license information" # Logstash trying to contact ES before it's ready
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|process already finished"     # Telegraf script finished just as the auto kill timeout kicked in
 fi
 
 if [[ $EXCLUDE_FALSE_POSITIVE_ERRORS == 'Y' ]]; then
@@ -154,15 +155,11 @@ if [[ $EXCLUDE_KNOWN_ERRORS == 'Y' ]]; then
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|fail\\(error\\)"              # redis/python generic stack line, rely on other lines for actual error
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|urlerror"                     # idstools connection timeout
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|timeouterror"                 # idstools connection timeout
-    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|forbidden"                    # playbook
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|_ml"                          # Elastic ML errors 
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|context canceled"             # elastic agent during shutdown
-    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|exited with code 128"         # soctopus errors during forced restart by highstate
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|geoip databases update"       # airgap can't update GeoIP DB
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|filenotfounderror"            # bug in 2.4.10 filecheck salt state caused duplicate cronjobs
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|salt-minion-check"            # bug in early 2.4 place Jinja script in non-jinja salt dir causing cron output errors
-    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|generating elastalert config" # playbook expected error
-    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|activerecord"                 # playbook expected error
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|monitoring.metrics"           # known issue with elastic agent casting the field incorrectly if an integer value shows up before a float
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|repodownload.conf"            # known issue with reposync on pre-2.4.20 
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|missing versions record"      # stenographer corrupt index
@@ -201,7 +198,13 @@ if [[ $EXCLUDE_KNOWN_ERRORS == 'Y' ]]; then
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|req.LocalMeta.host.ip"        # known issue in GH
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|sendmail"                     # zeek
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|stats.log"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|Unknown column"               # Elastalert errors from running EQL queries
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|parsing_exception"            # Elastalert EQL parsing issue. Temp.
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|context deadline exceeded"
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|Error running query:"         # Specific issues with detection rules
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|detect-parse"                 # Suricata encountering a malformed rule
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|integrity check failed"       # Detections: Exclude false positive due to automated testing
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|syncErrors"                   # Detections: Not an actual error
 fi
 
 RESULT=0
@@ -210,7 +213,9 @@ RESULT=0
 CONTAINER_IDS=$(docker ps -q)
 exclude_container so-kibana   # kibana error logs are too verbose with large varieties of errors most of which are temporary
 exclude_container so-idstools # ignore due to known issues and noisy logging
-exclude_container so-playbook # ignore due to several playbook known issues
+exclude_container so-playbook # Playbook is removed as of 2.4.70, disregard output in stopped containers
+exclude_container so-mysql    # MySQL is removed as of 2.4.70, disregard output in stopped containers
+exclude_container so-soctopus # Soctopus is removed as of 2.4.70, disregard output in stopped containers
 
 for container_id in $CONTAINER_IDS; do
     container_name=$(docker ps --format json | jq ". | select(.ID==\"$container_id\")|.Names")
@@ -228,10 +233,14 @@ exclude_log "kibana.log"   # kibana error logs are too verbose with large variet
 exclude_log "spool"        # disregard zeek analyze logs as this is data specific
 exclude_log "import"       # disregard imported test data the contains error strings
 exclude_log "update.log"   # ignore playbook updates due to several known issues
-exclude_log "playbook.log" # ignore due to several playbook known issues
 exclude_log "cron-cluster-delete.log" # ignore since Curator has been removed
 exclude_log "cron-close.log" # ignore since Curator has been removed
-exclude_log "curator.log" # ignore since Curator has been removed
+exclude_log "curator.log"  # ignore since Curator has been removed
+exclude_log "playbook.log" # Playbook is removed as of 2.4.70, logs may still be on disk
+exclude_log "mysqld.log"   # MySQL is removed as of 2.4.70, logs may still be on disk
+exclude_log "soctopus.log" # Soctopus is removed as of 2.4.70, logs may still be on disk
+exclude_log "agentstatus.log" # ignore this log since it tracks agents in error state
+exclude_log "detections_runtime-status_yara.log" # temporarily ignore this log until Detections is more stable
 
 for log_file in $(cat /tmp/log_check_files); do
     status "Checking log file $log_file"

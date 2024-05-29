@@ -1,4 +1,6 @@
 elasticsearch:
+  enabled: false
+  index_clean: true
   config:
     action:
       destructive_requires_name: true
@@ -54,7 +56,6 @@ elasticsearch:
             enabled: true
             key: /usr/share/elasticsearch/config/elasticsearch.key
             verification_mode: none
-  enabled: false
   pipelines:
     custom001:
       description: Custom Pipeline
@@ -151,7 +152,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -227,6 +228,113 @@ elasticsearch:
               sort:
                 field: '@timestamp'
                 order: desc
+    so-logs-soc:
+      close: 30
+      delete: 365
+      index_sorting: false
+      index_template:
+        composed_of:
+        - agent-mappings
+        - dtc-agent-mappings
+        - base-mappings
+        - dtc-base-mappings
+        - client-mappings
+        - dtc-client-mappings
+        - container-mappings
+        - destination-mappings
+        - dtc-destination-mappings
+        - pb-override-destination-mappings
+        - dll-mappings
+        - dns-mappings
+        - dtc-dns-mappings
+        - ecs-mappings
+        - dtc-ecs-mappings
+        - error-mappings
+        - event-mappings
+        - dtc-event-mappings
+        - file-mappings
+        - dtc-file-mappings
+        - group-mappings
+        - host-mappings
+        - dtc-host-mappings
+        - http-mappings
+        - dtc-http-mappings
+        - log-mappings
+        - network-mappings
+        - dtc-network-mappings
+        - observer-mappings
+        - dtc-observer-mappings
+        - organization-mappings
+        - package-mappings
+        - process-mappings
+        - dtc-process-mappings
+        - related-mappings
+        - rule-mappings
+        - dtc-rule-mappings
+        - server-mappings
+        - service-mappings
+        - dtc-service-mappings
+        - source-mappings
+        - dtc-source-mappings
+        - pb-override-source-mappings
+        - threat-mappings
+        - tls-mappings
+        - url-mappings
+        - user_agent-mappings
+        - dtc-user_agent-mappings
+        - common-settings
+        - common-dynamic-mappings
+        data_stream: {}
+        index_patterns:
+        - logs-soc-so*
+        priority: 500
+        template:
+          mappings:
+            date_detection: false
+            dynamic_templates:
+            - strings_as_keyword:
+                mapping:
+                  ignore_above: 1024
+                  type: keyword
+                match_mapping_type: string
+          settings:
+            index:
+              lifecycle:
+                name: so-soc-logs
+              mapping:
+                total_fields:
+                  limit: 5000
+              number_of_replicas: 0
+              number_of_shards: 1
+              refresh_interval: 30s
+              sort:
+                field: '@timestamp'
+                order: desc
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
+      warm: 7
     so-common:
       close: 30
       delete: 365
@@ -324,7 +432,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -436,7 +544,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -541,7 +649,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -654,7 +762,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -762,7 +870,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -825,7 +933,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -869,7 +977,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -913,7 +1021,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -957,7 +1065,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -1001,7 +1109,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -1045,7 +1153,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -1089,7 +1197,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -1133,7 +1241,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -1177,7 +1285,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -1221,7 +1329,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -1265,7 +1373,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -1309,7 +1417,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -1353,7 +1461,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -1397,7 +1505,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -1441,7 +1549,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -1485,7 +1593,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -1529,7 +1637,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -1573,7 +1681,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -1617,7 +1725,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -1661,7 +1769,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -1705,7 +1813,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -1749,7 +1857,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -1793,7 +1901,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -1837,7 +1945,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -1881,7 +1989,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -1925,7 +2033,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -1969,7 +2077,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -2013,7 +2121,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -2057,7 +2165,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -2101,7 +2209,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -2145,7 +2253,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -2189,7 +2297,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -2233,7 +2341,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -2277,7 +2385,51 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
             min_age: 30d
+    so-logs-cef_x_log:
+      index_sorting: False
+      index_template:
+        index_patterns:
+          - "logs-cef.log-*"
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-logs-cef.log-logs
+              number_of_replicas: 0
+        composed_of:
+          - "logs-cef.log@package"
+          - "logs-cef.log@custom"
+          - "so-fleet_globals-1"
+          - "so-fleet_agent_id_verification-1"
+        priority: 501
+        data_stream:
+          hidden: false
+          allow_custom_routing: false
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -2321,7 +2473,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -2365,7 +2517,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -2409,7 +2561,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -2453,7 +2605,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -2497,7 +2649,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -2541,7 +2693,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -2585,7 +2737,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -2629,7 +2781,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -2673,7 +2825,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -2717,7 +2869,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -2761,7 +2913,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -2805,7 +2957,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -2849,7 +3001,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -2893,7 +3045,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -2937,7 +3089,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -2981,7 +3133,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -3025,7 +3177,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -3069,7 +3221,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -3113,7 +3265,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -3157,7 +3309,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -3201,7 +3353,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -3245,7 +3397,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -3289,7 +3441,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -3333,7 +3485,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -3377,7 +3529,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -3421,7 +3573,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -3430,6 +3582,68 @@ elasticsearch:
             actions:
               rollover:
                 max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
+    so-logs-detections_x_alerts:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - so-data-streams-mappings
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        - so-logs-mappings
+        - so-logs-settings
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        index_patterns:
+        - logs-detections.alerts-*
+        priority: 501
+        template:
+          mappings:
+            _meta:
+              managed: true
+              managed_by: security_onion
+              package:
+                name: elastic_agent
+          settings:
+            index:
+              lifecycle:
+                name: so-logs-detections.alerts-so
+              mapping:
+                total_fields:
+                  limit: 5001
+              number_of_replicas: 0
+              sort:
+                field: '@timestamp'
+                order: desc
+      policy:
+        _meta:
+          managed: true
+          managed_by: security_onion
+          package:
+            name: elastic_agent
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 1d
                 max_primary_shard_size: 50gb
               set_priority:
                 priority: 100
@@ -3483,7 +3697,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -3544,7 +3758,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -3605,7 +3819,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -3663,7 +3877,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -3719,7 +3933,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -3775,7 +3989,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -3828,7 +4042,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -3886,7 +4100,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -3942,7 +4156,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -3998,7 +4212,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -4059,7 +4273,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -4115,7 +4329,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -4171,7 +4385,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -4227,7 +4441,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -4283,7 +4497,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -4339,7 +4553,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -4395,7 +4609,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -4451,7 +4665,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -4507,7 +4721,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -4563,7 +4777,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -4607,7 +4821,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -4651,7 +4865,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -4695,7 +4909,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -4739,7 +4953,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -4783,7 +4997,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -4827,7 +5041,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -4871,7 +5085,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -4915,7 +5129,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -4959,7 +5173,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -5003,7 +5217,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -5047,7 +5261,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -5091,7 +5305,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -5135,7 +5349,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -5179,7 +5393,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -5223,7 +5437,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -5267,7 +5481,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -5311,7 +5525,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -5355,7 +5569,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -5399,7 +5613,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -5443,7 +5657,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -5487,7 +5701,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -5531,7 +5745,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -5575,7 +5789,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -5619,7 +5833,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -5663,7 +5877,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -5707,7 +5921,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -5751,7 +5965,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -5795,7 +6009,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -5839,7 +6053,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -5883,7 +6097,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -5927,7 +6141,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -5971,7 +6185,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -6015,7 +6229,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -6059,7 +6273,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -6103,7 +6317,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -6147,7 +6361,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -6191,7 +6405,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -6235,7 +6449,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -6279,7 +6493,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -6323,7 +6537,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -6367,7 +6581,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -6411,7 +6625,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -6455,7 +6669,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -6499,7 +6713,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -6543,7 +6757,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -6587,7 +6801,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -6631,7 +6845,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -6675,7 +6889,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -6719,7 +6933,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -6763,7 +6977,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -6807,7 +7021,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -6851,7 +7065,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -6895,7 +7109,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -6939,7 +7153,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -6983,7 +7197,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -7027,7 +7241,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -7071,7 +7285,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -7115,7 +7329,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -7159,7 +7373,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -7203,7 +7417,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -7247,7 +7461,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -7291,7 +7505,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -7335,7 +7549,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -7379,7 +7593,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -7423,7 +7637,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -7467,7 +7681,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -7511,7 +7725,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -7589,7 +7803,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -7633,7 +7847,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -7677,7 +7891,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -7721,7 +7935,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -7765,7 +7979,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -7809,7 +8023,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -7853,7 +8067,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -7897,7 +8111,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -7941,7 +8155,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -7985,7 +8199,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -8029,7 +8243,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -8073,7 +8287,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -8117,7 +8331,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -8161,7 +8375,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -8205,7 +8419,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -8249,7 +8463,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -8293,7 +8507,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -8337,7 +8551,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -8381,7 +8595,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -8425,7 +8639,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -8469,7 +8683,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -8514,7 +8728,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -8559,7 +8773,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -8604,7 +8818,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -8649,7 +8863,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -8694,7 +8908,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -8738,7 +8952,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -8782,7 +8996,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -8826,7 +9040,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -8870,7 +9084,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -8914,7 +9128,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -8958,7 +9172,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -9002,7 +9216,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -9046,7 +9260,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -9090,7 +9304,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -9134,7 +9348,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -9178,7 +9392,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -9222,7 +9436,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -9266,7 +9480,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -9310,7 +9524,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -9354,7 +9568,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -9398,7 +9612,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -9442,7 +9656,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -9486,7 +9700,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -9530,7 +9744,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -9574,7 +9788,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -9618,7 +9832,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -9662,7 +9876,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -9706,7 +9920,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -9750,7 +9964,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -9794,7 +10008,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -9838,7 +10052,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -9882,7 +10096,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -9926,7 +10140,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -9970,7 +10184,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -10014,7 +10228,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -10058,7 +10272,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -10102,7 +10316,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -10146,7 +10360,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -10190,7 +10404,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -10234,7 +10448,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -10278,7 +10492,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -10322,7 +10536,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -10366,7 +10580,54 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
             min_age: 30d
+    so-kismet:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - kismet-mappings
+        - source-mappings
+        - client-mappings
+        - device-mappings
+        - network-mappings
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        index_patterns:
+        - logs-kismet-so*
+        priority: 501
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-kismet-logs
+              number_of_replicas: 0
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -10476,7 +10737,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -10586,7 +10847,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -10698,7 +10959,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -10809,7 +11070,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -10921,7 +11182,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}
@@ -11034,7 +11295,7 @@ elasticsearch:
             actions:
               set_priority:
                 priority: 0
-            min_age: 30d
+            min_age: 60d
           delete:
             actions:
               delete: {}

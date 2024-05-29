@@ -27,6 +27,15 @@ repo_log_dir:
       - user
       - group
 
+agents_log_dir:
+  file.directory:
+    - name: /opt/so/log/agents
+    - user: root
+    - group: root
+    - recurse:
+      - user
+      - group
+
 yara_log_dir:
   file.directory:
     - name: /opt/so/log/yarasync
@@ -64,17 +73,6 @@ manager_sbin:
     - exclude_pat:
       - "*_test.py"
 
-yara_update_scripts:
-  file.recurse:
-    - name: /usr/sbin/
-    - source: salt://manager/tools/sbin_jinja/
-    - user: socore
-    - group: socore
-    - file_mode: 755
-    - template: jinja
-    - defaults:
-        EXCLUDEDRULES: {{ STRELKAMERGED.rules.excluded }}
-
 so-repo-file:
   file.managed:
     - name: /opt/so/conf/reposync/repodownload.conf
@@ -101,6 +99,17 @@ so-repo-sync:
     - hour: '{{ MANAGERMERGED.reposync.hour }}'
     - minute: '{{ MANAGERMERGED.reposync.minute }}'
 
+so_fleetagent_status:
+  cron.present:
+    - name: /usr/sbin/so-elasticagent-status > /opt/so/log/agents/agentstatus.log 2>&1
+    - identifier: so_fleetagent_status
+    - user: root
+    - minute: '*/5'
+    - hour: '*'
+    - daymonth: '*'
+    - month: '*'
+    - dayweek: '*'
+
 socore_own_saltstack:
   file.directory:
     - name: /opt/so/saltstack
@@ -116,51 +125,6 @@ rules_dir:
     - user: socore
     - group: socore
     - makedirs: True
-
-{% if STRELKAMERGED.rules.enabled %}
-strelkarepos:
-  file.managed:
-    - name: /opt/so/conf/strelka/repos.txt
-    - source: salt://strelka/rules/repos.txt.jinja
-    - template: jinja
-    - defaults:
-      STRELKAREPOS: {{ STRELKAMERGED.rules.repos }}
-    - makedirs: True
-strelka-yara-update:
-  {% if MANAGERMERGED.reposync.enabled and not GLOBALS.airgap %}
-  cron.present:
-  {% else %}
-  cron.absent:
-  {% endif %}
-    - user: socore
-    - name: '/usr/sbin/so-yara-update >> /opt/so/log/yarasync/yara-update.log 2>&1'
-    - identifier: strelka-yara-update
-    - hour: '7'
-    - minute: '1'
-strelka-yara-download:
-  {% if MANAGERMERGED.reposync.enabled and not GLOBALS.airgap %}
-  cron.present:
-  {% else %}
-  cron.absent:
-  {% endif %}
-    - user: socore
-    - name: '/usr/sbin/so-yara-download >> /opt/so/log/yarasync/yara-download.log 2>&1'
-    - identifier: strelka-yara-download
-    - hour: '7'
-    - minute: '1'
-{% if not GLOBALS.airgap %}
-update_yara_rules:
-  cmd.run:
-    - name: /usr/sbin/so-yara-update
-    - onchanges:
-      - file: yara_update_scripts
-download_yara_rules:
-  cmd.run:
-    - name: /usr/sbin/so-yara-download
-    - onchanges:
-      - file: yara_update_scripts
-{% endif %}
-{% endif %}
 
 {% else %}
 

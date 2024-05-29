@@ -5,6 +5,10 @@ elasticsearch:
   esheap:
     description: Specify the memory heap size in (m)egabytes for Elasticsearch.
     helpLink: elasticsearch.html
+  index_clean:
+    description: Determines if indices should be considered for deletion by available disk space in the cluster. Otherwise, indices will only be deleted by the age defined in the ILM settings.
+    forcedType: bool
+    helpLink: elasticsearch.html
   retention: 
     retention_pct:
       decription: Total percentage of space used by Elasticsearch for multi node clusters
@@ -98,10 +102,6 @@ elasticsearch:
       policy:
         phases:
           hot:
-            max_age:
-              description: Maximum age of index. ex. 7d - This determines when the index should be moved out of the hot tier.
-              global: True
-              helpLink: elasticsearch.html
             actions:
               set_priority:
                 priority:
@@ -120,7 +120,9 @@ elasticsearch:
                   helpLink: elasticsearch.html
           cold:
             min_age:
-              description: Minimum age of index. ex. 30d - This determines when the index should be moved to the cold tier.  While still searchable, this tier is typically optimized for lower storage costs rather than search speed.
+              description: Minimum age of index. ex. 60d - This determines when the index should be moved to the cold tier.  While still searchable, this tier is typically optimized for lower storage costs rather than search speed.
+              regex: ^[0-9]{1,5}d$
+              forcedType: string
               global: True
               helpLink: elasticsearch.html
             actions:
@@ -131,8 +133,8 @@ elasticsearch:
                   helpLink: elasticsearch.html
           warm:
             min_age: 
-              description: Minimum age of index. ex. 30d - This determines when the index should be moved to the cold tier.  While still searchable, this tier is typically optimized for lower storage costs rather than search speed.
-              regex: ^\[0-9\]{1,5}d$
+              description: Minimum age of index. ex. 30d - This determines when the index should be moved to the warm tier. Nodes in the warm tier generally don’t need to be as fast as those in the hot tier.
+              regex: ^[0-9]{1,5}d$
               forcedType: string
               global: True
             actions:
@@ -145,6 +147,8 @@ elasticsearch:
           delete:
             min_age:
               description: Minimum age of index. ex. 90d - This determines when the index should be deleted.
+              regex: ^[0-9]{1,5}d$
+              forcedType: string
               global: True
               helpLink: elasticsearch.html
     so-logs: &indexSettings
@@ -271,7 +275,9 @@ elasticsearch:
                   helpLink: elasticsearch.html
           warm:
             min_age:
-              description: Minimum age of index. This determines when the index should be moved to the hot tier.
+              description: Minimum age of index. ex. 30d - This determines when the index should be moved to the warm tier. Nodes in the warm tier generally don’t need to be as fast as those in the hot tier.
+              regex: ^[0-9]{1,5}d$
+              forcedType: string
               global: True
               advanced: True
               helpLink: elasticsearch.html
@@ -296,7 +302,9 @@ elasticsearch:
                   helpLink: elasticsearch.html
           cold:
             min_age:
-              description: Minimum age of index.  This determines when the index should be moved to the cold tier.  While still searchable, this tier is typically optimized for lower storage costs rather than search speed.
+              description: Minimum age of index. ex. 60d - This determines when the index should be moved to the cold tier.  While still searchable, this tier is typically optimized for lower storage costs rather than search speed.
+              regex: ^[0-9]{1,5}d$
+              forcedType: string
               global: True
               advanced: True
               helpLink: elasticsearch.html
@@ -311,6 +319,8 @@ elasticsearch:
           delete:
             min_age:
               description: Minimum age of index. This determines when the index should be deleted.
+              regex: ^[0-9]{1,5}d$
+              forcedType: string
               global: True
               advanced: True
               helpLink: elasticsearch.html
@@ -366,6 +376,7 @@ elasticsearch:
     so-logs-azure_x_signinlogs: *indexSettings
     so-logs-azure_x_springcloudlogs: *indexSettings
     so-logs-barracuda_x_waf: *indexSettings
+    so-logs-cef_x_log: *indexSettings
     so-logs-cisco_asa_x_log: *indexSettings
     so-logs-cisco_ftd_x_log: *indexSettings
     so-logs-cisco_ios_x_log: *indexSettings
@@ -383,6 +394,7 @@ elasticsearch:
     so-logs-darktrace_x_ai_analyst_alert: *indexSettings
     so-logs-darktrace_x_model_breach_alert: *indexSettings
     so-logs-darktrace_x_system_status_alert: *indexSettings
+    so-logs-detections_x_alerts: *indexSettings
     so-logs-f5_bigip_x_log: *indexSettings
     so-logs-fim_x_event: *indexSettings
     so-logs-fortinet_x_clientendpoint: *indexSettings
@@ -511,6 +523,7 @@ elasticsearch:
     so-suricata: *indexSettings
     so-import: *indexSettings
     so-kratos: *indexSettings
+    so-kismet: *indexSettings
     so-logstash: *indexSettings
     so-redis: *indexSettings
     so-strelka: *indexSettings
