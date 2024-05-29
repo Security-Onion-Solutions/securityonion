@@ -1,4 +1,4 @@
-### 2.4.70-20240529 ISO image released on 2024/03/20
+### 2.4.70-20240529 ISO image released on 2024/05/29
 
 
 ### Download and Verify
