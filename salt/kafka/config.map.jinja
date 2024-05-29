@@ -12,19 +12,12 @@
 {# Create list of KRaft controllers #}
 {% set controllers = [] %}
 
-{% if KAFKA_CONTROLLERS_PILLAR != none %}
-{%   for node in KAFKA_CONTROLLERS_PILLAR %}
-{#    Check that the user input for kafka_controllers pillar exists as a kafka:node value #}
-{%     if node in KAFKA_NODES_PILLAR %}
-{%       do controllers.append(KAFKA_NODES_PILLAR[node]['nodeid'] ~ '@' ~ node ~ ':9093') %}
-{%     endif %}
-{%   endfor %}
-{% endif %}
-{# Ensure in the event that the SOC controllers pillar has a single hostname and that hostname doesn't exist in kafka:nodes
-   that a controller is still set for the Kafka cluster. Defaulting to the grid manager #}
-{% if controllers | length < 1 %}
-{%   do controllers.append(KAFKA_NODES_PILLAR[GLOBALS.manager]['nodeid'] ~ "@" ~ GLOBALS.manager ~ ":9093") %}
-{% endif %}
+{# Check for Kafka nodes with controller in process_x_roles #}
+{% for node in KAFKA_NODES_PILLAR %}
+{%   if 'controller' in KAFKA_NODES_PILLAR[node].role %}
+{%     do controllers.append(KAFKA_NODES_PILLAR[node].nodeid ~ "@" ~ node ~ ":9093") %}
+{%   endif %}
+{% endfor %}
 
 {% set kafka_controller_quorum_voters = ','.join(controllers) %}
 

@@ -8,6 +8,10 @@
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 
 {% set process_x_roles = KAFKADEFAULTS.kafka.config.broker.process_x_roles %}
+{# Set grid manager to default process_x_roles of broker,controller until overridden via SOC UI #}
+{% if grains.role in ["so-standalone", "so-manager", "so-managersearch"] %}
+{%   set process_x_roles = 'broker,controller'%}
+{% endif %}
 
 {% set current_kafkanodes = salt.saltutil.runner(
         'mine.get',
@@ -16,6 +20,7 @@
          tgt_type='compound') %}
 
 {% set STORED_KAFKANODES = salt['pillar.get']('kafka:nodes', default=None) %}
+{% set KAFKA_CONTROLLERS_PILLAR = salt['pillar.get']('kafka:kafka_controllers', default=None) %}
 
 {% set existing_ids = [] %}
 
@@ -43,10 +48,6 @@
 {% set NEW_KAFKANODES = {} %}
 {% for minionid, ip in current_kafkanodes.items() %}
 {%   set hostname = minionid.split('_')[0] %}
-{# Override the default process_x_roles for manager and set to 'broker,controller'. Changes from SOC UI will overwrite this #}
-{%   if hostname == GLOBALS.manager %}
-{%     set process_x_roles = 'broker,controller' %}
-{%   endif %}
 {%   if STORED_KAFKANODES != none and hostname not in STORED_KAFKANODES.items() %}
 {%     set new_id = available_ids.pop(0) %}
 {%     do NEW_KAFKANODES.update({hostname: {'nodeid': new_id, 'ip': ip[0], 'role': process_x_roles }}) %}
@@ -66,4 +67,29 @@
 {%  for node, details in STORED_KAFKANODES.items() %}
 {%    do COMBINED_KAFKANODES.update({node: details}) %}
 {%  endfor %}
+{% endif %}
+
+{# Update the process_x_roles value for any host in the kafka_controllers_pillar configured from SOC UI #}
+{% set ns = namespace(has_controller=false) %}
+{% if KAFKA_CONTROLLERS_PILLAR != none %}
+{%   for hostname in KAFKA_CONTROLLERS_PILLAR %}
+{%     if hostname in COMBINED_KAFKANODES %}
+{%       do COMBINED_KAFKANODES[hostname].update({'role': 'controller'}) %}
+{%       set ns.has_controller = true %}
+{%     endif %}
+{%   endfor %}
+{%   for hostname in COMBINED_KAFKANODES %}
+{%     if hostname not in KAFKA_CONTROLLERS_PILLAR %}
+{%       do COMBINED_KAFKANODES[hostname].update({'role': 'broker'}) %}
+{%     endif %}
+{%   endfor %}
+{# If the kafka_controllers_pillar is NOT empty check that atleast one node contains the controller role.
+     otherwise default to GLOBALS.manager having broker,controller role #}
+{%   if not ns.has_controller %}
+{%     do COMBINED_KAFKANODES[GLOBALS.manager].update({'role': 'broker,controller'}) %}
+{%   endif %}
+{# If kafka_controllers_pillar is empty, default to having grid manager as 'broker,controller'
+   so there is always atleast 1 controller in the cluster #}
+{% else %}
+{%   do COMBINED_KAFKANODES[GLOBALS.manager].update({'role': 'broker,controller'}) %}
 {% endif %}
