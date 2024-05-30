@@ -1271,6 +1271,15 @@ soc:
         - netflow.type
         - netflow.exporter.version
         - observer.ip
+      ':soc:':
+        - soc_timestamp
+        - event.dataset
+        - source.ip
+        - soc.fields.requestMethod
+        - soc.fields.requestPath
+        - soc.fields.statusCode
+        - event.action
+        - soc.fields.error
     server:
       bindAddress: 0.0.0.0:9822
       baseUrl: /
@@ -1305,6 +1314,7 @@ soc:
           reposFolder: /opt/sensoroni/sigma/repos
           rulesFingerprintFile: /opt/sensoroni/fingerprints/sigma.fingerprint
           stateFilePath: /opt/sensoroni/fingerprints/elastalertengine.state
+          integrityCheckFrequencySeconds: 600
           rulesRepos:
             default:
               - repo: https://github.com/Security-Onion-Solutions/securityonion-resources
@@ -1383,6 +1393,7 @@ soc:
                 community: true
           yaraRulesFolder: /opt/sensoroni/yara/rules
           stateFilePath: /opt/sensoroni/fingerprints/strelkaengine.state
+          integrityCheckFrequencySeconds: 600
         suricataengine:
           allowRegex: ''
           autoUpdateEnabled: true
@@ -1393,6 +1404,7 @@ soc:
           denyRegex: ''
           rulesFingerprintFile: /opt/sensoroni/fingerprints/emerging-all.fingerprint
           stateFilePath: /opt/sensoroni/fingerprints/suricataengine.state
+          integrityCheckFrequencySeconds: 600
       client:
         enableReverseLookup: false
         docsUrl: /docs/
@@ -1479,7 +1491,7 @@ soc:
               showSubtitle: true
             - name: Elastalerts
               description: ''
-              query: '_type:elastalert | groupby rule.name'
+              query: 'event.dataset:sigma.alert | groupby rule.name'
               showSubtitle: true
             - name: Alerts
               description: Show all alerts grouped by alert source
@@ -1814,7 +1826,7 @@ soc:
               query: 'tags:dhcp | groupby host.hostname | groupby -sankey host.hostname client.address | groupby client.address | groupby -sankey client.address server.address | groupby server.address | groupby dhcp.message_types | groupby host.domain'
             - name: DNS
               description: DNS (Domain Name System) queries
-              query: 'tags:dns | groupby dns.query.name | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby dns.highest_registered_domain | groupby dns.parent_domain | groupby dns.response.code_name | groupby dns.answers.name | groupby dns.query.type_name | groupby dns.response.code_name | groupby destination_geo.organization_name'
+              query: 'tags:dns | groupby dns.query.name | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby dns.highest_registered_domain | groupby dns.parent_domain | groupby dns.query.type_name | groupby dns.response.code_name | groupby dns.answers.name | groupby destination_geo.organization_name'
             - name: DPD
               description: DPD (Dynamic Protocol Detection) errors
               query: 'tags:dpd | groupby error.reason | groupby -sankey error.reason source.ip | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby network.protocol | groupby destination_geo.organization_name'
@@ -2053,17 +2065,17 @@ soc:
                 - acknowledged
           queries:
             - name: 'Group By Name, Module'
-              query: '* | groupby rule.name event.module* event.severity_label'
+              query: '* | groupby rule.name event.module* event.severity_label rule.uuid'
             - name: 'Group By Sensor, Source IP/Port, Destination IP/Port, Name'
-              query: '* | groupby observer.name source.ip source.port destination.ip destination.port rule.name network.community_id event.severity_label'
+              query: '* | groupby observer.name source.ip source.port destination.ip destination.port rule.name network.community_id event.severity_label rule.uuid'
             - name: 'Group By Source IP, Name'
-              query: '* | groupby source.ip rule.name event.severity_label'
+              query: '* | groupby source.ip rule.name event.severity_label rule.uuid'
             - name: 'Group By Source Port, Name'
-              query: '* | groupby source.port rule.name event.severity_label'
+              query: '* | groupby source.port rule.name event.severity_label rule.uuid'
             - name: 'Group By Destination IP, Name'
-              query: '* | groupby destination.ip rule.name event.severity_label'
+              query: '* | groupby destination.ip rule.name event.severity_label rule.uuid'
             - name: 'Group By Destination Port, Name'
-              query: '* | groupby destination.port rule.name event.severity_label'
+              query: '* | groupby destination.port rule.name event.severity_label rule.uuid'
             - name: Ungroup
               query: '*'
         grid:
