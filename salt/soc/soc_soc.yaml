@@ -39,7 +39,7 @@ soc:
         helpLink: soc-customization.html
       sigma_final_pipeline__yaml:
         title: Final Sigma Pipeline
-        description: Final Processing Pipeline for Sigma Rules (future use, not yet complete)
+        description: Final Processing Pipeline for Sigma Rules.
         syntax: yaml
         file: True
         global: True
@@ -83,6 +83,13 @@ soc:
         advanced: True
       modules:
         elastalertengine:
+          additionalAlerters:
+            title: Additional Alerters
+            description: Specify additional alerters to enable for all Sigma rules, one alerter name per line. Alerters refers to ElastAlert 2 alerters, as documented at https://elastalert2.readthedocs.io. Note that the configuration parameters for these alerters must be provided in the ElastAlert configuration section. Filter for 'Alerter' to find this related setting. A full update of the ElastAlert rule engine, via the Detections screen, is required in order to apply these changes. Requires a valid Security Onion license key.
+            global: True
+            helpLink: sigma.html
+            forcedType: "[]string"
+            multiline: True
           allowRegex:
             description: 'Regex used to filter imported Sigma rules. Deny regex takes precedence over the Allow regex setting.'
             global: True
@@ -106,16 +113,20 @@ soc:
             global: True
             advanced: True
             helpLink: sigma.html
+          integrityCheckFrequencySeconds:
+            description: 'How often the ElastAlert integrity checker runs (in seconds). This verifies the integrity of deployed rules.'
+            global: True
+            advanced: True
           rulesRepos:
             default: &eerulesRepos
-              description: "Custom Git repos to pull Sigma rules from. 'license' field is required, 'folder' is optional. 'community' disables some management options for the imported rules - they can't be deleted or edited, just tuned, duplicated and Enabled | Disabled."
+              description: "Custom Git repositories to pull Sigma rules from. 'license' field is required, 'folder' is optional. 'community' disables some management options for the imported rules - they can't be deleted or edited, just tuned, duplicated and Enabled | Disabled. The new settings will be applied within 15 minutes. At that point, you will need to wait for the scheduled rule update to take place (by default, every 24 hours), or you can force the update by nagivating to Detections -->  Options dropdown menu --> Elastalert --> Full Update." 
               global: True
               advanced: True
               forcedType: "[]{}"
               helpLink: sigma.html
             airgap: *eerulesRepos
           sigmaRulePackages:
-            description: 'Defines the Sigma Community Ruleset you want to run. One of these (core | core+ | core++ | all ) as well as an optional Add-on (emerging_threats_addon). Once you have changed the ruleset here, you will need to wait for the rule update to take place (every 8 hours), or you can force the update by nagivating to Detections -->  Options dropdown menu --> Elastalert --> Full Update. WARNING! Changing the ruleset will remove all existing Sigma rules of the previous ruleset and their associated overrides. This removal cannot be undone.'
+            description: 'Defines the Sigma Community Ruleset you want to run. One of these (core | core+ | core++ | all ) as well as an optional Add-on (emerging_threats_addon). Once you have changed the ruleset here, the new settings will be applied within 15 minutes. At that point, you will need to wait for the scheduled rule update to take place (by default, every 24 hours), or you can force the update by nagivating to Detections -->  Options dropdown menu --> Elastalert --> Full Update. WARNING! Changing the ruleset will remove all existing non-overlapping Sigma rules of the previous ruleset and their associated overrides. This removal cannot be undone.'
             global: True
             advanced: False
             helpLink: sigma.html
@@ -189,7 +200,7 @@ soc:
             global: True
             advanced: True
             helpLink: yara.html
-          autoEnabledYARARules:
+          autoEnabledYaraRules:
             description: 'YARA rules to automatically enable on initial import. Format is $Ruleset - for example, for the default shipped ruleset: securityonion-yara'
             global: True
             advanced: True
@@ -204,9 +215,13 @@ soc:
             global: True
             advanced: True
             helpLink: yara.html
+          integrityCheckFrequencySeconds:
+            description: 'How often the Strelka integrity checker runs (in seconds). This verifies the integrity of deployed rules.'
+            global: True
+            advanced: True
           rulesRepos:
             default: &serulesRepos
-              description: "Custom Git repos to pull YARA rules from. 'license' field is required, 'folder' is optional. 'community' disables some management options for the imported rules - they can't be deleted or edited, just tuned, duplicated and Enabled | Disabled."
+              description: "Custom Git repositories to pull YARA rules from. 'license' field is required, 'folder' is optional. 'community' disables some management options for the imported rules - they can't be deleted or edited, just tuned, duplicated and Enabled | Disabled. The new settings will be applied within 15 minutes. At that point, you will need to wait for the scheduled rule update to take place (by default, every 24 hours), or you can force the update by nagivating to Detections -->  Options dropdown menu --> Strelka --> Full Update."
               global: True
               advanced: True
               forcedType: "[]{}"
@@ -228,6 +243,10 @@ soc:
             global: True
             advanced: True
             helpLink: suricata.html
+          integrityCheckFrequencySeconds:
+            description: 'How often the Suricata integrity checker runs (in seconds). This verifies the integrity of deployed rules.'
+            global: True
+            advanced: True
       client:
         enableReverseLookup:
           description: Set to true to enable reverse DNS lookups for IP addresses in the SOC UI.
@@ -255,7 +274,7 @@ soc:
           description: Set to true to enable case management in SOC.
           global: True
         detectionsEnabled:
-          description: Set to true to enable the Detections module in SOC. (future use, not yet complete)
+          description: Set to true to enable the Detections module in SOC.
           global: True
         inactiveTools:
           description: List of external tools to remove from the SOC UI.

@@ -762,21 +762,6 @@ copy_salt_master_config() {
 	logCmd "systemctl restart salt-master"
 }
 
-create_local_directories() {
-	info "Creating local pillar and salt directories"
-	PILLARSALTDIR=${SCRIPTDIR::-5}
-	for i in "pillar" "salt"; do
-		for d in $(find $PILLARSALTDIR/$i -type d); do
-			suffixdir=${d//$PILLARSALTDIR/}
-			if [ ! -d "$local_salt_dir/$suffixdir" ]; then
-				logCmd "mkdir -pv $local_salt_dir$suffixdir"
-			fi
-		done
-		logCmd "chown -R socore:socore $local_salt_dir/$i"
-	done
-
-}
-
 create_local_nids_rules() {
 	title "Create a local.rules file so it doesn't get removed on updates"
 	logCmd "mkdir -p /opt/so/saltstack/local/salt/idstools"
@@ -1272,12 +1257,27 @@ soc_pillar() {
 		"      srvKey: '$SOCSRVKEY'"\
 		"      modules:"\
 		"        elastalertengine:"\
-		"          allowRegex: '$ELASTALERT_ALLOW_REGEX'"\
+		"          allowRegex: '$ELASTALERT_ALLOW_REGEX'" > "$soc_pillar_file"
+	if [[ -n "$ELASTALERT_FAIL_ERROR_COUNT" ]]; then
+		printf '%s\n'\
+	    "          failAfterConsecutiveErrorCount: $ELASTALERT_FAIL_ERROR_COUNT" >> "$soc_pillar_file"
+	fi
+	
+	printf '%s\n'\
 		"        strelkaengine:"\
-		"          allowRegex: '$STRELKA_ALLOW_REGEX'"\
+		"          allowRegex: '$STRELKA_ALLOW_REGEX'" >> "$soc_pillar_file"
+	if [[ -n "$STRELKA_FAIL_ERROR_COUNT" ]]; then
+	 	printf '%s\n'\
+		"          failAfterConsecutiveErrorCount: $STRELKA_FAIL_ERROR_COUNT" >> "$soc_pillar_file"
+	fi
+	
+	printf '%s\n'\
 		"        suricataengine:"\
-		"          allowRegex: '$SURICATA_ALLOW_REGEX'"\
-		"" > "$soc_pillar_file"
+		"          allowRegex: '$SURICATA_ALLOW_REGEX'" >> "$soc_pillar_file"
+	if [[ -n "$SURICATA_FAIL_ERROR_COUNT" ]]; then
+		printf '%s\n'\
+		"          failAfterConsecutiveErrorCount: $SURICATA_FAIL_ERROR_COUNT" >> "$soc_pillar_file"
+	fi
 
 	if [[ $telemetry -ne 0 ]]; then
 		echo "  telemetryEnabled: false" >> $soc_pillar_file
