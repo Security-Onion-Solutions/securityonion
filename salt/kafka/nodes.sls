@@ -16,10 +16,3 @@ write_kafka_pillar_yaml:
     - template: jinja
     - context:
         COMBINED_KAFKANODES: {{ COMBINED_KAFKANODES }}
-
-
-{% if kafka_cluster_id is none %}
-generate_kafka_cluster_id:
-  cmd.run:
-    - name: /usr/sbin/so-kafka-clusterid
-{% endif %}
