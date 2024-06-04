@@ -242,6 +242,7 @@ base:
     - kafka.nodes
     - kafka.soc_kafka
     - kafka.adv_kafka
+    - soc.license
 
   '*_import':
     - secrets
