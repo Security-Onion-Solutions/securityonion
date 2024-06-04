@@ -4,6 +4,8 @@
 # Elastic License 2.0.
 
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
+include:
+  - elasticfleet.enabled
 
 {# Create Kafka output policy if it doesn't exist #}
 update_kafka_output_policy_script:

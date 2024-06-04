@@ -14,3 +14,11 @@ so-kafka_so-status.disabled:
   file.comment:
     - name: /opt/so/conf/so-status/so-status.conf
     - regex: ^so-kafka$
+
+{% if grains.role in ['so-manager','so-managersearch','so-standalone'] %}
+ensure_default_pipeline:
+  cmd.run:
+    - name: |
+        /usr/sbin/so-yaml.py replace /opt/so/saltstack/local/pillar/kafka/soc_kafka.sls kafka.enabled False;
+        /usr/sbin/so-yaml.py replace /opt/so/saltstack/local/pillar/global/soc_global.sls global.pipeline REDIS
+{% endif %}
