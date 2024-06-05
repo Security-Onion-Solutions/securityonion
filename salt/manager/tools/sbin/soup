@@ -305,7 +305,7 @@ clone_to_tmp() {
   fi
 }
 
-elasticsearch_pillar_2_4_70() {
+phases_pillar_2_4_70() {
   echo "Checking if pillar value: elasticsearch.index_settings.global_overrides.index_template.phases exists"
   pv=$(salt-call pillar.get elasticsearch:index_settings:global_overrides:index_template:phases --out=newline_values_only -lquiet)
   if [ $? - eq 0 ]; then
@@ -318,9 +318,10 @@ elasticsearch_pillar_2_4_70() {
       so-yaml.py remove /opt/so/saltstack/local/pillar/elasticsearch/soc_elasticsearch.sls elasticsearch.index_settings.global_overrides.index_template.phases
       so-yaml.py remove /opt/so/saltstack/local/pillar/elasticsearch/adv_elasticsearch.sls elasticsearch.index_settings.global_overrides.index_template.phases
     else
-      echo "Pillar elasticsearch.index_settings.global_overrides.index_template.phases does not exist. There is nothing to do for this hotfix."
+      echo "Pillar elasticsearch.index_settings.global_overrides.index_template.phases does not exist."
     fi
-      fail "Could not query pillar. Ensure salt-master and salt-minion are running properly. The hotfix was not applied"
+  else
+    fail "Could not query pillar. Ensure salt-master and salt-minion are running properly. The hotfix was not applied."
   fi
 }
 
@@ -611,7 +612,7 @@ up_to_2.4.70() {
   suricata_idstools_migration
   toggle_telemetry
   add_detection_test_pillars
-  elasticsearch_pillar_2_4_70
+  phases_pillar_2_4_70
   INSTALLEDVERSION=2.4.70
 }
 
@@ -984,7 +985,7 @@ apply_hotfix() {
       (wait_for_salt_minion "$MINIONID" "5" '/dev/stdout' || fail "Salt minion was not running or ready.") 2>&1 | tee -a "$SOUP_LOG"
     fi
   elif [[ "$INSTALLEDVERSION" == "2.4.70" ]] ; then
-    elasticsearch_pillar_2_4_70
+    phases_pillar_2_4_70
   else
    echo "No actions required. ($INSTALLEDVERSION/$HOTFIXVERSION)"
   fi
