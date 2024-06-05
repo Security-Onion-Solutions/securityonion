@@ -10,4 +10,3 @@ execute_checksum:
     - name: /etc/NetworkManager/dispatcher.d/pre-up.d/99-so-checksum-offload-disable
     - onchanges:
       - file: offload_script
-      
