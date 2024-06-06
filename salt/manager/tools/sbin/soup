@@ -19,6 +19,9 @@ SOUP_LOG=/root/soup.log
 WHATWOULDYOUSAYYAHDOHERE=soup
 whiptail_title='Security Onion UPdater'
 NOTIFYCUSTOMELASTICCONFIG=false
+# used to display messages to the user at the end of soup
+declare -a FINAL_MESSAGE_QUEUE=()
+
 
 check_err() {
   local exit_code=$1
@@ -344,6 +347,22 @@ masterunlock() {
   mv -v $BACKUPTOPFILE $TOPFILE
 }
 
+phases_pillar_2_4_80() {
+  echo "Checking if pillar value: elasticsearch.index_settings.global_overrides.index_template.phases exists"
+
+  #so-yaml.py remove /opt/so/saltstack/local/pillar/elasticsearch/soc_elasticsearch.sls elasticsearch.index_settings.global_overrides.index_template.phases
+  #if so-yaml removed stuff add this message to the FINAL_MESSAGE_QUEUE
+  read -r -d '' msg << EOM
+  Found elasticsearch.index_settings.global_overrides.index_template.phases set to:
+  so-yaml removed stuff here
+  A backup of all pillars was saved to /nsm/backup/
+  Removed unused pillar value: elasticsearch.index_settings.global_overrides.index_template.phases
+  If you want to set policies, navigate to the SOC Grid Configuration UI at elasticsearch.index_settings.global_overrides.policy.phases"
+  EOM
+
+  FINAL_MESSAGE_QUEUE+=("$msg")
+}
+
 preupgrade_changes() {
     # This function is to add any new pillar items if needed.
     echo "Checking to see if changes are needed."
@@ -603,7 +622,7 @@ up_to_2.4.70() {
 }
 
 up_to_2.4.80() {
-  echo "Nothing to do for 2.4.80"
+  phases_pillar_2_4_80
   INSTALLEDVERSION=2.4.80
 }
 
@@ -1266,6 +1285,14 @@ If you still need those customizations, you'll need to manually migrate them to 
 EOF
 
   fi
+
+# check if the FINAL_MESSAGE_QUEUE is not empty
+if (( ${#FINAL_MESSAGE_QUEUE[@]} != 0 )); then
+  for m in "${FINAL_MESSAGE_QUEUE[@]}"; do
+    echo "$m"
+    echo
+  done
+fi
 
   echo "### soup has been served at $(date) ###"
 }
