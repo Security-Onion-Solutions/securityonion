@@ -307,8 +307,23 @@ clone_to_tmp() {
 
 phases_pillar_2_4_70() {
   echo "Checking if pillar value: elasticsearch.index_settings.global_overrides.index_template.phases exists"
-  pv=$(salt-call pillar.get elasticsearch:index_settings:global_overrides:index_template:phases --out=newline_values_only -lquiet)
-  if [ $? -eq 0 ]; then
+  # since we need to render a pillar value while the salt-master service is stopped, we need to use --local and -pillar-root in our salt-call
+  # to do this, we need to place a top file in there so that the pillars can be rendered
+  # copy top file to local so we can render the pillars with the salt-master offline
+  if [ -f /opt/so/saltstack/local/pillar/top.sls ]; then
+    local_top_moved=true
+    mv /opt/so/saltstack/local/pillar/top.sls /opt/so/saltstack/local/pillar/top.sls.BAK
+  fi
+  \cp /opt/so/saltstack/default/pillar/top.sls /opt/so/saltstack/local/pillar/
+  pv=$(salt-call pillar.get elasticsearch:index_settings:global_overrides:index_template:phases --out=newline_values_only -lquiet --local --pillar-root=/opt/so/saltstack/local/pillar/)
+  pvReturnCode=$?
+  # if the user had a custom top pillar file in local, put the backup in place if not, just remove the top we placed from default in local
+  if [[ "$local_top_moved" == "true" ]]; then
+    mv -f /opt/so/saltstack/local/pillar/top.sls.BAK /opt/so/saltstack/local/pillar/top.sls
+  else
+    rm -f /opt/so/saltstack/local/pillar/top.sls
+  fi
+  if [ $pvReturnCode -eq 0 ]; then
     if [ ! -z "${pv}" ]; then
       echo "Found elasticsearch.index_settings.global_overrides.index_template.phases set to:"
       echo "${pv}"
@@ -465,7 +480,6 @@ post_to_2.4.70() {
       so-yaml.py remove "$file" idh.services
     fi
   done
-  phases_pillar_2_4_70
   POSTVERSION=2.4.70
 }
 
@@ -613,6 +627,7 @@ up_to_2.4.70() {
   suricata_idstools_migration
   toggle_telemetry
   add_detection_test_pillars
+  phases_pillar_2_4_70
   INSTALLEDVERSION=2.4.70
 }
 
