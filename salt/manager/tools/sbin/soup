@@ -349,20 +349,24 @@ masterunlock() {
 
 phases_pillar_2_4_80() {
   echo "Checking if pillar value: elasticsearch.index_settings.global_overrides.index_template.phases exists"
-
-  set +e
-  #so-yaml.py remove /opt/so/saltstack/local/pillar/elasticsearch/soc_elasticsearch.sls elasticsearch.index_settings.global_overrides.index_template.phases
-  #if so-yaml removed stuff add this message to the FINAL_MESSAGE_QUEUE
-  read -r -d '' msg << EOF
-  Found elasticsearch.index_settings.global_overrides.index_template.phases set to:
-  so-yaml removed stuff here
-  A backup of all pillars was saved to /nsm/backup/
-  Removed unused pillar value: elasticsearch.index_settings.global_overrides.index_template.phases
-  If you want to set policies, navigate to the SOC Grid Configuration UI at elasticsearch.index_settings.global_overrides.policy.phases
+  PHASES=$(so-yaml.py get /opt/so/saltstack/local/pillar/elasticsearch/soc_elasticsearch.sls elasticsearch.index_settings.global_overrides.index_template.phases)
+  case $? in
+    0)
+    so-yaml.py remove /opt/so/saltstack/local/pillar/elasticsearch/soc_elasticsearch.sls elasticsearch.index_settings.global_overrides.index_template.phases
+    set +e
+    read -r -d '' msg << EOF
+    Found elasticsearch.index_settings.global_overrides.index_template.phases was set to:
+    ${PHASES}
+    Removed unused pillar value: elasticsearch.index_settings.global_overrides.index_template.phases
+    If you want to set policies, navigate to the SOC Grid Configuration UI at elasticsearch.index_settings.global_overrides.policy.phases
+    A backup of all pillars was saved to /nsm/backup/
 EOF
-
-  FINAL_MESSAGE_QUEUE+=("$msg")
-  set -e
+    FINAL_MESSAGE_QUEUE+=("$msg")
+    set -e
+    ;;
+    2) echo "Pillar elasticsearch.index_settings.global_overrides.index_template.phases does not exist. No action taken." ;;
+    *) echo "so-yaml.py returned something other than 0 or 2 exit code" ;; # we shouldn't see this
+  esac
 }
 
 preupgrade_changes() {
