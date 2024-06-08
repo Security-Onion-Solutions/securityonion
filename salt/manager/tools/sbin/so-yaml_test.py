@@ -416,6 +416,17 @@ class TestRemove(unittest.TestCase):
             self.assertEqual(result, 2)
             self.assertEqual("", mock_stdout.getvalue())
 
+    def test_get_missing_parent(self):
+        with patch('sys.stdout', new=StringIO()) as mock_stdout:
+            filename = "/tmp/so-yaml_test-get.yaml"
+            file = open(filename, "w")
+            file.write("{key1: { child1: 123, child2: { deep1: 45 } }, key2: false, key3: [e,f,g]}")
+            file.close()
+
+            result = soyaml.get([filename, "key1.child3.deep3"])
+            self.assertEqual(result, 2)
+            self.assertEqual("", mock_stdout.getvalue())
+
     def test_get_usage(self):
         with patch('sys.exit', new=MagicMock()) as sysmock:
             with patch('sys.stderr', new=StringIO()) as mock_stderr:

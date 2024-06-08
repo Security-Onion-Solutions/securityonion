@@ -170,7 +170,7 @@ def replace(args):
 
 def getKeyValue(content, key):
     pieces = key.split(".", 1)
-    if len(pieces) > 1:
+    if len(pieces) > 1 and pieces[0] in content:
         return getKeyValue(content[pieces[0]], pieces[1])
     return content.get(key, None)
 
