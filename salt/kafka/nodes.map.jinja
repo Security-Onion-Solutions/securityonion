@@ -68,14 +68,15 @@
 {# Update the process_x_roles value for any host in the kafka_controllers_pillar configured from SOC UI #}
 {% set ns = namespace(has_controller=false) %}
 {% if KAFKA_CONTROLLERS_PILLAR != none %}
-{%   for hostname in KAFKA_CONTROLLERS_PILLAR %}
+{%   set KAFKA_CONTROLLERS_PILLAR_LIST = KAFKA_CONTROLLERS_PILLAR.split(',') %}
+{%   for hostname in KAFKA_CONTROLLERS_PILLAR_LIST %}
 {%     if hostname in COMBINED_KAFKANODES %}
 {%       do COMBINED_KAFKANODES[hostname].update({'role': 'controller'}) %}
 {%       set ns.has_controller = true %}
 {%     endif %}
 {%   endfor %}
 {%   for hostname in COMBINED_KAFKANODES %}
-{%     if hostname not in KAFKA_CONTROLLERS_PILLAR %}
+{%     if hostname not in KAFKA_CONTROLLERS_PILLAR_LIST %}
 {%       do COMBINED_KAFKANODES[hostname].update({'role': 'broker'}) %}
 {%     endif %}
 {%   endfor %}

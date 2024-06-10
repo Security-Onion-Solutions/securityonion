@@ -53,9 +53,7 @@ so-kafka:
       - /nsm/kafka/data/:/nsm/kafka/data/:rw
       - /opt/so/log/kafka:/opt/kafka/logs/:rw
       - /opt/so/conf/kafka/server.properties:/opt/kafka/config/kraft/server.properties:ro
-      {% if GLOBALS.is_manager %}
       - /opt/so/conf/kafka/client.properties:/opt/kafka/config/kraft/client.properties
-      {% endif %}
     - watch:
       {% for sc in ['server', 'client'] %}
       - file: kafka_kraft_{{sc}}_properties

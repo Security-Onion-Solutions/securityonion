@@ -66,6 +66,12 @@ kafka_kraft_{{sc}}_properties:
     - show_changes: False
 {%   endfor %}
 
+reset_quorum_on_changes:
+  cmd.run:
+    - name: rm -f /nsm/kafka/data/__cluster_metadata-0/quorum-state
+    - watch:
+      - file: /opt/so/conf/kafka/server.properties
+
 {% else %}
 
 {{sls}}_state_not_allowed:
