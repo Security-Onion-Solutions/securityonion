@@ -30,10 +30,10 @@ dockerheldpackages:
 dockerheldpackages:
   pkg.installed:
     - pkgs:
-      - containerd.io: 1.6.21-1
-      - docker-ce: 5:24.0.2-1~ubuntu.22.04~jammy
-      - docker-ce-cli: 5:24.0.2-1~ubuntu.22.04~jammy
-      - docker-ce-rootless-extras: 5:24.0.2-1~ubuntu.22.04~jammy
+      - containerd.io: 1.6.33-1
+      - docker-ce: 5:26.1.4-1~ubuntu.22.04~jammy
+      - docker-ce-cli: 5:26.1.4-1~ubuntu.22.04~jammy
+      - docker-ce-rootless-extras: 5:26.1.4-1~ubuntu.22.04~jammy
     - hold: True
     - update_holds: True
 {%    else %}
