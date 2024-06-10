@@ -40,10 +40,10 @@ dockerheldpackages:
 dockerheldpackages:
   pkg.installed:
     - pkgs:
-      - containerd.io: 1.4.9-1
-      - docker-ce: 5:20.10.8~3-0~ubuntu-focal
-      - docker-ce-cli: 5:20.10.5~3-0~ubuntu-focal
-      - docker-ce-rootless-extras: 5:20.10.5~3-0~ubuntu-focal
+      - containerd.io: 1.6.33-1
+      - docker-ce: 5:26.1.4-1~ubuntu.20.04~focal
+      - docker-ce-cli: 5:26.1.4-1~ubuntu.20.04~focal
+      - docker-ce-rootless-extras: 5:26.1.4-1~ubuntu.20.04~focal
     - hold: True
     - update_holds: True
 {% endif %}
