@@ -20,10 +20,10 @@ dockergroup:
 dockerheldpackages:
   pkg.installed:
     - pkgs:
-      - containerd.io: 1.6.21-1
-      - docker-ce: 5:24.0.3-1~debian.12~bookworm
-      - docker-ce-cli: 5:24.0.3-1~debian.12~bookworm
-      - docker-ce-rootless-extras: 5:24.0.3-1~debian.12~bookworm
+      - containerd.io: 1.6.33-1
+      - docker-ce: 5:26.1.4-1~debian.12~bookworm
+      - docker-ce-cli: 5:26.1.4-1~debian.12~bookworm
+      - docker-ce-rootless-extras: 5:26.1.4-1~debian.12~bookworm
     - hold: True
     - update_holds: True
 {%    elif grains.oscodename == 'jammy' %}
