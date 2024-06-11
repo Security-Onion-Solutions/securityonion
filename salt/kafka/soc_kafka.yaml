@@ -1,6 +1,6 @@
 kafka:
   enabled:
-    description: Enable or disable Kafka. Recommended to have desired configuration staged prior to enabling Kafka. Configure kafka_controllers with the hostnames of the nodes you want to act as controllers, join all receiver nodes to grid that will be converted to Kafka nodes, and configure the default_replication_factor to the desired value for your redundancy needs.
+    description: Enable or disable Kafka. Recommended to have desired configuration staged prior to enabling Kafka. Configure controllers with the hostnames of the nodes you want to act as controllers, join all receiver nodes to grid that will be converted to Kafka nodes, and configure the default_replication_factor to the desired value for your redundancy needs.
     helpLink: kafka.html
   cluster_id:
     description: The ID of the Kafka cluster.
@@ -8,16 +8,17 @@ kafka:
     advanced: True
     sensitive: True
     helpLink: kafka.html
-  kafka_pass:
+  password:
     description: The password to use for the Kafka certificates.
     sensitive: True
     helpLink: kafka.html
-  kafka_controllers:
+  controllers:
     description: A comma-seperated list of Security Onion hosts that will act as Kafka controllers. These hosts will be responsible for managing the Kafka cluster. WARNING - The hostnames of receiver nodes intended to be controllers should be added here BEFORE they have joined the Security Onion grid or BEFORE enabling KAFKA. This is to ensure that data is not lost by converting a data broker to a controller. Failure to do so may result in topics becoming unavailable and requiring manual intervention to repair or resetting Kafka data.
     forcedType: "string"
     helpLink: kafka.html
-  reset_kafka:
-    description: Disable and reset the Kafka cluster. This will remove all Kafka data including logs that may have not yet been ingested into Elasticsearch and reverts the grid to using REDIS as the global pipeline. This is useful when testing different Kafka configurations such as rearranging Kafka brokers / controllers allowing you to reset the cluster rather than manually fixing any issues arising from attempting to reassign a Kafka broker into a controller. Enter 'YES_RESET_KAFKA' and submit to disable and reset Kafka. Make any configuration changes required and re-enable Kafka when ready.
+  reset:
+    description: Disable and reset the Kafka cluster. This will remove all Kafka data including logs that may have not yet been ingested into Elasticsearch and reverts the grid to using REDIS as the global pipeline. This is useful when testing different Kafka configurations such as rearranging Kafka brokers / controllers allowing you to reset the cluster rather than manually fixing any issues arising from attempting to reassign a Kafka broker into a controller. Enter 'YES_reset' and submit to disable and reset Kafka. Make any configuration changes required and re-enable Kafka when ready. This action CANNOT be reversed.
+    advanced: True
     helpLink: kafka.html
   config:
     broker:
@@ -31,7 +32,7 @@ kafka:
         forcedType: bool
         helpLink: kafka.html
       default_x_replication_x_factor:
-        description: The default replication factor for automatically created topics. This value must be less than the amount of brokers in the cluster. Hosts specified in kafka_controllers should not be counted towards total broker count.
+        description: The default replication factor for automatically created topics. This value must be less than the amount of brokers in the cluster. Hosts specified in controllers should not be counted towards total broker count.
         title: default.replication.factor
         forcedType: int
         helpLink: kafka.html
