@@ -1,6 +1,6 @@
 kafka:
   enabled:
-    description: Enable or disable Kafka. Recommended to have desired configuration staged prior to enabling Kafka. Join all receiver nodes to grid that will be converted to Kafka nodes, configure kafka_controllers with the hostnames of the nodes you want to act as controllers, and configure the default_replication_factor to the desired value for your redundancy needs.
+    description: Enable or disable Kafka. Recommended to have desired configuration staged prior to enabling Kafka. Configure kafka_controllers with the hostnames of the nodes you want to act as controllers, join all receiver nodes to grid that will be converted to Kafka nodes, and configure the default_replication_factor to the desired value for your redundancy needs.
     helpLink: kafka.html
   cluster_id:
     description: The ID of the Kafka cluster.
@@ -13,8 +13,11 @@ kafka:
     sensitive: True
     helpLink: kafka.html
   kafka_controllers:
-    description: A comma-seperated list of Security Onion grid members that should act as controllers for this Kafka cluster. By default, the grid manager will use a 'combined' role where it will act as both a broker and controller. Keep total Kafka controllers to an odd number and ensure you do not assign ALL your Kafka nodes as controllers or this Kafka cluster will not start.
+    description: A comma-seperated list of Security Onion hosts that will act as Kafka controllers. These hosts will be responsible for managing the Kafka cluster. WARNING - The hostnames of receiver nodes intended to be controllers should be added here BEFORE they have joined the Security Onion grid or BEFORE enabling KAFKA. This is to ensure that data is not lost by converting a data broker to a controller. Failure to do so may result in topics becoming unavailable and requiring manual intervention to repair or resetting Kafka data.
     forcedType: "string"
+    helpLink: kafka.html
+  reset_kafka:
+    description: Disable and reset the Kafka cluster. This will remove all Kafka data including logs that may have not yet been ingested into Elasticsearch and reverts the grid to using REDIS as the global pipeline. This is useful when testing different Kafka configurations such as rearranging Kafka brokers / controllers allowing you to reset the cluster rather than manually fixing any issues arising from attempting to reassign a Kafka broker into a controller. Enter 'YES_RESET_KAFKA' and submit to disable and reset Kafka. Make any configuration changes required and re-enable Kafka when ready.
     helpLink: kafka.html
   config:
     broker:
