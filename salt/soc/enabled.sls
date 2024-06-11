@@ -27,6 +27,7 @@ so-soc:
       - /opt/so/conf/strelka:/opt/sensoroni/yara:rw
       - /opt/so/conf/sigma:/opt/sensoroni/sigma:rw
       - /opt/so/rules/elastalert/rules:/opt/sensoroni/elastalert:rw
+      - /opt/so/rules/nids/suri:/opt/sensoroni/nids:ro
       - /opt/so/conf/soc/fingerprints:/opt/sensoroni/fingerprints:rw
       - /nsm/soc/jobs:/opt/sensoroni/jobs:rw
       - /nsm/soc/uploads:/nsm/soc/uploads:rw
