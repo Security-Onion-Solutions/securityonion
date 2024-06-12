@@ -47,5 +47,7 @@ gpg:          There is no indication that the signature belongs to the owner.
 Primary key fingerprint: C804 A93D 36BE 0C73 3EA1  9644 7C10 60B7 FE50 7013
 ```
 
+If it fails to verify, try downloading again. If it still fails to verify, try downloading from another computer or another network.
+
 Once you've verified the ISO image, you're ready to proceed to our Installation guide:  
 https://docs.securityonion.net/en/2.4/installation.html
