@@ -20,14 +20,13 @@ kafka:
     - uid: 960
     - gid: 960
 
-{# Future tools to query kafka directly / show consumer groups
 kafka_sbin_tools:
   file.recurse:
     - name: /usr/sbin
     - source: salt://kafka/tools/sbin
     - user: 960
     - group: 960
-    - file_mode: 755 #}
+    - file_mode: 755
 
 kafka_sbin_jinja_tools:
   file.recurse:
@@ -69,7 +68,7 @@ kafka_kraft_{{sc}}_properties:
 reset_quorum_on_changes:
   cmd.run:
     - name: rm -f /nsm/kafka/data/__cluster_metadata-0/quorum-state
-    - watch:
+    - onchanges:
       - file: /opt/so/conf/kafka/server.properties
 
 {% else %}
