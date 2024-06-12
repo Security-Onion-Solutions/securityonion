@@ -20,30 +20,30 @@ dockergroup:
 dockerheldpackages:
   pkg.installed:
     - pkgs:
-      - containerd.io: 1.6.21-1
-      - docker-ce: 5:24.0.3-1~debian.12~bookworm
-      - docker-ce-cli: 5:24.0.3-1~debian.12~bookworm
-      - docker-ce-rootless-extras: 5:24.0.3-1~debian.12~bookworm
+      - containerd.io: 1.6.33-1
+      - docker-ce: 5:26.1.4-1~debian.12~bookworm
+      - docker-ce-cli: 5:26.1.4-1~debian.12~bookworm
+      - docker-ce-rootless-extras: 5:26.1.4-1~debian.12~bookworm
     - hold: True
     - update_holds: True
 {%    elif grains.oscodename == 'jammy' %}
 dockerheldpackages:
   pkg.installed:
     - pkgs:
-      - containerd.io: 1.6.21-1
-      - docker-ce: 5:24.0.2-1~ubuntu.22.04~jammy
-      - docker-ce-cli: 5:24.0.2-1~ubuntu.22.04~jammy
-      - docker-ce-rootless-extras: 5:24.0.2-1~ubuntu.22.04~jammy
+      - containerd.io: 1.6.33-1
+      - docker-ce: 5:26.1.4-1~ubuntu.22.04~jammy
+      - docker-ce-cli: 5:26.1.4-1~ubuntu.22.04~jammy
+      - docker-ce-rootless-extras: 5:26.1.4-1~ubuntu.22.04~jammy
     - hold: True
     - update_holds: True
 {%    else %}
 dockerheldpackages:
   pkg.installed:
     - pkgs:
-      - containerd.io: 1.4.9-1
-      - docker-ce: 5:20.10.8~3-0~ubuntu-focal
-      - docker-ce-cli: 5:20.10.5~3-0~ubuntu-focal
-      - docker-ce-rootless-extras: 5:20.10.5~3-0~ubuntu-focal
+      - containerd.io: 1.6.33-1
+      - docker-ce: 5:26.1.4-1~ubuntu.20.04~focal
+      - docker-ce-cli: 5:26.1.4-1~ubuntu.20.04~focal
+      - docker-ce-rootless-extras: 5:26.1.4-1~ubuntu.20.04~focal
     - hold: True
     - update_holds: True
 {% endif %}
@@ -51,10 +51,10 @@ dockerheldpackages:
 dockerheldpackages:
   pkg.installed:
     - pkgs:
-      - containerd.io: 1.6.21-3.1.el9
-      - docker-ce: 24.0.4-1.el9
-      - docker-ce-cli: 24.0.4-1.el9
-      - docker-ce-rootless-extras: 24.0.4-1.el9
+      - containerd.io: 1.6.33-3.1.el9
+      - docker-ce: 3:26.1.4-1.el9
+      - docker-ce-cli: 1:26.1.4-1.el9
+      - docker-ce-rootless-extras: 26.1.4-1.el9
     - hold: True
     - update_holds: True
 {% endif %}
