@@ -1,17 +1,17 @@
-{% set kafka_brokers = salt['pillar.get']('kafka:nodes', {}) %}
-{% set brokers = [] %}
+{%- set kafka_brokers = salt['pillar.get']('kafka:nodes', {}) %}
+{%- set brokers = [] %}
 
-{% for key, values in kafka_brokers.items() %}
-{%   if 'broker' in values['role'] %}
-{%     do brokers.append(key ~ ':9092') %}
-{%   endif %}
-{% endfor %}
-{% set bootstrap_servers = ','.join(brokers) %}
+{%- for key, values in kafka_brokers.items() %}
+{%-   if 'broker' in values['role'] %}
+{%-     do brokers.append(key ~ ':9092') %}
+{%-   endif %}
+{%- endfor %}
+{%- set bootstrap_servers = ','.join(brokers) %}
 
 input {
     kafka {
         codec => json
-        topics => ['default-topic', 'kratos-topic', 'soc-topic', 'strelka-topic', 'suricata-topic', 'zeek-topic', 'rita-topic', 'opencanary-topic', 'syslog-topic']
+        topics_pattern => '.*-securityonion$'
         group_id => 'searchnodes'
         consumer_threads => 3
         client_id => '{{ GLOBALS.hostname }}'
