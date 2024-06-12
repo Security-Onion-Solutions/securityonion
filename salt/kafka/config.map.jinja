@@ -6,6 +6,7 @@
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 
 {% set KAFKA_NODES_PILLAR = salt['pillar.get']('kafka:nodes') %}
+{% set KAFKA_PASSWORD = salt['pillar.get']('kafka:password') %}
 
 {# Create list of KRaft controllers #}
 {% set controllers = [] %}
@@ -29,6 +30,7 @@
 {%   do KAFKAMERGED.config.broker.update({'advertised_x_listeners': 'BROKER://'+ GLOBALS.node_ip +':9092' }) %}
 {%   do KAFKAMERGED.config.broker.update({'controller_x_quorum_x_voters': kafka_controller_quorum_voters }) %}
 {%   do KAFKAMERGED.config.broker.update({'node_x_id': salt['pillar.get']('kafka:nodes:'+ GLOBALS.hostname +':nodeid') }) %}
+{%   do KAFKAMERGED.config.broker.update({'ssl_x_keystore_x_password': KAFKA_PASSWORD }) %}
 
 {# Nodes with only the 'broker' role need to have the below settings for communicating with controller nodes #}
 {%   do KAFKAMERGED.config.broker.update({'controller_x_listener_x_names': KAFKAMERGED.config.controller.controller_x_listener_x_names }) %}
@@ -41,6 +43,7 @@
 {% if node_type == 'controller' %}
 {%   do KAFKAMERGED.config.controller.update({'controller_x_quorum_x_voters': kafka_controller_quorum_voters }) %}
 {%   do KAFKAMERGED.config.controller.update({'node_x_id': salt['pillar.get']('kafka:nodes:'+ GLOBALS.hostname +':nodeid') }) %}
+{%   do KAFKAMERGED.config.controller.update({'ssl_x_keystore_x_password': KAFKA_PASSWORD }) %}
 
 {% endif %}
 
@@ -51,6 +54,7 @@
 {%   do KAFKAMERGED.config.broker.update({'controller_x_quorum_x_voters': kafka_controller_quorum_voters }) %}
 {%   do KAFKAMERGED.config.broker.update({'node_x_id': salt['pillar.get']('kafka:nodes:'+ GLOBALS.hostname +':nodeid') }) %}
 {%   do KAFKAMERGED.config.broker.update({'process_x_roles': 'broker,controller' }) %}
+{%   do KAFKAMERGED.config.broker.update({'ssl_x_keystore_x_password': KAFKA_PASSWORD }) %}
 
 {%   do KAFKAMERGED.config.broker.update({
        'listeners': KAFKAMERGED.config.broker.listeners + ',' + KAFKAMERGED.config.controller.listeners })
@@ -63,8 +67,25 @@
 
 {% endif %}
 
+{# If a password other than PLACEHOLDER isn't set remove it from the server.properties #}
+{% if KAFKAMERGED.config.broker.ssl_x_truststore_x_password == 'PLACEHOLDER' %}
+{%   do KAFKAMERGED.config.broker.pop('ssl_x_truststore_x_password') %}
+{% endif %}
+
+{% if KAFKAMERGED.config.controller.ssl_x_truststore_x_password == 'PLACEHOLDER' %}
+{%   do KAFKAMERGED.config.controller.pop('ssl_x_truststore_x_password') %}
+{% endif %}
+
+{# Client properties stuff #}
+{% if KAFKAMERGED.config.client.ssl_x_truststore_x_password == 'PLACEHOLDER' %}
+{%   do KAFKAMERGED.config.client.pop('ssl_x_truststore_x_password') %}
+{% endif %}
+{% do KAFKAMERGED.config.client.update({'ssl_x_keystore_x_password': KAFKA_PASSWORD }) %}
+
 {% if 'broker' in node_type %}
 {%   set KAFKACONFIG = KAFKAMERGED.config.broker %}
 {% else %}
 {%   set KAFKACONFIG = KAFKAMERGED.config.controller %}
 {% endif %}
+
+{% set KAFKACLIENT = KAFKAMERGED.config.client %}

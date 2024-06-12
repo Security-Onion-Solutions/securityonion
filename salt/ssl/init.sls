@@ -17,6 +17,8 @@
   {% set COMMONNAME = GLOBALS.manager %}
 {% endif %}
 
+{% set kafka_password = salt['pillar.get']('kafka:password') %}
+
 {% if grains.id.split('_')|last in ['manager', 'managersearch', 'eval', 'standalone', 'import'] %}
 include:
   - ca
@@ -692,7 +694,7 @@ kafka_logstash_crt:
         attempts: 5
         interval: 30
   cmd.run:
-    - name: "/usr/bin/openssl pkcs12 -inkey /etc/pki/kafka-logstash.key -in /etc/pki/kafka-logstash.crt -export -out /etc/pki/kafka-logstash.p12 -nodes -passout pass:changeit"
+    - name: "/usr/bin/openssl pkcs12 -inkey /etc/pki/kafka-logstash.key -in /etc/pki/kafka-logstash.crt -export -out /etc/pki/kafka-logstash.p12 -nodes -passout pass:{{ kafka_password }}"
     - onchanges:
       - x509: /etc/pki/kafka-logstash.key
 
@@ -862,7 +864,7 @@ kafka_crt:
         attempts: 5
         interval: 30
   cmd.run:
-    - name: "/usr/bin/openssl pkcs12 -inkey /etc/pki/kafka.key -in /etc/pki/kafka.crt -export -out /etc/pki/kafka.p12 -nodes -passout pass:changeit"
+    - name: "/usr/bin/openssl pkcs12 -inkey /etc/pki/kafka.key -in /etc/pki/kafka.crt -export -out /etc/pki/kafka.p12 -nodes -passout pass:{{ kafka_password }}"
     - onchanges:
       - x509: /etc/pki/kafka.key
 kafka_key_perms:
@@ -922,7 +924,7 @@ kafka_logstash_crt:
         attempts: 5
         interval: 30
   cmd.run:
-    - name: "/usr/bin/openssl pkcs12 -inkey /etc/pki/kafka-logstash.key -in /etc/pki/kafka-logstash.crt -export -out /etc/pki/kafka-logstash.p12 -nodes -passout pass:changeit"
+    - name: "/usr/bin/openssl pkcs12 -inkey /etc/pki/kafka-logstash.key -in /etc/pki/kafka-logstash.crt -export -out /etc/pki/kafka-logstash.p12 -nodes -passout pass:{{ kafka_password }}"
     - onchanges:
       - x509: /etc/pki/kafka-logstash.key
 
