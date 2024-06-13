@@ -107,6 +107,7 @@ base:
     - utility
     - elasticfleet
     - stig
+    - kafka
 
   '*_standalone and G@saltversion:{{saltversion}}':
     - match: compound
@@ -141,6 +142,7 @@ base:
     - utility
     - elasticfleet
     - stig
+    - kafka
 
   '*_searchnode and G@saltversion:{{saltversion}}':
     - match: compound
@@ -238,6 +240,7 @@ base:
     - logstash
     - redis
     - elasticfleet.install_agent_grid
+    - kafka
 
   '*_idh and G@saltversion:{{saltversion}}':
     - match: compound

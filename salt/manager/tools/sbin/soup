@@ -625,11 +625,27 @@ up_to_2.4.70() {
   suricata_idstools_migration
   toggle_telemetry
   add_detection_test_pillars
+
   INSTALLEDVERSION=2.4.70
 }
 
 up_to_2.4.80() {
   phases_pillar_2_4_80
+  # Kafka configuration changes
+
+  # Global pipeline changes to REDIS or KAFKA
+  echo "Removing global.pipeline pillar configuration"
+  sed -i '/pipeline:/d' /opt/so/saltstack/local/pillar/global/soc_global.sls
+    # Kafka pillars
+  mkdir -p /opt/so/saltstack/local/pillar/kafka
+  touch /opt/so/saltstack/local/pillar/kafka/soc_kafka.sls
+  touch /opt/so/saltstack/local/pillar/kafka/adv_kafka.sls
+  echo 'kafka: ' > /opt/so/saltstack/local/pillar/kafka/soc_kafka.sls
+  kafka_cluster_id=$(get_random_value 22)
+  echo '    cluster_id: '$kafka_cluster_id >> /opt/so/saltstack/local/pillar/kafka/soc_kafka.sls
+  kafkapass=$(get_random_value)
+  echo '    password: '$kafkapass >> /opt/so/saltstack/local/pillar/kafka/soc_kafka.sls
+
   INSTALLEDVERSION=2.4.80
 }
 

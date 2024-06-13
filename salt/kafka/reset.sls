@@ -3,12 +3,7 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-{% from 'redis/map.jinja' import REDISMERGED %}
-{% from 'vars/globals.map.jinja' import GLOBALS %}
-
-include:
-{% if GLOBALS.pipeline == "REDIS" and REDISMERGED.enabled %}
-  - redis.enabled
-{% else %}
-  - redis.disabled
-{% endif %}
+wipe_kafka_data:
+  file.absent:
+    - name: /nsm/kafka/data/
+    - force: True
