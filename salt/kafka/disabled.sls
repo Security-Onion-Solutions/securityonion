@@ -3,6 +3,9 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
+{% from 'kafka/map.jinja' import KAFKAMERGED %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
+
 so-kafka:
   docker_container.absent:
     - force: True
@@ -14,9 +17,7 @@ so-kafka_so-status.disabled:
     - onlyif: grep -q '^so-kafka$' /opt/so/conf/so-status/so-status.conf
 
 {% if grains.role in ['so-manager','so-managersearch','so-standalone'] %}
-{%   import_yaml '/opt/so/saltstack/local/pillar/kafka/soc_kafka.sls' as SOC_KAFKA %}
-{%   import_yaml '/opt/so/saltstack/local/pillar/global/soc_global.sls' as SOC_GLOBAL %}
-{%   if SOC_KAFKA.kafka.enabled or SOC_GLOBAL.global.pipeline == "KAFKA" %}
+{%   if KAFKAMERGED.enabled or GLOBALS.pipeline == "KAFKA" %}
 ensure_default_pipeline:
   cmd.run:
     - name: |
