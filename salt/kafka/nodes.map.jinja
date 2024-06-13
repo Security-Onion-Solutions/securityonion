@@ -30,7 +30,7 @@
 {% endif %}
 
 {# Create list of possible node ids #}
-{% set all_possible_ids = range(1, 65536)|list %}
+{% set all_possible_ids = range(1, 2000)|list %}
 
 {# Create list of available node ids by looping through all_possible_ids and ensuring it isn't in existing_ids #}
 {% set available_ids = [] %}
@@ -44,11 +44,7 @@
 {% set NEW_KAFKANODES = {} %}
 {% for minionid, ip in current_kafkanodes.items() %}
 {%   set hostname = minionid.split('_')[0] %}
-{%   if STORED_KAFKANODES != none and hostname not in STORED_KAFKANODES.items() %}
-{%     set new_id = available_ids.pop(0) %}
-{%     do NEW_KAFKANODES.update({hostname: {'nodeid': new_id, 'ip': ip[0], 'role': process_x_roles }}) %}
-{%   endif %}
-{%   if hostname not in NEW_KAFKANODES.items() %}
+{%   if not STORED_KAFKANODES or hostname not in STORED_KAFKANODES %}
 {%     set new_id = available_ids.pop(0) %}
 {%     do NEW_KAFKANODES.update({hostname: {'nodeid': new_id, 'ip': ip[0], 'role': process_x_roles }}) %}
 {%   endif %}

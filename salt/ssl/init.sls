@@ -663,65 +663,6 @@ elastickeyperms:
     - name: /etc/pki/elasticsearch.key
     - mode: 640
     - group: 930
-
-kafka_logstash_key:
-  x509.private_key_managed:
-    - name: /etc/pki/kafka-logstash.key
-    - keysize: 4096
-    - backup: True
-    - new: True
-    {% if salt['file.file_exists']('/etc/pki/kafka-logstash.key') -%}
-    - prereq:
-      - x509: /etc/pki/kafka-logstash.crt
-    {%- endif %}
-    - retry:
-        attempts: 5
-        interval: 30
-
-kafka_logstash_crt:
-  x509.certificate_managed:
-    - name: /etc/pki/kafka-logstash.crt
-    - ca_server: {{ ca_server }}
-    - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
-    - signing_policy: kafka
-    - private_key: /etc/pki/kafka-logstash.key
-    - CN: {{ GLOBALS.hostname }}
-    - days_remaining: 0
-    - days_valid: 820
-    - backup: True
-    - timeout: 30
-    - retry:
-        attempts: 5
-        interval: 30
-  cmd.run:
-    - name: "/usr/bin/openssl pkcs12 -inkey /etc/pki/kafka-logstash.key -in /etc/pki/kafka-logstash.crt -export -out /etc/pki/kafka-logstash.p12 -nodes -passout pass:{{ kafka_password }}"
-    - onchanges:
-      - x509: /etc/pki/kafka-logstash.key
-
-kafka_logstash_key_perms:
-  file.managed:
-    - replace: False
-    - name: /etc/pki/kafka-logstash.key
-    - mode: 640
-    - user: 960
-    - group: 939
-
-kafka_logstash_crt_perms:
-  file.managed:
-    - replace: False
-    - name: /etc/pki/kafka-logstash.crt
-    - mode: 640
-    - user: 960
-    - group: 939
-
-kafka_logstash_pkcs12_perms:
-  file.managed:
-    - replace: False
-    - name: /etc/pki/kafka-logstash.p12
-    - mode: 640
-    - user: 960
-    - group: 931
-
 {%- endif %}
 
 {% if grains['role'] in ['so-manager', 'so-managersearch', 'so-standalone'] %}
@@ -892,8 +833,10 @@ kafka_pkcs12_perms:
     - group: 939
 
 {% endif %}
-{# For automated testing standalone will need kafka-logstash key to pull logs from Kafka #}
-{% if grains['role'] == 'so-standalone' %}
+
+# Standalone needs kafka-logstash for automated testing. Searchnode/manager search need it for logstash to consume from Kafka.
+# Manager will have cert, but be unused until a pipeline is created and logstash enabled.
+{% if grains['role'] in ['so-standalone', 'so-managersearch', 'so-searchnode', 'so-manager'] %}
 kafka_logstash_key:
   x509.private_key_managed:
     - name: /etc/pki/kafka-logstash.key
@@ -951,6 +894,7 @@ kafka_logstash_pkcs12_perms:
     - mode: 640
     - user: 960
     - group: 931
+
 {% endif %}
 
 {% else %}
