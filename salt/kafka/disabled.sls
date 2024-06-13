@@ -16,7 +16,7 @@ so-kafka_so-status.disabled:
     - regex: ^so-kafka$
     - onlyif: grep -q '^so-kafka$' /opt/so/conf/so-status/so-status.conf
 
-{% if grains.role in ['so-manager','so-managersearch','so-standalone'] %}
+{% if GLOBALS.role in ['so-manager','so-managersearch','so-standalone'] %}
 {%   if KAFKAMERGED.enabled or GLOBALS.pipeline == "KAFKA" %}
 ensure_default_pipeline:
   cmd.run:
