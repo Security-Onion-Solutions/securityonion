@@ -42,7 +42,7 @@ suricatacustomdirsfile:
 
 suricatacustomdirsurl:
   file.directory:
-    - name: /nsm/rules/detect-suricata/custom_urls
+    - name: /nsm/rules/detect-suricata/custom_temp
     - user: 939
     - group: 939
 
