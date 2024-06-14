@@ -45,7 +45,6 @@ suricatacustomdirsurl:
     - name: /nsm/rules/detect-suricata/custom_urls
     - user: 939
     - group: 939
-    - makedirs: True
 
 {% else %}
 
