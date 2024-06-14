@@ -2256,34 +2256,58 @@ soc:
             major: high
           templateDetections:
             suricata: |
-              alert tcp any any <> any any (msg:""; sid:[publicId];)
+              # This is a Suricata rule template. Replace all template values with your own values.
+              # The rule identifier (sid) is pregenerated and known to be unique for this Security Onion installation.
+              # Docs: https://docs.suricata.io/en/latest/rules/intro.html
+              # Delete these comments before attempting to "Create" the rule
+
+              alert http $EXTERNAL_NET any -> $HOME_NET any (msg:"Example Rule Title - 'example' String Detected"; content:"example"; sid:[publicId]; rev:1;)
             strelka: |
-              rule  {
-                meta:
-                  description = "";
-                strings:
-                  $x = "string";
-                condition:
-                  all of them;
+              /* 
+              This is a YARA rule template. Replace all template values with your own values.
+              The YARA rule name is the unique identifier for the rule.
+              Docs: https://yara.readthedocs.io/en/stable/writingrules.html#writing-yara-rules
+              */ 
+
+              rule Example // This identifier _must_ be unique
+              {
+                  meta: 
+                      description="Generic YARA Rule"
+                      author = "@SecurityOnion"
+                      date = "YYYY-MM-DD"
+                      reference = "https://local.invalid"
+                  strings:
+                      $my_text_string = "text here"
+                      $my_hex_string = { E2 34 A1 C8 23 FB }
+                  condition:
+                      filesize < 3MB and ($my_text_string or $my_hex_string)
               }
             elastalert: |
-              title:
+              # This is a Sigma rule template, which uses YAML. Replace all template values with your own values.
+              # The id (UUIDv4) is pregenerated and can safely be used.
+              # Click "Convert" to convert the Sigma rule to use Security Onion field mappings within an EQL query
+              #
+              # Rule Creation Guide: https://github.com/SigmaHQ/sigma/wiki/Rule-Creation-Guide
+              # Logsources: https://sigmahq.io/docs/basics/log-sources.html
+
+              title: 'A Short Capitalised Title With Less Than 50 Characters'
               id: [publicId]
-              status:
-              description:
+              status: 'experimental'
+              description: |
+                  This should be a detailed description of what this Detection focuses on: what we are trying to find and why we are trying to find it.
               references:
-                -
-              author:
-              date:
+                - 'https://local.invalid'
+              author: '@SecurityOnion'
+              date: 'YYYY/MM/DD'
               tags:
-                -
-              logsource:
-                product:
-                category:
+                - detection.threat_hunting
+                - attack.technique_id
+              logsource: 
+                category: process_creation
+                product: windows
               detection:
                 selection:
+                  Image: 'whoami.exe'
+                  User: 'backup'
                 condition: selection
-              falsepositives:
-                -
-              level:
-
+              level: 'high'  # info | low | medium | high | critical
