@@ -33,6 +33,19 @@ idstools_sbin_jinja:
     - file_mode: 755
     - template: jinja
 
+suricatacustomdirsfile:
+  file.directory:
+    - name: /nsm/rules/detect-suricata/custom_file
+    - user: 939
+    - group: 939
+    - makedirs: True
+
+suricatacustomdirsurl:
+  file.directory:
+    - name: /nsm/rules/detect-suricata/custom_temp
+    - user: 939
+    - group: 939
+
 {% else %}
 
 {{sls}}_state_not_allowed:
