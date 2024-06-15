@@ -39,7 +39,7 @@ kafka_sbin_jinja_tools:
     - defaults:
         GLOBALS: {{ GLOBALS }}
 
-kakfa_log_dir:
+kafka_log_dir:
   file.directory:
     - name: /opt/so/log/kafka
     - user: 960
