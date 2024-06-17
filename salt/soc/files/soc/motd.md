@@ -14,7 +14,7 @@ Once you've found something of interest, escalate it to [Cases](/#/cases) to the
 
 If you want to check the health of your deployment, check out the [Grid](/#/grid) interface.
 
-For more coverage of your enterprise, you can deploy the Elastic Agent to endpoints in your environment by going to the [Downloads](/#/downloads) page.
+For more coverage of your enterprise, you can deploy the Elastic Agent to endpoints by going to the [Downloads](/#/downloads) page.
 
 ## What's New 
 
