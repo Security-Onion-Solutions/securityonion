@@ -1314,7 +1314,7 @@ soc:
           reposFolder: /opt/sensoroni/sigma/repos
           rulesFingerprintFile: /opt/sensoroni/fingerprints/sigma.fingerprint
           stateFilePath: /opt/sensoroni/fingerprints/elastalertengine.state
-          integrityCheckFrequencySeconds: 600
+          integrityCheckFrequencySeconds: 1200
           rulesRepos:
             default:
               - repo: https://github.com/Security-Onion-Solutions/securityonion-resources
@@ -1393,7 +1393,7 @@ soc:
                 community: true
           yaraRulesFolder: /opt/sensoroni/yara/rules
           stateFilePath: /opt/sensoroni/fingerprints/strelkaengine.state
-          integrityCheckFrequencySeconds: 600
+          integrityCheckFrequencySeconds: 1200
         suricataengine:
           allowRegex: ''
           autoUpdateEnabled: true
@@ -1405,7 +1405,7 @@ soc:
           denyRegex: ''
           rulesFingerprintFile: /opt/sensoroni/fingerprints/emerging-all.fingerprint
           stateFilePath: /opt/sensoroni/fingerprints/suricataengine.state
-          integrityCheckFrequencySeconds: 600
+          integrityCheckFrequencySeconds: 1200
       client:
         enableReverseLookup: false
         docsUrl: /docs/
@@ -2257,7 +2257,7 @@ soc:
           templateDetections:
             suricata: |
               # This is a Suricata rule template. Replace all template values with your own values.
-              # The rule identifier (sid) is pregenerated and known to be unique for this Security Onion installation.
+              # The rule identifier [sid] is pregenerated and known to be unique for this Security Onion installation.
               # Docs: https://docs.suricata.io/en/latest/rules/intro.html
               # Delete these comments before attempting to "Create" the rule
 
@@ -2272,7 +2272,7 @@ soc:
               rule Example // This identifier _must_ be unique
               {
                   meta: 
-                      description="Generic YARA Rule"
+                      description = "Generic YARA Rule"
                       author = "@SecurityOnion"
                       date = "YYYY-MM-DD"
                       reference = "https://local.invalid"
@@ -2294,7 +2294,8 @@ soc:
               id: [publicId]
               status: 'experimental'
               description: |
-                  This should be a detailed description of what this Detection focuses on: what we are trying to find and why we are trying to find it.
+                  This should be a detailed description of what this Detection focuses on: what we are trying to find and why we are trying to find it. 
+                  For example, from rule 97a80ec7-0e2f-4d05-9ef4-65760e634f6b: "Detects a whoami.exe executed with the /priv command line flag instructing the tool to show all current user privileges. This is often used after a privilege escalation attempt."
               references:
                 - 'https://local.invalid'
               author: '@SecurityOnion'
@@ -2306,8 +2307,11 @@ soc:
                 category: process_creation
                 product: windows
               detection:
-                selection:
-                  Image: 'whoami.exe'
-                  User: 'backup'
-                condition: selection
+                  selection_img:
+                      - Image|endswith: '\whoami.exe'
+                      - OriginalFileName: 'whoami.exe'
+                  selection_cli:
+                      CommandLine|contains|windash:
+                          - ' -priv'
+                  condition: all of selection_*
               level: 'high'  # info | low | medium | high | critical
