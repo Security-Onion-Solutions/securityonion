@@ -241,6 +241,7 @@ base:
     - redis
     - elasticfleet.install_agent_grid
     - kafka
+    - stig
 
   '*_idh and G@saltversion:{{saltversion}}':
     - match: compound
