@@ -57,6 +57,12 @@ copy_so-yaml_manager_tools_sbin:
     - force: True
     - preserve: True
 
+copy_so-repo-sync_manager_tools_sbin:
+  file.copy:
+    - name: /opt/so/saltstack/default/salt/manager/tools/sbin/so-repo-sync
+    - source: {{UPDATE_DIR}}/salt/manager/tools/sbin/so-repo-sync
+    - preserve: True
+
 # This section is used to put the new script in place so that it can be called during soup.
 # It is faster than calling the states that normally manage them to put them in place.
 copy_so-common_sbin:
@@ -91,6 +97,13 @@ copy_so-yaml_sbin:
   file.copy:
     - name: /usr/sbin/so-yaml.py
     - source: {{UPDATE_DIR}}/salt/manager/tools/sbin/so-yaml.py
+    - force: True
+    - preserve: True
+
+copy_so-repo-sync_sbin:
+  file.copy:
+    - name: /usr/sbin/so-repo-sync
+    - source: {{UPDATE_DIR}}/salt/manager/tools/sbin/so-repo-sync
     - force: True
     - preserve: True
 
