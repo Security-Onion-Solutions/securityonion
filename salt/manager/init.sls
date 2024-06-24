@@ -73,6 +73,15 @@ manager_sbin:
     - exclude_pat:
       - "*_test.py"
 
+manager_sbin_jinja:
+  file.recurse:
+    - name: /usr/sbin/
+    - source: salt://manager/tools/sbin_jinja/
+    - user: socore
+    - group: socore
+    - file_mode: 755
+    - template: jinja
+
 so-repo-file:
   file.managed:
     - name: /opt/so/conf/reposync/repodownload.conf
