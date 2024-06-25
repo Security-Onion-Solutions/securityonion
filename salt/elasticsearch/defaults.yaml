@@ -170,6 +170,78 @@ elasticsearch:
               set_priority:
                 priority: 50
             min_age: 30d
+    so-items:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - so-items-mappings
+        index_patterns:
+        - .items-default-**
+        priority: 500
+        template:
+          mappings:
+            date_detection: false
+          settings:
+            index:
+              lifecycle:
+                name: so-items-logs
+                rollover_alias: ".items-default"
+              routing:
+                allocation:
+                  include:
+                    _tier_preference: "data_content"
+              mapping:
+                total_fields:
+                  limit: 10000
+              number_of_replicas: 0
+              number_of_shards: 1
+              refresh_interval: 30s
+              sort:
+                field: '@timestamp'
+                order: desc
+      policy:
+        phases:
+          hot:
+            actions:
+              rollover:
+                max_size: 50gb
+            min_age: 0ms
+    so-lists:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - so-lists-mappings
+        index_patterns:
+        - .lists-default-**
+        priority: 500
+        template:
+          mappings:
+            date_detection: false
+          settings:
+            index:
+              lifecycle:
+                name: so-lists-logs
+                rollover_alias: ".lists-default"
+              routing:
+                allocation:
+                  include:
+                    _tier_preference: "data_content"
+              mapping:
+                total_fields:
+                  limit: 10000
+              number_of_replicas: 0
+              number_of_shards: 1
+              refresh_interval: 30s
+              sort:
+                field: '@timestamp'
+                order: desc
+      policy:
+        phases:
+          hot:
+            actions:
+              rollover:
+                max_size: 50gb
+            min_age: 0ms
     so-case:
       index_sorting: false
       index_template:
@@ -11055,6 +11127,117 @@ elasticsearch:
             index:
               lifecycle:
                 name: so-suricata-logs
+              mapping:
+                total_fields:
+                  limit: 5000
+              number_of_replicas: 0
+              number_of_shards: 1
+              refresh_interval: 30s
+              sort:
+                field: '@timestamp'
+                order: desc
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 1d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
+    so-suricata_x_alerts:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - agent-mappings
+        - dtc-agent-mappings
+        - base-mappings
+        - dtc-base-mappings
+        - client-mappings
+        - dtc-client-mappings
+        - cloud-mappings
+        - container-mappings
+        - data_stream-mappings
+        - destination-mappings
+        - dtc-destination-mappings
+        - pb-override-destination-mappings
+        - dll-mappings
+        - dns-mappings
+        - dtc-dns-mappings
+        - ecs-mappings
+        - dtc-ecs-mappings
+        - error-mappings
+        - event-mappings
+        - dtc-event-mappings
+        - file-mappings
+        - dtc-file-mappings
+        - group-mappings
+        - host-mappings
+        - dtc-host-mappings
+        - http-mappings
+        - dtc-http-mappings
+        - log-mappings
+        - network-mappings
+        - dtc-network-mappings
+        - observer-mappings
+        - dtc-observer-mappings
+        - orchestrator-mappings
+        - organization-mappings
+        - package-mappings
+        - process-mappings
+        - dtc-process-mappings
+        - registry-mappings
+        - related-mappings
+        - rule-mappings
+        - dtc-rule-mappings
+        - server-mappings
+        - service-mappings
+        - dtc-service-mappings
+        - source-mappings
+        - dtc-source-mappings
+        - pb-override-source-mappings
+        - suricata-mappings
+        - threat-mappings
+        - tls-mappings
+        - tracing-mappings
+        - url-mappings
+        - user_agent-mappings
+        - dtc-user_agent-mappings
+        - vulnerability-mappings
+        - common-settings
+        - common-dynamic-mappings
+        data_stream: {}
+        index_patterns:
+        - logs-suricata.alerts-*
+        priority: 500
+        template:
+          mappings:
+            date_detection: false
+            dynamic_templates:
+            - strings_as_keyword:
+                mapping:
+                  ignore_above: 1024
+                  type: keyword
+                match_mapping_type: string
+          settings:
+            index:
+              lifecycle:
+                name: so-suricata.alerts-logs
               mapping:
                 total_fields:
                   limit: 5000

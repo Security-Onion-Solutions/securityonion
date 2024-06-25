@@ -18,4 +18,28 @@
 {%   endfor %}
 {% endif %}
 
+{# Only add Kafka firewall items when Kafka enabled #}
+{% set role = GLOBALS.role.split('-')[1] %}
+
+{% if GLOBALS.pipeline == 'KAFKA' and role in ['manager', 'managersearch', 'standalone'] %}
+{%   do FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups[role].portgroups.append('kafka_controller') %}
+{%   do FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups.receiver.portgroups.append('kafka_controller') %}
+{% endif %}
+
+{% if GLOBALS.pipeline == 'KAFKA' and role == 'receiver' %}
+{%   do FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups.self.portgroups.append('kafka_controller') %}
+{%   do FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups.standalone.portgroups.append('kafka_controller') %}
+{%   do FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups.manager.portgroups.append('kafka_controller') %}
+{%   do FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups.managersearch.portgroups.append('kafka_controller') %}
+{%   do FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups.receiver.portgroups.append('kafka_controller') %}
+{% endif %}
+
+{% if GLOBALS.pipeline == 'KAFKA' and role in ['manager', 'managersearch', 'standalone', 'receiver'] %}
+{%   for r in ['manager', 'managersearch', 'standalone', 'receiver', 'fleet', 'idh', 'sensor', 'searchnode','heavynode', 'elastic_agent_endpoint', 'desktop'] %}
+{%     if FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups[r] is defined %}
+{%       do FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups[r].portgroups.append('kafka_data') %}
+{%     endif %}
+{%   endfor %}
+{% endif %}
+
 {% set FIREWALL_MERGED = salt['pillar.get']('firewall', FIREWALL_DEFAULT.firewall, merge=True) %}

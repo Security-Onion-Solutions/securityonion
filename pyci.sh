@@ -15,12 +15,16 @@ TARGET_DIR=${1:-.}
 
 PATH=$PATH:/usr/local/bin
 
-if ! which pytest &> /dev/null || ! which flake8 &> /dev/null ; then
-    echo "Missing dependencies. Consider running the following command:"
-    echo "  python -m pip install flake8 pytest pytest-cov"
+if [ ! -d .venv ]; then
+    python -m venv .venv
+fi
+
+source .venv/bin/activate
+
+if ! pip install flake8 pytest pytest-cov pyyaml; then
+    echo "Unable to install dependencies."
     exit 1
 fi
 
-pip install pytest pytest-cov
 flake8 "$TARGET_DIR" "--config=${HOME_DIR}/pytest.ini"
 python3 -m pytest "--cov-config=${HOME_DIR}/pytest.ini" "--cov=$TARGET_DIR" --doctest-modules --cov-report=term --cov-fail-under=100  "$TARGET_DIR" 

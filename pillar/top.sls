@@ -61,6 +61,9 @@ base:
     - backup.adv_backup
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
+    - kafka.nodes
+    - kafka.soc_kafka
+    - kafka.adv_kafka
     - stig.soc_stig
 
   '*_sensor':
@@ -176,6 +179,9 @@ base:
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
     - stig.soc_stig
+    - kafka.nodes
+    - kafka.soc_kafka
+    - kafka.adv_kafka
 
   '*_heavynode':
     - elasticsearch.auth
@@ -220,6 +226,7 @@ base:
     - minions.adv_{{ grains.id }}
     - stig.soc_stig
     - soc.license
+    - kafka.nodes
 
   '*_receiver':
     - logstash.nodes
@@ -232,6 +239,10 @@ base:
     - redis.adv_redis
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
+    - kafka.nodes
+    - kafka.soc_kafka
+    - kafka.adv_kafka
+    - soc.license
 
   '*_import':
     - secrets

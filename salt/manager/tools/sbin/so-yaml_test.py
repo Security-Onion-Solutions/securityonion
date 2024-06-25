@@ -15,40 +15,40 @@ class TestRemove(unittest.TestCase):
 
     def test_main_missing_input(self):
         with patch('sys.exit', new=MagicMock()) as sysmock:
-            with patch('sys.stderr', new=StringIO()) as mock_stdout:
+            with patch('sys.stderr', new=StringIO()) as mock_stderr:
                 sys.argv = ["cmd"]
                 soyaml.main()
                 sysmock.assert_called_once_with(1)
-                self.assertIn(mock_stdout.getvalue(), "Usage:")
+                self.assertIn("Usage:", mock_stderr.getvalue())
 
     def test_main_help_locked(self):
         filename = "/tmp/so-yaml.lock"
         file = open(filename, "w")
         file.write = "fake lock file"
         with patch('sys.exit', new=MagicMock()) as sysmock:
-            with patch('sys.stderr', new=StringIO()) as mock_stdout:
+            with patch('sys.stderr', new=StringIO()) as mock_stderr:
                 with patch('time.sleep', new=MagicMock()) as mock_sleep:
                     sys.argv = ["cmd", "help"]
                     soyaml.main()
                     sysmock.assert_called()
                     mock_sleep.assert_called_with(2)
-                    self.assertIn(mock_stdout.getvalue(), "Usage:")
+                    self.assertIn("Usage:", mock_stderr.getvalue())
 
     def test_main_help(self):
         with patch('sys.exit', new=MagicMock()) as sysmock:
-            with patch('sys.stderr', new=StringIO()) as mock_stdout:
+            with patch('sys.stderr', new=StringIO()) as mock_stderr:
                 sys.argv = ["cmd", "help"]
                 soyaml.main()
                 sysmock.assert_called()
-                self.assertIn(mock_stdout.getvalue(), "Usage:")
+                self.assertIn("Usage:", mock_stderr.getvalue())
 
     def test_remove_missing_arg(self):
         with patch('sys.exit', new=MagicMock()) as sysmock:
-            with patch('sys.stderr', new=StringIO()) as mock_stdout:
+            with patch('sys.stderr', new=StringIO()) as mock_stderr:
                 sys.argv = ["cmd", "help"]
                 soyaml.remove(["file"])
                 sysmock.assert_called()
-                self.assertIn(mock_stdout.getvalue(), "Missing filename or key arg\n")
+                self.assertIn("Missing filename or key arg\n", mock_stderr.getvalue())
 
     def test_remove(self):
         filename = "/tmp/so-yaml_test-remove.yaml"
@@ -97,7 +97,7 @@ class TestRemove(unittest.TestCase):
 
     def test_remove_missing_args(self):
         with patch('sys.exit', new=MagicMock()) as sysmock:
-            with patch('sys.stderr', new=StringIO()) as mock_stdout:
+            with patch('sys.stderr', new=StringIO()) as mock_stderr:
                 filename = "/tmp/so-yaml_test-remove.yaml"
                 file = open(filename, "w")
                 file.write("{key1: { child1: 123, child2: abc }, key2: false}")
@@ -112,15 +112,15 @@ class TestRemove(unittest.TestCase):
                 expected = "{key1: { child1: 123, child2: abc }, key2: false}"
                 self.assertEqual(actual, expected)
                 sysmock.assert_called_once_with(1)
-                self.assertIn(mock_stdout.getvalue(), "Missing filename or key arg\n")
+                self.assertIn("Missing filename or key arg\n", mock_stderr.getvalue())
 
     def test_append_missing_arg(self):
         with patch('sys.exit', new=MagicMock()) as sysmock:
-            with patch('sys.stderr', new=StringIO()) as mock_stdout:
+            with patch('sys.stderr', new=StringIO()) as mock_stderr:
                 sys.argv = ["cmd", "help"]
                 soyaml.append(["file", "key"])
                 sysmock.assert_called()
-                self.assertIn(mock_stdout.getvalue(), "Missing filename, key arg, or list item to append\n")
+                self.assertIn("Missing filename, key arg, or list item to append\n", mock_stderr.getvalue())
 
     def test_append(self):
         filename = "/tmp/so-yaml_test-remove.yaml"
@@ -173,11 +173,11 @@ class TestRemove(unittest.TestCase):
         file.close()
 
         with patch('sys.exit', new=MagicMock()) as sysmock:
-            with patch('sys.stdout', new=StringIO()) as mock_stdout:
+            with patch('sys.stderr', new=StringIO()) as mock_stderr:
                 sys.argv = ["cmd", "append", filename, "key4", "h"]
                 soyaml.main()
                 sysmock.assert_called()
-                self.assertEqual(mock_stdout.getvalue(), "The key provided does not exist. No action was taken on the file.\n")
+                self.assertEqual("The key provided does not exist. No action was taken on the file.\n", mock_stderr.getvalue())
 
     def test_append_key_noexist_deep(self):
         filename = "/tmp/so-yaml_test-append.yaml"
@@ -186,11 +186,11 @@ class TestRemove(unittest.TestCase):
         file.close()
 
         with patch('sys.exit', new=MagicMock()) as sysmock:
-            with patch('sys.stdout', new=StringIO()) as mock_stdout:
+            with patch('sys.stderr', new=StringIO()) as mock_stderr:
                 sys.argv = ["cmd", "append", filename, "key1.child2.deep3", "h"]
                 soyaml.main()
                 sysmock.assert_called()
-                self.assertEqual(mock_stdout.getvalue(), "The key provided does not exist. No action was taken on the file.\n")
+                self.assertEqual("The key provided does not exist. No action was taken on the file.\n", mock_stderr.getvalue())
 
     def test_append_key_nonlist(self):
         filename = "/tmp/so-yaml_test-append.yaml"
@@ -199,11 +199,11 @@ class TestRemove(unittest.TestCase):
         file.close()
 
         with patch('sys.exit', new=MagicMock()) as sysmock:
-            with patch('sys.stdout', new=StringIO()) as mock_stdout:
+            with patch('sys.stderr', new=StringIO()) as mock_stderr:
                 sys.argv = ["cmd", "append", filename, "key1", "h"]
                 soyaml.main()
                 sysmock.assert_called()
-                self.assertEqual(mock_stdout.getvalue(), "The existing value for the given key is not a list. No action was taken on the file.\n")
+                self.assertEqual("The existing value for the given key is not a list. No action was taken on the file.\n", mock_stderr.getvalue())
 
     def test_append_key_nonlist_deep(self):
         filename = "/tmp/so-yaml_test-append.yaml"
@@ -212,11 +212,11 @@ class TestRemove(unittest.TestCase):
         file.close()
 
         with patch('sys.exit', new=MagicMock()) as sysmock:
-            with patch('sys.stdout', new=StringIO()) as mock_stdout:
+            with patch('sys.stderr', new=StringIO()) as mock_stderr:
                 sys.argv = ["cmd", "append", filename, "key1.child2.deep1", "h"]
                 soyaml.main()
                 sysmock.assert_called()
-                self.assertEqual(mock_stdout.getvalue(), "The existing value for the given key is not a list. No action was taken on the file.\n")
+                self.assertEqual("The existing value for the given key is not a list. No action was taken on the file.\n", mock_stderr.getvalue())
 
     def test_add_key(self):
         content = {}
@@ -244,11 +244,11 @@ class TestRemove(unittest.TestCase):
 
     def test_add_missing_arg(self):
         with patch('sys.exit', new=MagicMock()) as sysmock:
-            with patch('sys.stderr', new=StringIO()) as mock_stdout:
+            with patch('sys.stderr', new=StringIO()) as mock_stderr:
                 sys.argv = ["cmd", "help"]
                 soyaml.add(["file", "key"])
                 sysmock.assert_called()
-                self.assertIn(mock_stdout.getvalue(), "Missing filename, key arg, and/or value\n")
+                self.assertIn("Missing filename, key arg, and/or value\n", mock_stderr.getvalue())
 
     def test_add(self):
         filename = "/tmp/so-yaml_test-add.yaml"
@@ -296,11 +296,11 @@ class TestRemove(unittest.TestCase):
 
     def test_replace_missing_arg(self):
         with patch('sys.exit', new=MagicMock()) as sysmock:
-            with patch('sys.stderr', new=StringIO()) as mock_stdout:
+            with patch('sys.stderr', new=StringIO()) as mock_stderr:
                 sys.argv = ["cmd", "help"]
                 soyaml.replace(["file", "key"])
                 sysmock.assert_called()
-                self.assertIn(mock_stdout.getvalue(), "Missing filename, key arg, and/or value\n")
+                self.assertIn("Missing filename, key arg, and/or value\n", mock_stderr.getvalue())
 
     def test_replace(self):
         filename = "/tmp/so-yaml_test-add.yaml"
@@ -360,3 +360,77 @@ class TestRemove(unittest.TestCase):
         self.assertEqual(soyaml.convertType("false"), False)
         self.assertEqual(soyaml.convertType("FALSE"), False)
         self.assertEqual(soyaml.convertType(""), "")
+
+    def test_get_int(self):
+        with patch('sys.stdout', new=StringIO()) as mock_stdout:
+            filename = "/tmp/so-yaml_test-get.yaml"
+            file = open(filename, "w")
+            file.write("{key1: { child1: 123, child2: { deep1: 45 } }, key2: false, key3: [e,f,g]}")
+            file.close()
+
+            result = soyaml.get([filename, "key1.child2.deep1"])
+            self.assertEqual(result, 0)
+            self.assertIn("45\n...", mock_stdout.getvalue())
+
+    def test_get_str(self):
+        with patch('sys.stdout', new=StringIO()) as mock_stdout:
+            filename = "/tmp/so-yaml_test-get.yaml"
+            file = open(filename, "w")
+            file.write("{key1: { child1: 123, child2: { deep1: \"hello\" } }, key2: false, key3: [e,f,g]}")
+            file.close()
+
+            result = soyaml.get([filename, "key1.child2.deep1"])
+            self.assertEqual(result, 0)
+            self.assertIn("hello\n...", mock_stdout.getvalue())
+
+    def test_get_list(self):
+        with patch('sys.stdout', new=StringIO()) as mock_stdout:
+            filename = "/tmp/so-yaml_test-get.yaml"
+            file = open(filename, "w")
+            file.write("{key1: { child1: 123, child2: { deep1: \"hello\" } }, key2: false, key3: [e,f,g]}")
+            file.close()
+
+            result = soyaml.get([filename, "key3"])
+            self.assertEqual(result, 0)
+            self.assertIn("- e\n- f\n- g\n", mock_stdout.getvalue())
+
+    def test_get_dict(self):
+        with patch('sys.stdout', new=StringIO()) as mock_stdout:
+            filename = "/tmp/so-yaml_test-get.yaml"
+            file = open(filename, "w")
+            file.write("{key1: { child1: 123, child2: { deep1: \"hello\" } }, key2: false, key3: [e,f,g]}")
+            file.close()
+
+            result = soyaml.get([filename, "key1"])
+            self.assertEqual(result, 0)
+            self.assertIn("child1: 123\nchild2:\n  deep1: hello\n", mock_stdout.getvalue())
+
+    def test_get_missing(self):
+        with patch('sys.stdout', new=StringIO()) as mock_stdout:
+            filename = "/tmp/so-yaml_test-get.yaml"
+            file = open(filename, "w")
+            file.write("{key1: { child1: 123, child2: { deep1: 45 } }, key2: false, key3: [e,f,g]}")
+            file.close()
+
+            result = soyaml.get([filename, "key1.child2.deep3"])
+            self.assertEqual(result, 2)
+            self.assertEqual("", mock_stdout.getvalue())
+
+    def test_get_missing_parent(self):
+        with patch('sys.stdout', new=StringIO()) as mock_stdout:
+            filename = "/tmp/so-yaml_test-get.yaml"
+            file = open(filename, "w")
+            file.write("{key1: { child1: 123, child2: { deep1: 45 } }, key2: false, key3: [e,f,g]}")
+            file.close()
+
+            result = soyaml.get([filename, "key1.child3.deep3"])
+            self.assertEqual(result, 2)
+            self.assertEqual("", mock_stdout.getvalue())
+
+    def test_get_usage(self):
+        with patch('sys.exit', new=MagicMock()) as sysmock:
+            with patch('sys.stderr', new=StringIO()) as mock_stderr:
+                result = soyaml.get([])
+                self.assertEqual(result, 1)
+                self.assertIn("Missing filename or key arg", mock_stderr.getvalue())
+                sysmock.assert_called_once_with(1)

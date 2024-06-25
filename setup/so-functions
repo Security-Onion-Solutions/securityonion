@@ -788,6 +788,7 @@ create_manager_pillars() {
 	patch_pillar
 	nginx_pillar
 	kibana_pillar
+	kafka_pillar
 }
 
 create_repo() {
@@ -1176,6 +1177,18 @@ kibana_pillar() {
 	logCmd "touch $kibana_pillar_file"
 }
 
+kafka_pillar() {
+	KAFKACLUSTERID=$(get_random_value 22)
+	KAFKAPASS=$(get_random_value)
+	logCmd "mkdir -p $local_salt_dir/pillar/kafka"
+	logCmd "touch $adv_kafka_pillar_file"
+	logCmd "touch $kafka_pillar_file"
+	printf '%s\n'\
+		"kafka:"\
+		"  cluster_id: $KAFKACLUSTERID"\
+		"  password: $KAFKAPASS" > $kafka_pillar_file
+}
+
 logrotate_pillar() {
 	logCmd "mkdir -p $local_salt_dir/pillar/logrotate"
 	logCmd "touch $adv_logrotate_pillar_file"
@@ -1332,7 +1345,6 @@ create_global() {
 
 	# Continue adding other details	
 	echo "  imagerepo: '$IMAGEREPO'" >> $global_pillar_file
-	echo "  pipeline: 'redis'" >> $global_pillar_file
 	echo "  repo_host: '$HOSTNAME'" >> $global_pillar_file
 	echo "  influxdb_host: '$HOSTNAME'" >> $global_pillar_file
 	echo "  registry_host: '$HOSTNAME'" >> $global_pillar_file
@@ -1402,7 +1414,7 @@ make_some_dirs() {
 	mkdir -p $local_salt_dir/salt/firewall/portgroups
 	mkdir -p $local_salt_dir/salt/firewall/ports
 
-	for THEDIR in bpf pcap elasticsearch ntp firewall redis backup influxdb strelka sensoroni soc docker zeek suricata nginx telegraf logstash soc manager kratos idstools idh elastalert stig global;do
+	for THEDIR in bpf pcap elasticsearch ntp firewall redis backup influxdb strelka sensoroni soc docker zeek suricata nginx telegraf logstash soc manager kratos idstools idh elastalert stig global kafka;do
 	mkdir -p $local_salt_dir/pillar/$THEDIR
 	touch $local_salt_dir/pillar/$THEDIR/adv_$THEDIR.sls
 	touch $local_salt_dir/pillar/$THEDIR/soc_$THEDIR.sls

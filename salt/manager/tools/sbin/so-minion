@@ -112,8 +112,8 @@ function testMinion() {
 	result=$?
 
 	# If this so-minion script is not running on the given minion ID, run so-test remotely on the sensor as well
-	local_id=$(lookup_grain id)
-	if [[ ! "$local_id" =~ "${MINION_ID}_" ]]; then
+	local_id=$(lookup_grain id)	
+	if [[ ! "$local_id" =~ "${MINION_ID}_" && "$local_id" != "${MINION_ID}" ]]; then
 		salt "$MINION_ID" cmd.run 'so-test'
 		result=$?
 	fi
@@ -603,6 +603,10 @@ function updateMineAndApplyStates() {
 	# if this is a searchnode or heavynode, start downloading logstash and elasticsearch containers while the manager prepares for the new node
 	if [[ "$NODETYPE" == "SEARCHNODE" || "$NODETYPE" == "HEAVYNODE" ]]; then
 		salt-run state.orch orch.container_download pillar="{'setup': {'newnode': $MINION_ID }}" > /dev/null 2>&1 &
+	fi
+	if [[ "$NODETYPE" == "RECEIVER" ]]; then
+		# Setup nodeid for Kafka
+		salt-call state.apply kafka.nodes queue=True
 	fi
 	# $MINIONID is the minion id of the manager and $MINION_ID is the target node or the node being configured
 	salt-run state.orch orch.deploy_newnode pillar="{'setup': {'manager': $MINIONID, 'newnode': $MINION_ID }}" > /dev/null 2>&1 &

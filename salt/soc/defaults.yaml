@@ -72,6 +72,18 @@ soc:
         target: ''
         links:
           - '/#/hunt?q=(process.entity_id:"{:process.entity_id}") | groupby event.dataset | groupby -sankey event.dataset event.action | groupby event.action | groupby process.name | groupby process.command_line | groupby host.name user.name | groupby source.ip source.port destination.ip destination.port | groupby dns.question.name | groupby dns.answers.data | groupby file.path | groupby registry.path | groupby dll.path'
+      - name: actionProcessChildInfo
+        description: actionProcessChildInfoHelp
+        icon: fa-users-line
+        target: ''
+        links:
+          - '/#/hunt?q=(process.entity_id:"{:process.entity_id}" OR process.parent.entity_id:"{:process.entity_id}") | groupby event.dataset | groupby -sankey event.dataset event.action | groupby event.action | groupby process.name | groupby process.command_line | groupby host.name user.name | groupby source.ip source.port destination.ip destination.port | groupby dns.question.name | groupby dns.answers.data | groupby file.path | groupby registry.path | groupby dll.path'
+      - name: actionProcessAllInfo
+        description: actionProcessAllInfoHelp
+        icon: fa-users-between-lines
+        target: ''
+        links:
+          - '/#/hunt?q=({:process.entity_id}) | groupby event.dataset | groupby -sankey event.dataset event.action | groupby event.action | groupby process.name | groupby process.command_line | groupby host.name user.name | groupby source.ip source.port destination.ip destination.port | groupby dns.question.name | groupby dns.answers.data | groupby file.path | groupby registry.path | groupby dll.path'
       - name: actionProcessAncestors
         description: actionProcessAncestorsHelp
         icon: fa-people-roof
@@ -1314,7 +1326,7 @@ soc:
           reposFolder: /opt/sensoroni/sigma/repos
           rulesFingerprintFile: /opt/sensoroni/fingerprints/sigma.fingerprint
           stateFilePath: /opt/sensoroni/fingerprints/elastalertengine.state
-          integrityCheckFrequencySeconds: 600
+          integrityCheckFrequencySeconds: 1200
           rulesRepos:
             default:
               - repo: https://github.com/Security-Onion-Solutions/securityonion-resources
@@ -1393,18 +1405,19 @@ soc:
                 community: true
           yaraRulesFolder: /opt/sensoroni/yara/rules
           stateFilePath: /opt/sensoroni/fingerprints/strelkaengine.state
-          integrityCheckFrequencySeconds: 600
+          integrityCheckFrequencySeconds: 1200
         suricataengine:
           allowRegex: ''
           autoUpdateEnabled: true
           communityRulesImportFrequencySeconds: 86400
           communityRulesImportErrorSeconds: 300
+          customRulesets:
           failAfterConsecutiveErrorCount: 10
           communityRulesFile: /nsm/rules/suricata/emerging-all.rules
           denyRegex: ''
           rulesFingerprintFile: /opt/sensoroni/fingerprints/emerging-all.fingerprint
           stateFilePath: /opt/sensoroni/fingerprints/suricataengine.state
-          integrityCheckFrequencySeconds: 600
+          integrityCheckFrequencySeconds: 1200
       client:
         enableReverseLookup: false
         docsUrl: /docs/
@@ -2250,6 +2263,78 @@ soc:
                   - suricata
                   - sigma
                   - yara
+            license:
+                customEnabled: true
+                labels:
+                  - None
+                  - Apache-2.0
+                  - AGPL-3.0-only
+                  - BSD-3-Clause
+                  - DRL-1.1
+                  - GPL-2.0-only
+                  - GPL-3.0-only
+                  - MIT
           severityTranslations:
             minor: low
             major: high
+          templateDetections:
+            suricata: |
+              # This is a Suricata rule template. Replace all template values with your own values.
+              # The rule identifier [sid] is pregenerated and known to be unique for this Security Onion installation.
+              # Docs: https://docs.suricata.io/en/latest/rules/intro.html
+              # Delete these comments before attempting to "Create" the rule
+
+              alert http $EXTERNAL_NET any -> $HOME_NET any (msg:"Example Rule Title - 'example' String Detected"; content:"example"; sid:[publicId]; rev:1;)
+            strelka: |
+              /* 
+              This is a YARA rule template. Replace all template values with your own values.
+              The YARA rule name is the unique identifier for the rule.
+              Docs: https://yara.readthedocs.io/en/stable/writingrules.html#writing-yara-rules
+              */ 
+
+              rule Example // This identifier _must_ be unique
+              {
+                  meta: 
+                      description = "Generic YARA Rule"
+                      author = "@SecurityOnion"
+                      date = "YYYY-MM-DD"
+                      reference = "https://local.invalid"
+                  strings:
+                      $my_text_string = "text here"
+                      $my_hex_string = { E2 34 A1 C8 23 FB }
+                  condition:
+                      filesize < 3MB and ($my_text_string or $my_hex_string)
+              }
+            elastalert: |
+              # This is a Sigma rule template, which uses YAML. Replace all template values with your own values.
+              # The id (UUIDv4) is pregenerated and can safely be used.
+              # Click "Convert" to convert the Sigma rule to use Security Onion field mappings within an EQL query
+              #
+              # Rule Creation Guide: https://github.com/SigmaHQ/sigma/wiki/Rule-Creation-Guide
+              # Logsources: https://sigmahq.io/docs/basics/log-sources.html
+
+              title: 'A Short Capitalized Title With Less Than 50 Characters'
+              id: [publicId]
+              status: 'experimental'
+              description: |
+                  This should be a detailed description of what this Detection focuses on: what we are trying to find and why we are trying to find it. 
+                  For example, from rule 97a80ec7-0e2f-4d05-9ef4-65760e634f6b: "Detects a whoami.exe executed with the /priv command line flag instructing the tool to show all current user privileges. This is often used after a privilege escalation attempt."
+              references:
+                - 'https://local.invalid'
+              author: '@SecurityOnion'
+              date: 'YYYY/MM/DD'
+              tags:
+                - detection.threat_hunting
+                - attack.technique_id
+              logsource: 
+                category: process_creation
+                product: windows
+              detection:
+                  selection_img:
+                      - Image|endswith: '\whoami.exe'
+                      - OriginalFileName: 'whoami.exe'
+                  selection_cli:
+                      CommandLine|contains|windash:
+                          - ' -priv'
+                  condition: all of selection_*
+              level: 'high'  # info | low | medium | high | critical
