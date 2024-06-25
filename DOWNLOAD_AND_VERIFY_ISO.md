@@ -1,4 +1,4 @@
-### 2.4.80-20240624 ISO image released on 2024/06/24
+### 2.4.80-20240624 ISO image released on 2024/06/25
 
 
 ### Download and Verify
