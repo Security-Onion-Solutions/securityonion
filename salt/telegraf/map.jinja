@@ -22,3 +22,10 @@
 {%   endif %}
 
 {% endif %}
+
+{% if GLOBALS.pipeline != 'REDIS' %}
+{# When global pipeline is not REDIS remove redis.sh script. KAFKA metrics are collected via jolokia agent. Config in telegraf.conf #}
+{%   if GLOBALS.role in ['so-standalone', 'so-manager', 'so-managersearch', 'so-receiver', 'so-heavynode'] %}
+{%     do TELEGRAFMERGED.scripts[GLOBALS.role.split('-')[1]].remove('redis.sh') %}
+{%   endif %}
+{% endif %}

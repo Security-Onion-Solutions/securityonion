@@ -13,6 +13,9 @@ include:
   - systemd.reload
   - repo.client
   - salt.mine_functions
+{% if GLOBALS.role in GLOBALS.manager_roles %}
+  - ca
+{% endif %}
 
 {% if INSTALLEDSALTVERSION|string != SALTVERSION|string %}
 
@@ -98,5 +101,8 @@ salt_minion_service:
       - file: mine_functions
 {% if INSTALLEDSALTVERSION|string == SALTVERSION|string %}
       - file: set_log_levels
+{% endif %}
+{% if GLOBALS.role in GLOBALS.manager_roles %}
+      - file: /etc/salt/minion.d/signing_policies.conf
 {% endif %}
     - order: last

@@ -603,6 +603,10 @@ function updateMineAndApplyStates() {
 	if [[ "$NODETYPE" == "SEARCHNODE" || "$NODETYPE" == "HEAVYNODE" ]]; then
 		salt-run state.orch orch.container_download pillar="{'setup': {'newnode': $MINION_ID }}" > /dev/null 2>&1 &
 	fi
+	if [[ "$NODETYPE" == "RECEIVER" ]]; then
+		# Setup nodeid for Kafka
+		salt-call state.apply kafka.nodes queue=True
+	fi
 	# $MINIONID is the minion id of the manager and $MINION_ID is the target node or the node being configured
 	salt-run state.orch orch.deploy_newnode pillar="{'setup': {'manager': $MINIONID, 'newnode': $MINION_ID }}" > /dev/null 2>&1 &
 }
