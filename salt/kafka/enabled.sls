@@ -49,7 +49,7 @@ so-kafka:
       {% endfor %}
     - binds:
       - /etc/pki/kafka.p12:/etc/pki/kafka.p12:ro
-      - /etc/pki/kafkaca:/etc/pki/kafkaca:ro
+      - /opt/so/conf/kafka/kafkaca:/etc/pki/kafkaca:ro
       - /nsm/kafka/data/:/nsm/kafka/data/:rw
       - /opt/so/log/kafka:/opt/kafka/logs/:rw
       - /opt/so/conf/kafka/server.properties:/opt/kafka/config/kraft/server.properties:ro
