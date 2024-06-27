@@ -1,0 +1,159 @@
+{
+  "processors": [
+    {
+      "json": {
+        "field": "message",
+        "target_field": "message2"
+      }
+    },
+    {
+      "date": {
+        "field": "message2.kismet_device_base_mod_time",
+        "formats": [
+          "epoch_second"
+        ],
+        "target_field": "@timestamp"
+      }
+    },
+    {
+      "set": {
+        "field": "event.category",
+        "value": "network"
+      }
+    },
+    {
+      "dissect": {
+        "field": "message2.kismet_device_base_type",
+        "pattern": "%{wifi} %{device_type}"
+      }
+    },
+    {
+      "lowercase": {
+        "field": "device_type"
+      }
+    },
+    {
+      "set": {
+        "field": "event.dataset",
+        "value": "kismet.{{device_type}}"
+      }
+    },
+    {
+      "set": {
+        "field": "event.dataset",
+        "value": "kismet.wds_ap",
+        "if": "ctx?.device_type == 'wds ap'"
+      }
+    },
+    {
+      "set": {
+        "field": "event.dataset",
+        "value": "kismet.ad_hoc",
+        "if": "ctx?.device_type == 'ad-hoc'"
+      }
+    },
+    {
+      "set": {
+        "field": "event.module",
+        "value": "kismet"
+      }
+    },
+    {
+      "rename": {
+        "field": "message2.kismet_device_base_packets_tx_total",
+        "target_field": "source.packets"
+      }
+    },
+    {
+      "rename": {
+        "field": "message2.kismet_device_base_num_alerts",
+        "target_field": "kismet.alerts.count"
+      }
+    },
+    {
+      "rename": {
+        "field": "message2.kismet_device_base_channel",
+        "target_field": "network.wireless.channel",
+        "if": "ctx?.message2?.kismet_device_base_channel != ''"
+      }
+    },
+    {
+      "rename": {
+        "field": "message2.kismet_device_base_frequency",
+        "target_field": "network.wireless.frequency",
+        "if": "ctx?.message2?.kismet_device_base_frequency != 0"
+      }
+    },
+    {
+      "rename": {
+        "field": "message2.kismet_device_base_last_time",
+        "target_field": "kismet.last_seen"
+      }
+    },
+    {
+      "date": {
+        "field": "kismet.last_seen",
+        "formats": [
+          "epoch_second"
+        ],
+        "target_field": "kismet.last_seen"
+      }
+    },
+    {
+      "rename": {
+        "field": "message2.kismet_device_base_first_time",
+        "target_field": "kismet.first_seen"
+      }
+    },
+    {
+      "date": {
+        "field": "kismet.first_seen",
+        "formats": [
+          "epoch_second"
+        ],
+        "target_field": "kismet.first_seen"
+      }
+    },
+    {
+      "rename": {
+        "field": "message2.kismet_device_base_seenby",
+        "target_field": "kismet.seenby"
+      }
+    },
+    {
+      "foreach": {
+        "field": "kismet.seenby",
+        "processor": {
+          "pipeline": {
+            "name": "kismet.seenby"
+          }
+        }
+      }
+    },
+    {
+      "rename": {
+        "field": "message2.kismet_device_base_manuf",
+        "target_field": "device.manufacturer"
+      }
+    },
+    {
+      "pipeline": {
+        "name": "{{event.dataset}}"
+      }
+    },
+    {
+      "remove": {
+        "field": [
+          "message2",
+          "message",
+          "device_type",
+          "wifi",
+          "agent",
+          "host",
+          "event.created"
+        ],
+        "ignore_failure": true
+      }
+    }
+  ]
+}

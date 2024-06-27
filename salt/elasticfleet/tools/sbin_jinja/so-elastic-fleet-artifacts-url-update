@@ -1,0 +1,90 @@
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0; you may not use
+# this file except in compliance with the Elastic License 2.0.
+{% from 'vars/globals.map.jinja' import GLOBALS %}
+
+. /usr/sbin/so-common
+
+# Only run on Managers
+if ! is_manager_node; then
+    printf "Not a Manager Node... Exiting"
+    exit 0
+fi
+
+# Function to check if an array contains a value
+array_contains () { 
+    local array="$1[@]"
+    local seeking=$2
+    local in=1
+    for element in "${!array}"; do
+        if [[ $element == "$seeking" ]]; then
+            in=0
+            break
+        fi
+    done
+    return $in
+}
+
+# Query for the current Grid Nodes that are running Logstash (which includes Fleet Nodes)
+LOGSTASHNODES='{{ salt['pillar.get']('logstash:nodes', {}) | tojson }}'
+
+# Initialize an array for new hosts from Fleet Nodes
+declare -a NEW_LIST=()
+
+# Query for Fleet Nodes & add them to the list (Hostname)
+if grep -q "fleet" <<< "$LOGSTASHNODES"; then
+    readarray -t FLEETNODES < <(jq -r '.fleet | keys_unsorted[]' <<< "$LOGSTASHNODES")
+    for NODE in "${FLEETNODES[@]}"; do
+        URL="http://$NODE:8443/artifacts/"
+        NAME="FleetServer_$NODE"
+        NEW_LIST+=("$URL=$NAME")
+    done
+fi
+
+# Create an array for expected hosts and their names
+declare -A expected_urls=(
+    ["http://{{ GLOBALS.url_base }}:8443/artifacts/"]="FleetServer_{{ GLOBALS.hostname }}"
+    ["https://artifacts.elastic.co/downloads/"]="Elastic Artifacts"
+)
+
+# Merge NEW_LIST into expected_urls
+for entry in "${NEW_LIST[@]}"; do
+    # Extract URL and Name from each entry
+    IFS='=' read -r URL NAME <<< "$entry"
+    # Add to expected_urls, automatically handling URL as key and NAME as value
+    expected_urls["$URL"]="$NAME"
+done
+
+# Fetch the current hosts from the API
+current_urls=$(curl -K /opt/so/conf/elasticsearch/curl.config 'http://localhost:5601/api/fleet/agent_download_sources' | jq -r .items[].host)
+
+# Convert current hosts to an array
+IFS=$'\n' read -rd '' -a current_urls_array <<<"$current_urls"
+
+# Flag to track if any host was added
+any_url_added=0
+
+# Check each expected host
+for host in "${!expected_urls[@]}"; do
+    array_contains current_urls_array "$host" || {
+        echo "$host (${expected_urls[$host]}) is missing. Adding it..."
+        
+        # Prepare the JSON payload
+        JSON_STRING=$( jq -n \
+                        --arg NAME "${expected_urls[$host]}" \
+                        --arg URL "$host" \
+                        '{"name":$NAME,"host":$URL}' )
+        
+        # Create the missing host
+        curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/agent_download_sources" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
+        
+        # Flag that an artifact URL was added
+        any_url_added=1
+    }
+
+done
+
+
+if [[ $any_url_added -eq 0 ]]; then
+    echo "All expected artifact URLs are present. No updates needed."
+fi

@@ -84,10 +84,12 @@ suridatadir:
     - mode: 770
     - makedirs: True
 
+# salt:// would resolve to /opt/so/rules/nids because of the defined file_roots and
+#  not existing under /opt/so/saltstack/local/salt or /opt/so/saltstack/default/salt
 surirulesync:
   file.recurse:
     - name: /opt/so/conf/suricata/rules/
-    - source: salt://suricata/rules/
+    - source: salt://suri/
     - user: 940
     - group: 940
     - show_changes: False
@@ -126,6 +128,13 @@ surithresholding:
     - user: 940
     - group: 940
     - template: jinja
+
+suriclassifications:
+  file.managed:
+    - name: /opt/so/conf/suricata/classification.config
+    - source: salt://suricata/classification/classification.config
+    - user: 940
+    - group: 940
 
 # BPF compilation and configuration
 {% if SURICATABPF %}

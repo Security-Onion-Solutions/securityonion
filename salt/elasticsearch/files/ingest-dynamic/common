@@ -57,10 +57,11 @@
     { "convert":         { "field": "log.id.uid", "type": "string",  "ignore_failure": true,  "ignore_missing": true  } },
     { "convert":         { "field": "agent.id", "type": "string",  "ignore_failure": true,  "ignore_missing": true  } },
     { "convert":         { "field": "event.severity", "type": "integer",  "ignore_failure": true,  "ignore_missing": true  } },
-    { "set":             { "field": "event.dataset", "ignore_empty_value":true, "copy_from": "event.dataset_temp"   }},
+    { "set":             { "field": "event.dataset", "ignore_empty_value":true, "copy_from": "event.dataset_temp"   } },
     { "set":             { "if": "ctx.event?.dataset != null && !ctx.event.dataset.contains('.')", "field": "event.dataset", "value": "{{event.module}}.{{event.dataset}}" } },
-    { "split":      { "if": "ctx.event?.dataset != null && ctx.event.dataset.contains('.')", "field": "event.dataset", "separator": "\\.", "target_field": "dataset_tag_temp" } },
-    { "append":        { "if": "ctx.dataset_tag_temp != null", "field": "tags", "value": "{{dataset_tag_temp.1}}"  }},
+    { "split":           { "if": "ctx.event?.dataset != null && ctx.event.dataset.contains('.')", "field": "event.dataset", "separator": "\\.", "target_field": "dataset_tag_temp" } },
+    { "append":          { "if": "ctx.dataset_tag_temp != null", "field": "tags", "value": "{{dataset_tag_temp.1}}"  } },
+    { "grok":            { "if": "ctx.http?.response?.status_code != null", "field": "http.response.status_code", "patterns": ["%{NUMBER:http.response.status_code:long} %{GREEDYDATA}"]} },
     { "remove":          { "field": [ "message2", "type", "fields", "category", "module", "dataset", "dataset_tag_temp", "event.dataset_temp" ], "ignore_missing": true, "ignore_failure": true } }
 {%- endraw %}
 {%- if HIGHLANDER %}

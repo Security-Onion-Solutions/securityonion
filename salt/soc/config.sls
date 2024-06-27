@@ -9,9 +9,23 @@
 include:
   - manager.sync_es_users
 
+sigmarepodir:
+  file.directory:
+    - name: /opt/so/conf/sigma/repos
+    - user: 939
+    - group: 939
+    - makedirs: True
+
+socdirelastaertrules:
+  file.directory:
+    - name: /opt/so/rules/elastalert/rules
+    - user: 939
+    - group: 939
+    - makedirs: True
+
 socdir:
   file.directory:
-    - name: /opt/so/conf/soc
+    - name: /opt/so/conf/soc/fingerprints
     - user: 939
     - group: 939
     - makedirs: True
@@ -38,6 +52,15 @@ socsaltdir:
     - mode: 770
     - makedirs: True
 
+socanalytics:
+  file.managed:
+    - name: /opt/so/conf/soc/analytics.js
+    - source: salt://soc/files/soc/analytics.js
+    - user: 939
+    - group: 939
+    - mode: 600
+    - show_changes: False
+
 socconfig:
   file.managed:
     - name: /opt/so/conf/soc/soc.json
@@ -56,6 +79,52 @@ socmotd:
     - group: 939
     - mode: 600
     - template: jinja
+
+filedetectionsbackup:
+  file.managed:
+    - name: /opt/so/conf/soc/so-detections-backup.py
+    - source: salt://soc/files/soc/so-detections-backup.py
+    - user: 939
+    - group: 939
+    - mode: 600
+
+crondetectionsruntime:
+  cron.present:
+    - name: /usr/sbin/so-detections-runtime-status cron 
+    - identifier: detections-runtime-status
+    - user: root
+    - minute: '*/10'
+    - hour: '*'
+    - daymonth: '*'
+    - month: '*'
+    - dayweek: '*'
+
+crondetectionsbackup:
+  cron.present:
+    - name: python3 /opt/so/conf/soc/so-detections-backup.py &>> /opt/so/log/soc/detections-backup.log
+    - identifier: detections-backup
+    - user: root
+    - minute: '0'
+    - hour: '0'
+    - daymonth: '*'
+    - month: '*'
+    - dayweek: '*'
+
+socsigmafinalpipeline:
+  file.managed:
+    - name: /opt/so/conf/soc/sigma_final_pipeline.yaml
+    - source: salt://soc/files/soc/sigma_final_pipeline.yaml
+    - user: 939
+    - group: 939
+    - mode: 600
+
+socsigmasopipeline:
+  file.managed:
+    - name: /opt/so/conf/soc/sigma_so_pipeline.yaml
+    - source: salt://soc/files/soc/sigma_so_pipeline.yaml
+    - user: 939
+    - group: 939
+    - mode: 600
 
 socbanner:
   file.managed:
@@ -113,6 +182,13 @@ socuploaddir:
     - user: 939
     - group: 939
     - makedirs: True
+
+socsigmarepo:
+  file.directory:
+    - name: /opt/so/rules
+    - user: 939
+    - group: 939
+    - mode: 775
 
 {% else %}
 

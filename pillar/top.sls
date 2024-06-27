@@ -43,8 +43,6 @@ base:
     - soc.soc_soc
     - soc.adv_soc
     - soc.license
-    - soctopus.soc_soctopus
-    - soctopus.adv_soctopus
     - kibana.soc_kibana
     - kibana.adv_kibana
     - kratos.soc_kratos
@@ -61,10 +59,11 @@ base:
     - elastalert.adv_elastalert
     - backup.soc_backup
     - backup.adv_backup
-    - soctopus.soc_soctopus
-    - soctopus.adv_soctopus
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
+    - kafka.nodes
+    - kafka.soc_kafka
+    - kafka.adv_kafka
     - stig.soc_stig
 
   '*_sensor':
@@ -108,8 +107,6 @@ base:
     - soc.soc_soc
     - soc.adv_soc
     - soc.license
-    - soctopus.soc_soctopus
-    - soctopus.adv_soctopus
     - kibana.soc_kibana
     - kibana.adv_kibana
     - strelka.soc_strelka
@@ -165,8 +162,6 @@ base:
     - soc.soc_soc
     - soc.adv_soc
     - soc.license
-    - soctopus.soc_soctopus
-    - soctopus.adv_soctopus
     - kibana.soc_kibana
     - kibana.adv_kibana
     - strelka.soc_strelka
@@ -184,6 +179,9 @@ base:
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
     - stig.soc_stig
+    - kafka.nodes
+    - kafka.soc_kafka
+    - kafka.adv_kafka
 
   '*_heavynode':
     - elasticsearch.auth
@@ -228,6 +226,7 @@ base:
     - minions.adv_{{ grains.id }}
     - stig.soc_stig
     - soc.license
+    - kafka.nodes
 
   '*_receiver':
     - logstash.nodes
@@ -240,6 +239,10 @@ base:
     - redis.adv_redis
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
+    - kafka.nodes
+    - kafka.soc_kafka
+    - kafka.adv_kafka
+    - soc.license
 
   '*_import':
     - secrets
@@ -262,8 +265,6 @@ base:
     - soc.soc_soc
     - soc.adv_soc
     - soc.license
-    - soctopus.soc_soctopus
-    - soctopus.adv_soctopus
     - kibana.soc_kibana
     - kibana.adv_kibana
     - backup.soc_backup

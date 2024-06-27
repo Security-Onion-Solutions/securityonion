@@ -77,6 +77,11 @@ curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fl
 printf "\n\n"
 {%- endif %}
 
+printf "\nCreate Kafka Output Config if node is not an Import or Eval install\n"
+{% if grains.role not in ['so-import', 'so-eval'] %}
+/usr/sbin/so-kafka-fleet-output-policy
+{% endif %}
+
 # Add Manager Hostname & URL Base to Fleet Host URLs
 printf "\nAdd SO-Manager Fleet URL\n"
 if [ "{{ GLOBALS.hostname }}" = "{{ GLOBALS.url_base }}" ]; then

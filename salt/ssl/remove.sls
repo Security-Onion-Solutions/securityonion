@@ -2,6 +2,10 @@ trusttheca:
   file.absent:
     - name: /etc/pki/tls/certs/intca.crt
 
+symlinkca:
+  file.absent:
+    - name: /etc/ssl/certs/intca.crt
+
 influxdb_key:
   file.absent:
     - name: /etc/pki/influxdb.key
@@ -67,3 +71,20 @@ fleet_crt:
 fbcertdir:
   file.absent:
     - name: /opt/so/conf/filebeat/etc/pki
+
+kafka_crt:
+  file.absent:
+    - name: /etc/pki/kafka.crt
+kafka_key:
+  file.absent:
+    - name: /etc/pki/kafka.key
+
+kafka_logstash_crt:
+  file.absent:
+    - name: /etc/pki/kafka-logstash.crt
+kafka_logstash_key:
+  file.absent:
+    - name: /etc/pki/kafka-logstash.key
+kafka_logstash_keystore:
+  file.absent:
+    - name: /etc/pki/kafka-logstash.p12

@@ -67,7 +67,6 @@ base:
     - idstools
     - suricata.manager
     - healthcheck
-    - mysql
     - elasticsearch
     - elastic-fleet-package-registry
     - kibana
@@ -78,8 +77,6 @@ base:
     - curator.disabled
     - elastalert
     - utility
-    - soctopus
-    - playbook
     - elasticfleet
 
   '*_manager and G@saltversion:{{saltversion}}':
@@ -90,6 +87,7 @@ base:
     - registry
     - nginx
     - influxdb
+    - strelka.manager
     - soc
     - kratos
     - firewall
@@ -99,7 +97,6 @@ base:
     - backup.config_backup
     - idstools
     - suricata.manager
-    - mysql
     - elasticsearch
     - logstash
     - redis
@@ -108,10 +105,9 @@ base:
     - curator.disabled
     - elastalert
     - utility
-    - soctopus
-    - playbook
     - elasticfleet
     - stig
+    - kafka
 
   '*_standalone and G@saltversion:{{saltversion}}':
     - match: compound
@@ -132,7 +128,6 @@ base:
     - idstools
     - suricata.manager
     - healthcheck
-    - mysql
     - elasticsearch
     - logstash
     - redis
@@ -145,20 +140,19 @@ base:
     - curator.disabled
     - elastalert
     - utility
-    - soctopus
-    - playbook
     - elasticfleet
     - stig
+    - kafka
 
   '*_searchnode and G@saltversion:{{saltversion}}':
     - match: compound
+    - firewall
     - ssl
+    - elasticsearch
+    - logstash
     - sensoroni
     - telegraf
     - nginx
-    - firewall
-    - elasticsearch
-    - logstash
     - elasticfleet.install_agent_grid
     - stig
 
@@ -170,6 +164,7 @@ base:
     - registry
     - nginx
     - influxdb
+    - strelka.manager
     - soc
     - kratos
     - firewall
@@ -179,7 +174,6 @@ base:
     - backup.config_backup
     - idstools
     - suricata.manager
-    - mysql
     - elasticsearch
     - logstash
     - redis
@@ -188,8 +182,6 @@ base:
     - kibana
     - elastalert
     - utility
-    - soctopus
-    - playbook
     - elasticfleet
     - stig
 
@@ -222,6 +214,7 @@ base:
     - manager
     - nginx
     - influxdb
+    - strelka.manager
     - soc
     - kratos
     - sensoroni
@@ -247,6 +240,8 @@ base:
     - logstash
     - redis
     - elasticfleet.install_agent_grid
+    - kafka
+    - stig
 
   '*_idh and G@saltversion:{{saltversion}}':
     - match: compound
@@ -264,6 +259,7 @@ base:
     - telegraf
     - firewall
     - logstash
+    - nginx
     - elasticfleet
     - elasticfleet.install_agent_grid
     - schedule

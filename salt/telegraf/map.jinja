@@ -14,4 +14,18 @@
 {%     do TELEGRAFMERGED.scripts[GLOBALS.role.split('-')[1]].remove('zeekloss.sh') %}
 {%     do TELEGRAFMERGED.scripts[GLOBALS.role.split('-')[1]].remove('zeekcaptureloss.sh') %}
 {%   endif %}
+
+{%   from 'pcap/config.map.jinja' import PCAPMERGED %}
+{#   PCAPMERGED.enabled is set false in soc ui or if suricata is the pcap engine #}
+{%   if not PCAPMERGED.enabled %}
+{%     do TELEGRAFMERGED.scripts[GLOBALS.role.split('-')[1]].remove('stenoloss.sh') %}
+{%   endif %}
+
+{% endif %}
+
+{% if GLOBALS.pipeline != 'REDIS' %}
+{# When global pipeline is not REDIS remove redis.sh script. KAFKA metrics are collected via jolokia agent. Config in telegraf.conf #}
+{%   if GLOBALS.role in ['so-standalone', 'so-manager', 'so-managersearch', 'so-receiver', 'so-heavynode'] %}
+{%     do TELEGRAFMERGED.scripts[GLOBALS.role.split('-')[1]].remove('redis.sh') %}
+{%   endif %}
 {% endif %}

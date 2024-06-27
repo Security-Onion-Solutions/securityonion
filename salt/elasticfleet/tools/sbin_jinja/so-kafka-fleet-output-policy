@@ -1,0 +1,52 @@
+#!/bin/bash
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+{% from 'vars/globals.map.jinja' import GLOBALS %}
+{% if GLOBALS.role in ['so-manager', 'so-standalone', 'so-managersearch'] %}
+
+. /usr/sbin/so-common
+
+# Check to make sure that Kibana API is up & ready
+RETURN_CODE=0
+wait_for_web_response "http://localhost:5601/api/fleet/settings" "fleet" 300 "curl -K /opt/so/conf/elasticsearch/curl.config"
+RETURN_CODE=$?
+
+if [[ "$RETURN_CODE" != "0" ]]; then
+    printf "Kibana API not accessible, can't setup Elastic Fleet output policy for Kafka..."
+    exit 1
+fi
+
+output=$(curl -sK /opt/so/conf/elasticsearch/curl.config -L "http://localhost:5601/api/fleet/outputs" | jq -r .items[].id)
+
+if ! echo "$output" | grep -q "so-manager_kafka"; then
+  KAFKACRT=$(openssl x509 -in /etc/pki/elasticfleet-kafka.crt)
+  KAFKAKEY=$(openssl rsa -in  /etc/pki/elasticfleet-kafka.key)
+  KAFKACA=$(openssl x509 -in  /etc/pki/tls/certs/intca.crt)
+  KAFKA_OUTPUT_VERSION="2.6.0"
+  JSON_STRING=$( jq -n \
+                --arg KAFKACRT "$KAFKACRT" \
+                --arg KAFKAKEY "$KAFKAKEY" \
+                --arg KAFKACA "$KAFKACA" \
+                --arg MANAGER_IP "{{ GLOBALS.manager_ip }}:9092" \
+                --arg KAFKA_OUTPUT_VERSION "$KAFKA_OUTPUT_VERSION" \
+                    '{ "name": "grid-kafka", "id": "so-manager_kafka", "type": "kafka", "hosts": [ $MANAGER_IP ], "is_default": false, "is_default_monitoring": false, "config_yaml": "", "ssl": { "certificate_authorities": [ $KAFKACA ], "certificate": $KAFKACRT, "key": $KAFKAKEY, "verification_mode": "full" }, "proxy_id": null, "client_id": "Elastic", "version": $KAFKA_OUTPUT_VERSION, "compression": "none", "auth_type": "ssl", "partition": "round_robin", "round_robin": { "group_events": 1 }, "topics":[{"topic":"%{[event.module]}-securityonion","when":{"type":"regexp","condition":"event.module:.+"}},{"topic":"default-securityonion"}], "headers": [ { "key": "", "value": "" } ], "timeout": 30, "broker_timeout": 30, "required_acks": 1 }'
+                )
+  curl -sK /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/outputs" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING" -o /dev/null
+  refresh_output=$(curl -sK /opt/so/conf/elasticsearch/curl.config -L "http://localhost:5601/api/fleet/outputs" | jq -r .items[].id)
+
+  if ! echo "$refresh_output" | grep -q "so-manager_kafka"; then
+    echo -e "\nFailed to setup Elastic Fleet output policy for Kafka...\n"
+    exit 1
+  elif echo "$refresh_output" | grep -q "so-manager_kafka"; then
+    echo -e "\nSuccessfully setup Elastic Fleet output policy for Kafka...\n"
+  fi
+
+elif echo "$output" | grep -q "so-manager_kafka"; then
+  echo -e "\nElastic Fleet output policy for Kafka already exists...\n"
+fi
+{% else %}
+echo -e "\nNo update required...\n"
+{% endif %}

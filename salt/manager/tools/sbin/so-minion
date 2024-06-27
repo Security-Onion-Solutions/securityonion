@@ -79,6 +79,32 @@ function getinstallinfo() {
 	source <(echo $INSTALLVARS)
 }
 
+function pcapspace() {
+	if [[ "$OPERATION" == "setup" ]]; then
+		# Use 25% for PCAP
+		PCAP_PERCENTAGE=1
+		DFREEPERCENT=21
+		local SPACESIZE=$(df -k /nsm | tail -1 | awk '{print $2}' | tr -d \n)
+	else
+
+		local NSMSIZE=$(salt "$MINION_ID" disk.usage --out=json | jq -r '.[]."/nsm"."1K-blocks" ')
+		local ROOTSIZE=$(salt "$MINION_ID" disk.usage --out=json | jq -r '.[]."/"."1K-blocks" ')
+	
+		if [[ "$NSMSIZE" == "null" ]]; then
+			# Looks like there is no dedicated nsm partition. Using root
+			local SPACESIZE=$ROOTSIZE
+		else
+			local SPACESIZE=$NSMSIZE
+		fi
+	fi
+
+	local s=$(( $SPACESIZE / 1000000 ))
+	local s1=$(( $s / 4 * $PCAP_PERCENTAGE ))
+
+	MAX_PCAP_SPACE=$s1
+
+}
+
 function testMinion() {
 	# Always run on the host, since this is going to be the manager of a distributed grid, or an eval/standalone.
 	# Distributed managers must run this in order for the sensor nodes to have access to the so-tcpreplay image.
@@ -86,8 +112,8 @@ function testMinion() {
 	result=$?
 
 	# If this so-minion script is not running on the given minion ID, run so-test remotely on the sensor as well
-	local_id=$(lookup_grain id)
-	if [[ ! "$local_id" =~ "${MINION_ID}_" ]]; then
+	local_id=$(lookup_grain id)	
+	if [[ ! "$local_id" =~ "${MINION_ID}_" && "$local_id" != "${MINION_ID}" ]]; then
 		salt "$MINION_ID" cmd.run 'so-test'
 		result=$?
 	fi
@@ -175,11 +201,7 @@ function add_idh_to_minion() {
 	"idh:"\
 	"  enabled: True"\
 	"  restrict_management_ip: $IDH_MGTRESTRICT"\
-	"  services:" >> "$PILLARFILE"
-	IFS=',' read -ra IDH_SERVICES_ARRAY <<< "$IDH_SERVICES"
-	for service in ${IDH_SERVICES_ARRAY[@]}; do
-	  echo "    - $service" | tr '[:upper:]' '[:lower:]' | tr -d '"' >> "$PILLARFILE"
-	done
+	"  " >> $PILLARFILE
 }
 
 function add_logstash_to_minion() {
@@ -244,6 +266,10 @@ function add_sensor_to_minion() {
 	echo "      lb_procs: '$CORECOUNT'" >> $PILLARFILE
 	echo "suricata:" >> $PILLARFILE
 	echo "  enabled: True " >> $PILLARFILE
+	if [[ $is_pcaplimit ]]; then
+	echo "  pcap:" >> $PILLARFILE
+	echo "    maxsize: $MAX_PCAP_SPACE" >> $PILLARFILE
+	fi
 	echo "  config:" >> $PILLARFILE
 	echo "    af-packet:" >> $PILLARFILE
 	echo "      threads: '$CORECOUNT'" >> $PILLARFILE
@@ -251,17 +277,11 @@ function add_sensor_to_minion() {
 	echo "  enabled: True" >> $PILLARFILE
 	if [[ $is_pcaplimit ]]; then
 		echo "  config:" >> $PILLARFILE
-		echo "    diskfreepercentage: 60" >> $PILLARFILE
+		echo "    diskfreepercentage: $DFREEPERCENT" >> $PILLARFILE
 	fi
 	echo "  " >> $PILLARFILE
 }
 
-function add_playbook_to_minion() {
-    printf '%s\n'\
-    "playbook:"\
-    "  enabled: True"\
-	"  " >> $PILLARFILE
-}
 
 function add_elastalert_to_minion() {
     printf '%s\n'\
@@ -323,13 +343,6 @@ function add_nginx_to_minion() {
 	"  " >> $PILLARFILE
 }
 
-function add_soctopus_to_minion() {
-    printf '%s\n'\
-    "soctopus:"\
-    "  enabled: True"\
-	"  " >> $PILLARFILE
-}
-
 function add_soc_to_minion() {
     printf '%s\n'\
     "soc:"\
@@ -340,13 +353,6 @@ function add_soc_to_minion() {
 function add_registry_to_minion() {
     printf '%s\n'\
     "registry:"\
-    "  enabled: True"\
-	"  " >> $PILLARFILE
-}
-
-function add_mysql_to_minion() {
-    printf '%s\n'\
-    "mysql:"\
     "  enabled: True"\
 	"  " >> $PILLARFILE
 }
@@ -416,25 +422,19 @@ function checkMine() {
 
 }
 
-function updateMine() {
-	retry 20 1 "salt '$MINION_ID' mine.update" True
-}
-
 function createEVAL() {
 	is_pcaplimit=true
+	pcapspace
 	add_elasticsearch_to_minion
 	add_sensor_to_minion
 	add_strelka_to_minion
-	add_playbook_to_minion
 	add_elastalert_to_minion
 	add_kibana_to_minion
 	add_telegraf_to_minion
 	add_influxdb_to_minion
 	add_nginx_to_minion
-	add_soctopus_to_minion
 	add_soc_to_minion
 	add_registry_to_minion
-	add_mysql_to_minion
 	add_kratos_to_minion
 	add_idstools_to_minion
 	add_elastic_fleet_package_registry_to_minion
@@ -442,21 +442,19 @@ function createEVAL() {
 
 function createSTANDALONE() {
 	is_pcaplimit=true
+	pcapspace
 	add_elasticsearch_to_minion
 	add_logstash_to_minion
 	add_sensor_to_minion
 	add_strelka_to_minion
-	add_playbook_to_minion
 	add_elastalert_to_minion
 	add_kibana_to_minion
 	add_redis_to_minion
 	add_telegraf_to_minion
 	add_influxdb_to_minion
 	add_nginx_to_minion
-	add_soctopus_to_minion
 	add_soc_to_minion
 	add_registry_to_minion
-	add_mysql_to_minion
 	add_kratos_to_minion
 	add_idstools_to_minion
 	add_elastic_fleet_package_registry_to_minion
@@ -465,17 +463,14 @@ function createSTANDALONE() {
 function createMANAGER() {
 	add_elasticsearch_to_minion
 	add_logstash_to_minion
-	add_playbook_to_minion
 	add_elastalert_to_minion
 	add_kibana_to_minion
 	add_redis_to_minion
 	add_telegraf_to_minion
 	add_influxdb_to_minion
 	add_nginx_to_minion
-	add_soctopus_to_minion
 	add_soc_to_minion
 	add_registry_to_minion
-	add_mysql_to_minion
 	add_kratos_to_minion
 	add_idstools_to_minion
 	add_elastic_fleet_package_registry_to_minion
@@ -484,17 +479,14 @@ function createMANAGER() {
 function createMANAGERSEARCH() {
 	add_elasticsearch_to_minion
 	add_logstash_to_minion
-	add_playbook_to_minion
 	add_elastalert_to_minion
 	add_kibana_to_minion
 	add_redis_to_minion
 	add_telegraf_to_minion
 	add_influxdb_to_minion
 	add_nginx_to_minion
-	add_soctopus_to_minion
 	add_soc_to_minion
 	add_registry_to_minion
-	add_mysql_to_minion
 	add_kratos_to_minion
 	add_idstools_to_minion
 	add_elastic_fleet_package_registry_to_minion
@@ -531,6 +523,9 @@ function createIDH() {
 
 function createHEAVYNODE() {
 	is_pcaplimit=true
+	PCAP_PERCENTAGE=1
+	DFREEPERCENT=21
+	pcapspace
 	add_elasticsearch_to_minion
 	add_elastic_agent_to_minion
 	add_logstash_to_minion
@@ -541,6 +536,10 @@ function createHEAVYNODE() {
 }
 
 function createSENSOR() {
+	is_pcaplimit=true
+	DFREEPERCENT=10
+	PCAP_PERCENTAGE=3
+	pcapspace
 	add_sensor_to_minion
 	add_strelka_to_minion
 	add_telegraf_to_minion
@@ -597,20 +596,20 @@ function addMinion() {
 }
 
 function updateMineAndApplyStates() {
-	# tell the minion to populate the mine with data from mine_functions which is populated during setup
-	# this only needs to happen on non managers since they handle this during setup
-	# and they need to wait for ca creation to update the mine
-	updateMine
-	checkMine "network.ip_addrs"
-	# apply the elasticsearch state to the manager if a new searchnode was added
+
+	#checkMine "network.ip_addrs"
+	# calls so-common and set_minionid sets MINIONID to local minion id
+	set_minionid
+	# if this is a searchnode or heavynode, start downloading logstash and elasticsearch containers while the manager prepares for the new node
 	if [[ "$NODETYPE" == "SEARCHNODE" || "$NODETYPE" == "HEAVYNODE" ]]; then
-		# calls so-common and set_minionid sets MINIONID to local minion id
-		set_minionid
-		salt $MINIONID state.apply elasticsearch queue=True --async
-		salt $MINIONID state.apply soc queue=True --async
+		salt-run state.orch orch.container_download pillar="{'setup': {'newnode': $MINION_ID }}" > /dev/null 2>&1 &
 	fi
-	# run this async so the cli doesn't wait for a return
-	salt "$MINION_ID" state.highstate --async queue=True
+	if [[ "$NODETYPE" == "RECEIVER" ]]; then
+		# Setup nodeid for Kafka
+		salt-call state.apply kafka.nodes queue=True
+	fi
+	# $MINIONID is the minion id of the manager and $MINION_ID is the target node or the node being configured
+	salt-run state.orch orch.deploy_newnode pillar="{'setup': {'manager': $MINIONID, 'newnode': $MINION_ID }}" > /dev/null 2>&1 &
 }
 
 function setupMinionFiles() {

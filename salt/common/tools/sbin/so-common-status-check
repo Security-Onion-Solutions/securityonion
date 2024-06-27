@@ -37,23 +37,32 @@ def check_needs_restarted():
   with open(outfile, 'w') as f:
     f.write(val)
 
-def check_for_fips():
-    fips = 0
+def check_for_fps():
+    feat = 'fps'
+    feat_full = feat.replace('ps', 'ips')
+    fps = 0
     try:
-        result = subprocess.run(['fips-mode-setup', '--is-enabled'], check=True, stdout=subprocess.PIPE)
-        fips = int(result.returncode == 0)
+        result = subprocess.run([feat_full + '-mode-setup', '--is-enabled'], stdout=subprocess.PIPE)
+        if result.returncode == 0:
+            fps = 1
     except FileNotFoundError:
-        with open('/proc/sys/crypto/fips_enabled', 'r') as f:
-            contents = f.read()
-            if '1' in contents:
-                fips = 1
-            else:
-                fips = 0
-    with open('/opt/so/log/sostatus/fips_enabled', 'w') as f:
-       f.write(str(fips))
+        fn = '/proc/sys/crypto/' + feat_full + '_enabled'
+        try:
+          with open(fn, 'r') as f:
+              contents = f.read()
+              if '1' in contents:
+                  fps = 1
+        except:
+          # Unknown, so assume 0
+          fps = 0
 
-def check_for_luks():
-    luks = 0
+    with open('/opt/so/log/sostatus/fps_enabled', 'w') as f:
+       f.write(str(fps))
+
+def check_for_lks():
+    feat = 'Lks'
+    feat_full = feat.replace('ks', 'uks')
+    lks = 0
     result = subprocess.run(['lsblk', '-p', '-J'], check=True, stdout=subprocess.PIPE)
     data = json.loads(result.stdout)
     for device in data['blockdevices']:
@@ -61,16 +70,18 @@ def check_for_luks():
             for gc in device['children']:
                 if 'children' in gc:
                     try:
-                        result = subprocess.run(['cryptsetup', 'isLuks', gc['name']], check=True, stdout=subprocess.PIPE)
-                        luks = int(result.returncode == 0)
+                        arg = 'is' + feat_full
+                        result = subprocess.run(['cryptsetup', arg, gc['name']], stdout=subprocess.PIPE)
+                        if result.returncode == 0:
+                           lks = 1
                     except FileNotFoundError:
                         for ggc in gc['children']:
                             if 'crypt' in ggc['type']:
-                                luks = 1
-        if luks:
+                                lks = 1
+        if lks:
             break
-    with open('/opt/so/log/sostatus/luks_enabled', 'w') as f:
-       f.write(str(luks))
+    with open('/opt/so/log/sostatus/lks_enabled', 'w') as f:
+       f.write(str(lks))
 
 def fail(msg):
   print(msg, file=sys.stderr)
@@ -83,9 +94,9 @@ def main():
   # Ensure that umask is 0022 so that files created by this script have rw-r-r permissions
   org_umask = os.umask(0o022)
   check_needs_restarted()
-  check_for_fips()
-  check_for_luks()
-  # Restore umask to whatever value was set before this script was run. STIG sets to 0077 rw---
+  check_for_fps()
+  check_for_lks()
+  # Restore umask to whatever value was set before this script was run. SXIG sets to 0077 rw---
   os.umask(org_umask)
 
 if __name__ == "__main__":

@@ -12,7 +12,7 @@
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states and GLOBALS.os == 'OEL' %}
-{%   if 'stig' in salt['pillar.get']('features', []) %}
+{%   if 'stg' in salt['pillar.get']('features', []) %}
   {% set OSCAP_PROFILE_NAME = 'xccdf_org.ssgproject.content_profile_stig' %}
   {% set OSCAP_PROFILE_LOCATION = '/opt/so/conf/stig/sos-oscap.xml' %}
   {% set OSCAP_OUTPUT_DIR = '/opt/so/log/stig' %}
@@ -48,15 +48,17 @@ update_stig_profile:
 
 {% if not salt['file.file_exists'](OSCAP_OUTPUT_DIR ~ '/pre-oscap-report.html') %}
 run_initial_scan:
-  module.run:
-  - name: openscap.xccdf
-  - params: 'eval --remediate --profile {{ OSCAP_PROFILE_NAME }} --results {{ OSCAP_OUTPUT_DIR }}/pre-oscap-results.xml --report {{ OSCAP_OUTPUT_DIR }}/pre-oscap-report.html {{ OSCAP_PROFILE_LOCATION }}'
+  cmd.run:
+    - name: 'oscap xccdf eval --profile {{ OSCAP_PROFILE_NAME }} --results {{ OSCAP_OUTPUT_DIR }}/pre-oscap-results.xml --report {{ OSCAP_OUTPUT_DIR }}/pre-oscap-report.html {{ OSCAP_PROFILE_LOCATION }}'
+    - success_retcodes:
+      - 2
 {% endif %}
 
 run_remediate:
-  module.run:
-    - name: openscap.xccdf
-    - params: 'eval --remediate --profile {{ OSCAP_PROFILE_NAME }} --results {{ OSCAP_OUTPUT_DIR }}/post-oscap-results.xml --report {{ OSCAP_PROFILE_LOCATION }}'
+  cmd.run:
+    - name: 'oscap xccdf eval --remediate --profile {{ OSCAP_PROFILE_NAME }} {{ OSCAP_PROFILE_LOCATION }}'
+    - success_retcodes:
+      - 2
 
 {# OSCAP rule id: xccdf_org.ssgproject.content_rule_disable_ctrlaltdel_burstaction #}
 disable_ctrl_alt_del_action:
@@ -82,9 +84,10 @@ remove_nullok_from_system_auth_auth:
     - backup: '.bak'
 
 run_post_scan:
-  module.run:
-    - name: openscap.xccdf
-    - params: 'eval --profile {{ OSCAP_PROFILE_NAME }} --results {{ OSCAP_OUTPUT_DIR }}/post-oscap-results.xml --report {{ OSCAP_OUTPUT_DIR }}/post-oscap-report.html {{ OSCAP_PROFILE_LOCATION }}'
+  cmd.run:
+    - name: 'oscap xccdf eval --profile {{ OSCAP_PROFILE_NAME }} --results {{ OSCAP_OUTPUT_DIR }}/post-oscap-results.xml --report {{ OSCAP_OUTPUT_DIR }}/post-oscap-report.html /usr/share/xml/scap/ssg/content/ssg-ol9-ds.xml'
+    - success_retcodes:
+      - 2
 
 {%   else %}
 {{sls}}_no_license_detected:

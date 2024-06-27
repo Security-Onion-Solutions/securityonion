@@ -1,0 +1,22 @@
+{
+  "processors": [
+    {
+      "rename": {
+        "field": "message2.kismet_device_base_commonname",
+        "target_field": "network.wireless.bssid"
+      }
+    },
+    {
+      "foreach": {
+        "field": "message2.dot11_device.dot11_device_associated_client_map",
+        "processor": {
+          "append": {
+            "field": "network.wireless.associated_clients",
+            "value": "{{_ingest._key}}"
+          }
+        },
+        "if": "ctx?.message2?.dot11_device?.dot11_device_associated_client_map != null"
+      }
+    }
+  ]
+}

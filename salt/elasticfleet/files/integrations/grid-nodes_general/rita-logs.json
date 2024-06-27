@@ -1,0 +1,34 @@
+{
+  "package": {
+    "name": "log",
+    "version": ""
+  },
+  "name": "rita-logs",
+  "namespace": "so",
+  "description": "RITA Logs",
+  "policy_id": "so-grid-nodes_general",
+  "vars": {},
+  "inputs": {
+    "logs-logfile": {
+      "enabled": true,
+      "streams": {
+        "log.logs": {
+          "enabled": true,
+          "vars": {
+            "paths": [
+              "/nsm/rita/beacons.csv",
+              "/nsm/rita/exploded-dns.csv",
+              "/nsm/rita/long-connections.csv"
+            ],
+            "exclude_files": [],
+            "ignore_older": "72h",
+            "data_stream.dataset": "rita",
+            "tags": [],
+            "processors": "- dissect:\n    tokenizer: \"/nsm/rita/%{pipeline}.csv\"\n    field: \"log.file.path\"\n    trim_chars: \".csv\"\n    target_prefix: \"\"\n- script:\n      lang: javascript\n      source: >\n        function process(event) {\n          var pl = event.Get(\"pipeline\").split(\"-\");\n          if (pl.length > 1) {\n            pl = pl[1];\n          }\n          else {\n            pl = pl[0];\n          }\n          event.Put(\"@metadata.pipeline\", \"rita.\" + pl);\n        }\n- add_fields:\n    target: event\n    fields:\n      category: network\n      module: rita",
+            "custom": "exclude_lines: ['^Score', '^Source', '^Domain', '^No results']"
+          }
+        }
+      }
+    }
+  }
+}

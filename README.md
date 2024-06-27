@@ -8,19 +8,22 @@ Alerts
 ![Alerts](https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion-docs/2.4/images/50_alerts.png)
 
 Dashboards
-![Dashboards](https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion-docs/2.4/images/51_dashboards.png)
+![Dashboards](https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion-docs/2.4/images/53_dashboards.png)
 
 Hunt
-![Hunt](https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion-docs/2.4/images/52_hunt.png)
+![Hunt](https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion-docs/2.4/images/56_hunt.png)
+
+Detections
+![Detections](https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion-docs/2.4/images/57_detections.png)
 
 PCAP
-![PCAP](https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion-docs/2.4/images/53_pcap.png)
+![PCAP](https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion-docs/2.4/images/62_pcap.png)
 
 Grid
-![Grid](https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion-docs/2.4/images/57_grid.png)
+![Grid](https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion-docs/2.4/images/75_grid.png)
 
 Config
-![Config](https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion-docs/2.4/images/61_config.png)
+![Config](https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion-docs/2.4/images/87_config.png)
 
 ### Release Notes
 
