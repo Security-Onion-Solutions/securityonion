@@ -47,10 +47,12 @@ base:
     - kibana.adv_kibana
     - kratos.soc_kratos
     - kratos.adv_kratos
+    - redis.nodes
     - redis.soc_redis
     - redis.adv_redis
     - influxdb.soc_influxdb
     - influxdb.adv_influxdb
+    - elasticsearch.nodes
     - elasticsearch.soc_elasticsearch
     - elasticsearch.adv_elasticsearch
     - elasticfleet.soc_elasticfleet
@@ -147,10 +149,12 @@ base:
     - idstools.adv_idstools
     - kratos.soc_kratos
     - kratos.adv_kratos
+    - redis.nodes
     - redis.soc_redis
     - redis.adv_redis
     - influxdb.soc_influxdb
     - influxdb.adv_influxdb
+    - elasticsearch.nodes
     - elasticsearch.soc_elasticsearch
     - elasticsearch.adv_elasticsearch
     - elasticfleet.soc_elasticfleet
@@ -215,11 +219,13 @@ base:
     - logstash.nodes
     - logstash.soc_logstash
     - logstash.adv_logstash
+    - elasticsearch.nodes
     - elasticsearch.soc_elasticsearch
     - elasticsearch.adv_elasticsearch
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
     - elasticsearch.auth
     {% endif %}
+    - redis.nodes
     - redis.soc_redis
     - redis.adv_redis
     - minions.{{ grains.id }}

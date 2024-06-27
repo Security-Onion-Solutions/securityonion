@@ -1,7 +1,7 @@
 {% set node_types = {} %}
 {% for minionid, ip in salt.saltutil.runner(
     'mine.get',
-    tgt='logstash:enabled:true',
+    tgt='redis:enabled:true',
     fun='network.ip_addrs',
     tgt_type='pillar') | dictsort()
 %}
@@ -23,7 +23,7 @@
 {% endfor %}
 
 
-logstash:
+redis:
   nodes:
 {% for node_type, values in node_types.items() %}
     {{node_type}}:

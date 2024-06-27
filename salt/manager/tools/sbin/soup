@@ -308,6 +308,21 @@ clone_to_tmp() {
   fi
 }
 
+disable_logstash_heavynodes() {
+  c=0
+  printf "\nChecking for heavynodes and disabling Logstash if they exist\n"
+  for file in /opt/so/saltstack/local/pillar/minions/*.sls; do
+    if [[ "$file" =~ "_heavynode.sls" && ! "$file" =~ "/opt/so/saltstack/local/pillar/minions/adv_" ]]; then
+      if [ "$c" -eq 0 ]; then
+        c=$((c + 1))
+        FINAL_MESSAGE_QUEUE+=("Logstash has been disabled on all heavynodes. It can be re-enabled via Grid Configuration in SOC.")
+      fi
+      echo "Disabling Logstash for: $file"
+      so-yaml.py replace "$file" logstash.enabled False
+    fi
+  done
+}
+
 enable_highstate() {
     echo "Enabling highstate."
     salt-call state.enable highstate -l info --local
@@ -485,7 +500,7 @@ post_to_2.4.80() {
 }
 
 post_to_2.4.90() {
-  echo "Nothing to apply"
+  disable_logstash_heavynodes
   POSTVERSION=2.4.90
 }
 
