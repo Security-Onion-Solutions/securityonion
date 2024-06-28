@@ -28,6 +28,17 @@ kafka_sbin_tools:
     - group: 960
     - file_mode: 755
 
+kafka_sbin_jinja_tools:
+  file.recurse:
+    - name: /usr/sbin
+    - source: salt://kafka/tools/sbin_jinja
+    - user: 960
+    - group: 960
+    - file_mode: 755
+    - template: jinja
+    - defaults:
+        GLOBALS: {{ GLOBALS }}
+
 kafka_log_dir:
   file.directory:
     - name: /opt/so/log/kafka
