@@ -29,9 +29,9 @@ kafka_truststore:
 
 kafkacertz:
   file.managed:
-    - name: /opt/so/conf/kafka/kafkaca
-    - source: salt://kafka/files/kafkaca
+    - name: /opt/so/conf/kafka/kafka-truststore.jks
+    - source: salt://kafka/files/kafka-truststore
     - user: 960
-    - group: 960
+    - group: 931
 
 {% endif %}

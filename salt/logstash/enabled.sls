@@ -15,7 +15,8 @@ include:
 {%   if GLOBALS.role not in ['so-receiver','so-fleet'] %}
   - elasticsearch.ca
 {%   endif %}
-{%   if GLOBALS.role == 'so-searchnode' and GLOBALS.pipeline == 'KAFKA' %}
+{# Kafka ca runs on nodes that can run logstash for Kafka input / output. Only when Kafka is global pipeline #}
+{%   if GLOBALS.role in ['so-searchnode', 'so-manager', 'so-managersearch', 'so-receiver'] and GLOBALS.pipeline == 'KAFKA' %}
   - kafka.ca
 {%   endif %}
   - logstash.config
@@ -84,7 +85,7 @@ so-logstash:
       {% endif %}
       {% if GLOBALS.pipeline == "KAFKA" and GLOBALS.role in ['so-manager', 'so-managersearch', 'so-standalone', 'so-searchnode'] %}
       - /etc/pki/kafka-logstash.p12:/usr/share/logstash/kafka-logstash.p12:ro
-      - /etc/pki/kafkaca:/etc/pki/kafkaca:ro
+      - /opt/so/conf/kafka/kafka-truststore.jks:/etc/pki/kafka-truststore.jks:ro
       {% endif %}
       {% if GLOBALS.role == 'so-eval' %}
       - /nsm/zeek:/nsm/zeek:ro
