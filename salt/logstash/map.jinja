@@ -6,6 +6,7 @@
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 {% import_yaml 'logstash/defaults.yaml' as LOGSTASH_DEFAULTS %}
 {% set LOGSTASH_MERGED = salt['pillar.get']('logstash', LOGSTASH_DEFAULTS.logstash, merge=True) %}
+{% set KAFKA_LOGSTASH = salt['pillar.get']('kafka:logstash', []) %}
 
 {# used to store the redis nodes that logstash needs to know about to pull from the queue #}
 {% set LOGSTASH_REDIS_NODES = [] %}
@@ -30,3 +31,14 @@
 {%   endfor %}
 {% endfor %}
 
+{# Append Kafka input pipeline when Kafka is enabled #}
+{% if GLOBALS.pipeline == 'KAFKA' %}
+{%   do LOGSTASH_MERGED.defined_pipelines.search.append('so/0800_input_kafka.conf.jinja') %}
+{%   do LOGSTASH_MERGED.defined_pipelines.manager.append('so/0800_input_kafka.conf.jinja') %}
+{# Disable logstash on manager & receiver nodes unless it has an override configured #}
+{%   if not KAFKA_LOGSTASH %}
+{%     if GLOBALS.role in ['so-manager', 'so-receiver'] and GLOBALS.hostname not in KAFKA_LOGSTASH %}
+{%       do LOGSTASH_MERGED.update({'enabled': False}) %}
+{%     endif %}
+{%   endif %}
+{% endif %}
