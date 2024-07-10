@@ -17,8 +17,6 @@
   {% set COMMONNAME = GLOBALS.manager %}
 {% endif %}
 
-{% set kafka_password = salt['pillar.get']('kafka:password') %}
-
 {% if grains.id.split('_')|last in ['manager', 'managersearch', 'eval', 'standalone', 'import'] %}
 include:
   - ca
@@ -666,7 +664,6 @@ elastickeyperms:
 {%- endif %}
 
 {% if grains['role'] in ['so-manager', 'so-managersearch', 'so-standalone'] %}
-
 elasticfleet_kafka_key:
   x509.private_key_managed:
     - name: /etc/pki/elasticfleet-kafka.key
@@ -696,17 +693,13 @@ elasticfleet_kafka_crt:
     - retry:
         attempts: 5
         interval: 30
-  cmd.run:
-  - name: "/usr/bin/openssl pkcs8 -in /etc/pki/elasticfleet-kafka.key -topk8 -out /etc/pki/elasticfleet-kafka.p8 -nocrypt"
-  - onchanges:
-    - x509: elasticfleet_kafka_key
 
 elasticfleet_kafka_cert_perms:
   file.managed:
     - replace: False
     - name: /etc/pki/elasticfleet-kafka.crt
     - mode: 640
-    - user: 960
+    - user: 947
     - group: 939
 
 elasticfleet_kafka_key_perms:
@@ -714,187 +707,8 @@ elasticfleet_kafka_key_perms:
     - replace: False
     - name: /etc/pki/elasticfleet-kafka.key
     - mode: 640
-    - user: 960
+    - user: 947
     - group: 939
-
-elasticfleet_kafka_pkcs8_perms:
-  file.managed:
-    - replace: False
-    - name: /etc/pki/elasticfleet-kafka.p8
-    - mode: 640
-    - user: 960
-    - group: 939
-
-kafka_client_key:
-  x509.private_key_managed:
-    - name: /etc/pki/kafka-client.key
-    - keysize: 4096
-    - backup: True
-    - new: True
-    {% if salt['file.file_exists']('/etc/pki/kafka-client.key') -%}
-    - prereq:
-      - x509: /etc/pki/kafka-client.crt
-    {%- endif %}
-    - retry:
-        attempts: 5
-        interval: 30
-
-kafka_client_crt:
-  x509.certificate_managed:
-    - name: /etc/pki/kafka-client.crt
-    - ca_server: {{ ca_server }}
-    - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
-    - signing_policy: kafka
-    - private_key: /etc/pki/kafka-client.key
-    - CN: {{ GLOBALS.hostname }}
-    - days_remaining: 0
-    - days_valid: 820
-    - backup: True
-    - timeout: 30
-    - retry:
-        attempts: 5
-        interval: 30
-
-kafka_client_key_perms:
-  file.managed:
-    - replace: False
-    - name: /etc/pki/kafka-client.key
-    - mode: 640
-    - user: 960
-    - group: 939
-
-kafka_client_crt_perms:
-  file.managed:
-    - replace: False
-    - name: /etc/pki/kafka-client.crt
-    - mode: 640
-    - user: 960
-    - group: 939
-
-{% endif %}
-
-{% if grains['role'] in ['so-manager', 'so-managersearch','so-receiver', 'so-standalone'] %}
-
-kafka_key:
-  x509.private_key_managed:
-    - name: /etc/pki/kafka.key
-    - keysize: 4096
-    - backup: True
-    - new: True
-    {% if salt['file.file_exists']('/etc/pki/kafka.key') -%}
-    - prereq:
-      - x509: /etc/pki/kafka.crt
-    {%- endif %}
-    - retry:
-        attempts: 5
-        interval: 30
-
-kafka_crt:
-  x509.certificate_managed:
-    - name: /etc/pki/kafka.crt
-    - ca_server: {{ ca_server }}
-    - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
-    - signing_policy: kafka
-    - private_key: /etc/pki/kafka.key
-    - CN: {{ GLOBALS.hostname }}
-    - days_remaining: 0
-    - days_valid: 820
-    - backup: True
-    - timeout: 30
-    - retry:
-        attempts: 5
-        interval: 30
-  cmd.run:
-    - name: "/usr/bin/openssl pkcs12 -inkey /etc/pki/kafka.key -in /etc/pki/kafka.crt -export -out /etc/pki/kafka.p12 -nodes -passout pass:{{ kafka_password }}"
-    - onchanges:
-      - x509: /etc/pki/kafka.key
-kafka_key_perms:
-  file.managed:
-    - replace: False
-    - name: /etc/pki/kafka.key
-    - mode: 640
-    - user: 960
-    - group: 939
-
-kafka_crt_perms:
-  file.managed:
-    - replace: False
-    - name: /etc/pki/kafka.crt
-    - mode: 640
-    - user: 960
-    - group: 939
-
-kafka_pkcs12_perms:
-  file.managed:
-    - replace: False
-    - name: /etc/pki/kafka.p12
-    - mode: 640
-    - user: 960
-    - group: 939
-
-{% endif %}
-
-# Standalone needs kafka-logstash for automated testing. Searchnode/manager search need it for logstash to consume from Kafka.
-# Manager will have cert, but be unused until a pipeline is created and logstash enabled.
-{% if grains['role'] in ['so-standalone', 'so-managersearch', 'so-searchnode', 'so-manager'] %}
-kafka_logstash_key:
-  x509.private_key_managed:
-    - name: /etc/pki/kafka-logstash.key
-    - keysize: 4096
-    - backup: True
-    - new: True
-    {% if salt['file.file_exists']('/etc/pki/kafka-logstash.key') -%}
-    - prereq:
-      - x509: /etc/pki/kafka-logstash.crt
-    {%- endif %}
-    - retry:
-        attempts: 5
-        interval: 30
-
-kafka_logstash_crt:
-  x509.certificate_managed:
-    - name: /etc/pki/kafka-logstash.crt
-    - ca_server: {{ ca_server }}
-    - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
-    - signing_policy: kafka
-    - private_key: /etc/pki/kafka-logstash.key
-    - CN: {{ GLOBALS.hostname }}
-    - days_remaining: 0
-    - days_valid: 820
-    - backup: True
-    - timeout: 30
-    - retry:
-        attempts: 5
-        interval: 30
-  cmd.run:
-    - name: "/usr/bin/openssl pkcs12 -inkey /etc/pki/kafka-logstash.key -in /etc/pki/kafka-logstash.crt -export -out /etc/pki/kafka-logstash.p12 -nodes -passout pass:{{ kafka_password }}"
-    - onchanges:
-      - x509: /etc/pki/kafka-logstash.key
-
-kafka_logstash_key_perms:
-  file.managed:
-    - replace: False
-    - name: /etc/pki/kafka-logstash.key
-    - mode: 640
-    - user: 960
-    - group: 939
-
-kafka_logstash_crt_perms:
-  file.managed:
-    - replace: False
-    - name: /etc/pki/kafka-logstash.crt
-    - mode: 640
-    - user: 960
-    - group: 939
-
-kafka_logstash_pkcs12_perms:
-  file.managed:
-    - replace: False
-    - name: /etc/pki/kafka-logstash.p12
-    - mode: 640
-    - user: 960
-    - group: 931
-
 {% endif %}
 
 {% else %}
