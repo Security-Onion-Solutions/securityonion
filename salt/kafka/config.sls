@@ -14,6 +14,7 @@ kafka_group:
 
 kafka_user:
   user.present:
+    - name: kafka
     - uid: 960
     - gid: 960
     - home: /opt/so/conf/kafka
