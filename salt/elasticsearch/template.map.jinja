@@ -1,25 +1,22 @@
+{# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+   or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+   https://securityonion.net/license; you may not use this file except in compliance with the
+   Elastic License 2.0. #}
+
 {% import_yaml 'elasticsearch/defaults.yaml' as ELASTICSEARCHDEFAULTS %}
-{% set DEFAULT_GLOBAL_OVERRIDES = ELASTICSEARCHDEFAULTS.elasticsearch.index_settings.pop('global_overrides') %}
+{% set ELASTICSEARCHMERGED = salt['pillar.get']('elasticsearch', default=ELASTICSEARCHDEFAULTS.elasticsearch, merge=True) %}
+{% set ESMINDEX = ELASTICSEARCHMERGED.index_settings %}
 
-{% set PILLAR_GLOBAL_OVERRIDES = {} %}
-{% set ES_INDEX_PILLAR = salt['pillar.get']('elasticsearch:index_settings', {}) %}
-{% if ES_INDEX_PILLAR.global_overrides is defined %}
-{%   set PILLAR_GLOBAL_OVERRIDES = ES_INDEX_PILLAR.pop('global_overrides') %}
-{% endif %}
-
-{% set ES_INDEX_SETTINGS_ORIG = ELASTICSEARCHDEFAULTS.elasticsearch.index_settings %}
+{% set GLOBAL_OVERRIDES = ESMINDEX.pop('global_overrides') %}
 
 {% set ES_INDEX_SETTINGS_GLOBAL_OVERRIDES = {} %}
-{% for index in ES_INDEX_SETTINGS_ORIG.keys() %}
-{%   do ES_INDEX_SETTINGS_GLOBAL_OVERRIDES.update({index: salt['defaults.merge'](ELASTICSEARCHDEFAULTS.elasticsearch.index_settings[index], PILLAR_GLOBAL_OVERRIDES, in_place=False)}) %}
+{% for index in ESMINDEX.keys() %}
+{%   do ES_INDEX_SETTINGS_GLOBAL_OVERRIDES.update({index: salt['defaults.merge'](GLOBAL_OVERRIDES, ESMINDEX[index], in_place=False)}) %}
 {% endfor %}
 
 {% set ES_INDEX_SETTINGS = {} %}
-{% do ES_INDEX_SETTINGS_GLOBAL_OVERRIDES.update(salt['defaults.merge'](ES_INDEX_SETTINGS_GLOBAL_OVERRIDES, ES_INDEX_PILLAR, in_place=False)) %}
 {% for index, settings in ES_INDEX_SETTINGS_GLOBAL_OVERRIDES.items() %}
-{#   if policy isn't defined in the original index settings, then dont merge policy from the global_overrides #}
-{#   this will prevent so-elasticsearch-ilm-policy-load from trying to load policy on non ILM manged indices #}
-{%   if not ES_INDEX_SETTINGS_ORIG[index].policy is defined and ES_INDEX_SETTINGS_GLOBAL_OVERRIDES[index].policy is defined %}
+{%   if not ESMINDEX[index].policy is defined and ES_INDEX_SETTINGS_GLOBAL_OVERRIDES[index].policy is defined %}
 {%     do ES_INDEX_SETTINGS_GLOBAL_OVERRIDES[index].pop('policy') %}
 {%   endif %}
 
