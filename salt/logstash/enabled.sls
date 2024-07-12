@@ -15,6 +15,11 @@ include:
 {%   if GLOBALS.role not in ['so-receiver','so-fleet'] %}
   - elasticsearch.ca
 {%   endif %}
+{# Kafka ca runs on nodes that can run logstash for Kafka input / output. Only when Kafka is global pipeline #}
+{%   if GLOBALS.role in ['so-searchnode', 'so-manager', 'so-managersearch', 'so-receiver', 'so-standalone'] and GLOBALS.pipeline == 'KAFKA' %}
+  - kafka.ca
+  - kafka.ssl
+{%   endif %}
   - logstash.config
   - logstash.sostatus
   - ssl
@@ -79,8 +84,9 @@ so-logstash:
       - /opt/so/conf/ca/cacerts:/etc/pki/ca-trust/extracted/java/cacerts:ro
       - /opt/so/conf/ca/tls-ca-bundle.pem:/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:ro
       {% endif %}
-      {% if GLOBALS.role in ['so-manager', 'so-managersearch', 'so-standalone', 'so-searchnode'] %}
+      {% if GLOBALS.pipeline == "KAFKA" and GLOBALS.role in ['so-manager', 'so-managersearch', 'so-standalone', 'so-searchnode'] %}
       - /etc/pki/kafka-logstash.p12:/usr/share/logstash/kafka-logstash.p12:ro
+      - /opt/so/conf/kafka/kafka-truststore.jks:/etc/pki/kafka-truststore.jks:ro
       {% endif %}
       {% if GLOBALS.role == 'so-eval' %}
       - /nsm/zeek:/nsm/zeek:ro
@@ -105,6 +111,9 @@ so-logstash:
       - file: ls_pipeline_{{assigned_pipeline}}_{{CONFIGFILE.split('.')[0] | replace("/","_") }}
         {% endfor %}
       {% endfor %}
+      {% if GLOBALS.pipeline == 'KAFKA' and GLOBALS.role in ['so-manager', 'so-managersearch', 'so-standalone', 'so-searchnode'] %}
+      - file: kafkacertz
+      {% endif %}
     - require:
       {% if grains['role'] in ['so-manager', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-receiver'] %}
       - x509: etc_filebeat_crt
@@ -117,6 +126,9 @@ so-logstash:
       {% if grains.role in ['so-manager', 'so-managersearch', 'so-standalone', 'so-import'] %}
       - file: cacertz
       - file: capemz
+      {% endif %}
+      {% if GLOBALS.pipeline == 'KAFKA' and GLOBALS.role in ['so-manager', 'so-managersearch', 'so-standalone', 'so-searchnode'] %}
+      - file: kafkacertz
       {% endif %}
 
 delete_so-logstash_so-status.disabled:
