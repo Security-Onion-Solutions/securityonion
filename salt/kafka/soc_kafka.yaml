@@ -8,19 +8,31 @@ kafka:
     advanced: True
     sensitive: True
     helpLink: kafka.html
-  password:
-    description: The password to use for the Kafka certificates.
-    sensitive: True
-    helpLink: kafka.html
   controllers:
     description: A comma-separated list of hostnames that will act as Kafka controllers. These hosts will be responsible for managing the Kafka cluster. Note that only manager and receiver nodes are eligible to run Kafka. This configuration needs to be set before enabling Kafka. Failure to do so may result in Kafka topics becoming unavailable requiring manual intervention to restore functionality or reset Kafka, either of which can result in data loss.
-    forcedType: "string"
+    forcedType: string
     helpLink: kafka.html
   reset:
     description: Disable and reset the Kafka cluster. This will remove all Kafka data including logs that may have not yet been ingested into Elasticsearch and reverts the grid to using REDIS as the global pipeline. This is useful when testing different Kafka configurations such as rearranging Kafka brokers / controllers allowing you to reset the cluster rather than manually fixing any issues arising from attempting to reassign a Kafka broker into a controller. Enter 'YES_RESET_KAFKA' and submit to disable and reset Kafka. Make any configuration changes required and re-enable Kafka when ready. This action CANNOT be reversed.
     advanced: True
     helpLink: kafka.html
+  logstash:
+    description: By default logstash is disabled when Kafka is enabled. This option allows you to specify any hosts you would like to re-enable logstash on alongside Kafka.
+    forcedType: "[]string"
+    multiline: True
+    advanced: True
+    helpLink: kafka.html
   config:
+    password:
+      description: The password used for the Kafka certificates.
+      readonly: True
+      sensitive: True
+      helpLink: kafka.html
+    trustpass:
+      description: The password used for the Kafka truststore.
+      readonly: True
+      sensitive: True
+      helpLink: kafka.html
     broker:
       advertised_x_listeners:
         description: Specify the list of listeners (hostname and port) that Kafka brokers provide to clients for communication.
@@ -128,6 +140,10 @@ kafka:
         description: The trust store file location within the Docker container.
         title: ssl.truststore.location
         helpLink: kafka.html
+      ssl_x_truststore_x_type:
+        description: The trust store file format.
+        title: ssl.truststore.type
+        helpLink: kafka.html
       ssl_x_truststore_x_password:
         description: The trust store file password. If null, the trust store file is still use, but integrity checking is disabled. Invalid for PEM format.
         title: ssl.truststore.password
@@ -166,6 +182,10 @@ kafka:
       ssl_x_truststore_x_location:
         description: The trust store file location within the Docker container.
         title: ssl.truststore.location
+        helpLink: kafka.html
+      ssl_x_truststore_x_type:
+        description: The trust store file format.
+        title: ssl.truststore.type
         helpLink: kafka.html
       ssl_x_truststore_x_password:
         description: The trust store file password. If null, the trust store file is still use, but integrity checking is disabled. Invalid for PEM format.

@@ -233,6 +233,8 @@ base:
     - stig.soc_stig
     - soc.license
     - kafka.nodes
+    - kafka.soc_kafka
+    - kafka.adv_kafka
 
   '*_receiver':
     - logstash.nodes

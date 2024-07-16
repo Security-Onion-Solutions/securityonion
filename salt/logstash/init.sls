@@ -4,13 +4,9 @@
 # Elastic License 2.0.
 
 {% from 'logstash/map.jinja' import LOGSTASH_MERGED %}
-{% from 'kafka/map.jinja' import KAFKAMERGED %}
 
 include:
-{# Disable logstash when Kafka is enabled except when the role is standalone #}
-{% if LOGSTASH_MERGED.enabled and grains.role == 'so-standalone' %}
-  - logstash.enabled
-{% elif LOGSTASH_MERGED.enabled and not KAFKAMERGED.enabled %}
+{% if LOGSTASH_MERGED.enabled %}
   - logstash.enabled
 {% else %}
   - logstash.disabled

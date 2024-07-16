@@ -7,18 +7,22 @@
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 
-include:
-  - ssl
-
 kafka_group:
   group.present:
     - name: kafka
     - gid: 960
 
-kafka:
+kafka_user:
   user.present:
+    - name: kafka
     - uid: 960
     - gid: 960
+    - home: /opt/so/conf/kafka
+    - createhome: False
+
+kafka_home_dir:
+  file.absent:
+    - name: /home/kafka
 
 kafka_sbin_tools:
   file.recurse:
@@ -27,6 +31,17 @@ kafka_sbin_tools:
     - user: 960
     - group: 960
     - file_mode: 755
+
+kafka_sbin_jinja_tools:
+  file.recurse:
+    - name: /usr/sbin
+    - source: salt://kafka/tools/sbin_jinja
+    - user: 960
+    - group: 960
+    - file_mode: 755
+    - template: jinja
+    - defaults:
+        GLOBALS: {{ GLOBALS }}
 
 kafka_log_dir:
   file.directory:
