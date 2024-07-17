@@ -676,12 +676,11 @@ up_to_2.4.90() {
   kafkatrust=$(get_random_value)
   # rearranging the kafka pillar to reduce clutter in SOC UI
   kafkasavedpass=$(so-yaml.py get /opt/so/saltstack/local/pillar/kafka/soc_kafka.sls kafka.password)
-  kafkatrimpass=$(echo $kafkasavedpass | awk '{print $1}')
+  kafkatrimpass=$(echo "$kafkasavedpass" | awk '{print $1}')
+  echo "Making changes to the Kafka pillar layout"
   so-yaml.py remove /opt/so/saltstack/local/pillar/kafka/soc_kafka.sls kafka.password
-  echo '  config:' >> /opt/so/saltstack/local/pillar/kafka/soc_kafka.sls
-  echo '    password: '$kafkatrimpass >> /opt/so/saltstack/local/pillar/kafka/soc_kafka.sls
-  echo '    trustpass: '$kafkatrust >> /opt/so/saltstack/local/pillar/kafka/soc_kafka.sls
-
+  so-yaml.py add /opt/so/saltstack/local/pillar/kafka/soc_kafka.sls kafka.config.password "$kafkatrimpass"
+  so-yaml.py add /opt/so/saltstack/local/pillar/kafka/soc_kafka.sls kafka.config.trustpass "$kafkatrust"
 
   INSTALLEDVERSION=2.4.90
 }
