@@ -18,7 +18,12 @@ include:
   - kafka.nodes
 {% endif %}
 {% if GLOBALS.pipeline == "KAFKA" and KAFKAMERGED.enabled %}
+{%   if grains.role in ['so-manager', 'so-managersearch', 'so-standalone', 'so-receiver'] %}
   - kafka.enabled
+{# Searchnodes only run kafka.ssl state when Kafka is enabled #}
+{%   elif grains.role == "so-searchnode" %}
+  - kafka.ssl
+{%   endif %}
 {% else %}
   - kafka.disabled
 {% endif %}

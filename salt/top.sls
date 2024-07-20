@@ -155,6 +155,7 @@ base:
     - nginx
     - elasticfleet.install_agent_grid
     - stig
+    - kafka
 
   '*_managersearch and G@saltversion:{{saltversion}}':
     - match: compound
@@ -184,6 +185,7 @@ base:
     - utility
     - elasticfleet
     - stig
+    - kafka
 
   '*_heavynode and G@saltversion:{{saltversion}}':
     - match: compound
