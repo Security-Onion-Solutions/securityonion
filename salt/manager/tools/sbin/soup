@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
-# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
@@ -30,7 +30,7 @@ check_err() {
   [[ $ERR_HANDLED == true ]] && exit $exit_code
 
   if [[ $exit_code -ne 0 ]]; then
-  
+
     set +e
     systemctl_func "start" "$cron_service_name"
     systemctl_func "start" "salt-master"
@@ -108,7 +108,7 @@ add_common() {
 }
 
 airgap_mounted() {
-  # Let's see if the ISO is already mounted. 
+  # Let's see if the ISO is already mounted.
   if [[ -f /tmp/soagupdate/SecurityOnion/VERSION ]]; then
     echo "The ISO is already mounted"
   else
@@ -116,8 +116,8 @@ airgap_mounted() {
       echo "This is airgap. Ask for a location."
       echo ""
       cat << EOF
-In order for soup to proceed, the path to the downloaded Security Onion ISO file, or the path to the CD-ROM or equivalent device containing the ISO media must be provided. 
-For example, if you have copied the new Security Onion ISO file to your home directory, then the path might look like /home/myuser/securityonion-2.x.y.iso. 
+In order for soup to proceed, the path to the downloaded Security Onion ISO file, or the path to the CD-ROM or equivalent device containing the ISO media must be provided.
+For example, if you have copied the new Security Onion ISO file to your home directory, then the path might look like /home/myuser/securityonion-2.x.y.iso.
 Or, if you have burned the new ISO onto an optical disk then the path might look like /dev/cdrom.
 
 EOF
@@ -134,7 +134,7 @@ EOF
         exit 0
       else
         echo "ISO has been mounted!"
-      fi  
+      fi
     elif [[ -f $ISOLOC/SecurityOnion/VERSION ]]; then
       ln -s $ISOLOC /tmp/soagupdate
       echo "Found the update content"
@@ -149,7 +149,7 @@ EOF
         echo "Device has been mounted!"
       fi
     else
-      echo "Could not find Security Onion ISO content at ${ISOLOC}" 
+      echo "Could not find Security Onion ISO content at ${ISOLOC}"
       echo "Ensure the path you entered is correct, and that you verify the ISO that you downloaded."
       exit 0
     fi
@@ -195,7 +195,7 @@ check_airgap() {
       UPDATE_DIR=/tmp/soagupdate/SecurityOnion
       AGDOCKER=/tmp/soagupdate/docker
       AGREPO=/tmp/soagupdate/minimal/Packages
-  else 
+  else
       is_airgap=1
   fi
 }
@@ -407,11 +407,11 @@ preupgrade_changes() {
 postupgrade_changes() {
     # This function is to add any new pillar items if needed.
     echo "Running post upgrade processes."
-    
+
     [[ "$POSTVERSION" == 2.4.2 ]] && post_to_2.4.3
     [[ "$POSTVERSION" == 2.4.3 ]] && post_to_2.4.4
-    [[ "$POSTVERSION" == 2.4.4 ]] && post_to_2.4.5 
-    [[ "$POSTVERSION" == 2.4.5 ]] && post_to_2.4.10 
+    [[ "$POSTVERSION" == 2.4.4 ]] && post_to_2.4.5
+    [[ "$POSTVERSION" == 2.4.5 ]] && post_to_2.4.10
     [[ "$POSTVERSION" == 2.4.10 ]] && post_to_2.4.20
     [[ "$POSTVERSION" == 2.4.20 ]] && post_to_2.4.30
     [[ "$POSTVERSION" == 2.4.30 ]] && post_to_2.4.40
@@ -569,13 +569,13 @@ up_to_2.4.5() {
 
 up_to_2.4.10() {
   echo "Nothing to do for 2.4.10"
-  
+
   INSTALLEDVERSION=2.4.10
 }
 
 up_to_2.4.20() {
   echo "Nothing to do for 2.4.20"
-  
+
   INSTALLEDVERSION=2.4.20
 }
 
@@ -628,7 +628,7 @@ up_to_2.4.50() {
   mkdir /opt/so/rules/nids/suri
   chown socore:socore /opt/so/rules/nids/suri
   mv -v /opt/so/rules/nids/*.rules /opt/so/rules/nids/suri/.
-  
+
   echo "Adding /nsm/elastic-fleet/artifacts to file_roots in /etc/salt/master using so-yaml"
   so-yaml.py append /etc/salt/master file_roots.base  /nsm/elastic-fleet/artifacts
 
@@ -681,6 +681,7 @@ up_to_2.4.90() {
   so-yaml.py remove /opt/so/saltstack/local/pillar/kafka/soc_kafka.sls kafka.password
   so-yaml.py add /opt/so/saltstack/local/pillar/kafka/soc_kafka.sls kafka.config.password "$kafkatrimpass"
   so-yaml.py add /opt/so/saltstack/local/pillar/kafka/soc_kafka.sls kafka.config.trustpass "$kafkatrust"
+  so-elasticsearch-query so-detection*/_settings -X PUT -d '{"index":{"refresh_interval":"1s"}}'
 
   INSTALLEDVERSION=2.4.90
 }
@@ -714,7 +715,7 @@ Documentation: https://docs.securityonion.net/en/2.4/telemetry.html
 ASSIST_EOF
 
     echo -n "Continue the upgrade with SOC Telemetry enabled [Y/n]? "
-  
+
     read -r input
     input=$(echo "${input,,}" | xargs echo -n)
     echo ""
@@ -755,7 +756,7 @@ suricata_idstools_migration() {
   rsync -av /opt/so/rules/nids/suri/local.rules /nsm/backup/detections-migration/suricata/local-rules
   if [[ -f /opt/so/saltstack/local/salt/idstools/rules/local.rules ]]; then
       rsync -av /opt/so/saltstack/local/salt/idstools/rules/local.rules /nsm/backup/detections-migration/suricata/local-rules/local.rules.bak
-  fi 
+  fi
 
   #Tell SOC to migrate
   mkdir -p /opt/so/conf/soc/migrations
@@ -772,7 +773,7 @@ playbook_migration() {
   crontab -l | grep -v 'so-playbook-ruleupdate_cron' | crontab -
 
   if grep -A 1 'playbook:'  /opt/so/saltstack/local/pillar/minions/* | grep -q 'enabled: True'; then
-  
+
     # Check for active Elastalert rules
     active_rules_count=$(find /opt/so/rules/elastalert/playbook/ -type f \( -name "*.yaml" -o -name "*.yml" \) | wc -l)
 
@@ -864,7 +865,7 @@ upgrade_space() {
     fi
   else
       echo "You have enough space for upgrade. Proceeding with soup."
-  fi  
+  fi
 }
 
 unmount_update() {
@@ -922,7 +923,7 @@ upgrade_check() {
     fi
   else
     is_hotfix=false
-  fi 
+  fi
 
 }
 
@@ -934,7 +935,7 @@ upgrade_check_salt() {
     echo "Salt needs to be upgraded to $NEWSALTVERSION."
     UPGRADESALT=1
   fi
-}   
+}
 
 upgrade_salt() {
   SALTUPGRADED=True
@@ -1052,7 +1053,7 @@ apply_hotfix() {
       mv /etc/pki/managerssl.key /etc/pki/managerssl.key.old
       systemctl_func "start" "salt-minion"
       (wait_for_salt_minion "$MINIONID" "5" '/dev/stdout' || fail "Salt minion was not running or ready.") 2>&1 | tee -a "$SOUP_LOG"
-    fi  
+    fi
   else
    echo "No actions required. ($INSTALLEDVERSION/$HOTFIXVERSION)"
   fi
@@ -1081,7 +1082,7 @@ apply_hotfix() {
 
 main() {
   trap 'check_err $?' EXIT
-  
+
   if [ -n "$BRANCH" ]; then
     echo "SOUP will use the $BRANCH branch."
     echo ""
@@ -1265,7 +1266,7 @@ main() {
     echo "Waiting on the Salt Master service to be ready."
     check_salt_master_status || fail  "Can't access salt master or it is not ready. Check $SOUP_LOG for details."
     set -e
-    
+
     echo "Running a highstate to complete the Security Onion upgrade on this manager. This could take several minutes."
     (wait_for_salt_minion "$MINIONID" "5" '/dev/stdout' || fail "Salt minion was not running or ready.") 2>&1 | tee -a "$SOUP_LOG"
     highstate
@@ -1316,9 +1317,9 @@ main() {
     if [[ $NUM_MINIONS -gt 1 ]]; then
 
       cat << EOF
-    
-  
-  
+
+
+
 This appears to be a distributed deployment. Other nodes should update themselves at the next Salt highstate (typically within 15 minutes). Do not manually restart anything until you know that all the search/heavy nodes in your deployment are updated. This is especially important if you are using true clustering for Elasticsearch.
 
 Each minion is on a random 15 minute check-in period and things like network bandwidth can be a factor in how long the actual upgrade takes. If you have a heavy node on a slow link, it is going to take a while to get the containers to it. Depending on what changes happened between the versions, Elasticsearch might not be able to talk to said heavy node until the update is complete.
@@ -1371,13 +1372,13 @@ while getopts ":b:f:y" opt; do
         echo "Cannot run soup in unattended mode. You must run soup manually to accept the Elastic License."
         exit 1
       else
-        UNATTENDED=true 
+        UNATTENDED=true
       fi
     ;;
     f )
       ISOLOC="$OPTARG"
     ;;
-    \? ) 
+    \? )
       echo "Usage: soup [-b] [-y] [-f <iso location>]"
       exit 1
     ;;
