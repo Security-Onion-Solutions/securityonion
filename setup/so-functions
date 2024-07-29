@@ -1180,13 +1180,16 @@ kibana_pillar() {
 kafka_pillar() {
 	KAFKACLUSTERID=$(get_random_value 22)
 	KAFKAPASS=$(get_random_value)
+	KAFKATRUST=$(get_random_value)
 	logCmd "mkdir -p $local_salt_dir/pillar/kafka"
 	logCmd "touch $adv_kafka_pillar_file"
 	logCmd "touch $kafka_pillar_file"
 	printf '%s\n'\
 		"kafka:"\
 		"  cluster_id: $KAFKACLUSTERID"\
-		"  password: $KAFKAPASS" > $kafka_pillar_file
+		"  config:"\
+		"    password: $KAFKAPASS"\
+		"    trustpass: $KAFKATRUST" > $kafka_pillar_file
 }
 
 logrotate_pillar() {
@@ -1254,30 +1257,7 @@ soc_pillar() {
 		"soc:"\
 		"  config:"\
 		"    server:"\
-		"      srvKey: '$SOCSRVKEY'"\
-		"      modules:"\
-		"        elastalertengine:"\
-		"          allowRegex: '$ELASTALERT_ALLOW_REGEX'" > "$soc_pillar_file"
-	if [[ -n "$ELASTALERT_FAIL_ERROR_COUNT" ]]; then
-		printf '%s\n'\
-	    "          failAfterConsecutiveErrorCount: $ELASTALERT_FAIL_ERROR_COUNT" >> "$soc_pillar_file"
-	fi
-	
-	printf '%s\n'\
-		"        strelkaengine:"\
-		"          allowRegex: '$STRELKA_ALLOW_REGEX'" >> "$soc_pillar_file"
-	if [[ -n "$STRELKA_FAIL_ERROR_COUNT" ]]; then
-	 	printf '%s\n'\
-		"          failAfterConsecutiveErrorCount: $STRELKA_FAIL_ERROR_COUNT" >> "$soc_pillar_file"
-	fi
-	
-	printf '%s\n'\
-		"        suricataengine:"\
-		"          allowRegex: '$SURICATA_ALLOW_REGEX'" >> "$soc_pillar_file"
-	if [[ -n "$SURICATA_FAIL_ERROR_COUNT" ]]; then
-		printf '%s\n'\
-		"          failAfterConsecutiveErrorCount: $SURICATA_FAIL_ERROR_COUNT" >> "$soc_pillar_file"
-	fi
+		"      srvKey: '$SOCSRVKEY'" > "$soc_pillar_file"
 
 	if [[ $telemetry -ne 0 ]]; then
 		echo "  telemetryEnabled: false" >> $soc_pillar_file

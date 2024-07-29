@@ -96,6 +96,12 @@ soc:
         links:
           - '/#/alerts?q=rule.uuid: {:so_detection.publicId|escape} | groupby rule.name event.module* event.severity_label'
         target: ''
+      - name: actionAdd
+        description: actionAddHelp
+        icon: fa-plus
+        links:
+          - '/#/config?s=soc.config.actions'
+        target: ''
     eventFields:
       default:
         - soc_timestamp
@@ -1305,7 +1311,6 @@ soc:
         kratos:
           hostUrl:
         elastalertengine:
-          allowRegex: ''
           autoUpdateEnabled: true
           autoEnabledSigmaRules:
             default:
@@ -1321,7 +1326,6 @@ soc:
           communityRulesImportFrequencySeconds: 86400
           communityRulesImportErrorSeconds: 300
           failAfterConsecutiveErrorCount: 10
-          denyRegex: ''
           elastAlertRulesFolder: /opt/sensoroni/elastalert
           reposFolder: /opt/sensoroni/sigma/repos
           rulesFingerprintFile: /opt/sensoroni/fingerprints/sigma.fingerprint
@@ -1360,6 +1364,8 @@ soc:
           maxLogLength: 1024
           asyncThreshold: 10
           lookupTunnelParent: true
+          maxScrollSize: 10000
+          bulkIndexerWorkerCount: -1
         influxdb:
           hostUrl:
           token:
@@ -1384,7 +1390,6 @@ soc:
           userFiles:
             - rbac/users_roles
         strelkaengine:
-          allowRegex: ''
           autoEnabledYaraRules:
             - securityonion-yara
           autoUpdateEnabled: true
@@ -1392,7 +1397,6 @@ soc:
           communityRulesImportErrorSeconds: 300
           failAfterConsecutiveErrorCount: 10
           compileYaraPythonScriptPath: /opt/sensoroni/yara/compile_yara.py
-          denyRegex: ''
           reposFolder: /opt/sensoroni/yara/repos
           rulesRepos:
             default:
@@ -1407,14 +1411,14 @@ soc:
           stateFilePath: /opt/sensoroni/fingerprints/strelkaengine.state
           integrityCheckFrequencySeconds: 1200
         suricataengine:
-          allowRegex: ''
           autoUpdateEnabled: true
           communityRulesImportFrequencySeconds: 86400
           communityRulesImportErrorSeconds: 300
           customRulesets:
+          disableRegex: []
+          enableRegex: []
           failAfterConsecutiveErrorCount: 10
           communityRulesFile: /nsm/rules/suricata/emerging-all.rules
-          denyRegex: ''
           rulesFingerprintFile: /opt/sensoroni/fingerprints/emerging-all.fingerprint
           stateFilePath: /opt/sensoroni/fingerprints/suricataengine.state
           integrityCheckFrequencySeconds: 1200
@@ -2286,15 +2290,15 @@ soc:
 
               alert http $EXTERNAL_NET any -> $HOME_NET any (msg:"Example Rule Title - 'example' String Detected"; content:"example"; sid:[publicId]; rev:1;)
             strelka: |
-              /* 
+              /*
               This is a YARA rule template. Replace all template values with your own values.
               The YARA rule name is the unique identifier for the rule.
               Docs: https://yara.readthedocs.io/en/stable/writingrules.html#writing-yara-rules
-              */ 
+              */
 
               rule Example // This identifier _must_ be unique
               {
-                  meta: 
+                  meta:
                       description = "Generic YARA Rule"
                       author = "@SecurityOnion"
                       date = "YYYY-MM-DD"
@@ -2317,7 +2321,7 @@ soc:
               id: [publicId]
               status: 'experimental'
               description: |
-                  This should be a detailed description of what this Detection focuses on: what we are trying to find and why we are trying to find it. 
+                  This should be a detailed description of what this Detection focuses on: what we are trying to find and why we are trying to find it.
                   For example, from rule 97a80ec7-0e2f-4d05-9ef4-65760e634f6b: "Detects a whoami.exe executed with the /priv command line flag instructing the tool to show all current user privileges. This is often used after a privilege escalation attempt."
               references:
                 - 'https://local.invalid'
@@ -2326,7 +2330,7 @@ soc:
               tags:
                 - detection.threat_hunting
                 - attack.technique_id
-              logsource: 
+              logsource:
                 category: process_creation
                 product: windows
               detection:

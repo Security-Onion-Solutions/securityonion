@@ -17,10 +17,11 @@
 {%   if 'gmd' in salt['pillar.get']('features', []) %}
 
 include:
-  - elasticsearch.ca
-  - kafka.sostatus
+  - kafka.ca
   - kafka.config
+  - kafka.ssl
   - kafka.storage
+  - kafka.sostatus
 
 so-kafka:
   docker_container.running:
@@ -49,7 +50,7 @@ so-kafka:
       {% endfor %}
     - binds:
       - /etc/pki/kafka.p12:/etc/pki/kafka.p12:ro
-      - /etc/pki/tls/certs/intca.crt:/etc/pki/java/sos/cacerts:ro
+      - /opt/so/conf/kafka/kafka-truststore.jks:/etc/pki/kafka-truststore.jks:ro
       - /nsm/kafka/data/:/nsm/kafka/data/:rw
       - /opt/so/log/kafka:/opt/kafka/logs/:rw
       - /opt/so/conf/kafka/server.properties:/opt/kafka/config/kraft/server.properties:ro
@@ -58,6 +59,9 @@ so-kafka:
       {% for sc in ['server', 'client'] %}
       - file: kafka_kraft_{{sc}}_properties
       {% endfor %}
+      - file: kafkacertz
+    - require:
+      - file: kafkacertz
 
 delete_so-kafka_so-status.disabled:
   file.uncomment:

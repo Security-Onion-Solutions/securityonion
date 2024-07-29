@@ -1,23 +1,37 @@
+{# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+   or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+   https://securityonion.net/license; you may not use this file except in compliance with the
+   Elastic License 2.0. #}
+
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 {% import_yaml 'elasticsearch/defaults.yaml' as ELASTICSEARCHDEFAULTS with context %}
 
 {% set HIGHLANDER = salt['pillar.get']('global:highlander', False) %}
 
-{# ES_LOGSTASH_NODES is the same as LOGSTASH_NODES from logstash/map.jinja but heavynodes and fleet nodes are removed #}
-{% set ES_LOGSTASH_NODES = [] %}
-{% set node_data = salt['pillar.get']('logstash:nodes', {GLOBALS.role.split('-')[1]: {GLOBALS.hostname: {'ip': GLOBALS.node_ip}}}) %}
+{# this is a list of dicts containing hostname:ip for elasticsearch nodes that need to know about each other for cluster #}
+{% set ELASTICSEARCH_SEED_HOSTS = [] %}
+{% set node_data = salt['pillar.get']('elasticsearch:nodes', {GLOBALS.role.split('-')[1]: {GLOBALS.hostname: {'ip': GLOBALS.node_ip}}}) %}
 {% for node_type, node_details in node_data.items() | sort %}
-{%   if node_type not in ['heavynode', 'fleet'] %}
+{%   if node_type != 'heavynode' %}
 {%     for hostname in node_data[node_type].keys() %}
-{%       do ES_LOGSTASH_NODES.append({hostname:node_details[hostname].ip}) %}
+{%       do ELASTICSEARCH_SEED_HOSTS.append({hostname:node_details[hostname].ip}) %}
 {%     endfor %}
 {%   endif %}
 {% endfor %}
 
+{# this is a list of dicts containing hostname:ip of all nodes running elasticsearch #}
+{% set ELASTICSEARCH_NODES = [] %}
+{% set node_data = salt['pillar.get']('elasticsearch:nodes', {GLOBALS.role.split('-')[1]: {GLOBALS.hostname: {'ip': GLOBALS.node_ip}}}) %}
+{% for node_type, node_details in node_data.items() %}
+{%   for hostname in node_data[node_type].keys() %}
+{%     do ELASTICSEARCH_NODES.append({hostname:node_details[hostname].ip}) %}
+{%   endfor %}
+{% endfor %}
+
 {% if grains.id.split('_') | last in ['manager','managersearch','standalone'] %}
-    {% if ES_LOGSTASH_NODES | length > 1 %}
+    {% if ELASTICSEARCH_SEED_HOSTS | length > 1 %}
       {% do ELASTICSEARCHDEFAULTS.elasticsearch.config.update({'discovery': {'seed_hosts': []}}) %}
-      {% for NODE in ES_LOGSTASH_NODES %}
+      {% for NODE in ELASTICSEARCH_SEED_HOSTS %}
         {% do ELASTICSEARCHDEFAULTS.elasticsearch.config.discovery.seed_hosts.append(NODE.keys()|first) %}
       {% endfor %}
     {% endif %}
