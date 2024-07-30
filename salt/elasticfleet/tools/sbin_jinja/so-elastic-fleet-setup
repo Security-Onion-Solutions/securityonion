@@ -53,7 +53,8 @@ fi
 printf "\n### Create ES Token ###\n"
 ESTOKEN=$(curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/service_tokens" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' |  jq -r .value)
 
-### Create Outputs & Fleet URLs ###
+### Create Outputs, Fleet Policy and Fleet URLs ###
+# Create the Manager Elasticsearch Output first and set it as the default output
 printf "\nAdd Manager Elasticsearch Output...\n"
 ESCACRT=$(openssl x509 -in  $INTCA)
 JSON_STRING=$( jq -n \
@@ -62,7 +63,13 @@ JSON_STRING=$( jq -n \
 curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/outputs" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
 printf "\n\n"
 
-printf "\nCreate Logstash Output Config if node is not an Import or Eval install\n"
+# Create the Manager Fleet Server Host Agent Policy
+# This has to be done while the Elasticsearch Output is set to the default Output
+printf "Create Manager Fleet Server Policy...\n"
+elastic_fleet_policy_create "FleetServer_{{ GLOBALS.hostname }}" "Fleet Server - {{ GLOBALS.hostname }}" "true" "120"
+
+# Now we can create the Logstash Output and set it to to be the default Output
+printf "\n\nCreate Logstash Output Config if node is not an Import or Eval install\n"
 {% if grains.role not in ['so-import', 'so-eval'] %}
 LOGSTASHCRT=$(openssl x509 -in /etc/pki/elasticfleet-logstash.crt)
 LOGSTASHKEY=$(openssl rsa -in  /etc/pki/elasticfleet-logstash.key)
@@ -100,16 +107,6 @@ printf "\n\n"
 
 # Load Elasticsearch templates
 /usr/sbin/so-elasticsearch-templates-load
-
-# Manager Fleet Server Host
-elastic_fleet_policy_create "FleetServer_{{ GLOBALS.hostname }}" "Fleet Server - {{ GLOBALS.hostname }}" "true" "120"
-
-#Temp Fixup for ES Output bug
-JSON_STRING=$( jq -n \
-                --arg NAME "FleetServer_{{ GLOBALS.hostname }}" \
-                '{"name": $NAME,"description": $NAME,"namespace":"default","monitoring_enabled":["logs"],"inactivity_timeout":120,"data_output_id":"so-manager_elasticsearch"}'
-                )
-curl -K /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fleet/agent_policies/FleetServer_{{ GLOBALS.hostname }}" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
 
 # Initial Endpoints Policy
 elastic_fleet_policy_create "endpoints-initial" "Initial Endpoint Policy" "false" "1209600"
