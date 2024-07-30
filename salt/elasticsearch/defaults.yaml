@@ -56,87 +56,6 @@ elasticsearch:
             enabled: true
             key: /usr/share/elasticsearch/config/elasticsearch.key
             verification_mode: none
-  pipelines:
-    custom001:
-      description: Custom Pipeline
-      processors:
-      - set:
-          field: tags
-          value: custom001
-      - pipeline:
-          name: common
-    custom002:
-      description: Custom Pipeline
-      processors:
-      - set:
-          field: tags
-          value: custom002
-      - pipeline:
-          name: common
-    custom003:
-      description: Custom Pipeline
-      processors:
-      - set:
-          field: tags
-          value: custom003
-      - pipeline:
-          name: common
-    custom004:
-      description: Custom Pipeline
-      processors:
-      - set:
-          field: tags
-          value: custom004
-      - pipeline:
-          name: common
-    custom005:
-      description: Custom Pipeline
-      processors:
-      - set:
-          field: tags
-          value: custom005
-      - pipeline:
-          name: common
-    custom006:
-      description: Custom Pipeline
-      processors:
-      - set:
-          field: tags
-          value: custom006
-      - pipeline:
-          name: common
-    custom007:
-      description: Custom Pipeline
-      processors:
-      - set:
-          field: tags
-          value: custom007
-      - pipeline:
-          name: common
-    custom008:
-      description: Custom Pipeline
-      processors:
-      - set:
-          field: tags
-          value: custom008
-      - pipeline:
-          name: common
-    custom009:
-      description: Custom Pipeline
-      processors:
-      - set:
-          field: tags
-          value: custom009
-      - pipeline:
-          name: common
-    custom010:
-      description: Custom Pipeline
-      processors:
-      - set:
-          field: tags
-          value: custom010
-      - pipeline:
-          name: common
   index_settings:
     global_overrides:
       index_template:
@@ -170,84 +89,13 @@ elasticsearch:
               set_priority:
                 priority: 50
             min_age: 30d
-    so-items:
-      index_sorting: false
-      index_template:
-        composed_of:
-        - so-items-mappings
-        index_patterns:
-        - .items-default-**
-        priority: 500
-        template:
-          mappings:
-            date_detection: false
-          settings:
-            index:
-              lifecycle:
-                name: so-items-logs
-                rollover_alias: ".items-default"
-              routing:
-                allocation:
-                  include:
-                    _tier_preference: "data_content"
-              mapping:
-                total_fields:
-                  limit: 10000
-              number_of_replicas: 0
-              number_of_shards: 1
-              refresh_interval: 30s
-              sort:
-                field: '@timestamp'
-                order: desc
-      policy:
-        phases:
-          hot:
-            actions:
-              rollover:
-                max_size: 50gb
-            min_age: 0ms
-    so-lists:
-      index_sorting: false
-      index_template:
-        composed_of:
-        - so-lists-mappings
-        index_patterns:
-        - .lists-default-**
-        priority: 500
-        template:
-          mappings:
-            date_detection: false
-          settings:
-            index:
-              lifecycle:
-                name: so-lists-logs
-                rollover_alias: ".lists-default"
-              routing:
-                allocation:
-                  include:
-                    _tier_preference: "data_content"
-              mapping:
-                total_fields:
-                  limit: 10000
-              number_of_replicas: 0
-              number_of_shards: 1
-              refresh_interval: 30s
-              sort:
-                field: '@timestamp'
-                order: desc
-      policy:
-        phases:
-          hot:
-            actions:
-              rollover:
-                max_size: 50gb
-            min_age: 0ms
     so-case:
       index_sorting: false
       index_template:
         composed_of:
         - case-mappings
         - case-settings
+        ignore_missing_component_templates: []
         index_patterns:
         - so-case*
         priority: 500
@@ -271,142 +119,6 @@ elasticsearch:
               sort:
                 field: '@timestamp'
                 order: desc
-    so-detection:
-      index_sorting: false
-      index_template:
-        composed_of:
-        - detection-mappings
-        - detection-settings
-        index_patterns:
-        - so-detection*
-        priority: 500
-        template:
-          mappings:
-            date_detection: false
-            dynamic_templates:
-            - strings_as_keyword:
-                mapping:
-                  ignore_above: 1024
-                  type: keyword
-                match_mapping_type: string
-          settings:
-            index:
-              mapping:
-                total_fields:
-                  limit: 1500
-              number_of_replicas: 0
-              number_of_shards: 1
-              refresh_interval: 1s
-              sort:
-                field: '@timestamp'
-                order: desc
-    so-logs-soc:
-      close: 30
-      delete: 365
-      index_sorting: false
-      index_template:
-        composed_of:
-        - agent-mappings
-        - dtc-agent-mappings
-        - base-mappings
-        - dtc-base-mappings
-        - client-mappings
-        - dtc-client-mappings
-        - container-mappings
-        - destination-mappings
-        - dtc-destination-mappings
-        - pb-override-destination-mappings
-        - dll-mappings
-        - dns-mappings
-        - dtc-dns-mappings
-        - ecs-mappings
-        - dtc-ecs-mappings
-        - error-mappings
-        - event-mappings
-        - dtc-event-mappings
-        - file-mappings
-        - dtc-file-mappings
-        - group-mappings
-        - host-mappings
-        - dtc-host-mappings
-        - http-mappings
-        - dtc-http-mappings
-        - log-mappings
-        - network-mappings
-        - dtc-network-mappings
-        - observer-mappings
-        - dtc-observer-mappings
-        - organization-mappings
-        - package-mappings
-        - process-mappings
-        - dtc-process-mappings
-        - related-mappings
-        - rule-mappings
-        - dtc-rule-mappings
-        - server-mappings
-        - service-mappings
-        - dtc-service-mappings
-        - source-mappings
-        - dtc-source-mappings
-        - pb-override-source-mappings
-        - threat-mappings
-        - tls-mappings
-        - url-mappings
-        - user_agent-mappings
-        - dtc-user_agent-mappings
-        - common-settings
-        - common-dynamic-mappings
-        data_stream: {}
-        index_patterns:
-        - logs-soc-so*
-        priority: 500
-        template:
-          mappings:
-            date_detection: false
-            dynamic_templates:
-            - strings_as_keyword:
-                mapping:
-                  ignore_above: 1024
-                  type: keyword
-                match_mapping_type: string
-          settings:
-            index:
-              lifecycle:
-                name: so-soc-logs
-              mapping:
-                total_fields:
-                  limit: 5000
-              number_of_replicas: 0
-              number_of_shards: 1
-              refresh_interval: 30s
-              sort:
-                field: '@timestamp'
-                order: desc
-      policy:
-        phases:
-          cold:
-            actions:
-              set_priority:
-                priority: 0
-            min_age: 60d
-          delete:
-            actions:
-              delete: {}
-            min_age: 365d
-          hot:
-            actions:
-              rollover:
-                max_age: 30d
-                max_primary_shard_size: 50gb
-              set_priority:
-                priority: 100
-            min_age: 0ms
-          warm:
-            actions:
-              set_priority:
-                priority: 50
-            min_age: 30d
-      warm: 7
     so-common:
       close: 30
       delete: 365
@@ -473,6 +185,7 @@ elasticsearch:
         - common-dynamic-mappings
         - winlog-mappings
         data_stream: {}
+        ignore_missing_component_templates: []
         index_patterns:
         - logs-*-so*
         priority: 1
@@ -523,6 +236,36 @@ elasticsearch:
                 priority: 50
             min_age: 30d
       warm: 7
+    so-detection:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - detection-mappings
+        - detection-settings
+        ignore_missing_component_templates: []
+        index_patterns:
+        - so-detection*
+        priority: 500
+        template:
+          mappings:
+            date_detection: false
+            dynamic_templates:
+            - strings_as_keyword:
+                mapping:
+                  ignore_above: 1024
+                  type: keyword
+                match_mapping_type: string
+          settings:
+            index:
+              mapping:
+                total_fields:
+                  limit: 1500
+              number_of_replicas: 0
+              number_of_shards: 1
+              refresh_interval: 30s
+              sort:
+                field: '@timestamp'
+                order: desc
     so-endgame:
       index_sorting: false
       index_template:
@@ -585,6 +328,7 @@ elasticsearch:
         - common-settings
         - common-dynamic-mappings
         - winlog-mappings
+        ignore_missing_component_templates: []
         index_patterns:
         - endgame*
         priority: 500
@@ -690,6 +434,7 @@ elasticsearch:
         - dtc-user_agent-mappings
         - common-settings
         - common-dynamic-mappings
+        ignore_missing_component_templates: []
         index_patterns:
         - so-idh-*
         priority: 500
@@ -802,6 +547,7 @@ elasticsearch:
         - common-dynamic-mappings
         - winlog-mappings
         data_stream: {}
+        ignore_missing_component_templates: []
         index_patterns:
         - logs-import-so*
         priority: 500
@@ -828,6 +574,91 @@ elasticsearch:
               sort:
                 field: '@timestamp'
                 order: desc
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
+    so-items:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - so-items-mappings
+        ignore_missing_component_templates: []
+        index_patterns:
+        - .items-default-**
+        priority: 500
+        template:
+          mappings:
+            date_detection: false
+          settings:
+            index:
+              lifecycle:
+                name: so-items-logs
+                rollover_alias: .items-default
+              mapping:
+                total_fields:
+                  limit: 10000
+              number_of_replicas: 0
+              number_of_shards: 1
+              refresh_interval: 30s
+              routing:
+                allocation:
+                  include:
+                    _tier_preference: data_content
+              sort:
+                field: '@timestamp'
+                order: desc
+      policy:
+        phases:
+          hot:
+            actions:
+              rollover:
+                max_size: 50gb
+            min_age: 0ms
+    so-kismet:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - kismet-mappings
+        - source-mappings
+        - client-mappings
+        - device-mappings
+        - network-mappings
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates: []
+        index_patterns:
+        - logs-kismet-so*
+        priority: 501
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-kismet-logs
+              number_of_replicas: 0
       policy:
         phases:
           cold:
@@ -911,6 +742,7 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates: []
         index_patterns:
         - logs-kratos-so*
         priority: 500
@@ -961,6 +793,43 @@ elasticsearch:
                 priority: 50
             min_age: 30d
       warm: 7
+    so-lists:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - so-lists-mappings
+        ignore_missing_component_templates: []
+        index_patterns:
+        - .lists-default-**
+        priority: 500
+        template:
+          mappings:
+            date_detection: false
+          settings:
+            index:
+              lifecycle:
+                name: so-lists-logs
+                rollover_alias: .lists-default
+              mapping:
+                total_fields:
+                  limit: 10000
+              number_of_replicas: 0
+              number_of_shards: 1
+              refresh_interval: 30s
+              routing:
+                allocation:
+                  include:
+                    _tier_preference: data_content
+              sort:
+                field: '@timestamp'
+                order: desc
+      policy:
+        phases:
+          hot:
+            actions:
+              rollover:
+                max_size: 50gb
+            min_age: 0ms
     so-logs:
       index_sorting: false
       index_template:
@@ -973,6 +842,7 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates: []
         index_patterns:
         - logs-*-*
         priority: 225
@@ -1034,6 +904,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-1password.item_usages@custom
         index_patterns:
         - logs-1password.item_usages-*
         priority: 501
@@ -1078,6 +950,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-1password.signin_attempts@custom
         index_patterns:
         - logs-1password.signin_attempts-*
         priority: 501
@@ -1122,6 +996,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-apache.access@custom
         index_patterns:
         - logs-apache.access-*
         priority: 501
@@ -1166,6 +1042,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-apache.error@custom
         index_patterns:
         - logs-apache.error-*
         priority: 501
@@ -1210,6 +1088,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-auditd.log@custom
         index_patterns:
         - logs-auditd.log-*
         priority: 501
@@ -1254,6 +1134,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-auth0.logs@custom
         index_patterns:
         - logs-auth0.logs-*
         priority: 501
@@ -1288,25 +1170,27 @@ elasticsearch:
                 priority: 50
             min_age: 30d
     so-logs-aws_x_cloudfront_logs:
-      index_sorting: False
+      index_sorting: false
       index_template:
+        composed_of:
+        - logs-aws.cloudfront_logs@package
+        - logs-aws.cloudfront_logs@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - logs-aws.cloudfront_logs@custom
         index_patterns:
-          - "logs-aws.cloudfront_logs-*"
+        - logs-aws.cloudfront_logs-*
+        priority: 501
         template:
           settings:
             index:
               lifecycle:
                 name: so-logs-aws.cloudfront_logs-logs
               number_of_replicas: 0
-        composed_of:
-          - "logs-aws.cloudfront_logs@package"
-          - "logs-aws.cloudfront_logs@custom"
-          - "so-fleet_globals-1"
-          - "so-fleet_agent_id_verification-1"
-        priority: 501
-        data_stream:
-          hidden: false
-          allow_custom_routing: false
       policy:
         phases:
           cold:
@@ -1342,6 +1226,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-aws.cloudtrail@custom
         index_patterns:
         - logs-aws.cloudtrail-*
         priority: 501
@@ -1386,6 +1272,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-aws.cloudwatch_logs@custom
         index_patterns:
         - logs-aws.cloudwatch_logs-*
         priority: 501
@@ -1430,6 +1318,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-aws.ec2_logs@custom
         index_patterns:
         - logs-aws.ec2_logs-*
         priority: 501
@@ -1474,6 +1364,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-aws.elb_logs@custom
         index_patterns:
         - logs-aws.elb_logs-*
         priority: 501
@@ -1518,6 +1410,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-aws.firewall_logs@custom
         index_patterns:
         - logs-aws.firewall_logs-*
         priority: 501
@@ -1552,25 +1446,27 @@ elasticsearch:
                 priority: 50
             min_age: 30d
     so-logs-aws_x_guardduty:
-      index_sorting: False
+      index_sorting: false
       index_template:
+        composed_of:
+        - logs-aws.guardduty@package
+        - logs-aws.guardduty@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - logs-aws.guardduty@custom
         index_patterns:
-          - "logs-aws.guardduty-*"
+        - logs-aws.guardduty-*
+        priority: 501
         template:
           settings:
             index:
               lifecycle:
                 name: so-logs-aws.guardduty-logs
               number_of_replicas: 0
-        composed_of:
-          - "logs-aws.guardduty@package"
-          - "logs-aws.guardduty@custom"
-          - "so-fleet_globals-1"
-          - "so-fleet_agent_id_verification-1"
-        priority: 501
-        data_stream:
-          hidden: false
-          allow_custom_routing: false
       policy:
         phases:
           cold:
@@ -1596,25 +1492,27 @@ elasticsearch:
                 priority: 50
             min_age: 30d
     so-logs-aws_x_inspector:
-      index_sorting: False
+      index_sorting: false
       index_template:
+        composed_of:
+        - logs-aws.inspector@package
+        - logs-aws.inspector@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - logs-aws.inspector@custom
         index_patterns:
-          - "logs-aws.inspector-*"
+        - logs-aws.inspector-*
+        priority: 501
         template:
           settings:
             index:
               lifecycle:
                 name: so-logs-aws.inspector-logs
               number_of_replicas: 0
-        composed_of:
-          - "logs-aws.inspector@package"
-          - "logs-aws.inspector@custom"
-          - "so-fleet_globals-1"
-          - "so-fleet_agent_id_verification-1"
-        priority: 501
-        data_stream:
-          hidden: false
-          allow_custom_routing: false
       policy:
         phases:
           cold:
@@ -1650,6 +1548,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-aws.route53_public_logs@custom
         index_patterns:
         - logs-aws.route53_public_logs-*
         priority: 501
@@ -1694,6 +1594,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-aws.route53_resolver_logs@custom
         index_patterns:
         - logs-aws.route53_resolver_logs-*
         priority: 501
@@ -1738,6 +1640,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-aws.s3access@custom
         index_patterns:
         - logs-aws.s3access-*
         priority: 501
@@ -1772,25 +1676,27 @@ elasticsearch:
                 priority: 50
             min_age: 30d
     so-logs-aws_x_securityhub_findings:
-      index_sorting: False
+      index_sorting: false
       index_template:
+        composed_of:
+        - logs-aws.securityhub_findings@package
+        - logs-aws.securityhub_findings@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - logs-aws.securityhub_findings@custom
         index_patterns:
-          - "logs-aws.securityhub_findings-*"
+        - logs-aws.securityhub_findings-*
+        priority: 501
         template:
           settings:
             index:
               lifecycle:
                 name: so-logs-aws.securityhub_findings-logs
               number_of_replicas: 0
-        composed_of:
-          - "logs-aws.securityhub_findings@package"
-          - "logs-aws.securityhub_findings@custom"
-          - "so-fleet_globals-1"
-          - "so-fleet_agent_id_verification-1"
-        priority: 501
-        data_stream:
-          hidden: false
-          allow_custom_routing: false
       policy:
         phases:
           cold:
@@ -1816,25 +1722,27 @@ elasticsearch:
                 priority: 50
             min_age: 30d
     so-logs-aws_x_securityhub_insights:
-      index_sorting: False
+      index_sorting: false
       index_template:
+        composed_of:
+        - logs-aws.securityhub_insights@package
+        - logs-aws.securityhub_insights@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - logs-aws.securityhub_insights@custom
         index_patterns:
-          - "logs-aws.securityhub_insights-*"
+        - logs-aws.securityhub_insights-*
+        priority: 501
         template:
           settings:
             index:
               lifecycle:
                 name: so-logs-aws.securityhub_insights-logs
               number_of_replicas: 0
-        composed_of:
-          - "logs-aws.securityhub_insights@package"
-          - "logs-aws.securityhub_insights@custom"
-          - "so-fleet_globals-1"
-          - "so-fleet_agent_id_verification-1"
-        priority: 501
-        data_stream:
-          hidden: false
-          allow_custom_routing: false
       policy:
         phases:
           cold:
@@ -1870,6 +1778,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-aws.vpcflow@custom
         index_patterns:
         - logs-aws.vpcflow-*
         priority: 501
@@ -1914,6 +1824,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-aws.waf@custom
         index_patterns:
         - logs-aws.waf-*
         priority: 501
@@ -1958,6 +1870,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-azure.activitylogs@custom
         index_patterns:
         - logs-azure.activitylogs-*
         priority: 501
@@ -2002,6 +1916,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-azure.application_gateway@custom
         index_patterns:
         - logs-azure.application_gateway-*
         priority: 501
@@ -2046,6 +1962,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-azure.auditlogs@custom
         index_patterns:
         - logs-azure.auditlogs-*
         priority: 501
@@ -2090,6 +2008,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-azure.eventhub@custom
         index_patterns:
         - logs-azure.eventhub-*
         priority: 501
@@ -2134,6 +2054,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-azure.firewall_logs@custom
         index_patterns:
         - logs-azure.firewall_logs-*
         priority: 501
@@ -2178,6 +2100,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-azure.identity_protection@custom
         index_patterns:
         - logs-azure.identity_protection-*
         priority: 501
@@ -2222,6 +2146,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-azure.platformlogs@custom
         index_patterns:
         - logs-azure.platformlogs-*
         priority: 501
@@ -2266,6 +2192,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-azure.provisioning@custom
         index_patterns:
         - logs-azure.provisioning-*
         priority: 501
@@ -2310,6 +2238,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-azure.signinlogs@custom
         index_patterns:
         - logs-azure.signinlogs-*
         priority: 501
@@ -2354,6 +2284,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-azure.springcloudlogs@custom
         index_patterns:
         - logs-azure.springcloudlogs-*
         priority: 501
@@ -2398,6 +2330,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-barracuda.waf@custom
         index_patterns:
         - logs-barracuda.waf-*
         priority: 501
@@ -2442,6 +2376,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-carbonblack_edr.log@custom
         index_patterns:
         - logs-carbonblack_edr.log-*
         priority: 501
@@ -2476,25 +2412,27 @@ elasticsearch:
                 priority: 50
             min_age: 30d
     so-logs-cef_x_log:
-      index_sorting: False
+      index_sorting: false
       index_template:
+        composed_of:
+        - logs-cef.log@package
+        - logs-cef.log@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - logs-cef.log@custom
         index_patterns:
-          - "logs-cef.log-*"
+        - logs-cef.log-*
+        priority: 501
         template:
           settings:
             index:
               lifecycle:
                 name: so-logs-cef.log-logs
               number_of_replicas: 0
-        composed_of:
-          - "logs-cef.log@package"
-          - "logs-cef.log@custom"
-          - "so-fleet_globals-1"
-          - "so-fleet_agent_id_verification-1"
-        priority: 501
-        data_stream:
-          hidden: false
-          allow_custom_routing: false
       policy:
         phases:
           cold:
@@ -2520,25 +2458,27 @@ elasticsearch:
                 priority: 50
             min_age: 30d
     so-logs-checkpoint_x_firewall:
-      index_sorting: False
+      index_sorting: false
       index_template:
+        composed_of:
+        - logs-checkpoint.firewall@package
+        - logs-checkpoint.firewall@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - logs-checkpoint.firewall@custom
         index_patterns:
-          - "logs-checkpoint.firewall-*"
+        - logs-checkpoint.firewall-*
+        priority: 501
         template:
           settings:
             index:
               lifecycle:
                 name: so-logs-checkpoint.firewall-logs
               number_of_replicas: 0
-        composed_of:
-          - "logs-checkpoint.firewall@package"
-          - "logs-checkpoint.firewall@custom"
-          - "so-fleet_globals-1"
-          - "so-fleet_agent_id_verification-1"
-        priority: 501
-        data_stream:
-          hidden: false
-          allow_custom_routing: false
       policy:
         phases:
           cold:
@@ -2574,6 +2514,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-cisco_asa.log@custom
         index_patterns:
         - logs-cisco_asa.log-*
         priority: 501
@@ -2618,6 +2560,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-cisco_duo.admin@custom
         index_patterns:
         - logs-cisco_duo.admin-*
         priority: 501
@@ -2662,6 +2606,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-cisco_duo.auth@custom
         index_patterns:
         - logs-cisco_duo.auth-*
         priority: 501
@@ -2706,6 +2652,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-cisco_duo.offline_enrollment@custom
         index_patterns:
         - logs-cisco_duo.offline_enrollment-*
         priority: 501
@@ -2750,6 +2698,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-cisco_duo.summary@custom
         index_patterns:
         - logs-cisco_duo.summary-*
         priority: 501
@@ -2794,6 +2744,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-cisco_duo.telephony@custom
         index_patterns:
         - logs-cisco_duo.telephony-*
         priority: 501
@@ -2828,25 +2780,27 @@ elasticsearch:
                 priority: 50
             min_age: 30d
     so-logs-cisco_ftd_x_log:
-      index_sorting: False
+      index_sorting: false
       index_template:
+        composed_of:
+        - logs-cisco_ftd.log@package
+        - logs-cisco_ftd.log@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - logs-cisco_ftd.log@custom
         index_patterns:
-          - "logs-cisco_ftd.log-*"
+        - logs-cisco_ftd.log-*
+        priority: 501
         template:
           settings:
             index:
               lifecycle:
                 name: so-logs-cisco_ftd.log-logs
               number_of_replicas: 0
-        composed_of:
-          - "logs-cisco_ftd.log@package"
-          - "logs-cisco_ftd.log@custom"
-          - "so-fleet_globals-1"
-          - "so-fleet_agent_id_verification-1"
-        priority: 501
-        data_stream:
-          hidden: false
-          allow_custom_routing: false
       policy:
         phases:
           cold:
@@ -2872,25 +2826,27 @@ elasticsearch:
                 priority: 50
             min_age: 30d
     so-logs-cisco_ios_x_log:
-      index_sorting: False
+      index_sorting: false
       index_template:
+        composed_of:
+        - logs-cisco_ios.log@package
+        - logs-cisco_ios.log@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - logs-cisco_ios.log@custom
         index_patterns:
-          - "logs-cisco_ios.log-*"
+        - logs-cisco_ios.log-*
+        priority: 501
         template:
           settings:
             index:
               lifecycle:
                 name: so-logs-cisco_ios.log-logs
               number_of_replicas: 0
-        composed_of:
-          - "logs-cisco_ios.log@package"
-          - "logs-cisco_ios.log@custom"
-          - "so-fleet_globals-1"
-          - "so-fleet_agent_id_verification-1"
-        priority: 501
-        data_stream:
-          hidden: false
-          allow_custom_routing: false
       policy:
         phases:
           cold:
@@ -2916,25 +2872,27 @@ elasticsearch:
                 priority: 50
             min_age: 30d
     so-logs-cisco_ise_x_log:
-      index_sorting: False
+      index_sorting: false
       index_template:
+        composed_of:
+        - logs-cisco_ise.log@package
+        - logs-cisco_ise.log@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - logs-cisco_ise.log@custom
         index_patterns:
-          - "logs-cisco_ise.log-*"
+        - logs-cisco_ise.log-*
+        priority: 501
         template:
           settings:
             index:
               lifecycle:
                 name: so-logs-cisco_ise.log-logs
               number_of_replicas: 0
-        composed_of:
-          - "logs-cisco_ise.log@package"
-          - "logs-cisco_ise.log@custom"
-          - "so-fleet_globals-1"
-          - "so-fleet_agent_id_verification-1"
-        priority: 501
-        data_stream:
-          hidden: false
-          allow_custom_routing: false
       policy:
         phases:
           cold:
@@ -2970,6 +2928,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-cisco_meraki.events@custom
         index_patterns:
         - logs-cisco_meraki.events-*
         priority: 501
@@ -3014,6 +2974,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-cisco_meraki.log@custom
         index_patterns:
         - logs-cisco_meraki.log-*
         priority: 501
@@ -3058,6 +3020,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-cisco_umbrella.log@custom
         index_patterns:
         - logs-cisco_umbrella.log-*
         priority: 501
@@ -3092,25 +3056,27 @@ elasticsearch:
                 priority: 50
             min_age: 30d
     so-logs-citrix_adc_x_interface:
-      index_sorting: False
+      index_sorting: false
       index_template:
+        composed_of:
+        - logs-citrix_adc.interface@package
+        - logs-citrix_adc.interface@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - logs-citrix_adc.interface@custom
         index_patterns:
-          - "logs-citrix_adc.interface-*"
+        - logs-citrix_adc.interface-*
+        priority: 501
         template:
           settings:
             index:
               lifecycle:
                 name: so-logs-citrix_adc.interface-logs
               number_of_replicas: 0
-        composed_of:
-          - "logs-citrix_adc.interface@package"
-          - "logs-citrix_adc.interface@custom"
-          - "so-fleet_globals-1"
-          - "so-fleet_agent_id_verification-1"
-        priority: 501
-        data_stream:
-          hidden: false
-          allow_custom_routing: false
       policy:
         phases:
           cold:
@@ -3136,25 +3102,27 @@ elasticsearch:
                 priority: 50
             min_age: 30d
     so-logs-citrix_adc_x_lbvserver:
-      index_sorting: False
+      index_sorting: false
       index_template:
+        composed_of:
+        - logs-citrix_adc.lbvserver@package
+        - logs-citrix_adc.lbvserver@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - logs-citrix_adc.lbvserver@custom
         index_patterns:
-          - "logs-citrix_adc.lbvserver-*"
+        - logs-citrix_adc.lbvserver-*
+        priority: 501
         template:
           settings:
             index:
               lifecycle:
                 name: so-logs-citrix_adc.lbvserver-logs
               number_of_replicas: 0
-        composed_of:
-          - "logs-citrix_adc.lbvserver@package"
-          - "logs-citrix_adc.lbvserver@custom"
-          - "so-fleet_globals-1"
-          - "so-fleet_agent_id_verification-1"
-        priority: 501
-        data_stream:
-          hidden: false
-          allow_custom_routing: false
       policy:
         phases:
           cold:
@@ -3180,25 +3148,27 @@ elasticsearch:
                 priority: 50
             min_age: 30d
     so-logs-citrix_adc_x_service:
-      index_sorting: False
+      index_sorting: false
       index_template:
+        composed_of:
+        - logs-citrix_adc.service@package
+        - logs-citrix_adc.service@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - logs-citrix_adc.service@custom
         index_patterns:
-          - "logs-citrix_adc.service-*"
+        - logs-citrix_adc.service-*
+        priority: 501
         template:
           settings:
             index:
               lifecycle:
                 name: so-logs-citrix_adc.service-logs
               number_of_replicas: 0
-        composed_of:
-          - "logs-citrix_adc.service@package"
-          - "logs-citrix_adc.service@custom"
-          - "so-fleet_globals-1"
-          - "so-fleet_agent_id_verification-1"
-        priority: 501
-        data_stream:
-          hidden: false
-          allow_custom_routing: false
       policy:
         phases:
           cold:
@@ -3224,25 +3194,27 @@ elasticsearch:
                 priority: 50
             min_age: 30d
     so-logs-citrix_adc_x_system:
-      index_sorting: False
+      index_sorting: false
       index_template:
+        composed_of:
+        - logs-citrix_adc.system@package
+        - logs-citrix_adc.system@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - logs-citrix_adc.system@custom
         index_patterns:
-          - "logs-citrix_adc.system-*"
+        - logs-citrix_adc.system-*
+        priority: 501
         template:
           settings:
             index:
               lifecycle:
                 name: so-logs-citrix_adc.system-logs
               number_of_replicas: 0
-        composed_of:
-          - "logs-citrix_adc.system@package"
-          - "logs-citrix_adc.system@custom"
-          - "so-fleet_globals-1"
-          - "so-fleet_agent_id_verification-1"
-        priority: 501
-        data_stream:
-          hidden: false
-          allow_custom_routing: false
       policy:
         phases:
           cold:
@@ -3268,25 +3240,27 @@ elasticsearch:
                 priority: 50
             min_age: 30d
     so-logs-citrix_adc_x_vpn:
-      index_sorting: False
+      index_sorting: false
       index_template:
+        composed_of:
+        - logs-citrix_adc.vpn@package
+        - logs-citrix_adc.vpn@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - logs-citrix_adc.vpn@custom
         index_patterns:
-          - "logs-citrix_adc.vpn-*"
+        - logs-citrix_adc.vpn-*
+        priority: 501
         template:
           settings:
             index:
               lifecycle:
                 name: so-logs-citrix_adc.vpn-logs
               number_of_replicas: 0
-        composed_of:
-          - "logs-citrix_adc.vpn@package"
-          - "logs-citrix_adc.vpn@custom"
-          - "so-fleet_globals-1"
-          - "so-fleet_agent_id_verification-1"
-        priority: 501
-        data_stream:
-          hidden: false
-          allow_custom_routing: false
       policy:
         phases:
           cold:
@@ -3312,25 +3286,27 @@ elasticsearch:
                 priority: 50
             min_age: 30d
     so-logs-citrix_waf_x_log:
-      index_sorting: False
+      index_sorting: false
       index_template:
+        composed_of:
+        - logs-citrix_waf.log@package
+        - logs-citrix_waf.log@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - logs-citrix_waf.log@custom
         index_patterns:
-          - "logs-citrix_waf.log-*"
+        - logs-citrix_waf.log-*
+        priority: 501
         template:
           settings:
             index:
               lifecycle:
                 name: so-logs-citrix_waf.log-logs
               number_of_replicas: 0
-        composed_of:
-          - "logs-citrix_waf.log@package"
-          - "logs-citrix_waf.log@custom"
-          - "so-fleet_globals-1"
-          - "so-fleet_agent_id_verification-1"
-        priority: 501
-        data_stream:
-          hidden: false
-          allow_custom_routing: false
       policy:
         phases:
           cold:
@@ -3366,6 +3342,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-cloudflare.audit@custom
         index_patterns:
         - logs-cloudflare.audit-*
         priority: 501
@@ -3410,6 +3388,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-cloudflare.logpull@custom
         index_patterns:
         - logs-cloudflare.logpull-*
         priority: 501
@@ -3454,6 +3434,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-crowdstrike.falcon@custom
         index_patterns:
         - logs-crowdstrike.falcon-*
         priority: 501
@@ -3498,6 +3480,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-crowdstrike.fdr@custom
         index_patterns:
         - logs-crowdstrike.fdr-*
         priority: 501
@@ -3542,6 +3526,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-darktrace.ai_analyst_alert@custom
         index_patterns:
         - logs-darktrace.ai_analyst_alert-*
         priority: 501
@@ -3586,6 +3572,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-darktrace.model_breach_alert@custom
         index_patterns:
         - logs-darktrace.model_breach_alert-*
         priority: 501
@@ -3630,6 +3618,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-darktrace.system_status_alert@custom
         index_patterns:
         - logs-darktrace.system_status_alert-*
         priority: 501
@@ -3675,6 +3665,7 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates: []
         index_patterns:
         - logs-detections.alerts-*
         priority: 501
@@ -3737,6 +3728,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-elastic_agent@custom
         index_patterns:
         - logs-elastic_agent-*
         priority: 501
@@ -3798,6 +3791,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-elastic_agent.apm_server@custom
         index_patterns:
         - logs-elastic_agent.apm_server-*
         priority: 501
@@ -3859,6 +3854,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-elastic_agent.auditbeat@custom
         index_patterns:
         - logs-elastic_agent.auditbeat-*
         priority: 501
@@ -3917,6 +3914,8 @@ elasticsearch:
         - logs-elastic_agent.cloudbeat@custom
         - so-fleet_globals-1
         - so-fleet_agent_id_verification-1
+        ignore_missing_component_templates:
+        - logs-elastic_agent.cloudbeat@custom
         index_patterns:
         - logs-elastic_agent.cloudbeat-*
         priority: 501
@@ -3979,6 +3978,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-elastic_agent.endpoint_security@custom
         index_patterns:
         - logs-elastic_agent.endpoint_security-*
         priority: 501
@@ -4035,6 +4036,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-elastic_agent.filebeat@custom
         index_patterns:
         - logs-elastic_agent.filebeat-*
         priority: 501
@@ -4091,6 +4094,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-elastic_agent.fleet_server@custom
         index_patterns:
         - logs-elastic_agent.fleet_server-*
         priority: 501
@@ -4140,6 +4145,8 @@ elasticsearch:
         - logs-elastic_agent.heartbeat@custom
         - so-fleet_globals-1
         - so-fleet_agent_id_verification-1
+        ignore_missing_component_templates:
+        - logs-elastic_agent.heartbeat@custom
         index_patterns:
         - logs-elastic_agent.heartbeat-*
         priority: 501
@@ -4202,6 +4209,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-elastic_agent.metricbeat@custom
         index_patterns:
         - logs-elastic_agent.metricbeat-*
         priority: 501
@@ -4258,6 +4267,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-elastic_agent.osquerybeat@custom
         index_patterns:
         - logs-elastic_agent.osquerybeat-*
         priority: 501
@@ -4313,6 +4324,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-elastic_agent.packetbeat@custom
         index_patterns:
         - logs-elastic_agent.packetbeat-*
         priority: 501
@@ -4375,6 +4388,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-endpoint.alerts@custom
         index_patterns:
         - logs-endpoint.alerts-*
         priority: 501
@@ -4431,6 +4446,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-endpoint.diagnostic.collection@custom
         index_patterns:
         - .logs-endpoint.diagnostic.collection-*
         priority: 501
@@ -4487,6 +4504,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-endpoint.events.api@custom
         index_patterns:
         - logs-endpoint.events.api-*
         priority: 501
@@ -4543,6 +4562,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-endpoint.events.file@custom
         index_patterns:
         - logs-endpoint.events.file-*
         priority: 501
@@ -4599,6 +4620,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-endpoint.events.library@custom
         index_patterns:
         - logs-endpoint.events.library-*
         priority: 501
@@ -4655,6 +4678,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-endpoint.events.network@custom
         index_patterns:
         - logs-endpoint.events.network-*
         priority: 501
@@ -4711,6 +4736,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-endpoint.events.process@custom
         index_patterns:
         - logs-endpoint.events.process-*
         priority: 501
@@ -4767,6 +4794,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-endpoint.events.registry@custom
         index_patterns:
         - logs-endpoint.events.registry-*
         priority: 501
@@ -4823,6 +4852,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-endpoint.events.security@custom
         index_patterns:
         - logs-endpoint.events.security-*
         priority: 501
@@ -4878,6 +4909,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-f5_bigip.log@custom
         index_patterns:
         - logs-f5_bigip.log-*
         priority: 501
@@ -4922,6 +4955,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-fim.event@custom
         index_patterns:
         - logs-fim.event-*
         priority: 501
@@ -4966,6 +5001,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-fireeye.nx@custom
         index_patterns:
         - logs-fireeye.nx-*
         priority: 501
@@ -5010,6 +5047,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-fortinet_fortigate.log@custom
         index_patterns:
         - logs-fortinet_fortigate.log-*
         priority: 501
@@ -5054,6 +5093,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-fortinet.clientendpoint@custom
         index_patterns:
         - logs-fortinet.clientendpoint-*
         priority: 501
@@ -5098,6 +5139,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-fortinet.firewall@custom
         index_patterns:
         - logs-fortinet.firewall-*
         priority: 501
@@ -5142,6 +5185,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-fortinet.fortimail@custom
         index_patterns:
         - logs-fortinet.fortimail-*
         priority: 501
@@ -5186,6 +5231,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-fortinet.fortimanager@custom
         index_patterns:
         - logs-fortinet.fortimanager-*
         priority: 501
@@ -5230,6 +5277,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-gcp.audit@custom
         index_patterns:
         - logs-gcp.audit-*
         priority: 501
@@ -5274,6 +5323,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-gcp.dns@custom
         index_patterns:
         - logs-gcp.dns-*
         priority: 501
@@ -5318,6 +5369,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-gcp.firewall@custom
         index_patterns:
         - logs-gcp.firewall-*
         priority: 501
@@ -5362,6 +5415,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-gcp.loadbalancing_logs@custom
         index_patterns:
         - logs-gcp.loadbalancing_logs-*
         priority: 501
@@ -5406,6 +5461,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-gcp.vpcflow@custom
         index_patterns:
         - logs-gcp.vpcflow-*
         priority: 501
@@ -5450,6 +5507,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-github.audit@custom
         index_patterns:
         - logs-github.audit-*
         priority: 501
@@ -5494,6 +5553,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-github.code_scanning@custom
         index_patterns:
         - logs-github.code_scanning-*
         priority: 501
@@ -5538,6 +5599,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-github.dependabot@custom
         index_patterns:
         - logs-github.dependabot-*
         priority: 501
@@ -5582,6 +5645,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-github.issues@custom
         index_patterns:
         - logs-github.issues-*
         priority: 501
@@ -5626,6 +5691,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-github.secret_scanning@custom
         index_patterns:
         - logs-github.secret_scanning-*
         priority: 501
@@ -5670,6 +5737,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-google_workspace.access_transparency@custom
         index_patterns:
         - logs-google_workspace.access_transparency-*
         priority: 501
@@ -5714,6 +5783,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-google_workspace.admin@custom
         index_patterns:
         - logs-google_workspace.admin-*
         priority: 501
@@ -5758,6 +5829,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-google_workspace.alert@custom
         index_patterns:
         - logs-google_workspace.alert-*
         priority: 501
@@ -5802,6 +5875,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-google_workspace.context_aware_access@custom
         index_patterns:
         - logs-google_workspace.context_aware_access-*
         priority: 501
@@ -5846,6 +5921,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-google_workspace.device@custom
         index_patterns:
         - logs-google_workspace.device-*
         priority: 501
@@ -5890,6 +5967,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-google_workspace.drive@custom
         index_patterns:
         - logs-google_workspace.drive-*
         priority: 501
@@ -5934,6 +6013,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-google_workspace.gcp@custom
         index_patterns:
         - logs-google_workspace.gcp-*
         priority: 501
@@ -5978,6 +6059,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-google_workspace.group_enterprise@custom
         index_patterns:
         - logs-google_workspace.group_enterprise-*
         priority: 501
@@ -6022,6 +6105,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-google_workspace.groups@custom
         index_patterns:
         - logs-google_workspace.groups-*
         priority: 501
@@ -6066,6 +6151,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-google_workspace.login@custom
         index_patterns:
         - logs-google_workspace.login-*
         priority: 501
@@ -6110,6 +6197,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-google_workspace.rules@custom
         index_patterns:
         - logs-google_workspace.rules-*
         priority: 501
@@ -6154,6 +6243,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-google_workspace.saml@custom
         index_patterns:
         - logs-google_workspace.saml-*
         priority: 501
@@ -6198,6 +6289,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-google_workspace.token@custom
         index_patterns:
         - logs-google_workspace.token-*
         priority: 501
@@ -6242,6 +6335,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-google_workspace.user_accounts@custom
         index_patterns:
         - logs-google_workspace.user_accounts-*
         priority: 501
@@ -6286,6 +6381,9 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-http_endpoint.generic@package 
+        - logs-http_endpoint.generic@custom
         index_patterns:
         - logs-http_endpoint.generic-*
         priority: 501
@@ -6330,6 +6428,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-httpjson.generic@custom
         index_patterns:
         - logs-httpjson.generic-*
         priority: 501
@@ -6364,25 +6464,27 @@ elasticsearch:
                 priority: 50
             min_age: 30d
     so-logs-iis_x_access:
-      index_sorting: False
+      index_sorting: false
       index_template:
+        composed_of:
+        - logs-iis.access@package
+        - logs-iis.access@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - logs-iis.access@custom
         index_patterns:
-          - "logs-iis.access-*"
+        - logs-iis.access-*
+        priority: 501
         template:
           settings:
             index:
               lifecycle:
                 name: so-logs-iis.access-logs
               number_of_replicas: 0
-        composed_of:
-          - "logs-iis.access@package"
-          - "logs-iis.access@custom"
-          - "so-fleet_globals-1"
-          - "so-fleet_agent_id_verification-1"
-        priority: 501
-        data_stream:
-          hidden: false
-          allow_custom_routing: false
       policy:
         phases:
           cold:
@@ -6408,25 +6510,27 @@ elasticsearch:
                 priority: 50
             min_age: 30d
     so-logs-iis_x_error:
-      index_sorting: False
+      index_sorting: false
       index_template:
+        composed_of:
+        - logs-iis.error@package
+        - logs-iis.error@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - logs-iis.error@custom
         index_patterns:
-          - "logs-iis.error-*"
+        - logs-iis.error-*
+        priority: 501
         template:
           settings:
             index:
               lifecycle:
                 name: so-logs-iis.error-logs
               number_of_replicas: 0
-        composed_of:
-          - "logs-iis.error@package"
-          - "logs-iis.error@custom"
-          - "so-fleet_globals-1"
-          - "so-fleet_agent_id_verification-1"
-        priority: 501
-        data_stream:
-          hidden: false
-          allow_custom_routing: false
       policy:
         phases:
           cold:
@@ -6462,6 +6566,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-juniper_srx.log@custom
         index_patterns:
         - logs-juniper_srx.log-*
         priority: 501
@@ -6506,6 +6612,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-juniper.junos@custom
         index_patterns:
         - logs-juniper.junos-*
         priority: 501
@@ -6550,6 +6658,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-juniper.netscreen@custom
         index_patterns:
         - logs-juniper.netscreen-*
         priority: 501
@@ -6594,6 +6704,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-juniper.srx@custom
         index_patterns:
         - logs-juniper.srx-*
         priority: 501
@@ -6638,6 +6750,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-kafka_log.generic@custom
         index_patterns:
         - logs-kafka_log.generic-*
         priority: 501
@@ -6682,6 +6796,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-lastpass.detailed_shared_folder@custom
         index_patterns:
         - logs-lastpass.detailed_shared_folder-*
         priority: 501
@@ -6726,6 +6842,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-lastpass.event_report@custom
         index_patterns:
         - logs-lastpass.event_report-*
         priority: 501
@@ -6770,6 +6888,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-lastpass.user@custom
         index_patterns:
         - logs-lastpass.user-*
         priority: 501
@@ -6814,6 +6934,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-m365_defender.event@custom
         index_patterns:
         - logs-m365_defender.event-*
         priority: 501
@@ -6858,6 +6980,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-m365_defender.incident@custom
         index_patterns:
         - logs-m365_defender.incident-*
         priority: 501
@@ -6902,6 +7026,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-m365_defender.log@custom
         index_patterns:
         - logs-m365_defender.log-*
         priority: 501
@@ -6946,6 +7072,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-microsoft_defender_endpoint.log@custom
         index_patterns:
         - logs-microsoft_defender_endpoint.log-*
         priority: 501
@@ -6990,6 +7118,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-microsoft_dhcp.log@custom
         index_patterns:
         - logs-microsoft_dhcp.log-*
         priority: 501
@@ -7024,25 +7154,27 @@ elasticsearch:
                 priority: 50
             min_age: 30d
     so-logs-microsoft_sqlserver_x_audit:
-      index_sorting: False
+      index_sorting: false
       index_template:
+        composed_of:
+        - logs-microsoft_sqlserver.audit@package
+        - logs-microsoft_sqlserver.audit@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - logs-microsoft_sqlserver.audit@custom
         index_patterns:
-          - "logs-microsoft_sqlserver.audit-*"
+        - logs-microsoft_sqlserver.audit-*
+        priority: 501
         template:
           settings:
             index:
               lifecycle:
                 name: so-logs-microsoft_sqlserver.audit-logs
               number_of_replicas: 0
-        composed_of:
-          - "logs-microsoft_sqlserver.audit@package"
-          - "logs-microsoft_sqlserver.audit@custom"
-          - "so-fleet_globals-1"
-          - "so-fleet_agent_id_verification-1"
-        priority: 501
-        data_stream:
-          hidden: false
-          allow_custom_routing: false
       policy:
         phases:
           cold:
@@ -7068,113 +7200,27 @@ elasticsearch:
                 priority: 50
             min_age: 30d
     so-logs-microsoft_sqlserver_x_log:
-      index_sorting: False
+      index_sorting: false
       index_template:
+        composed_of:
+        - logs-microsoft_sqlserver.log@package
+        - logs-microsoft_sqlserver.log@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - logs-microsoft_sqlserver.log@custom
         index_patterns:
-          - "logs-microsoft_sqlserver.log-*"
+        - logs-microsoft_sqlserver.log-*
+        priority: 501
         template:
           settings:
             index:
               lifecycle:
                 name: so-logs-microsoft_sqlserver.log-logs
               number_of_replicas: 0
-        composed_of:
-          - "logs-microsoft_sqlserver.log@package"
-          - "logs-microsoft_sqlserver.log@custom"
-          - "so-fleet_globals-1"
-          - "so-fleet_agent_id_verification-1"
-        priority: 501
-        data_stream:
-          hidden: false
-          allow_custom_routing: false
-      policy:
-        phases:
-          cold:
-            actions:
-              set_priority:
-                priority: 0
-            min_age: 60d
-          delete:
-            actions:
-              delete: {}
-            min_age: 365d
-          hot:
-            actions:
-              rollover:
-                max_age: 30d
-                max_primary_shard_size: 50gb
-              set_priority:
-                priority: 100
-            min_age: 0ms
-          warm:
-            actions:
-              set_priority:
-                priority: 50
-            min_age: 30d
-    so-logs-mysql_x_error:
-      index_sorting: False
-      index_template:
-        index_patterns:
-          - "logs-mysql.error-*"
-        template:
-          settings:
-            index:
-              lifecycle:
-                name: so-logs-mysql.error-logs
-              number_of_replicas: 0
-        composed_of:
-          - "logs-mysql.error@package"
-          - "logs-mysql.error@custom"
-          - "so-fleet_globals-1"
-          - "so-fleet_agent_id_verification-1"
-        priority: 501
-        data_stream:
-          hidden: false
-          allow_custom_routing: false
-      policy:
-        phases:
-          cold:
-            actions:
-              set_priority:
-                priority: 0
-            min_age: 60d
-          delete:
-            actions:
-              delete: {}
-            min_age: 365d
-          hot:
-            actions:
-              rollover:
-                max_age: 30d
-                max_primary_shard_size: 50gb
-              set_priority:
-                priority: 100
-            min_age: 0ms
-          warm:
-            actions:
-              set_priority:
-                priority: 50
-            min_age: 30d
-    so-logs-mysql_x_slowlog:
-      index_sorting: False
-      index_template:
-        index_patterns:
-          - "logs-mysql.slowlog-*"
-        template:
-          settings:
-            index:
-              lifecycle:
-                name: so-logs-mysql.slowlog-logs
-              number_of_replicas: 0
-        composed_of:
-          - "logs-mysql.slowlog@package"
-          - "logs-mysql.slowlog@custom"
-          - "so-fleet_globals-1"
-          - "so-fleet_agent_id_verification-1"
-        priority: 501
-        data_stream:
-          hidden: false
-          allow_custom_routing: false
       policy:
         phases:
           cold:
@@ -7210,6 +7256,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-mimecast.audit_events@custom
         index_patterns:
         - logs-mimecast.audit_events-*
         priority: 501
@@ -7254,6 +7302,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-mimecast.dlp_logs@custom
         index_patterns:
         - logs-mimecast.dlp_logs-*
         priority: 501
@@ -7298,6 +7348,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-mimecast.siem_logs@custom
         index_patterns:
         - logs-mimecast.siem_logs-*
         priority: 501
@@ -7342,6 +7394,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-mimecast.threat_intel_malware_customer@custom
         index_patterns:
         - logs-mimecast.threat_intel_malware_customer-*
         priority: 501
@@ -7386,6 +7440,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-mimecast.threat_intel_malware_grid@custom
         index_patterns:
         - logs-mimecast.threat_intel_malware_grid-*
         priority: 501
@@ -7430,6 +7486,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-mimecast.ttp_ap_logs@custom
         index_patterns:
         - logs-mimecast.ttp_ap_logs-*
         priority: 501
@@ -7474,6 +7532,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-mimecast.ttp_ip_logs@custom
         index_patterns:
         - logs-mimecast.ttp_ip_logs-*
         priority: 501
@@ -7518,6 +7578,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-mimecast.ttp_url_logs@custom
         index_patterns:
         - logs-mimecast.ttp_url_logs-*
         priority: 501
@@ -7526,6 +7588,98 @@ elasticsearch:
             index:
               lifecycle:
                 name: so-logs-mimecast.ttp_url_logs-logs
+              number_of_replicas: 0
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
+    so-logs-mysql_x_error:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - logs-mysql.error@package
+        - logs-mysql.error@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - logs-mysql.error@custom
+        index_patterns:
+        - logs-mysql.error-*
+        priority: 501
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-logs-mysql.error-logs
+              number_of_replicas: 0
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
+    so-logs-mysql_x_slowlog:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - logs-mysql.slowlog@package
+        - logs-mysql.slowlog@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - logs-mysql.slowlog@custom
+        index_patterns:
+        - logs-mysql.slowlog-*
+        priority: 501
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-logs-mysql.slowlog-logs
               number_of_replicas: 0
       policy:
         phases:
@@ -7562,6 +7716,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-netflow.log@custom
         index_patterns:
         - logs-netflow.log-*
         priority: 501
@@ -7596,25 +7752,27 @@ elasticsearch:
                 priority: 50
             min_age: 30d
     so-logs-nginx_x_access:
-      index_sorting: False
+      index_sorting: false
       index_template:
+        composed_of:
+        - logs-nginx.access@package
+        - logs-nginx.access@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - logs-nginx.access@custom
         index_patterns:
-          - "logs-nginx.access-*"
+        - logs-nginx.access-*
+        priority: 501
         template:
           settings:
             index:
               lifecycle:
                 name: so-logs-nginx.access-logs
               number_of_replicas: 0
-        composed_of:
-          - "logs-nginx.access@package"
-          - "logs-nginx.access@custom"
-          - "so-fleet_globals-1"
-          - "so-fleet_agent_id_verification-1"
-        priority: 501
-        data_stream:
-          hidden: false
-          allow_custom_routing: false
       policy:
         phases:
           cold:
@@ -7640,69 +7798,27 @@ elasticsearch:
                 priority: 50
             min_age: 30d
     so-logs-nginx_x_error:
-      index_sorting: False
+      index_sorting: false
       index_template:
+        composed_of:
+        - logs-nginx.error@package
+        - logs-nginx.error@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - logs-nginx.error@custom
         index_patterns:
-          - "logs-nginx.error-*"
+        - logs-nginx.error-*
+        priority: 501
         template:
           settings:
             index:
               lifecycle:
                 name: so-logs-nginx.error-logs
               number_of_replicas: 0
-        composed_of:
-          - "logs-nginx.error@package"
-          - "logs-nginx.error@custom"
-          - "so-fleet_globals-1"
-          - "so-fleet_agent_id_verification-1"
-        priority: 501
-        data_stream:
-          hidden: false
-          allow_custom_routing: false
-      policy:
-        phases:
-          cold:
-            actions:
-              set_priority:
-                priority: 0
-            min_age: 60d
-          delete:
-            actions:
-              delete: {}
-            min_age: 365d
-          hot:
-            actions:
-              rollover:
-                max_age: 30d
-                max_primary_shard_size: 50gb
-              set_priority:
-                priority: 100
-            min_age: 0ms
-          warm:
-            actions:
-              set_priority:
-                priority: 50
-            min_age: 30d
-    so-metrics-nginx_x_stubstatus:
-      index_sorting: False
-      index_template:
-        index_patterns:
-          - "metrics-nginx.stubstatus-*"
-        template:
-          settings:
-            index:
-              lifecycle:
-                name: so-metrics-nginx.stubstatus-logs
-              number_of_replicas: 0
-        composed_of:
-          - "metrics-nginx.stubstatus@package"
-          - "metrics-nginx.stubstatus@custom"
-          - "so-fleet_globals-1"
-          - "so-fleet_agent_id_verification-1"
-        priority: 501
-        data_stream:
-          hidden: false
-          allow_custom_routing: false
       policy:
         phases:
           cold:
@@ -7738,6 +7854,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-o365.audit@custom
         index_patterns:
         - logs-o365.audit-*
         priority: 501
@@ -7782,6 +7900,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-okta.system@custom
         index_patterns:
         - logs-okta.system-*
         priority: 501
@@ -7825,6 +7945,7 @@ elasticsearch:
             name: elastic_agent
         composed_of:
         - logs-osquery_manager.action.responses
+        ignore_missing_component_templates: []
         index_patterns:
         - .logs-osquery_manager.action.responses*
         priority: 501
@@ -7842,6 +7963,7 @@ elasticsearch:
             name: elastic_agent
         composed_of:
         - logs-osquery_manager.actions
+        ignore_missing_component_templates: []
         index_patterns:
         - .logs-osquery_manager.actions*
         priority: 501
@@ -7860,6 +7982,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-panw.panos@custom
         index_patterns:
         - logs-panw.panos-*
         priority: 501
@@ -7904,6 +8028,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-pfsense.log@custom
         index_patterns:
         - logs-pfsense.log-*
         priority: 501
@@ -7938,25 +8064,27 @@ elasticsearch:
                 priority: 50
             min_age: 30d
     so-logs-proofpoint_tap_x_clicks_blocked:
-      index_sorting: False
+      index_sorting: false
       index_template:
+        composed_of:
+        - logs-proofpoint_tap.clicks_blocked@package
+        - logs-proofpoint_tap.clicks_blocked@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - logs-proofpoint_tap.clicks_blocked@custom
         index_patterns:
-          - "logs-proofpoint_tap.clicks_blocked-*"
+        - logs-proofpoint_tap.clicks_blocked-*
+        priority: 501
         template:
           settings:
             index:
               lifecycle:
                 name: so-logs-proofpoint_tap.clicks_blocked-logs
               number_of_replicas: 0
-        composed_of:
-          - "logs-proofpoint_tap.clicks_blocked@package"
-          - "logs-proofpoint_tap.clicks_blocked@custom"
-          - "so-fleet_globals-1"
-          - "so-fleet_agent_id_verification-1"
-        priority: 501
-        data_stream:
-          hidden: false
-          allow_custom_routing: false
       policy:
         phases:
           cold:
@@ -7982,25 +8110,27 @@ elasticsearch:
                 priority: 50
             min_age: 30d
     so-logs-proofpoint_tap_x_clicks_permitted:
-      index_sorting: False
+      index_sorting: false
       index_template:
+        composed_of:
+        - logs-proofpoint_tap.clicks_permitted@package
+        - logs-proofpoint_tap.clicks_permitted@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - logs-proofpoint_tap.clicks_permitted@custom
         index_patterns:
-          - "logs-proofpoint_tap.clicks_permitted-*"
+        - logs-proofpoint_tap.clicks_permitted-*
+        priority: 501
         template:
           settings:
             index:
               lifecycle:
                 name: so-logs-proofpoint_tap.clicks_permitted-logs
               number_of_replicas: 0
-        composed_of:
-          - "logs-proofpoint_tap.clicks_permitted@package"
-          - "logs-proofpoint_tap.clicks_permitted@custom"
-          - "so-fleet_globals-1"
-          - "so-fleet_agent_id_verification-1"
-        priority: 501
-        data_stream:
-          hidden: false
-          allow_custom_routing: false
       policy:
         phases:
           cold:
@@ -8026,25 +8156,27 @@ elasticsearch:
                 priority: 50
             min_age: 30d
     so-logs-proofpoint_tap_x_message_blocked:
-      index_sorting: False
+      index_sorting: false
       index_template:
+        composed_of:
+        - logs-proofpoint_tap.message_blocked@package
+        - logs-proofpoint_tap.message_blocked@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - logs-proofpoint_tap.message_blocked@custom
         index_patterns:
-          - "logs-proofpoint_tap.message_blocked-*"
+        - logs-proofpoint_tap.message_blocked-*
+        priority: 501
         template:
           settings:
             index:
               lifecycle:
                 name: so-logs-proofpoint_tap.message_blocked-logs
               number_of_replicas: 0
-        composed_of:
-          - "logs-proofpoint_tap.message_blocked@package"
-          - "logs-proofpoint_tap.message_blocked@custom"
-          - "so-fleet_globals-1"
-          - "so-fleet_agent_id_verification-1"
-        priority: 501
-        data_stream:
-          hidden: false
-          allow_custom_routing: false
       policy:
         phases:
           cold:
@@ -8070,25 +8202,27 @@ elasticsearch:
                 priority: 50
             min_age: 30d
     so-logs-proofpoint_tap_x_message_delivered:
-      index_sorting: False
+      index_sorting: false
       index_template:
+        composed_of:
+        - logs-proofpoint_tap.message_delivered@package
+        - logs-proofpoint_tap.message_delivered@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - logs-proofpoint_tap.message_delivered@custom
         index_patterns:
-          - "logs-proofpoint_tap.message_delivered-*"
+        - logs-proofpoint_tap.message_delivered-*
+        priority: 501
         template:
           settings:
             index:
               lifecycle:
                 name: so-logs-proofpoint_tap.message_delivered-logs
               number_of_replicas: 0
-        composed_of:
-          - "logs-proofpoint_tap.message_delivered@package"
-          - "logs-proofpoint_tap.message_delivered@custom"
-          - "so-fleet_globals-1"
-          - "so-fleet_agent_id_verification-1"
-        priority: 501
-        data_stream:
-          hidden: false
-          allow_custom_routing: false
       policy:
         phases:
           cold:
@@ -8124,6 +8258,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-pulse_connect_secure.log@custom
         index_patterns:
         - logs-pulse_connect_secure.log-*
         priority: 501
@@ -8168,6 +8304,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-sentinel_one.activity@custom
         index_patterns:
         - logs-sentinel_one.activity-*
         priority: 501
@@ -8212,6 +8350,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-sentinel_one.agent@custom
         index_patterns:
         - logs-sentinel_one.agent-*
         priority: 501
@@ -8256,6 +8396,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-sentinel_one.alert@custom
         index_patterns:
         - logs-sentinel_one.alert-*
         priority: 501
@@ -8300,6 +8442,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-sentinel_one.group@custom
         index_patterns:
         - logs-sentinel_one.group-*
         priority: 501
@@ -8344,6 +8488,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-sentinel_one.threat@custom
         index_patterns:
         - logs-sentinel_one.threat-*
         priority: 501
@@ -8378,25 +8524,27 @@ elasticsearch:
                 priority: 50
             min_age: 30d
     so-logs-snort_x_log:
-      index_sorting: False
+      index_sorting: false
       index_template:
+        composed_of:
+        - logs-snort.log@package
+        - logs-snort.log@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - logs-snort.log@custom
         index_patterns:
-          - "logs-snort.log-*"
+        - logs-snort.log-*
+        priority: 501
         template:
           settings:
             index:
               lifecycle:
                 name: so-logs-snort.log-logs
               number_of_replicas: 0
-        composed_of:
-          - "logs-snort.log@package"
-          - "logs-snort.log@custom"
-          - "so-fleet_globals-1"
-          - "so-fleet_agent_id_verification-1"
-        priority: 501
-        data_stream:
-          hidden: false
-          allow_custom_routing: false
       policy:
         phases:
           cold:
@@ -8432,6 +8580,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-snyk.audit@custom
         index_patterns:
         - logs-snyk.audit-*
         priority: 501
@@ -8476,6 +8626,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-snyk.vulnerabilities@custom
         index_patterns:
         - logs-snyk.vulnerabilities-*
         priority: 501
@@ -8509,6 +8661,114 @@ elasticsearch:
               set_priority:
                 priority: 50
             min_age: 30d
+    so-logs-soc:
+      close: 30
+      delete: 365
+      index_sorting: false
+      index_template:
+        composed_of:
+        - agent-mappings
+        - dtc-agent-mappings
+        - base-mappings
+        - dtc-base-mappings
+        - client-mappings
+        - dtc-client-mappings
+        - container-mappings
+        - destination-mappings
+        - dtc-destination-mappings
+        - pb-override-destination-mappings
+        - dll-mappings
+        - dns-mappings
+        - dtc-dns-mappings
+        - ecs-mappings
+        - dtc-ecs-mappings
+        - error-mappings
+        - event-mappings
+        - dtc-event-mappings
+        - file-mappings
+        - dtc-file-mappings
+        - group-mappings
+        - host-mappings
+        - dtc-host-mappings
+        - http-mappings
+        - dtc-http-mappings
+        - log-mappings
+        - network-mappings
+        - dtc-network-mappings
+        - observer-mappings
+        - dtc-observer-mappings
+        - organization-mappings
+        - package-mappings
+        - process-mappings
+        - dtc-process-mappings
+        - related-mappings
+        - rule-mappings
+        - dtc-rule-mappings
+        - server-mappings
+        - service-mappings
+        - dtc-service-mappings
+        - source-mappings
+        - dtc-source-mappings
+        - pb-override-source-mappings
+        - threat-mappings
+        - tls-mappings
+        - url-mappings
+        - user_agent-mappings
+        - dtc-user_agent-mappings
+        - common-settings
+        - common-dynamic-mappings
+        data_stream: {}
+        ignore_missing_component_templates: []
+        index_patterns:
+        - logs-soc-so*
+        priority: 500
+        template:
+          mappings:
+            date_detection: false
+            dynamic_templates:
+            - strings_as_keyword:
+                mapping:
+                  ignore_above: 1024
+                  type: keyword
+                match_mapping_type: string
+          settings:
+            index:
+              lifecycle:
+                name: so-logs-soc-logs
+              mapping:
+                total_fields:
+                  limit: 5000
+              number_of_replicas: 0
+              number_of_shards: 1
+              refresh_interval: 30s
+              sort:
+                field: '@timestamp'
+                order: desc
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
+      warm: 7
     so-logs-sonicwall_firewall_x_log:
       index_sorting: false
       index_template:
@@ -8520,6 +8780,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-sonicwall_firewall.log@custom
         index_patterns:
         - logs-sonicwall_firewall.log-*
         priority: 501
@@ -8564,6 +8826,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-sophos_central.alert@custom
         index_patterns:
         - logs-sophos_central.alert-*
         priority: 501
@@ -8608,6 +8872,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-sophos_central.event@custom
         index_patterns:
         - logs-sophos_central.event-*
         priority: 501
@@ -8652,6 +8918,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-sophos.utm@custom
         index_patterns:
         - logs-sophos.utm-*
         priority: 501
@@ -8696,6 +8964,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-sophos.xg@custom
         index_patterns:
         - logs-sophos.xg-*
         priority: 501
@@ -8740,6 +9010,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-symantec_endpoint.log@custom
         index_patterns:
         - logs-symantec_endpoint.log-*
         priority: 501
@@ -8785,6 +9057,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-system.application@custom
         index_patterns:
         - logs-system.application*
         priority: 501
@@ -8830,6 +9104,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-system.auth@custom
         index_patterns:
         - logs-system.auth*
         priority: 501
@@ -8875,6 +9151,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-system.security@custom
         index_patterns:
         - logs-system.security*
         priority: 501
@@ -8920,6 +9198,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-system.syslog@custom
         index_patterns:
         - logs-system.syslog*
         priority: 501
@@ -8965,6 +9245,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-system.system@custom
         index_patterns:
         - logs-system.system*
         priority: 501
@@ -9009,6 +9291,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-tenable_sc.asset@custom
         index_patterns:
         - logs-tenable_sc.asset-*
         priority: 501
@@ -9053,6 +9337,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-tenable_sc.plugin@custom
         index_patterns:
         - logs-tenable_sc.plugin-*
         priority: 501
@@ -9097,6 +9383,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-tenable_sc.vulnerability@custom
         index_patterns:
         - logs-tenable_sc.vulnerability-*
         priority: 501
@@ -9141,6 +9429,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-ti_abusech.malware@custom
         index_patterns:
         - logs-ti_abusech.malware-*
         priority: 501
@@ -9185,6 +9475,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-ti_abusech.malwarebazaar@custom
         index_patterns:
         - logs-ti_abusech.malwarebazaar-*
         priority: 501
@@ -9229,6 +9521,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-ti_abusech.threatfox@custom
         index_patterns:
         - logs-ti_abusech.threatfox-*
         priority: 501
@@ -9273,6 +9567,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-ti_abusech.url@custom
         index_patterns:
         - logs-ti_abusech.url-*
         priority: 501
@@ -9307,25 +9603,27 @@ elasticsearch:
                 priority: 50
             min_age: 30d
     so-logs-ti_anomali_x_threatstream:
-      index_sorting: False
+      index_sorting: false
       index_template:
+        composed_of:
+        - logs-ti_anomali.threatstream@package
+        - logs-ti_anomali.threatstream@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - logs-ti_anomali.threatstream@custom
         index_patterns:
-          - "logs-ti_anomali.threatstream-*"
+        - logs-ti_anomali.threatstream-*
+        priority: 501
         template:
           settings:
             index:
               lifecycle:
                 name: so-logs-ti_anomali.threatstream-logs
               number_of_replicas: 0
-        composed_of:
-          - "logs-ti_anomali.threatstream@package"
-          - "logs-ti_anomali.threatstream@custom"
-          - "so-fleet_globals-1"
-          - "so-fleet_agent_id_verification-1"
-        priority: 501
-        data_stream:
-          hidden: false
-          allow_custom_routing: false
       policy:
         phases:
           cold:
@@ -9351,25 +9649,27 @@ elasticsearch:
                 priority: 50
             min_age: 30d
     so-logs-ti_cybersixgill_x_threat:
-      index_sorting: False
+      index_sorting: false
       index_template:
+        composed_of:
+        - logs-ti_cybersixgill.threat@package
+        - logs-ti_cybersixgill.threat@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - logs-ti_cybersixgill.threat@custom
         index_patterns:
-          - "logs-ti_cybersixgill.threat-*"
+        - logs-ti_cybersixgill.threat-*
+        priority: 501
         template:
           settings:
             index:
               lifecycle:
                 name: so-logs-ti_cybersixgill.threat-logs
               number_of_replicas: 0
-        composed_of:
-          - "logs-ti_cybersixgill.threat@package"
-          - "logs-ti_cybersixgill.threat@custom"
-          - "so-fleet_globals-1"
-          - "so-fleet_agent_id_verification-1"
-        priority: 501
-        data_stream:
-          hidden: false
-          allow_custom_routing: false
       policy:
         phases:
           cold:
@@ -9405,6 +9705,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-ti_misp.threat@custom
         index_patterns:
         - logs-ti_misp.threat-*
         priority: 501
@@ -9449,6 +9751,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-ti_misp.threat_attributes@custom
         index_patterns:
         - logs-ti_misp.threat_attributes-*
         priority: 501
@@ -9493,6 +9797,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-ti_otx.pulses_subscribed@custom
         index_patterns:
         - logs-ti_otx.pulses_subscribed-*
         priority: 501
@@ -9537,6 +9843,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-ti_otx.threat@custom
         index_patterns:
         - logs-ti_otx.threat-*
         priority: 501
@@ -9581,6 +9889,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-ti_recordedfuture.latest_ioc-template@custom
         index_patterns:
         - logs-ti_recordedfuture.latest_ioc-template-*
         priority: 501
@@ -9625,6 +9935,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-ti_recordedfuture.threat@custom
         index_patterns:
         - logs-ti_recordedfuture.threat-*
         priority: 501
@@ -9659,25 +9971,27 @@ elasticsearch:
                 priority: 50
             min_age: 30d
     so-logs-ti_threatq_x_threat:
-      index_sorting: False
+      index_sorting: false
       index_template:
+        composed_of:
+        - logs-ti_threatq.threat@package
+        - logs-ti_threatq.threat@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - logs-ti_threatq.threat@custom
         index_patterns:
-          - "logs-ti_threatq.threat-*"
+        - logs-ti_threatq.threat-*
+        priority: 501
         template:
           settings:
             index:
               lifecycle:
                 name: so-logs-ti_threatq.threat-logs
               number_of_replicas: 0
-        composed_of:
-          - "logs-ti_threatq.threat@package"
-          - "logs-ti_threatq.threat@custom"
-          - "so-fleet_globals-1"
-          - "so-fleet_agent_id_verification-1"
-        priority: 501
-        data_stream:
-          hidden: false
-          allow_custom_routing: false
       policy:
         phases:
           cold:
@@ -9703,25 +10017,27 @@ elasticsearch:
                 priority: 50
             min_age: 30d
     so-logs-vsphere_x_log:
-      index_sorting: False
+      index_sorting: false
       index_template:
+        composed_of:
+        - logs-vsphere.log@package
+        - logs-vsphere.log@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - logs-vsphere.log@custom
         index_patterns:
-          - "logs-vsphere.log-*"
+        - logs-vsphere.log-*
+        priority: 501
         template:
           settings:
             index:
               lifecycle:
                 name: so-logs-vsphere.log-logs
               number_of_replicas: 0
-        composed_of:
-          - "logs-vsphere.log@package"
-          - "logs-vsphere.log@custom"
-          - "so-fleet_globals-1"
-          - "so-fleet_agent_id_verification-1"
-        priority: 501
-        data_stream:
-          hidden: false
-          allow_custom_routing: false
       policy:
         phases:
           cold:
@@ -9757,6 +10073,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-windows.forwarded@custom
         index_patterns:
         - logs-windows.forwarded*
         priority: 501
@@ -9801,6 +10119,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-windows.powershell@custom
         index_patterns:
         - logs-windows.powershell-*
         priority: 501
@@ -9845,6 +10165,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-windows.powershell_operational@custom
         index_patterns:
         - logs-windows.powershell_operational-*
         priority: 501
@@ -9889,6 +10211,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-windows.sysmon_operational@custom
         index_patterns:
         - logs-windows.sysmon_operational-*
         priority: 501
@@ -9923,25 +10247,28 @@ elasticsearch:
                 priority: 50
             min_age: 30d
     so-logs-winlog_x_winlog:
-      index_sorting: False
+      index_sorting: false
       index_template:
+        composed_of:
+        - logs-winlog.winlog@package
+        - logs-winlog.winlog@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - logs-winlog.winlog@package
+        - logs-winlog.winlog@custom
         index_patterns:
-          - "logs-winlog.winlog-*"
+        - logs-winlog.winlog-*
+        priority: 501
         template:
           settings:
             index:
               lifecycle:
                 name: so-logs-winlog.winlog-logs
               number_of_replicas: 0
-        composed_of:
-          - "logs-winlog.winlog@package"
-          - "logs-winlog.winlog@custom"
-          - "so-fleet_globals-1"
-          - "so-fleet_agent_id_verification-1"
-        priority: 501
-        data_stream:
-          hidden: false
-          allow_custom_routing: false
       policy:
         phases:
           cold:
@@ -9977,6 +10304,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-zscaler_zia.alerts@custom
         index_patterns:
         - logs-zscaler_zia.alerts-*
         priority: 501
@@ -10021,6 +10350,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-zscaler_zia.dns@custom
         index_patterns:
         - logs-zscaler_zia.dns-*
         priority: 501
@@ -10065,6 +10396,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-zscaler_zia.firewall@custom
         index_patterns:
         - logs-zscaler_zia.firewall-*
         priority: 501
@@ -10109,6 +10442,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-zscaler_zia.tunnel@custom
         index_patterns:
         - logs-zscaler_zia.tunnel-*
         priority: 501
@@ -10153,6 +10488,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-zscaler_zia.web@custom
         index_patterns:
         - logs-zscaler_zia.web-*
         priority: 501
@@ -10197,6 +10534,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-zscaler_zpa.app_connector_status@custom
         index_patterns:
         - logs-zscaler_zpa.app_connector_status-*
         priority: 501
@@ -10241,6 +10580,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-zscaler_zpa.audit@custom
         index_patterns:
         - logs-zscaler_zpa.audit-*
         priority: 501
@@ -10285,6 +10626,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-zscaler_zpa.browser_access@custom
         index_patterns:
         - logs-zscaler_zpa.browser_access-*
         priority: 501
@@ -10329,6 +10672,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-zscaler_zpa.user_activity@custom
         index_patterns:
         - logs-zscaler_zpa.user_activity-*
         priority: 501
@@ -10373,6 +10718,8 @@ elasticsearch:
         data_stream:
           allow_custom_routing: false
           hidden: false
+        ignore_missing_component_templates:
+        - logs-zscaler_zpa.user_status@custom
         index_patterns:
         - logs-zscaler_zpa.user_status-*
         priority: 501
@@ -10381,317 +10728,6 @@ elasticsearch:
             index:
               lifecycle:
                 name: so-logs-zscaler_zpa.user_status-logs
-              number_of_replicas: 0
-      policy:
-        phases:
-          cold:
-            actions:
-              set_priority:
-                priority: 0
-            min_age: 60d
-          delete:
-            actions:
-              delete: {}
-            min_age: 365d
-          hot:
-            actions:
-              rollover:
-                max_age: 30d
-                max_primary_shard_size: 50gb
-              set_priority:
-                priority: 100
-            min_age: 0ms
-          warm:
-            actions:
-              set_priority:
-                priority: 50
-            min_age: 30d
-    so-metrics-endpoint_x_metadata:
-      index_sorting: False
-      index_template:
-        index_patterns:
-          - "metrics-endpoint.metadata-*"
-        template:
-          settings:
-            index:
-              lifecycle:
-                name: so-metrics-endpoint.metadata-logs
-              number_of_replicas: 0
-        composed_of:
-          - "metrics-endpoint.metadata@package"
-          - "metrics-endpoint.metadata@custom"
-          - "so-fleet_globals-1"
-          - "so-fleet_agent_id_verification-1"
-        priority: 501
-        data_stream:
-          hidden: false
-          allow_custom_routing: false
-      policy:
-        phases:
-          cold:
-            actions:
-              set_priority:
-                priority: 0
-            min_age: 60d
-          delete:
-            actions:
-              delete: {}
-            min_age: 365d
-          hot:
-            actions:
-              rollover:
-                max_age: 30d
-                max_primary_shard_size: 50gb
-              set_priority:
-                priority: 100
-            min_age: 0ms
-          warm:
-            actions:
-              set_priority:
-                priority: 50
-            min_age: 30d
-    so-metrics-endpoint_x_metrics:
-      index_sorting: False
-      index_template:
-        index_patterns:
-          - "metrics-endpoint.metrics-*"
-        template:
-          settings:
-            index:
-              lifecycle:
-                name: so-metrics-endpoint.metrics-logs
-              number_of_replicas: 0
-        composed_of:
-          - "metrics-endpoint.metrics@package"
-          - "metrics-endpoint.metrics@custom"
-          - "so-fleet_globals-1"
-          - "so-fleet_agent_id_verification-1"
-        priority: 501
-        data_stream:
-          hidden: false
-          allow_custom_routing: false
-      policy:
-        phases:
-          cold:
-            actions:
-              set_priority:
-                priority: 0
-            min_age: 60d
-          delete:
-            actions:
-              delete: {}
-            min_age: 365d
-          hot:
-            actions:
-              rollover:
-                max_age: 30d
-                max_primary_shard_size: 50gb
-              set_priority:
-                priority: 100
-            min_age: 0ms
-          warm:
-            actions:
-              set_priority:
-                priority: 50
-            min_age: 30d
-    so-metrics-endpoint_x_policy:
-      index_sorting: False
-      index_template:
-        index_patterns:
-          - "metrics-endpoint.policy-*"
-        template:
-          settings:
-            index:
-              lifecycle:
-                name: so-metrics-endpoint.policy-logs
-              number_of_replicas: 0
-        composed_of:
-          - "metrics-endpoint.policy@package"
-          - "metrics-endpoint.policy@custom"
-          - "so-fleet_globals-1"
-          - "so-fleet_agent_id_verification-1"
-        priority: 501
-        data_stream:
-          hidden: false
-          allow_custom_routing: false
-      policy:
-        phases:
-          cold:
-            actions:
-              set_priority:
-                priority: 0
-            min_age: 60d
-          delete:
-            actions:
-              delete: {}
-            min_age: 365d
-          hot:
-            actions:
-              rollover:
-                max_age: 30d
-                max_primary_shard_size: 50gb
-              set_priority:
-                priority: 100
-            min_age: 0ms
-          warm:
-            actions:
-              set_priority:
-                priority: 50
-            min_age: 30d
-    so-metrics-vsphere_x_datastore:
-      index_sorting: False
-      index_template:
-        index_patterns:
-          - "metrics-vsphere.datastore-*"
-        template:
-          settings:
-            index:
-              lifecycle:
-                name: so-metrics-vsphere.datastore-logs
-              number_of_replicas: 0
-        composed_of:
-          - "metrics-vsphere.datastore@package"
-          - "metrics-vsphere.datastore@custom"
-          - "so-fleet_globals-1"
-          - "so-fleet_agent_id_verification-1"
-        priority: 501
-        data_stream:
-          hidden: false
-          allow_custom_routing: false
-      policy:
-        phases:
-          cold:
-            actions:
-              set_priority:
-                priority: 0
-            min_age: 60d
-          delete:
-            actions:
-              delete: {}
-            min_age: 365d
-          hot:
-            actions:
-              rollover:
-                max_age: 30d
-                max_primary_shard_size: 50gb
-              set_priority:
-                priority: 100
-            min_age: 0ms
-          warm:
-            actions:
-              set_priority:
-                priority: 50
-            min_age: 30d
-    so-metrics-vsphere_x_host:
-      index_sorting: False
-      index_template:
-        index_patterns:
-          - "metrics-vsphere.host-*"
-        template:
-          settings:
-            index:
-              lifecycle:
-                name: so-metrics-vsphere.host-logs
-              number_of_replicas: 0
-        composed_of:
-          - "metrics-vsphere.host@package"
-          - "metrics-vsphere.host@custom"
-          - "so-fleet_globals-1"
-          - "so-fleet_agent_id_verification-1"
-        priority: 501
-        data_stream:
-          hidden: false
-          allow_custom_routing: false
-      policy:
-        phases:
-          cold:
-            actions:
-              set_priority:
-                priority: 0
-            min_age: 60d
-          delete:
-            actions:
-              delete: {}
-            min_age: 365d
-          hot:
-            actions:
-              rollover:
-                max_age: 30d
-                max_primary_shard_size: 50gb
-              set_priority:
-                priority: 100
-            min_age: 0ms
-          warm:
-            actions:
-              set_priority:
-                priority: 50
-            min_age: 30d
-    so-metrics-vsphere_x_virtualmachine:
-      index_sorting: False
-      index_template:
-        index_patterns:
-          - "metrics-vsphere.virtualmachine-*"
-        template:
-          settings:
-            index:
-              lifecycle:
-                name: so-metrics-vsphere.virtualmachine-logs
-              number_of_replicas: 0
-        composed_of:
-          - "metrics-vsphere.virtualmachine@package"
-          - "metrics-vsphere.virtualmachine@custom"
-          - "so-fleet_globals-1"
-          - "so-fleet_agent_id_verification-1"
-        priority: 501
-        data_stream:
-          hidden: false
-          allow_custom_routing: false
-      policy:
-        phases:
-          cold:
-            actions:
-              set_priority:
-                priority: 0
-            min_age: 60d
-          delete:
-            actions:
-              delete: {}
-            min_age: 365d
-          hot:
-            actions:
-              rollover:
-                max_age: 30d
-                max_primary_shard_size: 50gb
-              set_priority:
-                priority: 100
-            min_age: 0ms
-          warm:
-            actions:
-              set_priority:
-                priority: 50
-            min_age: 30d
-    so-kismet:
-      index_sorting: false
-      index_template:
-        composed_of:
-        - kismet-mappings
-        - source-mappings
-        - client-mappings
-        - device-mappings
-        - network-mappings
-        - so-fleet_globals-1
-        - so-fleet_agent_id_verification-1
-        data_stream:
-          allow_custom_routing: false
-          hidden: false
-        index_patterns:
-        - logs-kismet-so*
-        priority: 501
-        template:
-          settings:
-            index:
-              lifecycle:
-                name: so-kismet-logs
               number_of_replicas: 0
       policy:
         phases:
@@ -10778,6 +10814,7 @@ elasticsearch:
         - vulnerability-mappings
         - common-settings
         - common-dynamic-mappings
+        ignore_missing_component_templates: []
         index_patterns:
         - logs-logstash-default*
         priority: 500
@@ -10803,6 +10840,374 @@ elasticsearch:
               sort:
                 field: '@timestamp'
                 order: desc
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
+    so-metrics-endpoint_x_metadata:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - metrics-endpoint.metadata@package
+        - metrics-endpoint.metadata@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - metrics-endpoint.metadata@custom
+        index_patterns:
+        - metrics-endpoint.metadata-*
+        priority: 501
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-metrics-endpoint.metadata-logs
+              number_of_replicas: 0
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
+    so-metrics-endpoint_x_metrics:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - metrics-endpoint.metrics@package
+        - metrics-endpoint.metrics@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - metrics-endpoint.metrics@custom
+        index_patterns:
+        - metrics-endpoint.metrics-*
+        priority: 501
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-metrics-endpoint.metrics-logs
+              number_of_replicas: 0
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
+    so-metrics-endpoint_x_policy:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - metrics-endpoint.policy@package
+        - metrics-endpoint.policy@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - metrics-endpoint.policy@custom
+        index_patterns:
+        - metrics-endpoint.policy-*
+        priority: 501
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-metrics-endpoint.policy-logs
+              number_of_replicas: 0
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
+    so-metrics-fleet_server_x_agent_status:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - metrics@tsdb-settings
+        - metrics-fleet_server.agent_status@package
+        - metrics-fleet_server.agent_status@custom
+        - ecs@mappings
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - metrics-fleet_server.agent_status@custom
+        index_patterns:
+        - metrics-fleet_server.agent_status-*
+        priority: 501
+        template:
+          settings:
+            index:
+              mode: time_series
+              number_of_replicas: 0
+    so-metrics-fleet_server_x_agent_versions:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - metrics@tsdb-settings
+        - metrics-fleet_server.agent_versions@package
+        - metrics-fleet_server.agent_versions@custom
+        - ecs@mappings
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - metrics-fleet_server.agent_versions@custom
+        index_patterns:
+        - metrics-fleet_server.agent_versions-*
+        priority: 501
+        template:
+          settings:
+            index:
+              mode: time_series
+              number_of_replicas: 0
+    so-metrics-nginx_x_stubstatus:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - metrics-nginx.stubstatus@package
+        - metrics-nginx.stubstatus@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - metrics-nginx.stubstatus@custom
+        index_patterns:
+        - metrics-nginx.stubstatus-*
+        priority: 501
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-metrics-nginx.stubstatus-logs
+              number_of_replicas: 0
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
+    so-metrics-vsphere_x_datastore:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - metrics-vsphere.datastore@package
+        - metrics-vsphere.datastore@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - metrics-vsphere.datastore@custom
+        index_patterns:
+        - metrics-vsphere.datastore-*
+        priority: 501
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-metrics-vsphere.datastore-logs
+              number_of_replicas: 0
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
+    so-metrics-vsphere_x_host:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - metrics-vsphere.host@package
+        - metrics-vsphere.host@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - metrics-vsphere.host@custom
+        index_patterns:
+        - metrics-vsphere.host-*
+        priority: 501
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-metrics-vsphere.host-logs
+              number_of_replicas: 0
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
+    so-metrics-vsphere_x_virtualmachine:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - metrics-vsphere.virtualmachine@package
+        - metrics-vsphere.virtualmachine@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - metrics-vsphere.virtualmachine@custom
+        index_patterns:
+        - metrics-vsphere.virtualmachine-*
+        priority: 501
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-metrics-vsphere.virtualmachine-logs
+              number_of_replicas: 0
       policy:
         phases:
           cold:
@@ -10888,6 +11293,7 @@ elasticsearch:
         - vulnerability-mappings
         - common-settings
         - common-dynamic-mappings
+        ignore_missing_component_templates: []
         index_patterns:
         - logs-redis-default*
         priority: 500
@@ -11000,6 +11406,7 @@ elasticsearch:
         - common-settings
         - common-dynamic-mappings
         data_stream: {}
+        ignore_missing_component_templates: []
         index_patterns:
         - logs-strelka-so*
         priority: 500
@@ -11111,6 +11518,7 @@ elasticsearch:
         - common-settings
         - common-dynamic-mappings
         data_stream: {}
+        ignore_missing_component_templates: []
         index_patterns:
         - logs-suricata-so*
         priority: 500
@@ -11222,6 +11630,7 @@ elasticsearch:
         - common-settings
         - common-dynamic-mappings
         data_stream: {}
+        ignore_missing_component_templates: []
         index_patterns:
         - logs-suricata.alerts-*
         priority: 500
@@ -11334,6 +11743,7 @@ elasticsearch:
         - common-settings
         - common-dynamic-mappings
         data_stream: {}
+        ignore_missing_component_templates: []
         index_patterns:
         - logs-syslog-so*
         priority: 500
@@ -11447,6 +11857,7 @@ elasticsearch:
         - common-settings
         - common-dynamic-mappings
         data_stream: {}
+        ignore_missing_component_templates: []
         index_patterns:
         - logs-zeek-so*
         priority: 500
@@ -11496,6 +11907,87 @@ elasticsearch:
               set_priority:
                 priority: 50
             min_age: 30d
+  pipelines:
+    custom001:
+      description: Custom Pipeline
+      processors:
+      - set:
+          field: tags
+          value: custom001
+      - pipeline:
+          name: common
+    custom002:
+      description: Custom Pipeline
+      processors:
+      - set:
+          field: tags
+          value: custom002
+      - pipeline:
+          name: common
+    custom003:
+      description: Custom Pipeline
+      processors:
+      - set:
+          field: tags
+          value: custom003
+      - pipeline:
+          name: common
+    custom004:
+      description: Custom Pipeline
+      processors:
+      - set:
+          field: tags
+          value: custom004
+      - pipeline:
+          name: common
+    custom005:
+      description: Custom Pipeline
+      processors:
+      - set:
+          field: tags
+          value: custom005
+      - pipeline:
+          name: common
+    custom006:
+      description: Custom Pipeline
+      processors:
+      - set:
+          field: tags
+          value: custom006
+      - pipeline:
+          name: common
+    custom007:
+      description: Custom Pipeline
+      processors:
+      - set:
+          field: tags
+          value: custom007
+      - pipeline:
+          name: common
+    custom008:
+      description: Custom Pipeline
+      processors:
+      - set:
+          field: tags
+          value: custom008
+      - pipeline:
+          name: common
+    custom009:
+      description: Custom Pipeline
+      processors:
+      - set:
+          field: tags
+          value: custom009
+      - pipeline:
+          name: common
+    custom010:
+      description: Custom Pipeline
+      processors:
+      - set:
+          field: tags
+          value: custom010
+      - pipeline:
+          name: common
   retention:
     retention_pct: 50
   so_roles:
