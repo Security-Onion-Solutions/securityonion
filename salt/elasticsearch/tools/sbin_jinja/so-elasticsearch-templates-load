@@ -134,7 +134,7 @@ if [ ! -f $STATE_FILE_SUCCESS ]; then
       TEMPLATE=${i::-14}
       COMPONENT_PATTERN=${TEMPLATE:3}
       MATCH=$(echo "$TEMPLATE" | grep -E "^so-logs-|^so-metrics" | grep -vE "detections|osquery")
-      if [[ -n "$MATCH" && ! "$COMPONENT_LIST" =~ "$COMPONENT_PATTERN" ]]; then
+      if [[ -n "$MATCH" && ! "$COMPONENT_LIST" =~ "$COMPONENT_PATTERN" && ! "$COMPONENT_PATTERN" =~ logs-http_endpoint\.generic|logs-winlog\.winlog ]]; then
         load_failures=$((load_failures+1))
         echo "Component template does not exist for $COMPONENT_PATTERN. The index template will not be loaded. Load failures: $load_failures"
       else
@@ -153,7 +153,7 @@ if [ ! -f $STATE_FILE_SUCCESS ]; then
   cd - >/dev/null
 
   if [[ $load_failures -eq 0 ]]; then
-    echo "All template loaded successfully"
+    echo "All templates loaded successfully"
     touch $STATE_FILE_SUCCESS
   else
     echo "Encountered $load_failures templates that were unable to load, likely due to missing dependencies that will be available later; will retry on next highstate"
