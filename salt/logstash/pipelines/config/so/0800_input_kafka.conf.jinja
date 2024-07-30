@@ -1,4 +1,5 @@
-{%- set kafka_password = salt['pillar.get']('kafka:password') %}
+{%- set kafka_password = salt['pillar.get']('kafka:config:password') %}
+{%- set kafka_trustpass = salt['pillar.get']('kafka:config:trustpass') %}
 {%- set kafka_brokers = salt['pillar.get']('kafka:nodes', {}) %}
 {%- set brokers = [] %}
 
@@ -22,8 +23,8 @@ input {
         ssl_keystore_location => '/usr/share/logstash/kafka-logstash.p12'
         ssl_keystore_password => '{{ kafka_password }}'
         ssl_keystore_type => 'PKCS12'
-        ssl_truststore_location => '/etc/pki/ca-trust/extracted/java/cacerts'
-        ssl_truststore_password => 'changeit'
+        ssl_truststore_location => '/etc/pki/kafka-truststore.jks'
+        ssl_truststore_password => '{{ kafka_trustpass }}'
         decorate_events => true
         tags => [ "elastic-agent", "input-{{ GLOBALS.hostname}}", "kafka" ]
     }

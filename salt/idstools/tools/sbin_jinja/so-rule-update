@@ -11,8 +11,8 @@ if [[ ! "`pidof -x $(basename $0) -o %PPID`" ]]; then
 {%- set proxy = salt['pillar.get']('manager:proxy') %}
 {%- set noproxy = salt['pillar.get']('manager:no_proxy', '') %}
 
-# Download the rules from the internet
 {%- if proxy %}
+# Download the rules from the internet
     export http_proxy={{ proxy }}
     export https_proxy={{ proxy }}
     export no_proxy="{{ noproxy }}"
@@ -20,12 +20,12 @@ if [[ ! "`pidof -x $(basename $0) -o %PPID`" ]]; then
 
     mkdir -p /nsm/rules/suricata
     chown -R socore:socore /nsm/rules/suricata
+{%- if not GLOBALS.airgap %}
 # Download the rules from the internet
-{%- if GLOBALS.airgap != 'True' %}
 {%-   if IDSTOOLSMERGED.config.ruleset == 'ETOPEN' %}
-    docker exec so-idstools idstools-rulecat -v --suricata-version 6.0 -o /nsm/rules/suricata/ --merged=/nsm/rules/suricata/emerging-all.rules --force
+    docker exec so-idstools idstools-rulecat -v --suricata-version 7.0.3 -o /nsm/rules/suricata/ --merged=/nsm/rules/suricata/emerging-all.rules --force
 {%-   elif IDSTOOLSMERGED.config.ruleset == 'ETPRO' %}
-    docker exec so-idstools idstools-rulecat -v --suricata-version 6.0 -o /nsm/rules/suricata/ --merged=/nsm/rules/suricata/emerging-all.rules --force --etpro={{ IDSTOOLSMERGED.config.oinkcode }}
+    docker exec so-idstools idstools-rulecat -v --suricata-version 7.0.3 -o /nsm/rules/suricata/ --merged=/nsm/rules/suricata/emerging-all.rules --force --etpro={{ IDSTOOLSMERGED.config.oinkcode }}
 {%-   endif %}
 {%- endif %}
 

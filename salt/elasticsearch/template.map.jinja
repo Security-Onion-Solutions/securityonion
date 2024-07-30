@@ -1,3 +1,8 @@
+{# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+   or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+   https://securityonion.net/license; you may not use this file except in compliance with the
+   Elastic License 2.0. #}
+
 {% import_yaml 'elasticsearch/defaults.yaml' as ELASTICSEARCHDEFAULTS %}
 {% set DEFAULT_GLOBAL_OVERRIDES = ELASTICSEARCHDEFAULTS.elasticsearch.index_settings.pop('global_overrides') %}
 
@@ -17,10 +22,26 @@
 {% set ES_INDEX_SETTINGS = {} %}
 {% do ES_INDEX_SETTINGS_GLOBAL_OVERRIDES.update(salt['defaults.merge'](ES_INDEX_SETTINGS_GLOBAL_OVERRIDES, ES_INDEX_PILLAR, in_place=False)) %}
 {% for index, settings in ES_INDEX_SETTINGS_GLOBAL_OVERRIDES.items() %}
-{#   if policy isn't defined in the original index settings, then dont merge policy from the global_overrides #}
-{#   this will prevent so-elasticsearch-ilm-policy-load from trying to load policy on non ILM manged indices #}
-{%   if not ES_INDEX_SETTINGS_ORIG[index].policy is defined and ES_INDEX_SETTINGS_GLOBAL_OVERRIDES[index].policy is defined %}
-{%     do ES_INDEX_SETTINGS_GLOBAL_OVERRIDES[index].pop('policy') %}
+
+{#   prevent this action from being performed on custom defined indices. #}
+{#   the custom defined index is not present in either of the dictionaries and fails to reder. #}
+{%   if index in ES_INDEX_SETTINGS_ORIG and index in ES_INDEX_SETTINGS_GLOBAL_OVERRIDES %}
+
+{#     dont merge policy from the global_overrides if policy isn't defined in the original index settingss #}
+{#     this will prevent so-elasticsearch-ilm-policy-load from trying to load policy on non ILM manged indices #}
+{%     if not ES_INDEX_SETTINGS_ORIG[index].policy is defined and ES_INDEX_SETTINGS_GLOBAL_OVERRIDES[index].policy is defined %}
+{%       do ES_INDEX_SETTINGS_GLOBAL_OVERRIDES[index].pop('policy') %}
+{%     endif %}
+
+{#     this prevents and index from inderiting a policy phase from global overrides if it wasnt defined in the defaults. #}
+{%     if ES_INDEX_SETTINGS_GLOBAL_OVERRIDES[index].policy is defined %}
+{%       for phase in ES_INDEX_SETTINGS_GLOBAL_OVERRIDES[index].policy.phases.copy() %}
+{%         if ES_INDEX_SETTINGS_ORIG[index].policy.phases[phase] is not defined %}
+{%           do ES_INDEX_SETTINGS_GLOBAL_OVERRIDES[index].policy.phases.pop(phase) %}
+{%         endif %}
+{%       endfor %}
+{%     endif %}
+
 {%   endif %}
 
 {%   if settings.index_template is defined %}

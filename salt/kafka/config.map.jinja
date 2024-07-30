@@ -6,7 +6,8 @@
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 
 {% set KAFKA_NODES_PILLAR = salt['pillar.get']('kafka:nodes') %}
-{% set KAFKA_PASSWORD = salt['pillar.get']('kafka:password') %}
+{% set KAFKA_PASSWORD = salt['pillar.get']('kafka:config:password') %}
+{% set KAFKA_TRUSTPASS = salt['pillar.get']('kafka:config:trustpass') %}
 
 {# Create list of KRaft controllers #}
 {% set controllers = [] %}
@@ -67,19 +68,12 @@
 
 {% endif %}
 
-{# If a password other than PLACEHOLDER isn't set remove it from the server.properties #}
-{% if KAFKAMERGED.config.broker.ssl_x_truststore_x_password == 'PLACEHOLDER' %}
-{%   do KAFKAMERGED.config.broker.pop('ssl_x_truststore_x_password') %}
-{% endif %}
-
-{% if KAFKAMERGED.config.controller.ssl_x_truststore_x_password == 'PLACEHOLDER' %}
-{%   do KAFKAMERGED.config.controller.pop('ssl_x_truststore_x_password') %}
-{% endif %}
+{# Truststore config #}
+{% do KAFKAMERGED.config.broker.update({'ssl_x_truststore_x_password': KAFKA_TRUSTPASS }) %}
+{% do KAFKAMERGED.config.controller.update({'ssl_x_truststore_x_password': KAFKA_TRUSTPASS }) %}
+{% do KAFKAMERGED.config.client.update({'ssl_x_truststore_x_password': KAFKA_TRUSTPASS }) %}
 
 {# Client properties stuff #}
-{% if KAFKAMERGED.config.client.ssl_x_truststore_x_password == 'PLACEHOLDER' %}
-{%   do KAFKAMERGED.config.client.pop('ssl_x_truststore_x_password') %}
-{% endif %}
 {% do KAFKAMERGED.config.client.update({'ssl_x_keystore_x_password': KAFKA_PASSWORD }) %}
 
 {% if 'broker' in node_type %}

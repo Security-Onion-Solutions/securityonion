@@ -6,24 +6,40 @@
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 {% import_yaml 'logstash/defaults.yaml' as LOGSTASH_DEFAULTS %}
 {% set LOGSTASH_MERGED = salt['pillar.get']('logstash', LOGSTASH_DEFAULTS.logstash, merge=True) %}
+{% set KAFKA_LOGSTASH = salt['pillar.get']('kafka:logstash', []) %}
 
-{% set REDIS_NODES = [] %}
-{# LOGSTASH_NODES is the same as ES_LOGSTASH_NODES from elasticsearch/config.map.jinja but heavynodes are present #}
+{# used to store the redis nodes that logstash needs to know about to pull from the queue #}
+{% set LOGSTASH_REDIS_NODES = [] %}
+{# stores all logstash nodes #}
 {% set LOGSTASH_NODES = [] %}
-{% set node_data = salt['pillar.get']('logstash:nodes', {GLOBALS.role.split('-')[1]: {GLOBALS.hostname: {'ip': GLOBALS.node_ip}}}) %}
+{% set logstash_node_data = salt['pillar.get']('logstash:nodes', {GLOBALS.role.split('-')[1]: {GLOBALS.hostname: {'ip': GLOBALS.node_ip}}}) %}
+{% set redis_node_data = salt['pillar.get']('redis:nodes', {GLOBALS.role.split('-')[1]: {GLOBALS.hostname: {'ip': GLOBALS.node_ip}}}) %}
 
-{% for node_type, node_details in node_data.items() | sort %}
+{% for node_type, node_details in redis_node_data.items() | sort %}
 {%   if GLOBALS.role in ['so-searchnode', 'so-standalone', 'so-managersearch', 'so-fleet'] %}
 {%     if node_type in ['manager', 'managersearch', 'standalone', 'receiver' ] %}
-{%       for hostname in node_data[node_type].keys() %}
-{%         do REDIS_NODES.append({hostname:node_details[hostname].ip}) %}
+{%       for hostname in redis_node_data[node_type].keys() %}
+{%         do LOGSTASH_REDIS_NODES.append({hostname:node_details[hostname].ip}) %}
 {%       endfor %}
 {%     endif %}
-{%   else %}
-{%     do REDIS_NODES.append({GLOBALS.hostname:GLOBALS.node_ip}) %}
 {%   endif %}
+{% endfor %}
 
-{%   for hostname in node_data[node_type].keys() %}
+{% for node_type, node_details in logstash_node_data.items() | sort %}
+{%   for hostname in logstash_node_data[node_type].keys() %}
 {%     do LOGSTASH_NODES.append({hostname:node_details[hostname].ip}) %}
 {%   endfor %}
 {% endfor %}
+
+{# Append Kafka input pipeline when Kafka is enabled #}
+{% if GLOBALS.pipeline == 'KAFKA' %}
+{%   do LOGSTASH_MERGED.defined_pipelines.search.remove('so/0900_input_redis.conf.jinja') %}
+{%   do LOGSTASH_MERGED.defined_pipelines.search.append('so/0800_input_kafka.conf.jinja') %}
+{%   do LOGSTASH_MERGED.defined_pipelines.manager.append('so/0800_input_kafka.conf.jinja') %}
+{# Disable logstash on manager & receiver nodes unless it has an override configured #}
+{%   if not KAFKA_LOGSTASH %}
+{%     if GLOBALS.role in ['so-manager', 'so-receiver'] and GLOBALS.hostname not in KAFKA_LOGSTASH %}
+{%       do LOGSTASH_MERGED.update({'enabled': False}) %}
+{%     endif %}
+{%   endif %}
+{% endif %}
