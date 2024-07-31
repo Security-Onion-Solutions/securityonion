@@ -47,6 +47,20 @@ salt_master_service:
       - file: engines_config
     - order: last
 
+# we need to managed adding the following to salt-master config if there are hypervisors
+#reactor:
+  #- salt/cloud/*/creating':
+  #- salt/cloud/*/requesting
+#  - 'salt/cloud/*/deploying':
+#    - /srv/salt/reactor/createEmptyPillar.sls
+#  - 'setup/so-minion':
+#    - /srv/salt/reactor/setup.sls
+#  - 'salt/cloud/*/created':
+#    - /srv/salt/reactor/virtUpdate.sls
+#  - 'salt/cloud/*/destroyed':
+#    - /srv/salt/reactor/virtReleaseHardware.sls
+#    - /srv/salt/reactor/deleteKey.sls
+
 {% else %}
 
 {{sls}}_state_not_allowed:

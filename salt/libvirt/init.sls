@@ -78,3 +78,6 @@ virbr0:
     - proto: dhcp
     - require:
       - network: ens18
+
+# virtlogd service may not restart following reboot without this
+#semanage permissive -a virtlogd_t

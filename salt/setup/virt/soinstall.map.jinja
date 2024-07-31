@@ -1,0 +1,34 @@
+{# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+   or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+   https://securityonion.net/license; you may not use this file except in compliance with the
+   Elastic License 2.0. #}
+
+{% set nodetype = grains.id.split("_") | last %}
+{% import_yaml nodetype ~ '.yaml' as DATA %}
+{% set total_mem  = grains.mem_total %}
+
+{% do DATA.update({'MAINIP': grains.ip_interfaces.get(DATA.MNIC)[0]}) %}
+{% do DATA.update({'CORECOUNT': grains.num_cpus}) %}
+{% do DATA.update({'CPUCORES': grains.num_cpus}) %}
+
+
+{% if nodetype = "searchnode" %}
+
+{%   do DATA.update({'LSHOSTNAME': grains.host}) %}
+
+{#   this replicates the function es_heapsize in so-functions #}
+{%   if total_mem < 8000 %}
+{%     set ES_HEAP_SIZE = "600m" %}
+{%   elif total_mem >= 100000 %}
+{%     set ES_HEAP_SIZE = "25000m" %}
+{%   else %}
+{%    set ES_HEAP_SIZE = total_mem / 3 %}
+{%    if ES_HEAP_SIZE > 25000 %}
+{%      set ES_HEAP_SIZE = "25000m" %}
+{%    else %}
+{%      set ES_HEAP_SIZE = ES_HEAP_SIZE ~ "m" %}
+{%    endif %}
+{%   endif %}
+{%   do DATA.update({'ES_HEAP_SIZE': ES_HEAP_SIZE}) %}
+
+{% endif %}
