@@ -9,6 +9,7 @@
 {% set service_start_delay = SALTMINION.salt.minion.service_start_delay %}
 
 include:
+  - salt.python_modules
   - salt
   - systemd.reload
   - repo.client
