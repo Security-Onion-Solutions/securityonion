@@ -740,6 +740,29 @@ configure_network_sensor() {
 	return $err
 }
 
+configure_hyper_bridge() {
+	info "Setting up hypervisor bridge"
+	info "Checking $MNIC is using static or DHCP"
+    sod=$(nmcli -f ipv4.method con show $MNIC)
+
+	# Create the bond interface only if it doesn't already exist
+	nmcli -f name,uuid -p con | grep -q br0
+	local found_int=$?
+
+	if [[ $found_int != 0 ]]; then
+		nmcli con add ifname br0 type bridge con-name br0 >> "$setup_log" 2>&1
+	fi
+
+	# as mgmt interface as slave
+	nmcli con add type bridge-slave ifname "$MNIC" master br0
+
+	local err=0
+    nmcli con down "$MNIC"
+	nmcli con up br0
+
+	return $err
+}
+
 copy_salt_master_config() {
 
 	title "Copy the Salt master config template to the proper directory"
