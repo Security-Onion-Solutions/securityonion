@@ -2,7 +2,6 @@
 {% from 'salt/map.jinja' import UPGRADECOMMAND with context %}
 {% from 'salt/map.jinja' import SALTVERSION %}
 {% from 'salt/map.jinja' import INSTALLEDSALTVERSION %}
-{% from 'salt/map.jinja' import SALTNOTHELD %}
 {% from 'salt/map.jinja' import SALTPACKAGES %}
 {% from 'salt/map.jinja' import SYSTEMD_UNIT_FILE %}
 {% import_yaml 'salt/minion.defaults.yaml' as SALTMINION %}
@@ -20,15 +19,12 @@ include:
 
 {% if INSTALLEDSALTVERSION|string != SALTVERSION|string %}
 
-{% if SALTNOTHELD | int == 0 %}
 unhold_salt_packages:
-  module.run:
-    - pkg.unhold:
-      - pkgs:
+  pkg.unheld:
+    - pkgs:
 {% for package in SALTPACKAGES %}
-        - {{ package }}
+      - {{ package }}
 {% endfor %}
-{% endif %}
 
 install_salt_minion:
   cmd.run:
@@ -42,15 +38,12 @@ install_salt_minion:
 
 {% if INSTALLEDSALTVERSION|string == SALTVERSION|string %}
 
-{% if SALTNOTHELD | int == 1 %}
 hold_salt_packages:
-  module.run:
-    - pkg.hold:
-      - pkgs:
+  pkg.held:
+    - pkgs:
 {% for package in SALTPACKAGES %}
-        - {{ package }}
+      - {{ package }}: {{SALTVERSION}}-0.*
 {% endfor %}
-{% endif %}
 
 remove_error_log_level_logfile:
   file.line:
