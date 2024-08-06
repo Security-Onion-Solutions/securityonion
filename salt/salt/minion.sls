@@ -23,7 +23,7 @@ unhold_salt_packages:
   pkg.unheld:
     - pkgs:
 {% for package in SALTPACKAGES %}
-      - {{ package }}: {{INSTALLEDSALTVERSION}}-0.*
+      - {{ package }}
 {% endfor %}
 
 install_salt_minion:
