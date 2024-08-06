@@ -742,25 +742,41 @@ configure_network_sensor() {
 
 configure_hyper_bridge() {
 	info "Setting up hypervisor bridge"
-	info "Checking $MNIC is using static or DHCP"
-    sod=$(nmcli -f ipv4.method con show $MNIC)
-
+	info "Checking $MNIC ipv4.method is auto or manual"
+    ipmethod=$(nmcli -f ipv4.method con show "$MNIC" | cut -d ':' -f 2 | xargs)
+	info "ipv4.method found $ipmethod"
 	# Create the bond interface only if it doesn't already exist
 	nmcli -f name,uuid -p con | grep -q br0
 	local found_int=$?
 
 	if [[ $found_int != 0 ]]; then
+	    info "Creating bridge br0"
 		nmcli con add ifname br0 type bridge con-name br0 >> "$setup_log" 2>&1
 	fi
 
-	# as mgmt interface as slave
-	nmcli con add type bridge-slave ifname "$MNIC" master br0
+	# add mgmt interface as slave
+	logCmd "nmcli con add type bridge-slave ifname $MNIC master br0"
 
-	local err=0
-    nmcli con down "$MNIC"
-	nmcli con up br0
+	# if static ip was set transfer settings to the bridge
+	if [[ "$ipmethod" == "manual" ]]; then
+		local addresses=$(nmcli -f ipv4.addresses con show "$MNIC" | cut -d ':' -f 2 | xargs)
+		local gateway=$(nmcli -f ipv4.gateway con show "$MNIC" | cut -d ':' -f 2 | xargs)
+		local dns=$(nmcli -f ipv4.dns con show "$MNIC" | cut -d ':' -f 2 | xargs)
+		local dnssearch=$(nmcli -f ipv4.dns-search con show "$MNIC" | cut -d ':' -f 2 | xargs)
+		# will need to check for proxy
+		#local proxy=
 
-	return $err
+		logCmd "nmcli con mod br0 ipv4.addresses $addresses"
+		logCmd "nmcli con mod br0 ipv4.gateway $gateway"
+		logCmd "nmcli con mod br0 ipv4.dns $dns"
+		logCmd "nmcli con mod br0 ipv4.dns-search $dns-search"
+		logCmd "nmcli con mod br0 ipv4.method manual"
+		logCmd "nmcli con up br0"
+		# we cant bring down MNIC here since it would disrupt ssh sessions. we will need to bring it down at the end of the first highstate
+		# network comms will take place on MNIC until it is brought down and switches to br0
+	fi
+
+	return
 }
 
 copy_salt_master_config() {
