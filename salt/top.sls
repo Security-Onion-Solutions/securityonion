@@ -266,6 +266,16 @@ base:
     - elasticfleet.install_agent_grid
     - schedule
 
+  '*_hypervisor and G@saltversion:{{saltversion}}':
+    - match: compound
+    - ssl
+    - sensoroni
+    - telegraf
+    - firewall
+    - elasticfleet.install_agent_grid
+    - libvirt
+    - stig
+
   '*_desktop and G@saltversion:{{saltversion}}':
     - ssl
     - sensoroni

@@ -9,24 +9,34 @@ install_libvirt:
   pkg.installed:
     - name: libvirt
 
-libvirt_config:
-  file.managed:
-    - name: /etc/libvirt/libvirtd.conf
-    - source: salt://libvirt/etc/libvirtd.conf.jinja
-    - template: jinja
-    - defaults:
-        LIBVIRTMERGED: {{ LIBVIRTMERGED }}
-
-libvirt_service:
-  service.running:
-    - name: libvirtd
-
 libvirt_conf_dir:
   file.directory:
     - name: /opt/so/conf/libvirt
     - user: 939
     - group: 939
     - makedirs: True
+
+libvirt_config:
+  file.managed:
+    - name: /opt/so/conf/libvirt/libvirtd.conf
+    - source: salt://libvirt/etc/libvirtd.conf.jinja
+    - template: jinja
+    - defaults:
+        LIBVIRTMERGED: {{ LIBVIRTMERGED }}
+
+# since the libvirtd service looks for the config at /etc/libvirt/libvirtd.conf, and we dont want to manage the service looking in a new location, create this symlink to the managed config 
+config_symlink:
+  file.symlink:
+    - name: /etc/libvirt/libvirtd.conf
+    - target: /opt/so/conf/libvirt/libvirtd.conf
+    - force: True
+
+libvirt_service:
+  service.running:
+    - name: libvirtd
+    - enable: True
+    - watch:
+      - file: libvirt_config
 
 libvirt_source-packages_dir:
   file.directory:
@@ -60,24 +70,9 @@ install_libguestfs:
   pkg.installed:
     - name: libguestfs
 
-# required for the network states below
-install_NetworkManager-updown:
+install-guestfs-tools:
   pkg.installed:
-    - name: NetworkManager-initscripts-updown
-
-ens18:
-  network.managed:
-    - enabled: True
-    - type: eth
-    - bridge: virbr0
-
-virbr0:
-  network.managed:
-    - enabled: True
-    - type: bridge
-    - proto: dhcp
-    - require:
-      - network: ens18
+    - name: guestfs-tools
 
 # virtlogd service may not restart following reboot without this
 #semanage permissive -a virtlogd_t

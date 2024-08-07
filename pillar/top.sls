@@ -307,6 +307,10 @@ base:
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
 
+  '*_hypervisor':
+    - minions.{{ grains.id }}
+    - minions.adv_{{ grains.id }}
+
   '*_desktop':
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
