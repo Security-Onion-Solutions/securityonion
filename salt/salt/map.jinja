@@ -1,15 +1,20 @@
+{# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+   or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+   https://securityonion.net/license; you may not use this file except in compliance with the
+   Elastic License 2.0. #}
+
 {% import_yaml 'salt/minion.defaults.yaml' as saltminion %}
 {% set SALTVERSION = saltminion.salt.minion.version %}
 
 {% if grains.os_family == 'Debian' %}
   {% set SPLITCHAR = '+' %}
   {% set SALTNOTHELD = salt['cmd.run']('apt-mark showhold | grep -q salt ; echo $?', python_shell=True) %}
-  {% set SALTPACKAGES = ['salt-common', 'salt-master', 'salt-minion'] %}
+  {% set SALTPACKAGES = ['salt-common', 'salt-master', 'salt-minion', 'salt-cloud'] %}
   {% set SYSTEMD_UNIT_FILE = '/lib/systemd/system/salt-minion.service' %}
 {% else %}
   {% set SPLITCHAR = '-' %}
   {% set SALTNOTHELD = salt['cmd.run']('yum versionlock list | grep -q salt ; echo $?', python_shell=True) %}
-  {% set SALTPACKAGES = ['salt', 'salt-master', 'salt-minion'] %}
+  {% set SALTPACKAGES = ['salt', 'salt-master', 'salt-minion', 'salt-cloud'] %}
   {% set SYSTEMD_UNIT_FILE = '/usr/lib/systemd/system/salt-minion.service' %}
 {% endif %}
 

@@ -5,6 +5,9 @@
 
 {% from 'libvirt/map.jinja' import LIBVIRTMERGED %}
 
+include:
+  - libvirt.packages
+
 install_libvirt:
   pkg.installed:
     - name: libvirt
@@ -38,22 +41,6 @@ libvirt_service:
     - watch:
       - file: libvirt_config
 
-libvirt_source-packages_dir:
-  file.directory:
-    - name: /opt/so/conf/libvirt/source-packages
-
-libvirt_python_wheel:
-  file.recurse:
-    - name: /opt/so/conf/libvirt/source-packages/libvirt-python
-    - source: salt://libvirt/source-packages/libvirt-python
-    - clean: True
-
-libvirt_python_module:
-  cmd.run:
-    - name: /opt/saltstack/salt/bin/python3.10 -m pip install --no-index --find-links=/opt/so/conf/libvirt/source-packages/libvirt-python libvirt-python
-    - onchanges:
-      - file: libvirt_python_wheel
-
 # places cacert, clientcert, clientkey, servercert and serverkey
 # /etc/pki/CA/cacert.pem
 # /etc/pki/libvirt/clientcert.pem and /etc/pki/libvirt/servercert.pem
@@ -73,6 +60,15 @@ install_libguestfs:
 install-guestfs-tools:
   pkg.installed:
     - name: guestfs-tools
+
+# this should only run during the first highstate after setup. it will transfer connection from mgmt to br0
+down_original_mgmt_interface:
+  cmd.run:
+    - name: "nmcli con down {{ pillar.host.mainint }}"
+    - unless:
+      - nmcli -f GENERAL.CONNECTION dev show {{ pillar.host.mainint }} | grep bridge-slave-{{ pillar.host.mainint }}
+    - order: last
+
 
 # virtlogd service may not restart following reboot without this
 #semanage permissive -a virtlogd_t
