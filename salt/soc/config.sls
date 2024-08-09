@@ -192,10 +192,11 @@ socsigmarepo:
 
 socsensoronirepos:
   file.directory:
-    - name: /opt/sensoroni/repos
+    - name: /opt/so/conf/soc/ai_summary_repos
     - user: 939
     - group: 939
     - mode: 775
+    - makedirs: True
 
 {% else %}
 
