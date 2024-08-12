@@ -1,7 +1,13 @@
+{% if grains.role == 'so-hypervisor' %}
+{%   set interface = 'br0' %}
+{% else %}
+{%   set interface = pillar.host.mainint %}
+{% endif %}
+
 mine_interval: 25
 mine_functions:
   network.ip_addrs:
-    - interface: {{ pillar.host.mainint }}
+    - interface: {{ interface }}
 {%- if grains.role in ['so-eval','so-import','so-manager','so-managersearch','so-standalone'] %}
   x509.get_pem_entries:
     - glob_path: '/etc/pki/ca.crt'
