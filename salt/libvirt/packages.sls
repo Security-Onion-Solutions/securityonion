@@ -6,6 +6,11 @@ install_libvirt-libs:
   pkg.installed:
     - name: libvirt-libs
 
+# provides virsh
+install_libvirt-client:
+  pkg.installed:
+    - name: libvirt-client
+
 libvirt_python_wheel:
   file.recurse:
     - name: /opt/so/conf/libvirt/source-packages/libvirt-python

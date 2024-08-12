@@ -15,6 +15,22 @@ install_salt_cloud:
     - name: salt-cloud
     - version: {{SALTVERSION}}
 
+cloud_providers:
+  file.managed:
+    - name: /etc/salt/cloud.providers.d/libvirt.conf
+    - source: salt://salt/cloud/cloud.providers.d/libvirt.conf.jinja
+    - defaults:
+        HYPERVISORS: {{pillar.hypervisor.nodes}}
+    - template: jinja
+
+cloud_profiles:
+  file.managed:
+    - name: /etc/salt/cloud.profiles.d/socloud.conf
+    - source: salt://salt/cloud/cloud.profiles.d/socloud.conf.jinja
+    - defaults:
+        HYPERVISORS: {{pillar.hypervisor.nodes}}
+    - template: jinja
+
 {% else %}
 
 {{sls}}_state_not_allowed:
