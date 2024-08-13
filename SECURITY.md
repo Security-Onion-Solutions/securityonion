@@ -5,8 +5,10 @@
 | Version | Supported          |
 | ------- | ------------------ |
 | 2.4.x   | :white_check_mark: |
-| 2.3.x   | :white_check_mark: |
+| 2.3.x   | :x:                |
 | 16.04.x | :x:                |
+
+Security Onion 2.3 has reached End Of Life and is no longer supported.
 
 Security Onion 16.04 has reached End Of Life and is no longer supported.
 
