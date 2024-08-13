@@ -20,7 +20,7 @@ cloud_providers:
     - name: /etc/salt/cloud.providers.d/libvirt.conf
     - source: salt://salt/cloud/cloud.providers.d/libvirt.conf.jinja
     - defaults:
-        HYPERVISORS: {{pillar.hypervisor.nodes}}
+        HYPERVISORS: {{pillar.hypervisor.nodes.hypervisor}}
     - template: jinja
 
 cloud_profiles:

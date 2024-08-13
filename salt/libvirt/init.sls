@@ -7,6 +7,7 @@
 
 include:
   - libvirt.packages
+  - libvirt.ssh.users
 
 install_libvirt:
   pkg.installed:
@@ -65,6 +66,8 @@ disable_default_bridge:
     - name: virsh net-destroy default && virsh net-autostart default --disable
     - require:
       - pkg: install_libvirt-client
+    - onlyif:
+      - virsh net-info | grep default
 
 # this should only run during the first highstate after setup. it will transfer connection from mgmt to br0
 down_original_mgmt_interface:
