@@ -53,13 +53,18 @@ install_qemu:
   pkg.installed:
     - name: qemu-kvm
 
-install_libguestfs:
-  pkg.installed:
-    - name: libguestfs
+create_host_bridge:
+  virt.network_running:
+    - name: host-bridge
+    - bridge: br0
+    - forward: bridge
+    - autostart: True
 
-install-guestfs-tools:
-  pkg.installed:
-    - name: guestfs-tools
+disable_default_bridge:
+  cmd.run:
+    - name: virsh net-destroy default && virsh net-autostart default --disable
+    - require:
+      - pkg: install_libvirt-client
 
 # this should only run during the first highstate after setup. it will transfer connection from mgmt to br0
 down_original_mgmt_interface:

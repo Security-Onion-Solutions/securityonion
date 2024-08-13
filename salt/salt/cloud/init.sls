@@ -28,7 +28,7 @@ cloud_profiles:
     - name: /etc/salt/cloud.profiles.d/socloud.conf
     - source: salt://salt/cloud/cloud.profiles.d/socloud.conf.jinja
     - defaults:
-        HYPERVISORS: {{pillar.hypervisor.nodes}}
+        HYPERVISORS: {{pillar.hypervisor.nodes.hypervisor}}
     - template: jinja
 
 {% else %}

@@ -51,6 +51,6 @@ qemu_ssh_client_config:
 soqemussh_pub_key:
   ssh_auth.present:
     - user: soqemussh
-    - source: salt://libvirt/ssh_keys/id_ed25519.pub
+    - source: salt://libvirt/ssh/keys/id_ed25519.pub
 
 {% endif %}
