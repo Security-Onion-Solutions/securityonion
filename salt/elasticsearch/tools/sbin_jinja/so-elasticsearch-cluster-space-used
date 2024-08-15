@@ -13,10 +13,10 @@ TOTAL_USED_SPACE=0
 # Iterate through the output of _cat/allocation for each node in the cluster to determine the total used space
 {% if GLOBALS.role == 'so-manager' %}
 # Get total disk space - disk.total
-for i in $(/usr/sbin/so-elasticsearch-query _cat/allocation | grep -v "{{ GLOBALS.manager }}$" | awk '{print $3}'); do
+for i in $(/usr/sbin/so-elasticsearch-query _cat/allocation | grep -v "{{ GLOBALS.manager }}$" | awk '{print $6}'); do
 {% else %}
 # Get disk space taken up by indices - disk.indices
-for i in $(/usr/sbin/so-elasticsearch-query _cat/allocation | awk '{print $2}'); do
+for i in $(/usr/sbin/so-elasticsearch-query _cat/allocation | awk '{print $5}'); do
 {% endif %}
   size=$(echo $i | grep -oE '[0-9].*' | awk '{print int($1+0.5)}')
   unit=$(echo $i | grep -oE '[A-Za-z]+')
