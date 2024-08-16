@@ -57,14 +57,14 @@ salt_master_service:
   #- salt/cloud/*/creating':
   #- salt/cloud/*/requesting
 #  - 'salt/cloud/*/deploying':
-#    - /srv/salt/reactor/createEmptyPillar.sls
+#    - /opt/so/saltstack/default/salt/reactor/createEmptyPillar.sls
 #  - 'setup/so-minion':
-#    - /srv/salt/reactor/setup.sls
+#    - /opt/so/saltstack/default/salt/reactor/setup.sls
 #  - 'salt/cloud/*/created':
-#    - /srv/salt/reactor/virtUpdate.sls
+#    - /opt/so/saltstack/default/salt/reactor/virtUpdate.sls
 #  - 'salt/cloud/*/destroyed':
-#    - /srv/salt/reactor/virtReleaseHardware.sls
-#    - /srv/salt/reactor/deleteKey.sls
+#    - /opt/so/saltstack/default/salt/reactor/virtReleaseHardware.sls
+#    - /opt/so/saltstack/default/salt/reactor/deleteKey.sls
 
 {% else %}
 
