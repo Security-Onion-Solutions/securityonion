@@ -57,16 +57,9 @@ install_qemu:
   pkg.installed:
     - name: qemu-kvm
 
-#create_host_bridge:
-#  virt.network_running:
-#    - name: host-bridge
-#    - bridge: br0
-#    - forward: bridge
-#    - autostart: True
-
-set_default_bridge:
+create_host_bridge:
   virt.network_running:
-    - name: default
+    - name: host-bridge
     - bridge: br0
     - forward: bridge
     - autostart: True
@@ -84,13 +77,13 @@ set_default_pool:
         - label: "system_u:object_r:virt_image_t:s0" # this doesnt seem to set the selinux context
     - autostart: True
 
-#disable_default_bridge:
-#  cmd.run:
-#    - name: virsh net-destroy default && virsh net-autostart default --disable
-#    - require:
-#      - pkg: install_libvirt-client
-#    - onlyif:
-#      - virsh net-info | grep default
+disable_default_bridge:
+  cmd.run:
+    - name: virsh net-destroy default && virsh net-autostart default --disable
+    - require:
+      - pkg: install_libvirt-client
+    - onlyif:
+      - virsh net-info | grep default
 
 # this should only run during the first highstate after setup. it will transfer connection from mgmt to br0
 down_original_mgmt_interface:
