@@ -23,10 +23,11 @@ libvirt_conf_dir:
 libvirt_config:
   file.managed:
     - name: /opt/so/conf/libvirt/libvirtd.conf
-    - source: salt://libvirt/etc/libvirtd.conf.jinja
-    - template: jinja
-    - defaults:
-        LIBVIRTMERGED: {{ LIBVIRTMERGED }}
+    - source: salt://libvirt/configstockstock
+#    - source: salt://libvirt/etc/libvirtd.conf.jinja
+#    - template: jinja
+#    - defaults:
+#        LIBVIRTMERGED: {{ LIBVIRTMERGED }}
 
 # since the libvirtd service looks for the config at /etc/libvirt/libvirtd.conf, and we dont want to manage the service looking in a new location, create this symlink to the managed config 
 config_symlink:
@@ -34,6 +35,8 @@ config_symlink:
     - name: /etc/libvirt/libvirtd.conf
     - target: /opt/so/conf/libvirt/libvirtd.conf
     - force: True
+    - user: qemu
+    - group: qemu
 
 libvirt_service:
   service.running:
@@ -54,20 +57,40 @@ install_qemu:
   pkg.installed:
     - name: qemu-kvm
 
-create_host_bridge:
+#create_host_bridge:
+#  virt.network_running:
+#    - name: host-bridge
+#    - bridge: br0
+#    - forward: bridge
+#    - autostart: True
+
+set_default_bridge:
   virt.network_running:
-    - name: host-bridge
+    - name: default
     - bridge: br0
     - forward: bridge
     - autostart: True
 
-disable_default_bridge:
-  cmd.run:
-    - name: virsh net-destroy default && virsh net-autostart default --disable
-    - require:
-      - pkg: install_libvirt-client
-    - onlyif:
-      - virsh net-info | grep default
+# set the default storage pool to point to the location we want
+set_default_pool:
+  virt.pool_running:
+    - name: default
+    - ptype: dir
+    - target: /var/lib/libvirt/images/coreol9
+    - permissions:
+        - mode: 0711
+        - owner: qemu
+        - group: qemu
+        - label: "system_u:object_r:virt_image_t:s0" # this doesnt seem to set the selinux context
+    - autostart: True
+
+#disable_default_bridge:
+#  cmd.run:
+#    - name: virsh net-destroy default && virsh net-autostart default --disable
+#    - require:
+#      - pkg: install_libvirt-client
+#    - onlyif:
+#      - virsh net-info | grep default
 
 # this should only run during the first highstate after setup. it will transfer connection from mgmt to br0
 down_original_mgmt_interface:

@@ -14,6 +14,8 @@ create_soqemussh_user:
 {% if not GLOBALS.is_manager %}
     - groups:
       - wheel
+      - qemu
+      - libvirt
 {% endif %}
 
 {% if GLOBALS.is_manager %}
