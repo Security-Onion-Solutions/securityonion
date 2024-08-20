@@ -138,10 +138,10 @@ so-elastic-fleet-integrations:
   cmd.run:
     - name: /usr/sbin/so-elastic-fleet-integration-policy-load
 
-so-elastic-agent-grid-upgrade:
-  cmd.run:
-    - name: /usr/sbin/so-elastic-agent-grid-upgrade
-    - retry: True
+#so-elastic-agent-grid-upgrade:
+#  cmd.run:
+#    - name: /usr/sbin/so-elastic-agent-grid-upgrade
+#    - retry: True
 {%  endif %}
 
 delete_so-elastic-fleet_so-status.disabled:
