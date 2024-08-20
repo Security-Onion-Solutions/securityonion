@@ -53,9 +53,11 @@ so_repo:
     - baseurl: file:///nsm/repo/
   {% else %}
     - baseurl: https://{{ GLOBALS.repo_host }}/repo
+    - sslverify: 0
   {% endif %}
     - enabled: 1
     - gpgcheck: 1
+
 
 {% endif %}
   

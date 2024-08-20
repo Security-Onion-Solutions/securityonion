@@ -6,35 +6,13 @@
 {% from 'setup/virt/soinstall.map.jinja' import DATA %}
 
 setHostname_{{grains.id.split("_") | first}}:
+  cmd.run:
+    - name: hostnamectl set-hostname --static {{grains.id.split("_") | first}}
   network.system:
     - name: {{grains.id.split("_") | first}}
     - enabled: True
     - hostname: {{grains.id.split("_") | first}}
     - apply_hostname: True
-
-create_pillar:
-  event.send:
-    - name: setup/so-minion
-    - data:
-        HYPERVISOR_HOST: {{ grains.hypervisor_host }}
-        MAINIP: {{ DATA.MAINIP }}
-        MNIC: {{ DATA.MNIC }}
-        NODE_DESCRIPTION: '{{ DATA.NODE_DESCRIPTION }}'
-        ES_HEAP_SIZE: {{ DATA.ES_HEAP_SIZE }}
-        PATCHSCHEDULENAME: {{ DATA.PATCHSCHEDULENAME }}
-        INTERFACE: {{ DATA.INTERFACE }}
-        NODETYPE: {{ DATA.NODETYPE }}
-        CORECOUNT: {{ DATA.CORECOUNT }}
-        LSHOSTNAME: {{ DATA.LSHOSTNAME }}
-        LSHEAP: {{ DATA.LSHEAP }}
-        CPUCORES: {{ DATA.CPUCORES }}
-        IDH_MGTRESTRICT: {{ DATA.IDH_MGTRESTRICT }}
-        IDH_SERVICES: {{ DATA.IDH_SERVICES }}
-        CPU: {{ DATA.CPU }}
-        MEMORY: {{ DATA.MEMORY }}
-        DISKS: {{ DATA.DISKS }}
-        COPPER: {{ DATA.COPPER }}
-        SFP: {{ DATA.SFP }}
 
 set_role_grain:
   grains.present:
@@ -64,3 +42,27 @@ set_highstate:
     - repl: 'startup_states: highstate'
     - onchanges:
       - file: clean_setHostname
+
+create_pillar:
+  event.send:
+    - name: setup/so-minion
+    - data:
+        HYPERVISOR_HOST: {{ grains.hypervisor_host }}
+        MAINIP: {{ DATA.MAINIP }}
+        MNIC: {{ DATA.MNIC }}
+        NODE_DESCRIPTION: '{{ DATA.NODE_DESCRIPTION }}'
+        ES_HEAP_SIZE: {{ DATA.ES_HEAP_SIZE }}
+        PATCHSCHEDULENAME: {{ DATA.PATCHSCHEDULENAME }}
+        INTERFACE: {{ DATA.INTERFACE }}
+        NODETYPE: {{ DATA.NODETYPE }}
+        CORECOUNT: {{ DATA.CORECOUNT }}
+        LSHOSTNAME: {{ DATA.LSHOSTNAME }}
+        LSHEAP: {{ DATA.LSHEAP }}
+        CPUCORES: {{ DATA.CPUCORES }}
+        IDH_MGTRESTRICT: {{ DATA.IDH_MGTRESTRICT }}
+        IDH_SERVICES: {{ DATA.IDH_SERVICES }}
+        CPU: {{ DATA.CPU }}
+        MEMORY: {{ DATA.MEMORY }}
+        DISKS: {{ DATA.DISKS }}
+        COPPER: {{ DATA.COPPER }}
+        SFP: {{ DATA.SFP }}
