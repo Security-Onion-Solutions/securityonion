@@ -23,10 +23,13 @@ def run():
     # if a list of devices was defined
     if type(vm_data[hw_type]) == list:
       for hw in vm_data[hw_type]:
-        c_hw = {hw: hv_data['hypervisor']['hardware'][hw_type]['free'].pop(hw)}
-        claimed_hw.update(c_hw)
-        host_devices.append(c_hw[hw])
-        #hv_data['hypervisor']['hardware'][hw_type].update({'claimed': claimed_hw})
+        try:
+          c_hw = {hw: hv_data['hypervisor']['hardware'][hw_type]['free'].pop(hw)}
+          claimed_hw.update(c_hw)
+          host_devices.append(c_hw[hw])
+        except KeyError:
+          logging.error("virtUpdate reactor: could not claim %s with key %s " % (hw_type,hw))
+          return {'key1': 'val1'}
     # if a number of devices was defined
     else:
       n = vm_data[hw_type]
@@ -44,7 +47,8 @@ def run():
       logging.error("virtUpdate reactor: claimed_hw: %s " % claimed_hw)
 
   vm_name = data['name']
-  hv_name = 'jppvirt'
+  hv_name = local.cmd(vm_name, 'grains.get', ['hypervisor_host'])
+
   host_devices = []
 
   with open("/opt/so/saltstack/local/pillar/hypervisor/" + hv_name + "/" + vm_name + ".sls") as f:
@@ -63,7 +67,7 @@ def run():
     except yaml.YAMLError as exc:
       logging.error(exc)
 
-  local.cmd('jppvirt', 'virt.stop', ['name=' + vm_name])
+  local.cmd(hv_name, 'virt.stop', ['name=' + vm_name])
 
   for hw_type in ['disks', 'copper', 'sfp']:
     claim_pci(hw_type)
@@ -85,9 +89,9 @@ def run():
     yaml.dump(vm_data, f, default_flow_style=False)
 
   mem = vm_data['memory'] * 1024
-  r = local.cmd('jppvirt', 'virt.update', ['name=' + vm_name, 'mem=' + str(mem), 'cpu=' + str(vm_data['cpu']), 'host_devices=' + str(host_devices)])
+  r = local.cmd(hv_name, 'virt.update', ['name=' + vm_name, 'mem=' + str(mem), 'cpu=' + str(vm_data['cpu']), 'host_devices=' + str(host_devices)])
   logging.error("virtUpdate reactor: virt.update: %s" % r)
 
-  local.cmd('jppvirt', 'virt.start', ['name=' + vm_name])
+  local.cmd(hv_name, 'virt.start', ['name=' + vm_name])
 
   return {}

@@ -1,59 +1,14 @@
-searchnode:
-  provider: local-kvm
-  base_domain: jppol9vm
-  ip_source: qemu-agent
-  ssh_username: jpatterson
-  private_key: /home/jpatterson/.ssh/id_rsa
-  sudo: True
-  # /tmp is mounted noexec.. do workaround
-  deploy_command: sh /tmp/.saltcloud-*/deploy.sh
-  script_args: -F -x python3 stable 3006.1
-  # grains to add to the minion
-  #grains:
-  #  clones-are-awesome: true
-  # override minion settings
-  minion:
-    master: jppvirt
-    master_port: 4506
-    startup_states: sls
-    sls_list:
-      - setHostname
+{#- Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+   or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+   https://securityonion.net/license; you may not use this file except in compliance with the
+   Elastic License 2.0. #}
 
-sensor:
-  provider: local-kvm
-  base_domain: jppol9vm
-  ip_source: qemu-agent
-  ssh_username: jpatterson
-  private_key: /home/jpatterson/.ssh/id_rsa
-  sudo: True
-  #preflight_cmds:
-  #  - echo "do something"
-  #  - hostname
-  # /tmp is mounted noexec.. do workaround
-  deploy_command: sh /tmp/.saltcloud-*/deploy.sh
-  script_args: -F -x python3 stable 3006.1
-  # the destination directory will be created if it doesn't exist
-  #file_map:
-  #  /srv/salt/filemap.txt: /remote/path/to/use/custom/filemap.txt
-  #inline_script:
-  #  - echo "SLEEPING"
-  #  - hostname
-  # grains to add to the minion
-  #grains:
-  #  clones-are-awesome: true
-  # override minion settings
-  minion:
-    master: jppvirt
-    master_port: 4506
-    startup_states: sls
-    sls_list:
-      - setHostname
-
-{%- for host in HYPERVISORS %}
+{%- for role, hosts in HYPERVISORS.items() %}
+{%-   for host in hosts.keys() -%}
 
 core-{{host}}:
   provider: kvm-ssh-{{host}}
-  base_domain: jppol9vm
+  base_domain: coreol9
   ip_source: qemu-agent
   ssh_username: soqemussh
   private_key: /home/soqemussh/.ssh/id_ed25519
@@ -61,10 +16,28 @@ core-{{host}}:
   deploy_command: sh /tmp/.saltcloud-*/deploy.sh
   script_args: -F -x python3 stable 3006.1
   minion:
-    master: jpp90man
+    master: {{ grains.host }}
     master_port: 4506
     startup_states: sls
     sls_list:
-      - setHostname
+      - setup.virt.setHostname
+    use_superseded:
+      - module.run
+    features:
+      x509_v2: true
+    log_level: info
+    log_level_logfile: info
+    log_file: /opt/so/log/salt/minion
+  grains:
+    hypervisor_host: {{host ~ "_" ~ role}}
+  #preflight_cmds:
+  #  - echo "preflight_cmds"
+  # the destination directory will be created if it doesn't exist
+  file_map:
+    /opt/so/saltstack/default/salt/repo/client/files/oracle/keys/securityonion.pub: /tmp/securityonion.pub
+  inline_script:
+    - "rpm --import /tmp/securityonion.pub"
+  # grains to add to the minion
 
+{%-   endfor %}
 {%- endfor %}

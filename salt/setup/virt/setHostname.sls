@@ -3,7 +3,7 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-{% from 'soinstall.map.jinja' import DATA %}
+{% from 'setup/virt/soinstall.map.jinja' import DATA %}
 
 setHostname_{{grains.id.split("_") | first}}:
   network.system:
@@ -16,6 +16,7 @@ create_pillar:
   event.send:
     - name: setup/so-minion
     - data:
+        HYPERVISOR_HOST: {{ grains.hypervisor_host }}
         MAINIP: {{ DATA.MAINIP }}
         MNIC: {{ DATA.MNIC }}
         NODE_DESCRIPTION: '{{ DATA.NODE_DESCRIPTION }}'
@@ -35,6 +36,10 @@ create_pillar:
         COPPER: {{ DATA.COPPER }}
         SFP: {{ DATA.SFP }}
 
+set_role_grain:
+  grains.present:
+    - name: role
+    - value: so-{{ grains.id.split("_") | last }}
 
 # set event for firewall rules - so-firewall-minion
 
@@ -47,7 +52,7 @@ clean_sls_list:
 clean_setHostname:
   file.line:
     - name: /etc/salt/minion
-    - match: '- setHostname'
+    - match: '- setup.virt.setHostname'
     - mode: delete
     - onchanges:
       - file: clean_sls_list

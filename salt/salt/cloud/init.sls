@@ -6,6 +6,7 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 {%   from 'salt/map.jinja' import SALTVERSION %}
+{%   set HYPERVISORS = salt['pillar.get']('hypervisor:nodes', {} ) %}
 
 include:
   - libvirt.packages
@@ -20,7 +21,7 @@ cloud_providers:
     - name: /etc/salt/cloud.providers.d/libvirt.conf
     - source: salt://salt/cloud/cloud.providers.d/libvirt.conf.jinja
     - defaults:
-        HYPERVISORS: {{pillar.hypervisor.nodes.hypervisor}}
+        HYPERVISORS: {{HYPERVISORS}}
     - template: jinja
 
 cloud_profiles:
@@ -28,8 +29,18 @@ cloud_profiles:
     - name: /etc/salt/cloud.profiles.d/socloud.conf
     - source: salt://salt/cloud/cloud.profiles.d/socloud.conf.jinja
     - defaults:
-        HYPERVISORS: {{pillar.hypervisor.nodes.hypervisor}}
+        HYPERVISORS: {{HYPERVISORS}}
     - template: jinja
+
+{%   for role, hosts in HYPERVISORS.items() %}
+{%     for host in hosts.keys() %}
+
+hypervisor_{{host}}_{{role}}_pillar_dir:
+  file.directory:
+    - name: /opt/so/saltstack/local/pillar/hypervisor/{{host}}_{{role}}
+
+{%     endfor %}
+{%   endfor %}
 
 {% else %}
 

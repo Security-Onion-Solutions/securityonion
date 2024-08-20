@@ -1,10 +1,10 @@
 {# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
-   or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+   or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
    https://securityonion.net/license; you may not use this file except in compliance with the
    Elastic License 2.0. #}
 
 {% set nodetype = grains.id.split("_") | last %}
-{% import_yaml nodetype ~ '.yaml' as DATA %}
+{% import_yaml 'setup/virt/' ~ nodetype ~ '.yaml' as DATA %}
 {% set total_mem  = grains.mem_total %}
 
 {% do DATA.update({'MAINIP': grains.ip_interfaces.get(DATA.MNIC)[0]}) %}
@@ -12,7 +12,7 @@
 {% do DATA.update({'CPUCORES': grains.num_cpus}) %}
 
 
-{% if nodetype = "searchnode" %}
+{% if nodetype == "searchnode" %}
 
 {%   do DATA.update({'LSHOSTNAME': grains.host}) %}
 

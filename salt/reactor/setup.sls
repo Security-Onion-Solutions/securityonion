@@ -11,8 +11,8 @@ import yaml
 
 def run():
   minionid = data['id']
-  hv_name = 'jppvirt'
   DATA = data['data']
+  hv_name = DATA['HYPERVISOR_HOST']
   logging.error("setup reactor: %s " % DATA)
 
   vm_out_data = {
