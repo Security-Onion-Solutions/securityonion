@@ -5,7 +5,6 @@
 # Elastic License 2.0.
 {%- import_yaml 'elasticfleet/defaults.yaml' as ELASTICFLEETDEFAULTS %}
 {%  from 'vars/globals.map.jinja' import GLOBALS %}
-{%- set SUPPORTED_PACKAGES = salt['pillar.get']('elasticfleet:packages', default=ELASTICFLEETDEFAULTS.elasticfleet.packages, merge=True) %}
 
 STATE_FILE_INITIAL=/opt/so/state/estemplates_initial_load_attempt.txt
 STATE_FILE_SUCCESS=/opt/so/state/estemplates.txt
@@ -68,9 +67,9 @@ if [ ! -f $STATE_FILE_SUCCESS ]; then
     echo -n "Waiting for ElasticSearch..."
     retry 240 1 "so-elasticsearch-query / -k --output /dev/null --silent --head --fail" || fail "Connection attempt timed out.  Unable to connect to ElasticSearch.  \nPlease try: \n  -checking log(s) in /var/log/elasticsearch/\n  -running 'sudo docker ps' \n  -running 'sudo so-elastic-restart'"
     {% if GLOBALS.role != 'so-heavynode' %}
-    SESSIONCOOKIE=$(curl -s -K /opt/so/conf/elasticsearch/curl.config -c - -X GET http://localhost:5601/ | grep sid | awk '{print $7}')
-    INSTALLED=$(elastic_fleet_package_is_installed endpoint }} )
-    if [ "$INSTALLED" != "installed" ]; then
+    TEMPLATE="logs-endpoint.alerts@package"
+    INSTALLED=$(so-elasticsearch-query _component_template/$TEMPLATE | jq -r .component_templates[0].name)
+    if [ "$INSTALLED" != "$TEMPLATE" ]; then
       echo
       echo "Packages not yet installed."
       echo
