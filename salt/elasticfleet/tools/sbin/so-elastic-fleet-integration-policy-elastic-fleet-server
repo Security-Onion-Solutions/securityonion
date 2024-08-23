@@ -6,18 +6,24 @@
 
 . /usr/sbin/so-elastic-fleet-common
 
-# Make the curl request to fetch the JSON data
+# Get all the fleet policies
 json_output=$(curl -s -K /opt/so/conf/elasticsearch/curl.config -L -X GET "localhost:5601/api/fleet/agent_policies" -H 'kbn-xsrf: true')
 
-# Extract the IDs that start with "FleetServer_" using jq
+# Extract the IDs that start with "FleetServer_"
 POLICY=$(echo "$json_output" | jq -r '.items[] | select(.id | startswith("FleetServer_")) | .id')
 
-echo $POLICY
-
-# Iterate over each ID in the POLICY variable and run the specified commands
+# Iterate over each ID in the POLICY variable
 for POLICYNAME in $POLICY; do
+    printf "\nUpdating Policy: $POLICYNAME\n"
+
     # First get the Integration ID
     elastic_fleet_integration_check "$POLICYNAME" "/opt/so/conf/elastic-fleet/integrations/fleet-server/fleet-server.json"
-    # Now update the integration policy
-    elastic_fleet_integration_update "$INTEGRATION_ID" "@/opt/so/conf/elastic-fleet/integrations/fleet-server/fleet-server.json"
+
+    # Modify the default integration policy to update the policy_id and an with the correct naming
+	UPDATED_INTEGRATION_POLICY=$(jq --arg policy_id "$POLICYNAME" --arg name "fleet_server-$POLICYNAME" '
+    .policy_id = $policy_id |
+    .name = $name' /opt/so/conf/elastic-fleet/integrations/fleet-server/fleet-server.json)
+
+    # Now update the integration policy using the modified JSON
+    elastic_fleet_integration_update "$INTEGRATION_ID" "$UPDATED_INTEGRATION_POLICY"
 done
