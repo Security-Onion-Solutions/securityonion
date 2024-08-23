@@ -66,7 +66,15 @@ printf "\n\n"
 # Create the Manager Fleet Server Host Agent Policy
 # This has to be done while the Elasticsearch Output is set to the default Output
 printf "Create Manager Fleet Server Policy...\n"
-elastic_fleet_policy_create "FleetServer_{{ GLOBALS.hostname }}" "Fleet Server - {{ GLOBALS.hostname }}" "true" "120"
+elastic_fleet_policy_create "FleetServer_{{ GLOBALS.hostname }}" "Fleet Server - {{ GLOBALS.hostname }}" "false" "120"
+
+# Modify the default integration policy to update the policy_id with the correct naming
+UPDATED_INTEGRATION_POLICY=$(jq --arg policy_id "FleetServer_{{ GLOBALS.hostname }}" --arg name "fleet_server-{{ GLOBALS.hostname }}" '
+.policy_id = $policy_id |
+.name = $name' /opt/so/conf/elastic-fleet/integrations/fleet-server/fleet-server.json)
+
+# Add the Fleet Server Integration to the new Fleet Policy
+elastic_fleet_integration_create "$UPDATED_INTEGRATION_POLICY"
 
 # Now we can create the Logstash Output and set it to to be the default Output
 printf "\n\nCreate Logstash Output Config if node is not an Import or Eval install\n"

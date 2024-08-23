@@ -9,6 +9,10 @@ if [ -f /usr/sbin/so-common ]; then
 	. /usr/sbin/so-common
 fi
 
+if [ -f /usr/sbin/so-elastic-fleet-common ]; then
+	. /usr/sbin/so-elastic-fleet-common
+fi
+
 function usage() {
 	echo "Usage: $0 -o=<operation> -m=[id]"
 	echo ""
@@ -380,23 +384,31 @@ function add_elastic_fleet_package_registry_to_minion() {
 
 function create_fleet_policy() {
 
-	JSON_STRING=$( jq -n \
-					--arg NAME "FleetServer_$LSHOSTNAME" \
-					--arg DESC "Fleet Server - $LSHOSTNAME" \
-					'{"name": $NAME,"id":$NAME,"description":$DESC,"namespace":"default","monitoring_enabled":["logs"],"inactivity_timeout":1209600,"has_fleet_server":true}'
-					)
+	# First, set the default output to Elasticsearch
+	# This is required because of the license output bug
+	JSON_STRING=$(jq -n \
+	'{ 
+		"name": "so-manager_elasticsearch", 
+		"type": "elasticsearch",
+		"is_default": true, 
+		"is_default_monitoring": false
+	}')
 
-	# Create Fleet Sever Policy
-	curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/agent_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
+    curl -K /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fleet/outputs/so-manager_elasticsearch" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
 
-	JSON_STRING_UPDATE=$( jq -n \
-					--arg NAME "FleetServer_$LSHOSTNAME" \
-					--arg DESC "Fleet Server - $LSHOSTNAME" \
-					'{"name":$NAME,"description":$DESC,"namespace":"default","monitoring_enabled":["logs"],"inactivity_timeout":120,"data_output_id":"so-manager_elasticsearch"}'
-					)
+	# Create the Fleet Server Policy
+	elastic_fleet_policy_create "FleetServer_$LSHOSTNAME" "Fleet Server - $LSHOSTNAME" "false" "120"
 
-	# Update Fleet Policy - ES Output
-	curl -K /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fleet/agent_policies/FleetServer_$LSHOSTNAME" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING_UPDATE"
+    # Modify the default integration policy to update the policy_id with the correct naming
+	UPDATED_INTEGRATION_POLICY=$(jq --arg policy_id "FleetServer_$LSHOSTNAME" --arg name "fleet_server-$LSHOSTNAME" '
+    .policy_id = $policy_id |
+    .name = $name' /opt/so/conf/elastic-fleet/integrations/fleet-server/fleet-server.json)
+
+	# Add the Fleet Server Integration to the new Fleet Policy
+	elastic_fleet_integration_create "$UPDATED_INTEGRATION_POLICY"
+
+	# Set the default output back to the default
+	/sbin/so-elastic-fleet-outputs-update
 }
 
 function update_fleet_host_urls() {
