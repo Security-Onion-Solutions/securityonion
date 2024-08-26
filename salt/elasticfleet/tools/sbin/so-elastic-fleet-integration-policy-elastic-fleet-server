@@ -17,7 +17,7 @@ for POLICYNAME in $POLICY; do
     printf "\nUpdating Policy: $POLICYNAME\n"
 
     # First get the Integration ID
-    elastic_fleet_integration_check "$POLICYNAME" "/opt/so/conf/elastic-fleet/integrations/fleet-server/fleet-server.json"
+    INTEGRATION_ID=$(/usr/sbin/so-elastic-fleet-agent-policy-view "$POLICYNAME" | jq -r '.item.package_policies[] | select(.package.name == "fleet_server") | .id')  
 
     # Modify the default integration policy to update the policy_id and an with the correct naming
 	UPDATED_INTEGRATION_POLICY=$(jq --arg policy_id "$POLICYNAME" --arg name "fleet_server-$POLICYNAME" '
