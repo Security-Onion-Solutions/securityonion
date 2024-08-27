@@ -1,7 +1,7 @@
 #!py
 
 # Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
-# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
@@ -9,6 +9,7 @@ import logging
 import salt.client
 local = salt.client.LocalClient()
 import yaml
+from time import sleep
 
 def run():
 
@@ -16,7 +17,6 @@ def run():
     compute = hv_data['hypervisor']['hardware'][hw_type]
     compute.update({'free': compute.get('free') - vm_data.get(hw_type)})
     logging.error("virtUpdate reactor: claiming %s compute: %s " % (hw_type,compute))
-
 
   def claim_pci(hw_type):
     claimed_hw = hv_data['hypervisor']['hardware'][hw_type]['claimed']
@@ -46,8 +46,10 @@ def run():
         host_devices.append(hw[1])
       logging.error("virtUpdate reactor: claimed_hw: %s " % claimed_hw)
 
-  vm_name = data['name']
-  hv_name = local.cmd(vm_name, 'grains.get', ['hypervisor_host'])
+  vm_name = data['id']
+  logging.error("virtUpdate reactor: vm_name: %s " % vm_name)
+  hv_name = local.cmd(vm_name, 'grains.get', ['hypervisor_host']).get(vm_name)
+  logging.error("virtUpdate reactor: hv_name: %s " % hv_name)
 
   host_devices = []
 
@@ -67,7 +69,20 @@ def run():
     except yaml.YAMLError as exc:
       logging.error(exc)
 
-  local.cmd(hv_name, 'virt.stop', ['name=' + vm_name])
+  r = local.cmd(hv_name, 'virt.shutdown', ['vm_=' + vm_name])
+  logging.error("virtUpdate reactor: virt.shutdown: %s return: %s " % (vm_name,r))
+
+  c = 0
+  while True:
+    if c == 60:
+      logging.error("virtUpdate reactor: vm_name: %s failed to shutdown in time " % vm_name)
+      return {}
+    r = local.cmd(hv_name, 'virt.list_inactive_vms')
+    logging.error("virtUpdate reactor: virt.list_inactive_vms:  %s " % r.get(hv_name))
+    if vm_name in r.get(hv_name):
+      break
+    c += 1
+    sleep(1)
 
   for hw_type in ['disks', 'copper', 'sfp']:
     claim_pci(hw_type)
@@ -90,8 +105,9 @@ def run():
 
   mem = vm_data['memory'] * 1024
   r = local.cmd(hv_name, 'virt.update', ['name=' + vm_name, 'mem=' + str(mem), 'cpu=' + str(vm_data['cpu']), 'host_devices=' + str(host_devices)])
-  logging.error("virtUpdate reactor: virt.update: %s" % r)
+  logging.error("virtUpdate reactor: virt.update: vm_name: %s return: %s" % (vm_name,r))
 
-  local.cmd(hv_name, 'virt.start', ['name=' + vm_name])
+  r = local.cmd(hv_name, 'virt.start', ['name=' + vm_name])
+  logging.error("virtUpdate reactor: virt.start: vm_name: %s return: %s" % (vm_name,r))
 
   return {}

@@ -58,13 +58,17 @@ salt_master_service:
   #- salt/cloud/*/requesting
 #  - 'salt/cloud/*/deploying':
 #    - /opt/so/saltstack/default/salt/reactor/createEmptyPillar.sls
-#  - 'setup/so-minion':
-#    - /opt/so/saltstack/default/salt/reactor/setup.sls
 #  - 'salt/cloud/*/created':
+#    - /opt/so/saltstack/default/salt/reactor/setSalt.sls
+#    - /opt/so/saltstack/default/salt/reactor/setHostname.sls
+#    - /opt/so/saltstack/default/salt/reactor/sominion.sls
+#  - 'setup/so-minion':
+#    - /opt/so/saltstack/default/salt/reactor/sominion_setup.sls
 #    - /opt/so/saltstack/default/salt/reactor/virtUpdate.sls
 #  - 'salt/cloud/*/destroyed':
 #    - /opt/so/saltstack/default/salt/reactor/virtReleaseHardware.sls
 #    - /opt/so/saltstack/default/salt/reactor/deleteKey.sls
+
 
 {% else %}
 
