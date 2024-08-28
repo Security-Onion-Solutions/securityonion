@@ -75,7 +75,19 @@ def run():
   c = 0
   while True:
     if c == 60:
-      logging.error("virtUpdate reactor: vm_name: %s failed to shutdown in time " % vm_name)
+      logging.error("virtUpdate reactor: vm_name: %s failed virt.shutdown in time " % vm_name)
+      return {}
+    r = local.cmd(hv_name, 'virt.shutdown', ['vm_=' + vm_name])
+    logging.error("virtUpdate reactor: virt.shutdown: %s return: %s " % (vm_name,r))
+    if r.get(hv_name):
+      break
+    c += 1
+    sleep(1)
+
+  c = 0
+  while True:
+    if c == 60:
+      logging.error("virtUpdate reactor: vm_name: %s failed to go inactive in time " % vm_name)
       return {}
     r = local.cmd(hv_name, 'virt.list_inactive_vms')
     logging.error("virtUpdate reactor: virt.list_inactive_vms:  %s " % r.get(hv_name))

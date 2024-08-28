@@ -8,10 +8,12 @@ set_role_grain:
     - name: role
     - value: so-{{ grains.id.split("_") | last }}
 
-# disable the initial schedule
-remove_init_node_schedule:
-  schedule.absent:
-    - name: init_node
+# remove the initial cron
+remove_init_node_cron:
+  cron.absent:
+    - name: salt-call state.apply setup.virt.init
+    - identifier: init_node_cron
+    - user: root
 
 set_highstate:
   file.append:
