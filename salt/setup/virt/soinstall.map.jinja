@@ -14,7 +14,8 @@
 
 {% if nodetype == "searchnode" %}
 
-{%   do DATA.update({'LSHOSTNAME': grains.host}) %}
+{#   we can't use the host grain here because the grain may not be updated yet from the hostname change #}
+{%   do DATA.update({'LSHOSTNAME': salt['cmd.run']('hostname')}) %}
 
 {#   this replicates the function es_heapsize in so-functions #}
 {%   if total_mem < 8000 %}
@@ -30,5 +31,14 @@
 {%    endif %}
 {%   endif %}
 {%   do DATA.update({'ES_HEAP_SIZE': ES_HEAP_SIZE}) %}
+
+{%   if total_mem >= 32000 or nodetype in ['managersearch','heavynode','standalone'] %}
+{%     set LS_HEAP_SIZE="1000m" %}
+{%   elif nodetype == 'eval' %}
+{%     set LS_HEAP_SIZE="700m" %}
+{%   else %}
+{%     set LS_HEAP_SIZE="500m" %}
+{%   endif %}
+{%   do DATA.update({'LS_HEAP_SIZE': LS_HEAP_SIZE}) %}
 
 {% endif %}

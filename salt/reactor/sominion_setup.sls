@@ -28,7 +28,7 @@ def run():
   with open("/opt/so/saltstack/local/pillar/hypervisor/" + hv_name + "/" + minionid + ".sls", 'w') as f:
     yaml.dump(vm_out_data, f, default_flow_style=False)
 
-  rc = call("NODETYPE=" + DATA['NODETYPE'] + " /usr/sbin/so-minion -o=addVirt -m=" + minionid + " -n=" + DATA['MNIC'] + " -i=" + DATA['MAINIP'] + " -a=" + DATA['INTERFACE'] + " -c=" + str(DATA['CORECOUNT'])  + " -d='" + DATA['NODE_DESCRIPTION'] + "'", shell=True)
+  rc = call("NODETYPE=" + DATA['NODETYPE'] + " /usr/sbin/so-minion -o=addVirt -m=" + minionid + " -n=" + DATA['MNIC'] + " -i=" + DATA['MAINIP'] + " -a=" + DATA['INTERFACE'] + " -c=" + str(DATA['CPU'])  + " -d='" + DATA['NODE_DESCRIPTION'] + "'" + " -e=" + DATA['ES_HEAP_SIZE'] + " -l=" + DATA['LS_HEAP_SIZE'], shell=True)
 
   logging.error('sominion_setup reactor: rc: %s' % rc)
 
