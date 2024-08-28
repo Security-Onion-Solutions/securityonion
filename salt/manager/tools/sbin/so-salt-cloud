@@ -1,0 +1,76 @@
+#!/usr/bin/python3
+
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+import argparse
+import subprocess
+import re
+import threading
+
+def call_so_firewall_minion(ip, role):
+    print("call_so_firewall_minion called")
+    try:
+        # Start so-firewall-minion as a subprocess
+        process = subprocess.Popen(
+            ['/usr/sbin/so-firewall-minion', f'--ip={ip}', f'--role={role}'],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True
+        )
+
+    except Exception as e:
+        print(f"An error occurred while calling the command: {e}")
+
+def call_salt_cloud(profile, vm_name):
+    try:
+        # Start the salt-cloud command as a subprocess
+        process = subprocess.Popen(
+            ['salt-cloud', '-p', profile, vm_name, '-l', 'info'],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True
+        )
+
+        role = vm_name.split("_")[1]
+
+        ip_search_string = '[INFO    ] Address ='
+        ip_search_pattern = re.compile(re.escape(ip_search_string))
+
+        # Continuously read the output
+        while True:
+            # Read stdout line by line
+            line = process.stdout.readline()
+            if line:
+                print(line.rstrip('\n'))
+
+                if ip_search_pattern.search(line):
+                    parts = line.split("Address =")
+                    if len(parts) > 1:
+                        ip_address = parts[1].strip()
+                        print("Extracted IP address:", ip_address)
+                        # Create and start a thread to run so-firewall-minion
+                        thread = threading.Thread(target=call_so_firewall_minion, args=(ip_address,role.upper()))
+                        thread.start()
+                    else:
+                        print("No IP address found.")
+
+            # Check if the process has terminated
+            elif process.poll() is not None:
+                # process finished
+                break
+
+    except Exception as e:
+        print(f"An error occurred while calling the command: {e}")
+
+if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser(description="Call salt-cloud and pass the profile and VM name to it.")
+    parser.add_argument('-p', '--profile', type=str, required=True, help="The cloud profile to build the VM from.")
+    parser.add_argument('vm_name', type=str, help="The name of the VM.")
+
+    args = parser.parse_args()
+
+    call_salt_cloud(args.profile, args.vm_name)
