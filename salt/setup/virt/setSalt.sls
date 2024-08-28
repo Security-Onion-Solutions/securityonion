@@ -8,7 +8,10 @@ set_role_grain:
     - name: role
     - value: so-{{ grains.id.split("_") | last }}
 
-# set event for firewall rules - so-firewall-minion
+# disable the initial schedule
+remove_init_node_schedule:
+  schedule.absent:
+    - name: init_node
 
 set_highstate:
   file.append:
