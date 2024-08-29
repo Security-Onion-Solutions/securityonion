@@ -90,7 +90,7 @@ filedetectionsbackup:
 
 crondetectionsruntime:
   cron.present:
-    - name: /usr/sbin/so-detections-runtime-status cron 
+    - name: /usr/sbin/so-detections-runtime-status cron
     - identifier: detections-runtime-status
     - user: root
     - minute: '*/10'
@@ -189,6 +189,14 @@ socsigmarepo:
     - user: 939
     - group: 939
     - mode: 775
+
+socsensoronirepos:
+  file.directory:
+    - name: /opt/so/conf/soc/ai_summary_repos
+    - user: 939
+    - group: 939
+    - mode: 775
+    - makedirs: True
 
 {% else %}
 

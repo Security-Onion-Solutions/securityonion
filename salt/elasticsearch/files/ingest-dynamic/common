@@ -62,6 +62,7 @@
     { "split":           { "if": "ctx.event?.dataset != null && ctx.event.dataset.contains('.')", "field": "event.dataset", "separator": "\\.", "target_field": "dataset_tag_temp" } },
     { "append":          { "if": "ctx.dataset_tag_temp != null", "field": "tags", "value": "{{dataset_tag_temp.1}}"  } },
     { "grok":            { "if": "ctx.http?.response?.status_code != null", "field": "http.response.status_code", "patterns": ["%{NUMBER:http.response.status_code:long} %{GREEDYDATA}"]} },
+    { "set":             { "if": "ctx?.metadata?.kafka != null" , "field": "kafka.id", "value": "{{metadata.kafka.partition}}{{metadata.kafka.offset}}{{metadata.kafka.timestamp}}", "ignore_failure": true } },
     { "remove":          { "field": [ "message2", "type", "fields", "category", "module", "dataset", "dataset_tag_temp", "event.dataset_temp" ], "ignore_missing": true, "ignore_failure": true } }
 {%- endraw %}
 {%- if HIGHLANDER %}
@@ -72,7 +73,9 @@
       }
     }
 {%- endif %}
-{%- raw %} 
+{%- raw %}
+    ,
+    { "pipeline": { "name": "global@custom", "ignore_missing_pipeline": true, "description": "[Fleet] Global pipeline for all data streams" } }
   ]
 }
 {% endraw %}

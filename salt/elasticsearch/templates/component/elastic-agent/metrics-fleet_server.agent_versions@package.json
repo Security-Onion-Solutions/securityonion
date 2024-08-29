@@ -1,0 +1,102 @@
+{
+  "template": {
+    "settings": {
+      "index": {
+        "lifecycle": {
+          "name": "metrics"
+        },
+        "default_pipeline": "metrics-fleet_server.agent_versions-1.5.0",
+        "mapping": {
+          "total_fields": {
+            "limit": "1000"
+          }
+        }
+      }
+    },
+    "mappings": {
+      "dynamic": false,
+      "_source": {
+        "mode": "synthetic"
+      },
+      "properties": {
+        "cluster": {
+          "properties": {
+            "id": {
+              "time_series_dimension": true,
+              "type": "keyword"
+            }
+          }
+        },
+        "fleet": {
+          "properties": {
+            "agent": {
+              "properties": {
+                "count": {
+                  "time_series_metric": "gauge",
+                  "meta": {},
+                  "type": "long"
+                },
+                "version": {
+                  "time_series_dimension": true,
+                  "type": "keyword"
+                }
+              }
+            }
+          }
+        },
+        "agent": {
+          "properties": {
+            "id": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "type": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "version": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            }
+          }
+        },
+        "@timestamp": {
+          "ignore_malformed": false,
+          "type": "date"
+        },
+        "data_stream": {
+          "properties": {
+            "namespace": {
+              "type": "constant_keyword"
+            },
+            "type": {
+              "type": "constant_keyword"
+            },
+            "dataset": {
+              "type": "constant_keyword"
+            }
+          }
+        },
+        "kibana": {
+          "properties": {
+            "uuid": {
+              "path": "agent.id",
+              "type": "alias"
+            },
+            "version": {
+              "path": "agent.version",
+              "type": "alias"
+            }
+          }
+        }
+      }
+    }
+  },
+  "_meta": {
+    "package": {
+      "name": "fleet_server"
+    },
+    "managed_by": "fleet",
+    "managed": true
+  }
+}

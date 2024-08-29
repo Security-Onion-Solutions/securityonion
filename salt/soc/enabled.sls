@@ -33,6 +33,7 @@ so-soc:
       - /nsm/soc/uploads:/nsm/soc/uploads:rw
       - /opt/so/log/soc/:/opt/sensoroni/logs/:rw
       - /opt/so/conf/soc/soc.json:/opt/sensoroni/sensoroni.json:ro
+      - /opt/so/conf/soc/ai_summary_repos:/opt/sensoroni/ai_summary_repos:rw
 {% if SOCMERGED.telemetryEnabled and not GLOBALS.airgap %}
       - /opt/so/conf/soc/analytics.js:/opt/sensoroni/html/js/analytics.js:ro
 {% endif %}

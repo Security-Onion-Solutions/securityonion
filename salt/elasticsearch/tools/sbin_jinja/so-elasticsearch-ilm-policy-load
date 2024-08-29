@@ -10,10 +10,26 @@
 
 {%- for index, settings in ES_INDEX_SETTINGS.items() %}
 {%-   if settings.policy is defined %}
-echo
-echo "Setting up {{ index }}-logs policy..."
-curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -s -k -L -X PUT "https://localhost:9200/_ilm/policy/{{ index }}-logs" -H 'Content-Type: application/json' -d'{ "policy": {{ settings.policy | tojson(true) }} }'
-echo
+{%-     if index == 'so-logs-detections.alerts' %}
+  echo
+  echo "Setting up so-logs-detections.alerts-so policy..."
+  curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -s -k -L -X PUT "https://localhost:9200/_ilm/policy/{{ index }}-so" -H 'Content-Type: application/json' -d'{ "policy": {{ settings.policy | tojson(true) }} }'
+  echo
+{%-     elif index == 'so-logs-soc' %}
+  echo
+  echo "Setting up so-soc-logs policy..."
+  curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -s -k -L -X PUT "https://localhost:9200/_ilm/policy/so-soc-logs" -H 'Content-Type: application/json' -d'{ "policy": {{ settings.policy | tojson(true) }} }'
+  echo
+  echo
+  echo "Setting up {{ index }}-logs policy..."
+  curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -s -k -L -X PUT "https://localhost:9200/_ilm/policy/{{ index }}-logs" -H 'Content-Type: application/json' -d'{ "policy": {{ settings.policy | tojson(true) }} }'
+  echo
+{%-     else %}
+  echo
+  echo "Setting up {{ index }}-logs policy..."
+  curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -s -k -L -X PUT "https://localhost:9200/_ilm/policy/{{ index }}-logs" -H 'Content-Type: application/json' -d'{ "policy": {{ settings.policy | tojson(true) }} }'
+  echo
+{%-     endif %}
 {%-   endif %}
 {%- endfor %}
 echo

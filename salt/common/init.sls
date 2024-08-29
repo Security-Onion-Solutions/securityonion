@@ -14,6 +14,11 @@ net.core.wmem_default:
   sysctl.present:
     - value: 26214400
 
+# Users are not a fan of console messages
+kernel.printk:
+  sysctl.present:
+    - value: "3 4 1 3"
+
 # Remove variables.txt from /tmp - This is temp
 rmvariablesfile:
   file.absent:

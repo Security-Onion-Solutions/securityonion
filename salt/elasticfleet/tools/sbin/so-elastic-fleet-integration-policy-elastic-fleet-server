@@ -1,0 +1,29 @@
+#!/bin/bash
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+. /usr/sbin/so-elastic-fleet-common
+
+# Get all the fleet policies
+json_output=$(curl -s -K /opt/so/conf/elasticsearch/curl.config -L -X GET "localhost:5601/api/fleet/agent_policies" -H 'kbn-xsrf: true')
+
+# Extract the IDs that start with "FleetServer_"
+POLICY=$(echo "$json_output" | jq -r '.items[] | select(.id | startswith("FleetServer_")) | .id')
+
+# Iterate over each ID in the POLICY variable
+for POLICYNAME in $POLICY; do
+    printf "\nUpdating Policy: $POLICYNAME\n"
+
+    # First get the Integration ID
+    INTEGRATION_ID=$(/usr/sbin/so-elastic-fleet-agent-policy-view "$POLICYNAME" | jq -r '.item.package_policies[] | select(.package.name == "fleet_server") | .id')  
+
+    # Modify the default integration policy to update the policy_id and an with the correct naming
+	UPDATED_INTEGRATION_POLICY=$(jq --arg policy_id "$POLICYNAME" --arg name "fleet_server-$POLICYNAME" '
+    .policy_id = $policy_id |
+    .name = $name' /opt/so/conf/elastic-fleet/integrations/fleet-server/fleet-server.json)
+
+    # Now update the integration policy using the modified JSON
+    elastic_fleet_integration_update "$INTEGRATION_ID" "$UPDATED_INTEGRATION_POLICY"
+done

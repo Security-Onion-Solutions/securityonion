@@ -401,6 +401,7 @@ preupgrade_changes() {
     [[ "$INSTALLEDVERSION" == 2.4.60 ]] && up_to_2.4.70
     [[ "$INSTALLEDVERSION" == 2.4.70 ]] && up_to_2.4.80
     [[ "$INSTALLEDVERSION" == 2.4.80 ]] && up_to_2.4.90
+    [[ "$INSTALLEDVERSION" == 2.4.90 ]] && up_to_2.4.100
     true
 }
 
@@ -420,6 +421,7 @@ postupgrade_changes() {
     [[ "$POSTVERSION"  == 2.4.60 ]] && post_to_2.4.70
     [[ "$POSTVERSION"  == 2.4.70 ]] && post_to_2.4.80
     [[ "$POSTVERSION"  == 2.4.80 ]] && post_to_2.4.90
+    [[ "$POSTVERSION"  == 2.4.90 ]] && post_to_2.4.100
     true
 }
 
@@ -451,8 +453,6 @@ post_to_2.4.20() {
 }
 
 post_to_2.4.30() {
-  echo "Regenerating Elastic Agent Installers"
-  /sbin/so-elastic-agent-gen-installers
   # there is an occasional error with this state: pki_public_ca_crt: TypeError: list indices must be integers or slices, not str
   set +e
   salt-call state.apply ca queue=True
@@ -477,8 +477,7 @@ post_to_2.4.50() {
 }
 
 post_to_2.4.60() {
-  echo "Regenerating Elastic Agent Installers..."
-  so-elastic-agent-gen-installers
+  echo "Nothing to apply"
   POSTVERSION=2.4.60
 }
 
@@ -502,6 +501,12 @@ post_to_2.4.80() {
 post_to_2.4.90() {
   disable_logstash_heavynodes
   POSTVERSION=2.4.90
+}
+
+post_to_2.4.100() {
+  echo "Regenerating Elastic Agent Installers"
+  /sbin/so-elastic-agent-gen-installers
+  POSTVERSION=2.4.100
 }
 
 repo_sync() {
@@ -580,18 +585,7 @@ up_to_2.4.20() {
 }
 
 up_to_2.4.30() {
-
-  # Remove older defend integration json & installed integration
-  rm -f /opt/so/conf/elastic-fleet/integrations/endpoints-initial/elastic-defend-endpoints.json
-
-  . $UPDATE_DIR/salt/elasticfleet/tools/sbin/so-elastic-fleet-common
-  elastic_fleet_integration_remove endpoints-initial elastic-defend-endpoints
-
-  rm -f /opt/so/state/eaintegrations.txt
-
-  # Elastic Update for this release, so download Elastic Agent files
-  determine_elastic_agent_upgrade
-  rm -f /opt/so/state/estemplates*.txt
+  echo "Nothing to do for 2.4.30"
 
   INSTALLEDVERSION=2.4.30
 }
@@ -681,9 +675,15 @@ up_to_2.4.90() {
   so-yaml.py remove /opt/so/saltstack/local/pillar/kafka/soc_kafka.sls kafka.password
   so-yaml.py add /opt/so/saltstack/local/pillar/kafka/soc_kafka.sls kafka.config.password "$kafkatrimpass"
   so-yaml.py add /opt/so/saltstack/local/pillar/kafka/soc_kafka.sls kafka.config.trustpass "$kafkatrust"
+  echo "If the Detection index exists, update the refresh_interval"
   so-elasticsearch-query so-detection*/_settings -X PUT -d '{"index":{"refresh_interval":"1s"}}'
 
   INSTALLEDVERSION=2.4.90
+}
+up_to_2.4.100() {
+  # Elastic Update for this release, so download Elastic Agent files
+  determine_elastic_agent_upgrade
+  INSTALLEDVERSION=2.4.100
 }
 
 add_detection_test_pillars() {
@@ -945,7 +945,9 @@ upgrade_salt() {
   if [[ $is_rpm ]]; then
     echo "Removing yum versionlock for Salt."
     echo ""
-    yum versionlock delete "salt-*"
+    yum versionlock delete "salt"
+    yum versionlock delete "salt-minion"
+    yum versionlock delete "salt-master"
     echo "Updating Salt packages."
     echo ""
     set +e
@@ -963,7 +965,9 @@ upgrade_salt() {
     set -e
     echo "Applying yum versionlock for Salt."
     echo ""
-    yum versionlock add "salt-*"
+    yum versionlock add "salt-0:$NEWSALTVERSION-0.*"
+    yum versionlock add "salt-minion-0:$NEWSALTVERSION-0.*"
+    yum versionlock add "salt-master-0:$NEWSALTVERSION-0.*"
   # Else do Ubuntu things
   elif [[ $is_deb ]]; then
     echo "Removing apt hold for Salt."
@@ -1403,6 +1407,8 @@ SOUP - Security Onion UPdater
 Please review the following for more information about the update process and recent updates:
 $DOC_BASE_URL/soup.html
 https://blog.securityonion.net
+
+WARNING: If you run soup via an SSH session and that SSH session terminates, then any processes running in that session would terminate. You should avoid leaving soup unattended especially if the machine you are SSHing from is configured to sleep after a period of time. You might also consider using something like screen or tmux so that if your SSH session terminates, the processes will continue running on the server.
 
 EOF
 

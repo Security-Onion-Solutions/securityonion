@@ -118,6 +118,11 @@ esingestconf:
     - user: 930
     - group: 939
 
+# Remove .fleet_final_pipeline-1 because we are using global@custom now
+so-fleet-final-pipeline-remove:
+  file.absent:
+    - name: /opt/so/conf/elasticsearch/ingest/.fleet_final_pipeline-1
+
 # Auto-generate Elasticsearch ingest node pipelines from pillar
 {% for pipeline, config in ELASTICSEARCHMERGED.pipelines.items() %}
 es_ingest_conf_{{pipeline}}:

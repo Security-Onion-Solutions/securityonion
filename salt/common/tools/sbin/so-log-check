@@ -95,6 +95,8 @@ if [[ $EXCLUDE_STARTUP_ERRORS == 'Y' ]]; then
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|shutdown process"             # server not yet ready (logstash waiting on elastic)
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|contain valid certificates"   # server not yet ready (logstash waiting on elastic)
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|failedaction"                 # server not yet ready (logstash waiting on elastic)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|block in start_workers"       # server not yet ready (logstash waiting on elastic)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|block in buffer_initialize"   # server not yet ready (logstash waiting on elastic)
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|no route to host"             # server not yet ready
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|not running"                  # server not yet ready
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|unavailable"                  # server not yet ready
@@ -147,6 +149,7 @@ if [[ $EXCLUDE_FALSE_POSITIVE_ERRORS == 'Y' ]]; then
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|status 200"                   # false positive (request successful, contained error string in content)
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|app_layer.error"              # false positive (suricata 7) in stats.log e.g. app_layer.error.imap.parser | Total | 0
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|is not an ip string literal"  # false positive (Open Canary logging out blank IP addresses)
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|syncing rule"                 # false positive (rule sync log line includes rule name which can contain 'error') 
 fi
 
 if [[ $EXCLUDE_KNOWN_ERRORS == 'Y' ]]; then
@@ -170,6 +173,7 @@ if [[ $EXCLUDE_KNOWN_ERRORS == 'Y' ]]; then
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|cannot join on an empty table" # InfluxDB flux query, import nodes
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|exhausting result iterator"   # InfluxDB flux query mismatched table results (temporary data issue)
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|failed to finish run"         # InfluxDB rare error, self-recoverable
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|Unable to gather disk name"   # InfluxDB known error, can't read disks because the container doesn't have them mounted
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|iteration"
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|communication packets"
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|use of closed"
@@ -205,6 +209,7 @@ if [[ $EXCLUDE_KNOWN_ERRORS == 'Y' ]]; then
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|detect-parse"                 # Suricata encountering a malformed rule
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|integrity check failed"       # Detections: Exclude false positive due to automated testing
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|syncErrors"                   # Detections: Not an actual error
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|Initialized license manager"  # SOC log: before fields.status was changed to fields.licenseStatus
 fi
 
 RESULT=0
