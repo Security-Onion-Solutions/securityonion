@@ -11,10 +11,23 @@
 {% do DATA.update({'CORECOUNT': grains.num_cpus}) %}
 {% do DATA.update({'CPUCORES': grains.num_cpus}) %}
 
+{% if nodetype in ['searchnode', 'receiver', 'fleet', 'heavynode'] %}
 
-{% if nodetype == "searchnode" %}
-
+{#   we can't use the host grain here because the grain may not be updated yet from the hostname change #}
 {%   do DATA.update({'LSHOSTNAME': grains.id.split("_") | first}) %}
+
+{%   if total_mem >= 32000 or nodetype in ['managersearch','heavynode','standalone'] %}
+{%     set LSHEAP="1000m" %}
+{%   elif nodetype == 'eval' %}
+{%     set LSHEAP="700m" %}
+{%   else %}
+{%     set LSHEAP="500m" %}
+{%   endif %}
+{%   do DATA.update({'LSHEAP': LSHEAP}) %}
+
+{% endif %}
+
+{% if nodetype in ['searchnode', 'heavynode'] %}
 
 {#   this replicates the function es_heapsize in so-functions #}
 {%   if total_mem < 8000 %}
@@ -30,14 +43,5 @@
 {%    endif %}
 {%   endif %}
 {%   do DATA.update({'ES_HEAP_SIZE': ES_HEAP_SIZE}) %}
-
-{%   if total_mem >= 32000 or nodetype in ['managersearch','heavynode','standalone'] %}
-{%     set LSHEAP="1000m" %}
-{%   elif nodetype == 'eval' %}
-{%     set LSHEAP="700m" %}
-{%   else %}
-{%     set LSHEAP="500m" %}
-{%   endif %}
-{%   do DATA.update({'LSHEAP': LSHEAP}) %}
 
 {% endif %}
