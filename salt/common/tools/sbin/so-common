@@ -168,7 +168,7 @@ check_salt_minion_status() {
 	return $status
 }
 
-# compare es versions and return the highest version
+# Compare es versions and return the highest version
 compare_es_versions() {
     # Save the original IFS
     local OLD_IFS="$IFS"
@@ -179,9 +179,15 @@ compare_es_versions() {
     # Restore the original IFS
     IFS="$OLD_IFS"
 
+    # Determine the maximum length between the two version arrays
+    local max_len=${#ver1[@]}
+    if [[ ${#ver2[@]} -gt $max_len ]]; then
+        max_len=${#ver2[@]}
+    fi
+
     # Compare each segment of the versions
-    for ((i=0; i<${#ver1[@]}; i++)); do
-        # if a segment in ver1 or ver2 is missing, set it to 0
+    for ((i=0; i<max_len; i++)); do
+		# If a segment in ver1 or ver2 is missing, set it to 0
         if [[ -z ${ver1[i]} ]]; then
             ver1[i]=0
         fi
