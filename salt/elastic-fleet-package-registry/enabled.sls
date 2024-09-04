@@ -7,6 +7,7 @@
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 {%   from 'docker/docker.map.jinja' import DOCKER %}
+{%   import_yaml 'elasticsearch/defaults.yaml' as ELASTICSEARCHDEFAULTS %}
 
 include:
   - elastic-fleet-package-registry.config
@@ -14,7 +15,7 @@ include:
 
 so-elastic-fleet-package-registry:
   docker_container.running:
-    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elastic-fleet-package-registry:{{ GLOBALS.so_version }}
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elastic-fleet-package-registry:{{ ELASTICSEARCHDEFAULTS.elasticsearch.version }}
     - name: so-elastic-fleet-package-registry
     - hostname: Fleet-package-reg-{{ GLOBALS.hostname }}
     - detach: True
