@@ -9,7 +9,8 @@ include:
 config_saved_objects:
   file.managed:
     - name: /opt/so/conf/kibana/config_saved_objects.ndjson.template
-    - source: salt://kibana/files/config_saved_objects.ndjson
+    - source: salt://kibana/files/config_saved_objects.ndjson.jinja
+    - template: jinja
     - user: 932
     - group: 939
 

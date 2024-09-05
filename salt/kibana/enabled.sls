@@ -7,6 +7,7 @@
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'docker/docker.map.jinja' import DOCKER %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
+{%   import_yaml 'elasticsearch/defaults.yaml' as ELASTICSEARCHDEFAULTS %}
 
 include:
   - kibana.config
@@ -15,7 +16,7 @@ include:
 # Start the kibana docker
 so-kibana:
   docker_container.running:
-    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-kibana:{{ GLOBALS.so_version }}
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-kibana:{{ ELASTICSEARCHDEFAULTS.elasticsearch.version }}
     - hostname: kibana
     - user: kibana
     - networks:

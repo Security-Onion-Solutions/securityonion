@@ -7,7 +7,7 @@
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 {%   from 'docker/docker.map.jinja' import DOCKER %}
-
+{%   import_yaml 'elasticsearch/defaults.yaml' as ELASTICSEARCHDEFAULTS %}
 
 include:
   - elasticagent.config
@@ -15,7 +15,7 @@ include:
 
 so-elastic-agent:
   docker_container.running:
-    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elastic-agent:{{ GLOBALS.so_version }}
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elastic-agent:{{ ELASTICSEARCHDEFAULTS.elasticsearch.version }}
     - name: so-elastic-agent
     - hostname: {{ GLOBALS.hostname }}
     - detach: True
