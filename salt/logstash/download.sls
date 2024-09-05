@@ -6,10 +6,11 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
+{%   import_yaml 'elasticsearch/defaults.yaml' as ELASTICSEARCHDEFAULTS %}
 
 so-logstash_image:
   docker_image.present:
-    - name: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-logstash:{{ GLOBALS.so_version }}
+    - name: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-logstash:{{ ELASTICSEARCHDEFAULTS.elasticsearch.version }}
 
 {% else %}
 
