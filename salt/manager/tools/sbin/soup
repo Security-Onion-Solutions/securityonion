@@ -837,12 +837,13 @@ determine_elastic_agent_upgrade() {
   if [[ $is_airgap -eq 0 ]]; then
     update_elastic_agent_airgap
   else
-    update_elastic_agent
+    # the new elasticsearch defaults.yaml file is not yet placed in /opt/so/saltstack/default/salt/elasticsearch yet
+    update_elastic_agent "$UPDATE_DIR"
   fi
 }
 
 update_elastic_agent_airgap() {
-  get_elastic_agent_vars
+  get_elastic_agent_vars "/tmp/soagupdate/SecurityOnion"
   rsync -av /tmp/soagupdate/fleet/* /nsm/elastic-fleet/artifacts/
   tar -xf "$ELASTIC_AGENT_FILE" -C "$ELASTIC_AGENT_EXPANSION_DIR"
 }
