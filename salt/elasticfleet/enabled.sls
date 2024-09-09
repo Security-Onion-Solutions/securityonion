@@ -8,7 +8,6 @@
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 {%   from 'docker/docker.map.jinja' import DOCKER %}
 {%   from 'elasticfleet/map.jinja' import ELASTICFLEETMERGED %}
-{%   import_yaml 'elasticsearch/defaults.yaml' as ELASTICSEARCHDEFAULTS %}
 
 {#   This value is generated during node install and stored in minion pillar #}
 {%   set SERVICETOKEN = salt['pillar.get']('elasticfleet:config:server:es_token','') %}
@@ -72,7 +71,7 @@ elasticagent_syncartifacts:
 {%   if SERVICETOKEN != '' %}
 so-elastic-fleet:
   docker_container.running:
-    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elastic-agent:{{ ELASTICSEARCHDEFAULTS.elasticsearch.version }}
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elastic-agent:{{ GLOBALS.so_version }}
     - name: so-elastic-fleet
     - hostname: FleetServer-{{ GLOBALS.hostname }}
     - detach: True
