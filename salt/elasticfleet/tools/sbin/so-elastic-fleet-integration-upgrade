@@ -1,0 +1,52 @@
+#!/bin/bash
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+. /usr/sbin/so-elastic-fleet-common-2
+
+RETURN_CODE=0
+
+if [ ! -f /opt/so/state/eaintegrationupgrade.txt ]; then
+  # Let's snag a cookie from Kibana
+  SESSIONCOOKIE=$(curl -s -K /opt/so/conf/elasticsearch/curl.config -c - -X GET http://localhost:5601/ | grep sid | awk '{print $7}')
+
+  # List agent policies
+  for AGENT_POLICY in $(elastic_fleet_agent_policy_names); do
+    IFS=$'\n'
+    for INTEGRATION in $(elastic_fleet_integration_policy_names "$AGENT_POLICY"); do
+      if ! [[ "$INTEGRATION" == "elastic-defend-endpoints" ]] && ! [[ "$INTEGRATION" == "fleet_server-"* ]]; then
+      echo "$INTEGRATION"
+      # Get package name so we know what package to look for when checking the current and latest available version
+      PACKAGE_NAME=$(elastic_fleet_integration_policy_package_name "$AGENT_POLICY" "$INTEGRATION")
+      # Get currently installed version of package
+      PACKAGE_VERSION=$(elastic_fleet_integration_policy_package_version "$AGENT_POLICY" "$INTEGRATION")
+      # Get latest available version of package
+      AVAILABLE_VERSION=$(elastic_fleet_package_latest_version_check "$PACKAGE_NAME")
+      INTEGRATION_ID=$(elastic_fleet_integration_id "$AGENT_POLICY" "$INTEGRATION" )
+      if [[ "$PACKAGE_VERSION" != "$AVAILABLE_VERSION" ]]; then
+        # Dry run of upgrade
+        echo "Current $PACKAGE_NAME package version ($PACKAGE_VERSION) is not the same as the latest available package ($AVAILABLE_VERSION)..." 
+        echo "Upgrading $INTEGRATION..."
+        echo "Starting dry run..."
+        DRYRUN_ERRORS=$(elastic_fleet_integration_policy_dryrun_upgrade "$INTEGRATION_ID" | jq .[].hasErrors)
+        # If no errors with dry run, proceed with actual upgrade
+        if [[ "$DRYRUN_ERRORS" == "false" ]]; then
+          echo "No errors detected. Proceeding with upgrade..."
+          elastic_fleet_integration_policy_upgrade "$INTEGRATION_ID"
+        else
+          echo "Errors detected. Stopping upgrade..."
+          exit 1
+        fi
+      fi
+      fi
+    done
+  done
+  if [[ "$RETURN_CODE" != "1" ]]; then
+    touch /opt/so/state/eaintegrationupgrade.txt
+  fi
+  echo
+else
+  exit $RETURN_CODE
+fi
