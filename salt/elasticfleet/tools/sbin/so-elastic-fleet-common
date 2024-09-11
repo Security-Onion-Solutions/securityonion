@@ -102,6 +102,38 @@ elastic_fleet_package_is_installed() {
     curl -s -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X GET -H 'kbn-xsrf: true' "localhost:5601/api/fleet/epm/packages/$PACKAGE" | jq -r '.item.status'
 }
 
+elastic_fleet_agent_policy_names() {
+    curl -s -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X GET "localhost:5601/api/fleet/agent_policies" | jq -r .items[].name
+}
+
+elastic_fleet_integration_policy_names() {
+    AGENT_POLICY=$1
+    curl -s -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X GET "localhost:5601/api/fleet/agent_policies/$AGENT_POLICY" | jq -r .item.package_policies[].name
+}
+
+elastic_fleet_integration_policy_package_name() {
+    AGENT_POLICY=$1
+    INTEGRATION=$2
+    curl -s -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X GET "localhost:5601/api/fleet/agent_policies/$AGENT_POLICY" | jq -r --arg INTEGRATION "$INTEGRATION" '.item.package_policies[] | select(.name==$INTEGRATION)| .package.name'
+}
+
+elastic_fleet_integration_policy_package_version() {
+    AGENT_POLICY=$1
+    INTEGRATION=$2
+    curl -s -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X GET "localhost:5601/api/fleet/agent_policies/$AGENT_POLICY" | jq -r --arg INTEGRATION "$INTEGRATION" '.item.package_policies[] | select(.name==$INTEGRATION)| .package.version'
+}
+
+elastic_fleet_integration_id() {
+    AGENT_POLICY=$1
+    INTEGRATION=$2
+    curl -s -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X GET "localhost:5601/api/fleet/agent_policies/$AGENT_POLICY" | jq -r --arg INTEGRATION "$INTEGRATION" '.item.package_policies[] | select(.name==$INTEGRATION)| .id'
+}
+
+elastic_fleet_integration_policy_dryrun_upgrade() {
+    INTEGRATION_ID=$1
+    curl -s -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -H "Content-Type: application/json" -H 'kbn-xsrf: true' -L -X POST "localhost:5601/api/fleet/package_policies/upgrade/dryrun" -d "{\"packagePolicyIds\":[\"$INTEGRATION_ID\"]}"
+}
+
 elastic_fleet_policy_create() {
 
     NAME=$1
