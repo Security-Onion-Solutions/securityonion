@@ -159,9 +159,11 @@ update_docker_containers() {
       fi
       local highest_es_version=$(compare_es_versions "$v1" "$v2")
       local image=$i:$highest_es_version$IMAGE_TAG_SUFFIX
+      local sig_url=https://sigs.securityonion.net/es-$highest_es_version/$image.sig
     else
       # this is not an es container so use the so version for the version
       local image=$i:$VERSION$IMAGE_TAG_SUFFIX
+      local sig_url=https://sigs.securityonion.net/$VERSION/$image.sig
     fi
     # Pull down the trusted docker image
     run_check_net_err \
@@ -170,7 +172,7 @@ update_docker_containers() {
     
     # Get signature
     run_check_net_err \
-    "curl --retry 5 --retry-delay 60 -A '$CURLTYPE/$CURRENTVERSION/$OS/$(uname -r)' https://sigs.securityonion.net/$VERSION/$image.sig --output $SIGNPATH/$image.sig" \
+    "curl --retry 5 --retry-delay 60 -A '$CURLTYPE/$CURRENTVERSION/$OS/$(uname -r)' $sig_url --output $SIGNPATH/$image.sig" \
     "Could not pull signature file for $image, please ensure connectivity to https://sigs.securityonion.net " \
     noretry >> "$LOG_FILE" 2>&1
     # Dump our hash values
