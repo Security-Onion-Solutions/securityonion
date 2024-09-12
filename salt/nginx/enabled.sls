@@ -130,6 +130,9 @@ so-nginx:
       - /opt/so/conf/navigator/config.json:/opt/socore/html/navigator/assets/config.json:ro
       - /nsm/repo:/opt/socore/html/repo:ro
       - /nsm/rules:/nsm/rules:ro
+      {%   if NGINXMERGED.external_suricata %}
+      - /opt/so/rules/nids/suri:/surirules:ro
+      {%   endif %}
       {% endif %}
       {% if DOCKER.containers[container_config].custom_bind_mounts %}
         {% for BIND in DOCKER.containers[container_config].custom_bind_mounts %}
