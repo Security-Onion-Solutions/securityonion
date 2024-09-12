@@ -6,17 +6,15 @@
 
 . /usr/sbin/so-elastic-fleet-common
 
-RETURN_CODE=0
+# Let's snag a cookie from Kibana
+SESSIONCOOKIE=$(curl -s -K /opt/so/conf/elasticsearch/curl.config -c - -X GET http://localhost:5601/ | grep sid | awk '{print $7}')
 
-if [ ! -f /opt/so/state/eaintegrationupgrade.txt ]; then
-  # Let's snag a cookie from Kibana
-  SESSIONCOOKIE=$(curl -s -K /opt/so/conf/elasticsearch/curl.config -c - -X GET http://localhost:5601/ | grep sid | awk '{print $7}')
-
-  # List agent policies
-  for AGENT_POLICY in $(elastic_fleet_agent_policy_names); do
-    IFS=$'\n'
-    for INTEGRATION in $(elastic_fleet_integration_policy_names "$AGENT_POLICY"); do
-      if ! [[ "$INTEGRATION" == "elastic-defend-endpoints" ]] && ! [[ "$INTEGRATION" == "fleet_server-"* ]]; then
+# List agent policies
+IFS=$'\n'
+for AGENT_POLICY in $(elastic_fleet_agent_policy_names); do
+  IFS=$'\n'
+  for INTEGRATION in $(elastic_fleet_integration_policy_names "$AGENT_POLICY"); do
+    if ! [[ "$INTEGRATION" == "elastic-defend-endpoints" ]] && ! [[ "$INTEGRATION" == "fleet_server-"* ]]; then
       # Get package name so we know what package to look for when checking the current and latest available version
       PACKAGE_NAME=$(elastic_fleet_integration_policy_package_name "$AGENT_POLICY" "$INTEGRATION")
       # Get currently installed version of package
@@ -39,13 +37,7 @@ if [ ! -f /opt/so/state/eaintegrationupgrade.txt ]; then
           exit 1
         fi
       fi
-      fi
-    done
+    fi
   done
-  if [[ "$RETURN_CODE" != "1" ]]; then
-    touch /opt/so/state/eaintegrationupgrade.txt
-  fi
-  echo
-else
-  exit $RETURN_CODE
-fi
+done
+echo
