@@ -51,7 +51,7 @@ idhhttpskinsdir:
     - makedirs: True
 
 # Copy over default http skins
-copyoverhttpskins:
+idhhttpskins:
   file.recurse:
     - name: /opt/so/conf/idh/http-skins
     - user: 939
@@ -59,7 +59,7 @@ copyoverhttpskins:
     - source: salt://idh/skins/http/opencanary
 
 # Copy over custom http skins
-copyovercustomhttpskins:
+idhcustomhttpskins:
   file.recurse:
     - name: /opt/so/conf/idh/http-skins
     - user: 939
