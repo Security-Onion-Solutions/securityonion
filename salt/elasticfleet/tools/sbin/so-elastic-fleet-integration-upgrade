@@ -21,53 +21,28 @@ fi
 
 for AGENT_POLICY in $agent_policies; do
     integrations=$(elastic_fleet_integration_policy_names "$AGENT_POLICY")
-    if [ $? -ne 0 ]; then
-        echo "Error: Failed to retrieve integration policies for agent policy '$AGENT_POLICY'."
-        exit 1
-    fi
-
     for INTEGRATION in $integrations; do
         if ! [[ "$INTEGRATION" == "elastic-defend-endpoints" ]] && ! [[ "$INTEGRATION" == "fleet_server-"* ]]; then
             # Get package name so we know what package to look for when checking the current and latest available version
             PACKAGE_NAME=$(elastic_fleet_integration_policy_package_name "$AGENT_POLICY" "$INTEGRATION")
-            if [ $? -ne 0 ]; then
-                echo "Error: Failed to retrieve package name for integration '$INTEGRATION' in agent policy '$AGENT_POLICY'."
-                exit 1
-            fi
 
             # Get currently installed version of package
             PACKAGE_VERSION=$(elastic_fleet_integration_policy_package_version "$AGENT_POLICY" "$INTEGRATION")
-            if [ $? -ne 0 ]; then
-                echo "Error: Failed to retrieve package version for integration '$INTEGRATION' in agent policy '$AGENT_POLICY'."
-                exit 1
-            fi
 
             # Get latest available version of package
             AVAILABLE_VERSION=$(elastic_fleet_package_latest_version_check "$PACKAGE_NAME")
-            if [ $? -ne 0 ]; then
-                echo "Error: Failed to retrieve latest available version for package '$PACKAGE_NAME'."
-                exit 1
-            fi
 
+            # Get integration ID
             INTEGRATION_ID=$(elastic_fleet_integration_id "$AGENT_POLICY" "$INTEGRATION")
-            if [ $? -ne 0 ]; then
-                echo "Error: Failed to retrieve integration ID for '$INTEGRATION' in agent policy '$AGENT_POLICY'."
-                exit 1
-            fi
 
             if [[ "$PACKAGE_VERSION" != "$AVAILABLE_VERSION" ]]; then
                 # Dry run of the upgrade
                 echo "Current $PACKAGE_NAME package version ($PACKAGE_VERSION) is not the same as the latest available package ($AVAILABLE_VERSION)..."
                 echo "Upgrading $INTEGRATION..."
                 echo "Starting dry run..."
-
                 DRYRUN_OUTPUT=$(elastic_fleet_integration_policy_dryrun_upgrade "$INTEGRATION_ID")
-                if [ $? -ne 0 ]; then
-                    echo "Error: Dry run upgrade failed for integration ID '$INTEGRATION_ID'."
-                    exit 1
-                fi
-
                 DRYRUN_ERRORS=$(echo "$DRYRUN_OUTPUT" | jq .[].hasErrors)
+                
                 # If no errors with dry run, proceed with actual upgrade
                 if [[ "$DRYRUN_ERRORS" == "false" ]]; then
                     echo "No errors detected. Proceeding with upgrade..."
