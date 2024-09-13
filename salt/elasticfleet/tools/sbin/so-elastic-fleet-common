@@ -114,7 +114,7 @@ elastic_fleet_integration_policy_names() {
     AGENT_POLICY=$1
     curl -s -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X GET "localhost:5601/api/fleet/agent_policies/$AGENT_POLICY" | jq -r .item.package_policies[].name
     if [ $? -ne 0 ]; then
-        echo "Error: Failed to retrieve integrations."
+        echo "Error: Failed to retrieve integrations for '$AGENT_POLICY'."
         exit 1
     fi
 }
@@ -124,7 +124,7 @@ elastic_fleet_integration_policy_package_name() {
     INTEGRATION=$2
     curl -s -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X GET "localhost:5601/api/fleet/agent_policies/$AGENT_POLICY" | jq -r --arg INTEGRATION "$INTEGRATION" '.item.package_policies[] | select(.name==$INTEGRATION)| .package.name'
     if [ $? -ne 0 ]; then
-        echo "Error: Failed to retrieve package name."
+        echo "Error: Failed to retrieve package name for '$INTEGRATION' in '$AGENT_POLICY'."
         exit 1
     fi
 }
@@ -134,7 +134,7 @@ elastic_fleet_integration_policy_package_version() {
     INTEGRATION=$2
     curl -s -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X GET "localhost:5601/api/fleet/agent_policies/$AGENT_POLICY" | jq -r --arg INTEGRATION "$INTEGRATION" '.item.package_policies[] | select(.name==$INTEGRATION)| .package.version'
     if [ $? -ne 0 ]; then
-        echo "Error: Failed to retrieve package version."
+        echo "Error: Failed to retrieve package version for '$INTEGRATION' in '$AGENT_POLICY'."
         exit 1
     fi
 }
@@ -144,7 +144,7 @@ elastic_fleet_integration_id() {
     INTEGRATION=$2
     curl -s -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X GET "localhost:5601/api/fleet/agent_policies/$AGENT_POLICY" | jq -r --arg INTEGRATION "$INTEGRATION" '.item.package_policies[] | select(.name==$INTEGRATION)| .id'
     if [ $? -ne 0 ]; then
-        echo "Error: Failed to retrieve integration ID."
+        echo "Error: Failed to retrieve integration ID for '$INTEGRATION' in '$AGENT_POLICY'."
         exit 1
     fi
 }
@@ -153,7 +153,7 @@ elastic_fleet_integration_policy_dryrun_upgrade() {
     INTEGRATION_ID=$1
     curl -s -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -H "Content-Type: application/json" -H 'kbn-xsrf: true' -L -X POST "localhost:5601/api/fleet/package_policies/upgrade/dryrun" -d "{\"packagePolicyIds\":[\"$INTEGRATION_ID\"]}"
     if [ $? -ne 0 ]; then
-        echo "Error: Failed to complete dry run."
+        echo "Error: Failed to complete dry run for '$INTEGRATION_ID'."
         exit 1
     fi
 }
