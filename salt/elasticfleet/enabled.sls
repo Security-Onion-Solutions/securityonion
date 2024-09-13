@@ -142,6 +142,10 @@ so-elastic-agent-grid-upgrade:
   cmd.run:
     - name: /usr/sbin/so-elastic-agent-grid-upgrade
     - retry: True
+
+so-elastic-fleet-integration-upgrade:
+  cmd.run:
+    - name: /usr/sbin/so-elastic-fleet-integration-upgrade
 {%  endif %}
 
 delete_so-elastic-fleet_so-status.disabled:
