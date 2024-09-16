@@ -525,11 +525,17 @@ stop_salt_master() {
     pkill -9 -ef "/usr/bin/python3 /bin/salt" >> $SOUP_LOG 2>&1
 
     echo ""
-    echo "Storing salt-master pid."
+    echo "Storing salt-master PID."
     MASTERPID=$(pgrep -f '/opt/saltstack/salt/bin/python3.10 /usr/bin/salt-master MainProcess')
-    echo "Found salt-master PID $MASTERPID"
-    systemctl_func "stop" "salt-master"
-    timeout 30 tail --pid=$MASTERPID -f /dev/null || echo "salt-master still running at $(date +"%T.%6N") after waiting 30s. We cannot kill due to systemd restart option."
+    if [ ! -z "$MASTERPID" ]; then
+      echo "Found salt-master PID $MASTERPID"
+      systemctl_func "stop" "salt-master"
+      if ps -p "$MASTERPID" > /dev/null 2>&1; then
+        timeout 30 tail --pid=$MASTERPID -f /dev/null || echo "salt-master still running at $(date +"%T.%6N") after waiting 30s. We cannot kill due to systemd restart option."
+      fi
+    else
+      echo "The salt-master PID was not found. The process '/usr/bin/salt-master MainProcess' is not running."
+    fi
     set -e
 }
 
@@ -837,8 +843,10 @@ determine_elastic_agent_upgrade() {
   if [[ $is_airgap -eq 0 ]]; then
     update_elastic_agent_airgap
   else
+    set +e
     # the new elasticsearch defaults.yaml file is not yet placed in /opt/so/saltstack/default/salt/elasticsearch yet
     update_elastic_agent "$UPDATE_DIR"
+    set -e
   fi
 }
 
