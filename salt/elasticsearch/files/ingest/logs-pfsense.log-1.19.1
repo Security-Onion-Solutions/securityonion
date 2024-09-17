@@ -4,7 +4,7 @@
     {
       "set": {
         "field": "ecs.version",
-        "value": "8.10.0"
+        "value": "8.11.0"
       }
     },
     {
@@ -22,7 +22,9 @@
     {
       "rename": {
         "field": "message",
-        "target_field": "event.original"
+        "target_field": "event.original",
+        "ignore_missing": true,
+        "if": "ctx.event?.original == null"
       }
     },
     {
@@ -54,7 +56,8 @@
           "SYSLOG_TIMESTAMP_FORMAT": "%{TIMESTAMP_ISO8601:_tmp.timestamp8601}%{SPACE}%{OBSERVER}%{SPACE}%{PROCESS}%{SPACE}(%{POSINT:process.pid:long}|-) - (-|%{META})",
           "TIMESTAMP_ISO8601": "%{YEAR}-%{MONTHNUM}-%{MONTHDAY}[T ]%{HOUR}:?%{MINUTE}(?::?%{SECOND})?%{ISO8601_TIMEZONE:event.timezone}?",
           "OBSERVER": "(?:%{IP:observer.ip}|%{HOSTNAME:observer.name})",
-          "PROCESS": "(\\(%{DATA:process.name}\\)|(?:%{UNIXPATH}*/)?%{BASEPATH:process.name})",
+          "UNIXPATH": "(/([\\w_%!$@:.,+~-]+|\\\\.)*)*",
+          "PROCESS": "(\\(%{DATA:process.name}\\)|(?:%{UNIXPATH})%{BASEPATH:process.name})",
           "BASEPATH": "[[[:alnum:]]_%!$@:.,+~-]+",
           "META": "\\[[^\\]]*\\]"
         }
@@ -97,49 +100,49 @@
     },
     {
       "pipeline": {
-        "name": "logs-pfsense.log-1.16.0-firewall",
+        "name": "logs-pfsense.log-1.19.1-firewall",
         "if": "ctx.event.provider == 'filterlog'"
       }
     },
     {
       "pipeline": {
-        "name": "logs-pfsense.log-1.16.0-openvpn",
+        "name": "logs-pfsense.log-1.19.1-openvpn",
         "if": "ctx.event.provider == 'openvpn'"
       }
     },
     {
       "pipeline": {
-        "name": "logs-pfsense.log-1.16.0-ipsec",
+        "name": "logs-pfsense.log-1.19.1-ipsec",
         "if": "ctx.event.provider == 'charon'"
       }
     },
     {
       "pipeline": {
-        "name": "logs-pfsense.log-1.16.0-dhcp",
+        "name": "logs-pfsense.log-1.19.1-dhcp",
         "if": "[\"dhcpd\", \"dhclient\", \"dhcp6c\"].contains(ctx.event.provider)"
       }
     },
     {
       "pipeline": {
-        "name": "logs-pfsense.log-1.16.0-unbound",
+        "name": "logs-pfsense.log-1.19.1-unbound",
         "if": "ctx.event.provider == 'unbound'"
       }
     },
     {
       "pipeline": {
-        "name": "logs-pfsense.log-1.16.0-haproxy",
+        "name": "logs-pfsense.log-1.19.1-haproxy",
         "if": "ctx.event.provider == 'haproxy'"
       }
     },
     {
       "pipeline": {
-        "name": "logs-pfsense.log-1.16.0-php-fpm",
+        "name": "logs-pfsense.log-1.19.1-php-fpm",
         "if": "ctx.event.provider == 'php-fpm'"
       }
     },
     {
       "pipeline": {
-        "name": "logs-pfsense.log-1.16.0-squid",
+        "name": "logs-pfsense.log-1.19.1-squid",
         "if": "ctx.event.provider == 'squid'"
       }
     },
@@ -352,8 +355,30 @@
     },
     {
       "pipeline": {
+        "name": "global@custom",
+        "ignore_missing_pipeline": true,
+        "description": "[Fleet] Global pipeline for all data streams"
+      }
+    },
+    {
+      "pipeline": {
+        "name": "logs@custom",
+        "ignore_missing_pipeline": true,
+        "description": "[Fleet] Pipeline for all data streams of type `logs`"
+      }
+    },
+    {
+      "pipeline": {
+        "name": "logs-pfsense.integration@custom",
+        "ignore_missing_pipeline": true,
+        "description": "[Fleet] Pipeline for all data streams of type `logs` defined by the `pfsense` integration"
+      }
+    },
+    {
+      "pipeline": {
         "name": "logs-pfsense.log@custom",
-        "ignore_missing_pipeline": true
+        "ignore_missing_pipeline": true,
+        "description": "[Fleet] Pipeline for the `pfsense.log` dataset"
       }
     }
   ],
