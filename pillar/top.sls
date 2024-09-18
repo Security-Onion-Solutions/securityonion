@@ -310,3 +310,5 @@ base:
   '*_desktop':
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
+    - stig.soc_stig
+    - soc.license
