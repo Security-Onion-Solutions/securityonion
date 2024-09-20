@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/opt/saltstack/salt/bin/python3
 
 # Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
 # or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
@@ -8,7 +8,26 @@
 import argparse
 import subprocess
 import re
+import sys
 import threading
+import salt.client
+
+local = salt.client.LocalClient()
+
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+file_handler = logging.FileHandler('/opt/so/log/salt/so-salt-cloud.log')
+console_handler = logging.StreamHandler()
+
+formatter = logging.Formatter('%(asctime)s %(message)s')
+file_handler.setFormatter(formatter)
+console_handler.setFormatter(formatter)
+
+logger.addHandler(file_handler)
+logger.addHandler(console_handler)
 
 def call_so_firewall_minion(ip, role):
     try:
@@ -20,8 +39,16 @@ def call_so_firewall_minion(ip, role):
             text=True
         )
 
+        # Read and log the output
+        for line in iter(process.stdout.readline, ''):
+            if line:
+                logger.info(line.rstrip('\n'))
+
+        process.stdout.close()
+        process.wait()
+
     except Exception as e:
-        print(f"An error occurred while calling the command: {e}")
+        logger.error(f"An error occurred while calling so-firewall-minion: {e}")
 
 def call_salt_cloud(profile, vm_name):
     try:
@@ -38,38 +65,94 @@ def call_salt_cloud(profile, vm_name):
         ip_search_string = '[INFO    ] Address ='
         ip_search_pattern = re.compile(re.escape(ip_search_string))
 
-        # Continuously read the output
+        # continuously read the output from salt-cloud 
         while True:
             # Read stdout line by line
             line = process.stdout.readline()
             if line:
-                print(line.rstrip('\n'))
+                logger.info(line.rstrip('\n'))
 
                 if ip_search_pattern.search(line):
                     parts = line.split("Address =")
                     if len(parts) > 1:
                         ip_address = parts[1].strip()
-                        print("Extracted IP address:", ip_address)
+                        logger.info(f"Extracted IP address: {ip_address}")
                         # Create and start a thread to run so-firewall-minion
-                        thread = threading.Thread(target=call_so_firewall_minion, args=(ip_address,role.upper()))
+                        thread = threading.Thread(target=call_so_firewall_minion, args=(ip_address, role.upper()))
                         thread.start()
                     else:
-                        print("No IP address found.")
+                        logger.error("No IP address found.")
+            else:
+                # check if salt-cloud has terminated
+                if process.poll() is not None:
+                    break
 
-            # Check if the process has terminated
-            elif process.poll() is not None:
-                # process finished
-                break
+        process.stdout.close()
+        process.wait()
 
     except Exception as e:
-        print(f"An error occurred while calling the command: {e}")
+        logger.error(f"An error occurred while calling salt-cloud: {e}")
 
-if __name__ == "__main__":
+# This function requires the cloud profile to be in the form: basedomain_hypervisorhostname. The profile name will be used to target the hypervisor.
+def run_qcow2_modify_network_config(profile, mode, ip=None, gateway=None, dns=None, search_domain=None):
+    hv_name = profile.split('-')[1]
+    target = hv_name + "_*"
+    image = '/var/lib/libvirt/images/coreol9/coreol9.qcow2.MODIFIED'
+    interface = 'eth0'
 
+    try:
+        r = local.cmd(target, 'qcow2.modify_network_config', [
+            'image=' + image,
+            'interface=' + interface,
+            'mode=' + mode,
+            'ip4=' + ip if ip else '',
+            'gw4=' + gateway if gateway else '',
+            'dns4=' + dns if dns else '',
+            'search4=' + search_domain if search_domain else ''
+        ])
+        logger.info(f'qcow2.modify_network_config: {r}')
+    except Exception as e:
+        logger.error(f"An error occurred while running qcow2.modify_network_config: {e}")
+
+def parse_arguments():
     parser = argparse.ArgumentParser(description="Call salt-cloud and pass the profile and VM name to it.")
     parser.add_argument('-p', '--profile', type=str, required=True, help="The cloud profile to build the VM from.")
     parser.add_argument('vm_name', type=str, help="The name of the VM.")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--dhcp4", action="store_true", help="Configure interface for DHCP (IPv4).")
+    group.add_argument("--static4", action="store_true", help="Configure interface for static IPv4 settings.")
+    parser.add_argument("--ip4", help="IPv4 address (e.g., 192.168.1.10/24). Required for static IPv4 configuration.")
+    parser.add_argument("--gw4", help="IPv4 gateway (e.g., 192.168.1.1). Required for static IPv4 configuration.")
+    parser.add_argument("--dns4", help="Comma-separated list of IPv4 DNS servers (e.g., 8.8.8.8,8.8.4.4).")
+    parser.add_argument("--search4", help="DNS search domain for IPv4.")
 
     args = parser.parse_args()
 
-    call_salt_cloud(args.profile, args.vm_name)
+    if args.static4:
+        if not args.ip4 or not args.gw4:
+            parser.error("Both --ip4 and --gw4 are required for static IPv4 configuration.")
+    return args
+
+def main():
+    try:
+        args = parse_arguments()
+
+        if args.dhcp4:
+            mode = "dhcp4"
+        elif args.static4:
+            mode = "static4"
+        else:
+            mode = "dhcp4"  # Default to DHCP if not specified
+
+        run_qcow2_modify_network_config(args.profile, mode, args.ip4, args.gw4, args.dns4, args.search4)
+        call_salt_cloud(args.profile, args.vm_name)
+
+    except KeyboardInterrupt:
+        logger.error("so-salt-cloud: Operation cancelled by user.")
+        sys.exit(1)
+    except Exception as e:
+        logger.error(f"so-salt-cloud: An error occurred: {e}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()

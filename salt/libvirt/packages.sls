@@ -39,6 +39,6 @@ libvirt_python_wheel:
 
 libvirt_python_module:
   cmd.run:
-    - name: /opt/saltstack/salt/bin/python3.10 -m pip install --no-index --find-links=/opt/so/conf/libvirt/source-packages/libvirt-python libvirt-python
+    - name: /opt/saltstack/salt/bin/python3 -m pip install --no-index --find-links=/opt/so/conf/libvirt/source-packages/libvirt-python libvirt-python
     - onchanges:
       - file: libvirt_python_wheel
