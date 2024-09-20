@@ -5,6 +5,17 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
+"""
+Script to modify the NetworkManager config within a qcow2 image.
+
+Usage:
+    python so-qcow2-modify-network.py -v <vm_name> [-c <cpu_count>] [-m <memory_amount>] [-p <pci_id>]
+
+Example:
+    python so-qcow2-modify-network.py -I path_to_image -i interface --static4 --ip4 192.168.1.10 --gw4 192.168.1.1 --dns4 192.168.1.1,8.8.8.8 --seearch4 example.local
+    python so-qcow2-modify-network.py -I path_to_image -i interface --dhcp4
+"""
+
 import argparse
 import guestfs
 import re
@@ -15,10 +26,27 @@ import ipaddress
 import configparser
 from io import StringIO
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
 NETWORK_CONFIG_DIR = "/etc/NetworkManager/system-connections"
+
+def setup_logging():
+    logger = logging.getLogger('so-qcow2-modify-network')
+    logger.setLevel(logging.INFO)
+
+    # Create handlers
+    c_handler = logging.StreamHandler()
+    f_handler = logging.FileHandler('/opt/so/log/hypervisor/so-qcow2-modify-network.log')
+    c_handler.setLevel(logging.INFO)
+    f_handler.setLevel(logging.INFO)
+
+    # Create formatter and add it to handlers
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    c_handler.setFormatter(formatter)
+    f_handler.setFormatter(formatter)
+
+    # Add handlers to the logger
+    logger.addHandler(c_handler)
+    logger.addHandler(f_handler)
+    return logger
 
 def validate_ip_address(ip_str, description="IP address"):
     try:
@@ -122,7 +150,7 @@ def modify_network_config(image_path, interface, mode, ip=None, gateway=None, dn
         except RuntimeError as e:
             raise IOError(f"Failed to write updated configuration to {config_file_path}: {e}")
 
-        logger.info(f"so-qcow2-modify-network: Updated {interface} network configuration in {image_path} using {mode.upper()} mode.")
+        logger.info(f"Updated {interface} network configuration in {image_path} using {mode.upper()} mode.")
 
     except Exception as e:
         raise e
@@ -151,6 +179,7 @@ def parse_arguments():
 
 def main():
     try:
+        logger = setup_logging()
         args = parse_arguments()
 
         validate_interface_name(args.interface)
@@ -171,10 +200,10 @@ def main():
         modify_network_config(args.image, args.interface, mode, args.ip4, args.gw4, args.dns4, args.search4)
 
     except KeyboardInterrupt:
-        logger.error("so-qcow2-modify-network: Operation cancelled by user.")
+        logger.error("Operation cancelled by user.")
         sys.exit(1)
     except Exception as e:
-        logger.error(f"so-qcow2-modify-network: An error occurred: {e}")
+        logger.error(f"An error occurred: {e}")
         sys.exit(1)
 
 if __name__ == "__main__":

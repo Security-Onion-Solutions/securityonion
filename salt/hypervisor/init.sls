@@ -1,3 +1,7 @@
+hypervisor_log_dir:
+  file.directory:
+    - name: /opt/so/log/hypervisor
+
 hypervisor_sbin:
   file.recurse:
     - name: /usr/sbin
