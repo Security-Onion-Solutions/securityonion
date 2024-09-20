@@ -73,6 +73,48 @@ eapackageupgrade:
     - template: jinja
 
 {%   if GLOBALS.role != "so-fleet" %}
+
+{% if not GLOBALS.airgap %}
+soresourcesrepoclone:
+  git.latest:
+    - name: https://github.com/Security-Onion-Solutions/securityonion-resources.git
+    - target: /opt/so/saltstack/local/salt/elasticfleet/files/securityonion-resources
+    - rev: 'dev/defend-filters'
+    - depth: 1
+    - force_fetch: true
+    - force_clone: true
+{% endif %}
+
+elasticdefendconfdir:
+  file.directory:
+    - name: /opt/so/conf/elastic-fleet/defend-exclusions/rulesets
+    - user: 947
+    - group: 939
+    - makedirs: True
+  
+elasticdefendrulesets:
+  file.recurse:
+    - name: /opt/so/conf/elastic-fleet/defend-exclusions/rulesets
+    - source: salt://elasticfleet/files/securityonion-resources/event-filters/
+    - user: 947
+    - group: 939
+
+elasticdefenddisabled:
+  file.managed:
+    - name: /opt/so/conf/elastic-fleet/defend-exclusions/disabled-filters.yaml
+    - source: salt://elasticfleet/files/soc/elastic-defend-disabled-filters.yaml
+    - user: 947
+    - group: 939
+    - mode: 600
+
+elasticdefendcustom:
+  file.managed:
+    - name: /opt/so/conf/elastic-fleet/defend-exclusions/rulesets/custom-filters-raw
+    - source: salt://elasticfleet/files/soc/elastic-defend-custom-filters.yaml
+    - user: 947
+    - group: 939
+    - mode: 600
+
 eaintegrationsdir:
   file.directory:
     - name: /opt/so/conf/elastic-fleet/integrations
