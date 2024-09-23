@@ -9,10 +9,10 @@
 Script to modify hardware parameters of a KVM virtual machine.
 
 Usage:
-    python so-kvm-modify-hardware.py -v <vm_name> [-c <cpu_count>] [-m <memory_amount>] [-p <pci_id>]
+    python so-kvm-modify-hardware.py -v <vm_name> [-c <cpu_count>] [-m <memory_amount>] [-p <pci_id>] [-s]
 
 Example:
-    python so-kvm-modify-hardware.py -v my_vm -c 4 -m 8192 -p 0000:00:1f.2
+    python so-kvm-modify-hardware.py -v my_vm -c 4 -m 8192 -p 0000:00:1f.2 -s
 """
 
 import argparse
@@ -48,6 +48,7 @@ def parse_arguments():
     parser.add_argument('-c', '--cpu', type=int, help='Number of virtual CPUs to assign.')
     parser.add_argument('-m', '--memory', type=int, help='Amount of memory to assign in MiB.')
     parser.add_argument('-p', '--pci', help='PCI hardware ID to passthrough to the VM (e.g., 0000:00:1f.2).')
+    parser.add_argument('-s', '--start', action='store_true', help='Start the VM after modification.')
     args = parser.parse_args()
     return args
 
@@ -152,6 +153,7 @@ def main():
         cpu_count = args.cpu
         memory_amount = args.memory
         pci_id = args.pci
+        start_vm_flag = args.start
 
         # Connect to libvirt
         try:
@@ -169,9 +171,12 @@ def main():
         # Redefine VM
         redefine_vm(conn, new_xml_desc, logger)
 
-        # Start VM
-        dom = conn.lookupByName(vm_name)
-        start_vm(dom, logger)
+        # Start VM if -s or --start argument is provided
+        if start_vm_flag:
+            dom = conn.lookupByName(vm_name)
+            start_vm(dom, logger)
+        else:
+            logger.info("VM start flag not provided; VM will remain stopped.")
 
         # Close connection
         conn.close()
