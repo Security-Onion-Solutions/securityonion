@@ -75,14 +75,22 @@ eapackageupgrade:
 {%   if GLOBALS.role != "so-fleet" %}
 
 {% if not GLOBALS.airgap %}
+elasticdefendrepodir:
+  file.directory:
+    - name: /nsm/securityonion-resources
+    - user: 939
+    - group: 939
+    - makedirs: True
+
 soresourcesrepoclone:
   git.latest:
     - name: https://github.com/Security-Onion-Solutions/securityonion-resources.git
-    - target: /opt/so/saltstack/local/salt/elasticfleet/files/securityonion-resources
-    - rev: 'dev/defend-filters'
+    - target: /nsm/securityonion-resources
+    - rev: 'dev/defend_filters'
     - depth: 1
     - force_fetch: true
     - force_clone: true
+    - user: socore # id is not allowed for this 
 {% endif %}
 
 elasticdefendconfdir:
@@ -92,13 +100,6 @@ elasticdefendconfdir:
     - group: 939
     - makedirs: True
   
-elasticdefendrulesets:
-  file.recurse:
-    - name: /opt/so/conf/elastic-fleet/defend-exclusions/rulesets
-    - source: salt://elasticfleet/files/securityonion-resources/event-filters/
-    - user: 947
-    - group: 939
-
 elasticdefenddisabled:
   file.managed:
     - name: /opt/so/conf/elastic-fleet/defend-exclusions/disabled-filters.yaml
@@ -114,6 +115,17 @@ elasticdefendcustom:
     - user: 947
     - group: 939
     - mode: 600
+
+  cronelasticdefendfilters:
+    cron.present:
+      - name: python3 /sbin/so-elastic-defend-manage-filters.py -c /opt/so/conf/elasticsearch/curl.config -d /opt/so/conf/elastic-fleet/defend-exclusions/disabled-filters.yaml -i /nsm/securityonion-resources/event_filters/ -i /opt/so/conf/elastic-fleet/defend-exclusions/rulesets/custom-filters/ &>> /opt/so/log/elasticfleet/elastic-defend-manage-filters.log
+      - identifier: elastic-defend-filters
+      - user: root
+      - minute: '0'
+      - hour: '3'
+      - daymonth: '*'
+      - month: '*'
+      - dayweek: '*'
 
 eaintegrationsdir:
   file.directory:

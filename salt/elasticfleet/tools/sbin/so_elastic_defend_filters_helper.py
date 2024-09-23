@@ -7,19 +7,21 @@ import requests
 from requests.auth import HTTPBasicAuth
 import shutil
 
-# Extract only the 'entries' and 'description' fields
-def extract_relevant_fields(rule):
+# Extract 'entries', 'description' and 'os_types' fields
+def extract_relevant_fields(filter):
     return {
-        'entries': rule.get('entries', []),
-        'description': rule.get('description', '')
+        'entries': filter.get('entries', []),
+        'description': filter.get('description', '')
     }
 
-# Sort lists and recursively sort keys in dictionaries for consistency
+# Sort for consistency, so that a hash can be generated
 def sorted_data(value):
     if isinstance(value, dict):
+        # Recursively sort the dictionary by key
         return {k: sorted_data(v) for k, v in sorted(value.items())}
     elif isinstance(value, list):
-        return sorted(sorted_data(v) for v in value)
+        # Sort lists; for dictionaries, sort by a specific key
+        return sorted(value, key=lambda x: tuple(sorted(x.items())) if isinstance(x, dict) else x)
     return value
 
 # Generate a hash based on sorted relevant fields
@@ -108,6 +110,9 @@ def prepare_custom_rules(input_file, output_dir):
             for doc in docs:
                 if 'id' not in doc:
                     print(f"Skipping rule, no 'id' found: {doc}")
+                    continue
+                if doc.get('title') in ["Template 1", "Template 2"]:
+                    print(f"Skipping template rule with title: {doc['title']}")
                     continue
                 # Create a filename using the 'id' field
                 file_name = os.path.join(output_dir, f"{doc['id']}.yaml")

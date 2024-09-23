@@ -1,4 +1,4 @@
-import yaml
+from datetime import datetime
 import sys
 import getopt
 from so_elastic_defend_filters_helper import *
@@ -6,44 +6,51 @@ import logging
 
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 
-# Define mappings for conditional_field, event_type, and conditions
-FIELD_MAPPINGS = {
+# Define mappings for Target Field, Event Type, Conditions
+TARGET_FIELD_MAPPINGS = {
     "Image": "process.executable",
     "ParentImage": "process.parent.executable",
     "CommandLine": "process.command_line",
     "ParentCommandLine": "process.parent.command_line",
+    "DestinationHostname": "destination.domain",
     "QueryName": "dns.question.name",
     "DestinationIp": "destination.ip",
-    "TargetObject": "registry.path"
+    "TargetObject": "registry.path",
+    "TargetFilename": "file.path"
 }
 
 DATASET_MAPPINGS = {
-    "ProcessCreate": "endpoint.events.process",
-    "NetworkConnect": "endpoint.events.network",
-    "FileCreate": "endpoint.events.file",
-    "RegistryEvent": "endpoint.events.registry",
-    "DnsQuery": "endpoint.events.network"
+    "process_create": "endpoint.events.process",
+    "network_connection": "endpoint.events.network",
+    "file_create": "endpoint.events.file",
+    "file_delete": "endpoint.events.file",
+    "registry_event": "endpoint.events.registry",
+    "dns_query": "endpoint.events.network"
 }
 
 CONDITION_MAPPINGS = {
     "is": ("included", "match"),
     "end with": ("included", "wildcard"),
     "begin with": ("included", "wildcard"),
-    "contains": ("included", "wildcard"),
-    "contains any": ("included", "match_any"),
-    "excluded": ("excluded", "match")
+    "contains": ("included", "wildcard")
 }
 
 # Extract entries for a rule
-def extract_entries(data):
+def extract_entries(data, event_type):
     entries = []
     filter_data = data.get('filter', {})
     for value in filter_data.values():
-        target_field = FIELD_MAPPINGS.get(value.get('TargetField', ''))
+        target_field = TARGET_FIELD_MAPPINGS.get(value.get('TargetField', ''))
         condition = value.get('Condition', '')
         pattern = value.get('Pattern', '')
 
-        operator, match_type = CONDITION_MAPPINGS.get(condition, ("included", "match"))
+        if condition not in CONDITION_MAPPINGS:
+            logging.error(f"Invalid condition: {condition}")
+
+        # Modify the pattern based on the condition
+        pattern = modify_pattern(condition, pattern)
+
+        operator, match_type = CONDITION_MAPPINGS[condition]
 
         entries.append({
             "field": target_field,
@@ -51,10 +58,23 @@ def extract_entries(data):
             "type": match_type,
             "value": pattern
         })
+
+    # Add the event.dataset entry from DATASET_MAPPINGS
+    dataset_value = DATASET_MAPPINGS.get(event_type, '')
+    if dataset_value:
+        entries.append({
+            "field": "event.dataset",
+            "operator": "included",
+            "type": "match",
+            "value": dataset_value
+        })
+    else:
+        logging.error(f"No dataset mapping found for event_type: {event_type}")
+
     return entries
 
-# Build the JSON entry
-def build_json_entry(data, entries, guid, event_type, dataset, context):
+# Build the JSON
+def build_json_entry(entries, guid, event_type, context):
     return {
         "comments": [],
         "entries": entries,
@@ -84,6 +104,26 @@ def disable_check(guid, disabled_rules, username, password):
                 return True, "Error deleting"
         return True, "NOP"
     return False, None
+
+def modify_pattern(condition, pattern):
+    """
+    Modify the pattern based on the condition.
+    - 'end with': Add '*' to the beginning of the pattern.
+    - 'begin with': Add '*' to the end of the pattern.
+    - 'contains': Add '*' to both the beginning and end of the pattern.
+    """
+    if isinstance(pattern, list):
+        # Apply modification to each pattern in the list if it's a list of patterns
+        return [modify_pattern(condition, p) for p in pattern]
+    
+    if condition == "end with":
+        return f"*{pattern}"
+    elif condition == "begin with":
+        return f"{pattern}*"
+    elif condition == "contains":
+        return f"*{pattern}*"
+    return pattern
+
 
 def process_rule_update_or_create(guid, json_entry, username, password):
     existing_rule = api_request("GET", guid, username, password)
@@ -122,8 +162,8 @@ def process_rules(yaml_files, disabled_rules, username, password):
             continue
 
         # Extract entries and build JSON
-        entries = extract_entries(data)
-        json_entry = build_json_entry(data, entries, guid, event_type, dataset, context)
+        entries = extract_entries(data, event_type)
+        json_entry = build_json_entry(entries, guid, event_type, context)
 
         # Process rule creation or update
         status = process_rule_update_or_create(guid, json_entry, username, password)
@@ -167,6 +207,9 @@ def main(argv):
             flags = load_flags(arg)
             return main(argv + flags)
 
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    logging.info(f"\n{timestamp}")
+
     validate_inputs(credentials_file, disabled_file, yaml_directories)
 
     credentials = load_credentials(credentials_file)
@@ -200,6 +243,9 @@ def main(argv):
     logging.info(f"Rule status Summary")
     logging.info(f" - Active rules: {total_stats['rule_count'] - total_stats['disabled']}")
     logging.info(f" - Disabled rules: {total_stats['disabled']}")
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    logging.info(f"Execution completed at: {timestamp}")
+
 
 if __name__ == "__main__":
     main(sys.argv[1:])
