@@ -20,41 +20,41 @@ dockergroup:
 dockerheldpackages:
   pkg.installed:
     - pkgs:
-      - containerd.io: 1.6.33-1
-      - docker-ce: 5:26.1.4-1~debian.12~bookworm
-      - docker-ce-cli: 5:26.1.4-1~debian.12~bookworm
-      - docker-ce-rootless-extras: 5:26.1.4-1~debian.12~bookworm
+      - containerd.io: 1.7.21-1
+      - docker-ce: 5:27.2.0-1~debian.12~bookworm
+      - docker-ce-cli: 5:27.2.0-1~debian.12~bookworm
+      - docker-ce-rootless-extras: 5:27.2.0-1~debian.12~bookworm
     - hold: True
     - update_holds: True
 {%    elif grains.oscodename == 'jammy' %}
 dockerheldpackages:
   pkg.installed:
     - pkgs:
-      - containerd.io: 1.6.33-1
-      - docker-ce: 5:26.1.4-1~ubuntu.22.04~jammy
-      - docker-ce-cli: 5:26.1.4-1~ubuntu.22.04~jammy
-      - docker-ce-rootless-extras: 5:26.1.4-1~ubuntu.22.04~jammy
+      - containerd.io: 1.7.21-1
+      - docker-ce: 5:27.2.0-1~ubuntu.22.04~jammy
+      - docker-ce-cli: 5:27.2.0-1~ubuntu.22.04~jammy
+      - docker-ce-rootless-extras: 5:27.2.0-1~ubuntu.22.04~jammy
     - hold: True
     - update_holds: True
 {%    else %}
 dockerheldpackages:
   pkg.installed:
     - pkgs:
-      - containerd.io: 1.6.33-1
-      - docker-ce: 5:26.1.4-1~ubuntu.20.04~focal
-      - docker-ce-cli: 5:26.1.4-1~ubuntu.20.04~focal
-      - docker-ce-rootless-extras: 5:26.1.4-1~ubuntu.20.04~focal
+      - containerd.io: 1.7.21-1
+      - docker-ce: 5:27.2.0-1~ubuntu.20.04~focal
+      - docker-ce-cli: 5:27.2.0-1~ubuntu.20.04~focal
+      - docker-ce-rootless-extras: 5:27.2.0-1~ubuntu.20.04~focal
     - hold: True
     - update_holds: True
-{% endif %}
+{%   endif %}
 {% else %}
 dockerheldpackages:
   pkg.installed:
     - pkgs:
-      - containerd.io: 1.6.33-3.1.el9
-      - docker-ce: 3:26.1.4-1.el9
-      - docker-ce-cli: 1:26.1.4-1.el9
-      - docker-ce-rootless-extras: 26.1.4-1.el9
+      - containerd.io: 1.7.21-3.1.el9
+      - docker-ce: 3:27.2.0-1.el9
+      - docker-ce-cli: 1:27.2.0-1.el9
+      - docker-ce-rootless-extras: 27.2.0-1.el9
     - hold: True
     - update_holds: True
 {% endif %}

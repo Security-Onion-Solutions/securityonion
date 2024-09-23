@@ -69,7 +69,9 @@ surirulereload:
   cmd.run: 
     - name: /usr/sbin/so-suricata-reload-rules >> /opt/so/log/suricata/reload.log 2>&1
     - onchanges: 
-        - surirulesync
+        - file: surirulesync
+    - require:
+        - docker_container: so-suricata
     
 delete_so-suricata_so-status.disabled:
   file.uncomment:

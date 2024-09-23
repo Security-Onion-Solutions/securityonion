@@ -2366,6 +2366,52 @@ elasticsearch:
               set_priority:
                 priority: 50
             min_age: 30d
+    so-logs-barracuda_cloudgen_firewall_x_log:
+      index_sorting: False
+      index_template:
+        ignore_missing_component_templates:
+          - logs-barracuda_cloudgen_firewall.log@custom
+        index_patterns:
+          - "logs-barracuda_cloudgen_firewall.log-*"
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-logs-barracuda_cloudgen_firewall.log-logs
+              number_of_replicas: 0
+        composed_of:
+          - "logs-barracuda_cloudgen_firewall.log@package"
+          - "logs-barracuda_cloudgen_firewall.log@custom"
+          - "so-fleet_globals-1"
+          - "so-fleet_agent_id_verification-1"
+        priority: 501
+        data_stream:
+          hidden: false
+          allow_custom_routing: false
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 30d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
     so-logs-carbonblack_edr_x_log:
       index_sorting: false
       index_template:
@@ -6539,6 +6585,52 @@ elasticsearch:
               set_priority:
                 priority: 0
             min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
+    so-logs-imperva_cloud_waf_x_event:
+      index_sorting: False
+      index_template:
+        ignore_missing_component_templates:
+          - logs-imperva_cloud_waf.event@custom
+        index_patterns:
+          - "logs-imperva_cloud_waf.event-*"
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-logs-imperva_cloud_waf.event-logs
+              number_of_replicas: 0
+        composed_of:
+          - "logs-imperva_cloud_waf.event@package"
+          - "logs-imperva_cloud_waf.event@custom"
+          - "so-fleet_globals-1"
+          - "so-fleet_agent_id_verification-1"
+        priority: 501
+        data_stream:
+          hidden: false
+          allow_custom_routing: false
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 30d
           delete:
             actions:
               delete: {}

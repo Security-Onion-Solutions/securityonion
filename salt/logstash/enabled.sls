@@ -10,7 +10,6 @@
 {%   from 'logstash/map.jinja' import LOGSTASH_MERGED %}
 {%   from 'logstash/map.jinja' import LOGSTASH_NODES %}
 {%   set lsheap = LOGSTASH_MERGED.settings.lsheap %}
-{%   import_yaml 'elasticsearch/defaults.yaml' as ELASTICSEARCHDEFAULTS %}
 
 include:
 {%   if GLOBALS.role not in ['so-receiver','so-fleet'] %}
@@ -27,7 +26,7 @@ include:
 
 so-logstash:
   docker_container.running:
-    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-logstash:{{ ELASTICSEARCHDEFAULTS.elasticsearch.version }}
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-logstash:{{ GLOBALS.so_version }}
     - hostname: so-logstash
     - name: so-logstash
     - networks:
