@@ -116,16 +116,16 @@ elasticdefendcustom:
     - group: 939
     - mode: 600
 
-  cronelasticdefendfilters:
-    cron.present:
-      - name: python3 /sbin/so-elastic-defend-manage-filters.py -c /opt/so/conf/elasticsearch/curl.config -d /opt/so/conf/elastic-fleet/defend-exclusions/disabled-filters.yaml -i /nsm/securityonion-resources/event_filters/ -i /opt/so/conf/elastic-fleet/defend-exclusions/rulesets/custom-filters/ &>> /opt/so/log/elasticfleet/elastic-defend-manage-filters.log
-      - identifier: elastic-defend-filters
-      - user: root
-      - minute: '0'
-      - hour: '3'
-      - daymonth: '*'
-      - month: '*'
-      - dayweek: '*'
+cronelasticdefendfilters:
+  cron.present:
+    - name: python3 /sbin/so-elastic-defend-manage-filters.py -c /opt/so/conf/elasticsearch/curl.config -d /opt/so/conf/elastic-fleet/defend-exclusions/disabled-filters.yaml -i /nsm/securityonion-resources/event_filters/ -i /opt/so/conf/elastic-fleet/defend-exclusions/rulesets/custom-filters/ &>> /opt/so/log/elasticfleet/elastic-defend-manage-filters.log
+    - identifier: elastic-defend-filters
+    - user: root
+    - minute: '0'
+    - hour: '3'
+    - daymonth: '*'
+    - month: '*'
+    - dayweek: '*'
 
 eaintegrationsdir:
   file.directory:
