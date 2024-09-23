@@ -74,23 +74,19 @@ eapackageupgrade:
 
 {%   if GLOBALS.role != "so-fleet" %}
 
+soresourcesrepoconfig:
+  git.config_set:
+    - name: safe.directory
+    - value: /nsm/securityonion-resources
+    - global: True
+    
 {% if not GLOBALS.airgap %}
-elasticdefendrepodir:
-  file.directory:
-    - name: /nsm/securityonion-resources
-    - user: 939
-    - group: 939
-    - makedirs: True
-
 soresourcesrepoclone:
   git.latest:
     - name: https://github.com/Security-Onion-Solutions/securityonion-resources.git
     - target: /nsm/securityonion-resources
     - rev: 'dev/defend_filters'
     - depth: 1
-    - force_fetch: true
-    - force_clone: true
-    - user: socore # id is not allowed for this 
 {% endif %}
 
 elasticdefendconfdir:
