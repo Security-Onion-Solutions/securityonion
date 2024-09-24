@@ -17,10 +17,12 @@ include:
   - elasticfleet.sostatus
   - ssl
 
+{% if grains.role not in ['so-fleet'] %}
 # Wait for Elasticsearch to be ready - no reason to try running Elastic Fleet server if ES is not ready
 wait_for_elasticsearch_elasticfleet:
   cmd.run:
     - name: so-elasticsearch-wait
+{% endif %}
 
 # If enabled, automatically update Fleet Logstash Outputs
 {% if ELASTICFLEETMERGED.config.server.enable_auto_configuration and grains.role not in ['so-import', 'so-eval', 'so-fleet'] %}
@@ -146,6 +148,15 @@ so-elastic-agent-grid-upgrade:
 so-elastic-fleet-integration-upgrade:
   cmd.run:
     - name: /usr/sbin/so-elastic-fleet-integration-upgrade
+
+{%   if ELASTICFLEETMERGED.config.defend_filters.enable_auto_configuration %}
+so-elastic-defend-manage-filters-file-watch:
+  cmd.run:
+    - name: python3 /sbin/so-elastic-defend-manage-filters.py -c /opt/so/conf/elasticsearch/curl.config -d /opt/so/conf/elastic-fleet/defend-exclusions/disabled-filters.yaml -i /nsm/securityonion-resources/event_filters/ -i /opt/so/conf/elastic-fleet/defend-exclusions/rulesets/custom-filters/ &>> /opt/so/log/elasticfleet/elastic-defend-manage-filters.log
+    - onchanges:
+      - file: elasticdefendcustom
+      - file: elasticdefenddisabled
+{%    endif %}
 {%  endif %}
 
 delete_so-elastic-fleet_so-status.disabled:
