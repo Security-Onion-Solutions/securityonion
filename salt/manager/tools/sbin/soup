@@ -888,6 +888,12 @@ update_airgap_rules() {
   rsync -av $UPDATE_DIR/agrules/suricata/* /nsm/rules/suricata/
   rsync -av $UPDATE_DIR/agrules/detect-sigma/* /nsm/rules/detect-sigma/
   rsync -av $UPDATE_DIR/agrules/detect-yara/* /nsm/rules/detect-yara/
+  # Checkout the stable summaries branch and copy them over for SOC
+  git -C $UPDATE_DIR/agrules/securityonion-resources/ checkout generated-summaries-stable
+  rsync -av $UPDATE_DIR/agrules/securityonion-resources/* /opt/so/conf/soc/ai_summary_repos
+  # Checkout the main branch and copy them over to nsm
+  git -C $UPDATE_DIR/agrules/securityonion-resources/ checkout main
+  rsync -av $UPDATE_DIR/agrules/securityonion-resources/* /nsm/securityonion-resources/
 }
 
 update_airgap_repo() {
