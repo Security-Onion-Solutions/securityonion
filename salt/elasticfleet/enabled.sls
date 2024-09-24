@@ -154,8 +154,8 @@ so-elastic-defend-manage-filters-file-watch:
   cmd.run:
     - name: python3 /sbin/so-elastic-defend-manage-filters.py -c /opt/so/conf/elasticsearch/curl.config -d /opt/so/conf/elastic-fleet/defend-exclusions/disabled-filters.yaml -i /nsm/securityonion-resources/event_filters/ -i /opt/so/conf/elastic-fleet/defend-exclusions/rulesets/custom-filters/ &>> /opt/so/log/elasticfleet/elastic-defend-manage-filters.log
     - onchanges:
-      - file: /opt/so/conf/elastic-fleet/defend-exclusions/rulesets/custom-filters-raw
-      - file: /opt/so/conf/elastic-fleet/defend-exclusions/disabled-filters.yaml
+      - file: elasticdefendcustom
+      - file: elasticdefenddisabled
 {%    endif %}
 {%  endif %}
 
