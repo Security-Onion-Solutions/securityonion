@@ -85,7 +85,7 @@ soresourcesrepoclone:
   git.latest:
     - name: https://github.com/Security-Onion-Solutions/securityonion-resources.git
     - target: /nsm/securityonion-resources
-    - rev: 'dev/defend_filters'
+    - rev: 'main'
     - depth: 1
 {% endif %}
 
