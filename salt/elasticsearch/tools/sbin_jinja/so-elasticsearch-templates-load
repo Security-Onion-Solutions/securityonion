@@ -14,6 +14,7 @@ if [[ -f $STATE_FILE_INITIAL ]]; then
   # already be satisified. Therefore, immediately exit/abort this script upon any template load failure
   # since this is an unrecoverable failure.
   # should_exit_on_failure=1
+  :
 else
   # This is the initial template load, and there likely are some components not yet setup in Elasticsearch.
   # Therefore load as many templates as possible at this time and if an error occurs proceed to the next 
@@ -33,14 +34,16 @@ load_template() {
   file=$2
 
   echo "Loading template file $i" 
-  if ! retry 3 5 "so-elasticsearch-query $uri -d@$file -XPUT" "{\"acknowledged\":true}"; then
-    if [[ $should_exit_on_failure -eq 1 ]]; then
-      fail "Could not load template file: $file"
-    else
-      load_failures=$((load_failures+1))
-      echo "Incremented load failure counter: $load_failures"
-    fi
-  fi
+  #if ! retry 3 5 "
+  so-elasticsearch-query $uri -d@$file -XPUT 
+  #"{\"acknowledged\":true}"; then
+  #  if [[ $should_exit_on_failure -eq 1 ]]; then
+  #    fail "Could not load template file: $file"
+  #  else
+  #    load_failures=$((load_failures+1))
+  #    echo "Incremented load failure counter: $load_failures"
+  #  fi
+  #fi
 }
 
 if [ ! -f $STATE_FILE_SUCCESS ]; then
