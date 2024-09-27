@@ -1,6 +1,9 @@
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 {% from 'docker/docker.map.jinja' import DOCKER %}
 {% import_yaml 'firewall/defaults.yaml' as FIREWALL_DEFAULT %}
+{% if GLOBALS.pipeline == 'KAFKA' %}
+{%   set KAFKA_LOGSTASH = salt['pillar.get']('kafka:logstash', []) %}
+{% endif %}
 
 {# add our ip to self #}
 {% do FIREWALL_DEFAULT.firewall.hostgroups.self.append(GLOBALS.node_ip) %}
@@ -35,9 +38,19 @@
 {% endif %}
 
 {% if GLOBALS.pipeline == 'KAFKA' and role in ['manager', 'managersearch', 'standalone', 'receiver'] %}
-{%   for r in ['manager', 'managersearch', 'standalone', 'receiver', 'fleet', 'idh', 'sensor', 'searchnode','heavynode', 'elastic_agent_endpoint', 'desktop'] %}
+{%   for r in ['manager', 'managersearch', 'standalone', 'receiver', 'fleet', 'idh', 'sensor', 'searchnode','heavynode', 'elastic_agent_endpoint', 'desktop', 'self'] %}
 {%     if FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups[r] is defined %}
 {%       do FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups[r].portgroups.append('kafka_data') %}
+{#       Remove redis port #}
+{%       if 'redis' in FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups[r].portgroups %}
+{%         do FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups[r].portgroups.remove('redis') %}
+{%       endif %}
+{#       Check if logstash was manually enabled for this node before removing logstash port #}
+{%       if GLOBALS.hostname not in KAFKA_LOGSTASH %}
+{%         if 'elastic_agent_data' in FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups[r].portgroups %}
+{%           do FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups[r].portgroups.remove('elastic_agent_data') %}
+{%         endif %}
+{%       endif %}
 {%     endif %}
 {%   endfor %}
 {% endif %}
