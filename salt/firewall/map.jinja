@@ -3,6 +3,7 @@
 {% import_yaml 'firewall/defaults.yaml' as FIREWALL_DEFAULT %}
 {% if GLOBALS.pipeline == 'KAFKA' %}
 {%   set KAFKA_LOGSTASH = salt['pillar.get']('kafka:logstash', []) %}
+{%   set KAFKA_CONTROLLERS = salt['pillar.get']('kafka:controllers', []) %}
 {% endif %}
 
 {# add our ip to self #}
@@ -22,37 +23,40 @@
 {% endif %}
 
 {# Only add Kafka firewall items when Kafka enabled #}
-{% set role = GLOBALS.role.split('-')[1] %}
-
-{% if GLOBALS.pipeline == 'KAFKA' and role in ['manager', 'managersearch', 'standalone'] %}
-{%   do FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups[role].portgroups.append('kafka_controller') %}
-{%   do FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups.receiver.portgroups.append('kafka_controller') %}
-{% endif %}
-
-{% if GLOBALS.pipeline == 'KAFKA' and role == 'receiver' %}
-{%   do FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups.self.portgroups.append('kafka_controller') %}
-{%   do FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups.standalone.portgroups.append('kafka_controller') %}
-{%   do FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups.manager.portgroups.append('kafka_controller') %}
-{%   do FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups.managersearch.portgroups.append('kafka_controller') %}
-{%   do FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups.receiver.portgroups.append('kafka_controller') %}
-{% endif %}
-
-{% if GLOBALS.pipeline == 'KAFKA' and role in ['manager', 'managersearch', 'standalone', 'receiver'] %}
-{%   for r in ['manager', 'managersearch', 'standalone', 'receiver', 'fleet', 'idh', 'sensor', 'searchnode','heavynode', 'elastic_agent_endpoint', 'desktop', 'self'] %}
-{%     if FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups[r] is defined %}
-{%       do FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups[r].portgroups.append('kafka_data') %}
-{#       Remove redis port #}
-{%       if 'redis' in FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups[r].portgroups %}
-{%         do FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups[r].portgroups.remove('redis') %}
-{%       endif %}
-{#       Check if logstash was manually enabled for this node before removing logstash port #}
-{%       if GLOBALS.hostname not in KAFKA_LOGSTASH %}
-{%         if 'elastic_agent_data' in FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups[r].portgroups %}
-{%           do FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups[r].portgroups.remove('elastic_agent_data') %}
+{# {% if GLOBALS.pipeline == 'KAFKA' %} #}
+{%   set role = GLOBALS.role.split('-')[1] %}
+{%   if role in ['manager', 'managersearch', 'standalone'] %}
+{%     do FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups[role].portgroups.append('kafka_controller') %}
+{%     do FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups.receiver.portgroups.append('kafka_controller') %}
+{%   endif %}
+{%   if role == 'receiver' %}
+{%     do FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups.self.portgroups.append('kafka_controller') %}
+{%     do FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups.standalone.portgroups.append('kafka_controller') %}
+{%     do FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups.manager.portgroups.append('kafka_controller') %}
+{%     do FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups.managersearch.portgroups.append('kafka_controller') %}
+{%     do FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups.receiver.portgroups.append('kafka_controller') %}
+{%   endif %}
+{%   if role in ['manager', 'managersearch', 'standalone', 'receiver'] %}
+{%     for r in ['manager', 'managersearch', 'standalone', 'receiver', 'fleet', 'idh', 'sensor', 'searchnode','heavynode', 'elastic_agent_endpoint', 'desktop', 'self'] %}
+{%       if FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups[r] is defined %}
+{%         do FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups[r].portgroups.append('kafka_data') %}
+{# Remove redis port #}
+{%         if 'redis' in FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups[r].portgroups %}
+{%           do FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups[r].portgroups.remove('redis') %}
+{%         endif %}
+{# Check if logstash was manually enabled for this node before removing logstash port #}
+{%         if GLOBALS.hostname not in KAFKA_LOGSTASH %}
+{%           if 'elastic_agent_data' in FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups[r].portgroups %}
+{%             do FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups[r].portgroups.remove('elastic_agent_data') %}
+{%           endif %}
 {%         endif %}
 {%       endif %}
+{%     endfor %}
+{# Remove external_kafka_data portgroup from any kafka node that isn't a broker #}
+{%     if GLOBALS.hostname in KAFKA_CONTROLLERS %}
+{%       do FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups.pop('external_kafka_data') %}
 {%     endif %}
-{%   endfor %}
+{%   endif %}
 {% endif %}
 
 {% set FIREWALL_MERGED = salt['pillar.get']('firewall', FIREWALL_DEFAULT.firewall, merge=True) %}
