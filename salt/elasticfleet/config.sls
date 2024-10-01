@@ -79,6 +79,7 @@ soresourcesrepoconfig:
     - name: safe.directory
     - value: /nsm/securityonion-resources
     - global: True
+    - user: socore
     
 {% if not GLOBALS.airgap %}
 soresourcesrepoclone:
@@ -87,6 +88,7 @@ soresourcesrepoclone:
     - target: /nsm/securityonion-resources
     - rev: 'main'
     - depth: 1
+    - force_reset: True
 {% endif %}
 
 elasticdefendconfdir:
