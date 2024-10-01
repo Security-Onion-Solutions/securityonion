@@ -79,6 +79,7 @@ soresourcesrepoconfig:
     - name: safe.directory
     - value: /nsm/securityonion-resources
     - global: True
+    - user: socore
     
 {% if not GLOBALS.airgap %}
 soresourcesrepoclone:
