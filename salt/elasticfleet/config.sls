@@ -88,6 +88,7 @@ soresourcesrepoclone:
     - target: /nsm/securityonion-resources
     - rev: 'main'
     - depth: 1
+    - force_reset: True
 {% endif %}
 
 elasticdefendconfdir:
