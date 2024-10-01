@@ -6,14 +6,15 @@
 # Elastic License 2.0.
 
 """
-Script to modify the NetworkManager config within a qcow2 image.
+Script to modify the NetworkManager config within a QCOW2 image.
 
 Usage:
-    python so-qcow2-modify-network.py -v <vm_name> [-c <cpu_count>] [-m <memory_amount>] [-p <pci_id>]
+    python so-qcow2-modify-network.py -I <qcow2_image_path> -i <interface> (--dhcp4 | --static4 --ip4 <ip_address> --gw4 <gateway>) [--dns4 <dns_servers>] [--search4 <search_domain>]
 
-Example:
-    python so-qcow2-modify-network.py -I path_to_image -i interface --static4 --ip4 192.168.1.10 --gw4 192.168.1.1 --dns4 192.168.1.1,8.8.8.8 --seearch4 example.local
-    python so-qcow2-modify-network.py -I path_to_image -i interface --dhcp4
+Examples:
+    python so-qcow2-modify-network.py -I path_to_image -i eth0 --static4 --ip4 192.168.1.10/24 --gw4 192.168.1.1 --dns4 192.168.1.1,8.8.8.8 --search4 example.local
+
+    python so-qcow2-modify-network.py -I path_to_image -i eth0 --dhcp4
 """
 
 import argparse
@@ -25,28 +26,10 @@ import os
 import ipaddress
 import configparser
 from io import StringIO
+from so_logging_utils import setup_logging
+
 
 NETWORK_CONFIG_DIR = "/etc/NetworkManager/system-connections"
-
-def setup_logging():
-    logger = logging.getLogger('so-qcow2-modify-network')
-    logger.setLevel(logging.INFO)
-
-    # Create handlers
-    c_handler = logging.StreamHandler()
-    f_handler = logging.FileHandler('/opt/so/log/hypervisor/so-qcow2-modify-network.log')
-    c_handler.setLevel(logging.INFO)
-    f_handler.setLevel(logging.INFO)
-
-    # Create formatter and add it to handlers
-    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-    c_handler.setFormatter(formatter)
-    f_handler.setFormatter(formatter)
-
-    # Add handlers to the logger
-    logger.addHandler(c_handler)
-    logger.addHandler(f_handler)
-    return logger
 
 def validate_ip_address(ip_str, description="IP address"):
     try:
@@ -179,7 +162,13 @@ def parse_arguments():
 
 def main():
     try:
-        logger = setup_logging()
+        # Set up logging using the so_logging_utils library
+        logger = setup_logging(
+            logger_name='so-qcow2-modify-network',
+            log_file_path='/opt/so/log/hypervisor/so-qcow2-modify-network.log',
+            log_level=logging.INFO,
+            format_str='%(asctime)s - %(levelname)s - %(message)s'
+        )
         args = parse_arguments()
 
         validate_interface_name(args.interface)

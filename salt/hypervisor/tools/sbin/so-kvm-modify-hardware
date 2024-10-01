@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/python3
 
 # Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
 # or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
@@ -16,31 +16,12 @@ Example:
 """
 
 import argparse
-import logging
 import sys
-import time
 import libvirt
+import logging
 import xml.etree.ElementTree as ET
-
-def setup_logging():
-    logger = logging.getLogger('so-kvm-modify-hardware')
-    logger.setLevel(logging.INFO)
-
-    # Create handlers
-    c_handler = logging.StreamHandler()
-    f_handler = logging.FileHandler('/opt/so/log/hypervisor/so-kvm-modify-hardware.log')
-    c_handler.setLevel(logging.INFO)
-    f_handler.setLevel(logging.INFO)
-
-    # Create formatter and add it to handlers
-    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-    c_handler.setFormatter(formatter)
-    f_handler.setFormatter(formatter)
-
-    # Add handlers to the logger
-    logger.addHandler(c_handler)
-    logger.addHandler(f_handler)
-    return logger
+from so_vm_utils import start_vm, stop_vm
+from so_logging_utils import setup_logging
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Modify hardware parameters of a KVM virtual machine.')
@@ -51,23 +32,6 @@ def parse_arguments():
     parser.add_argument('-s', '--start', action='store_true', help='Start the VM after modification.')
     args = parser.parse_args()
     return args
-
-def stop_vm(conn, vm_name, logger):
-    try:
-        dom = conn.lookupByName(vm_name)
-        if dom.isActive():
-            logger.info(f"Shutting down VM '{vm_name}'...")
-            dom.shutdown()
-            # Wait for the VM to shut down
-            while dom.isActive():
-                time.sleep(1)
-            logger.info(f"VM '{vm_name}' has been stopped.")
-        else:
-            logger.info(f"VM '{vm_name}' is already stopped.")
-        return dom
-    except libvirt.libvirtError as e:
-        logger.error(f"Failed to stop VM '{vm_name}': {e}")
-        sys.exit(1)
 
 def modify_vm(dom, cpu_count, memory_amount, pci_id, logger):
     try:
@@ -136,17 +100,8 @@ def redefine_vm(conn, new_xml_desc, logger):
         logger.error(f"Failed to redefine VM: {e}")
         sys.exit(1)
 
-def start_vm(dom, logger):
-    try:
-        dom.create()
-        logger.info("VM started successfully.")
-    except libvirt.libvirtError as e:
-        logger.error(f"Failed to start VM: {e}")
-        sys.exit(1)
-
 def main():
     try:
-        logger = setup_logging()
         args = parse_arguments()
 
         vm_name = args.vm
@@ -154,6 +109,14 @@ def main():
         memory_amount = args.memory
         pci_id = args.pci
         start_vm_flag = args.start
+
+        # Set up logging using the so_logging_utils library
+        logger = setup_logging(
+            logger_name='so-kvm-modify-hardware',
+            log_file_path='/opt/so/log/hypervisor/so-kvm-modify-hardware.log',
+            log_level=logging.INFO,
+            format_str='%(asctime)s - %(levelname)s - %(message)s'
+        )
 
         # Connect to libvirt
         try:
