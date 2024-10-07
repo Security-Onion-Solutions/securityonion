@@ -69,7 +69,7 @@ kafka_client_crt_perms:
     - group: 939
 {%   endif %}
 
-{%   if GLOBALS.role in ['so-manager', 'so-managersearch','so-receiver', 'so-standalone'] %}
+{%   if GLOBALS.role in ['so-manager', 'so-managersearch','so-receiver', 'so-standalone', 'so-fleet'] %}
 kafka_key:
   x509.private_key_managed:
     - name: /etc/pki/kafka.key

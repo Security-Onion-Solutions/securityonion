@@ -265,6 +265,7 @@ base:
     - elasticfleet
     - elasticfleet.install_agent_grid
     - schedule
+    - kafka
 
   '*_desktop and G@saltversion:{{saltversion}}':
     - ssl

@@ -8,6 +8,7 @@
 {% set KAFKA_NODES_PILLAR = salt['pillar.get']('kafka:nodes') %}
 {% set KAFKA_PASSWORD = salt['pillar.get']('kafka:config:password') %}
 {% set KAFKA_TRUSTPASS = salt['pillar.get']('kafka:config:trustpass') %}
+{% set DEFAULT_BROKER_LISTENER = 'BROKER://' + GLOBALS.node_ip + ':9092' %}
 
 {# Create list of KRaft controllers #}
 {% set controllers = [] %}
@@ -28,7 +29,7 @@
 {# Generate server.properties for 'broker' , 'controller', 'broker,controller' node types
     anything above this line is a configuration needed for ALL Kafka nodes #}
 {% if node_type == 'broker' %}
-{%   do KAFKAMERGED.config.broker.update({'advertised_x_listeners': 'BROKER://'+ GLOBALS.node_ip +':9092' }) %}
+{%   do KAFKAMERGED.config.broker.update({'advertised_x_listeners': DEFAULT_BROKER_LISTENER}) %}
 {%   do KAFKAMERGED.config.broker.update({'controller_x_quorum_x_voters': kafka_controller_quorum_voters }) %}
 {%   do KAFKAMERGED.config.broker.update({'node_x_id': salt['pillar.get']('kafka:nodes:'+ GLOBALS.hostname +':nodeid') }) %}
 {%   do KAFKAMERGED.config.broker.update({'ssl_x_keystore_x_password': KAFKA_PASSWORD }) %}
@@ -50,7 +51,7 @@
 
 {# Kafka nodes of this type are not recommended for use outside of development / testing. #}
 {% if node_type == 'broker,controller' %}
-{%   do KAFKAMERGED.config.broker.update({'advertised_x_listeners': 'BROKER://'+ GLOBALS.node_ip +':9092' }) %}
+{%   do KAFKAMERGED.config.broker.update({'advertised_x_listeners': DEFAULT_BROKER_LISTENER }) %}
 {%   do KAFKAMERGED.config.broker.update({'controller_x_listener_x_names': KAFKAMERGED.config.controller.controller_x_listener_x_names }) %}
 {%   do KAFKAMERGED.config.broker.update({'controller_x_quorum_x_voters': kafka_controller_quorum_voters }) %}
 {%   do KAFKAMERGED.config.broker.update({'node_x_id': salt['pillar.get']('kafka:nodes:'+ GLOBALS.hostname +':nodeid') }) %}

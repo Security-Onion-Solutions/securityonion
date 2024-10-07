@@ -306,6 +306,10 @@ base:
     - elasticfleet.adv_elasticfleet
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
+    - kafka.nodes
+    - kafka.soc_kafka
+    - kafka.adv_kafka
+    - soc.license
 
   '*_desktop':
     - minions.{{ grains.id }}
