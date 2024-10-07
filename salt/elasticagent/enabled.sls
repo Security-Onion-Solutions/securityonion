@@ -8,7 +8,6 @@
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 {%   from 'docker/docker.map.jinja' import DOCKER %}
 
-
 include:
   - elasticagent.config
   - elasticagent.sostatus

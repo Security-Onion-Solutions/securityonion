@@ -23,6 +23,9 @@ else
   echo "This is the initial template load"
 fi
 
+# If soup is running, ignore errors
+pgrep soup > /dev/null && should_exit_on_failure=0
+
 load_failures=0
 
 load_template() {
@@ -30,7 +33,7 @@ load_template() {
   file=$2
 
   echo "Loading template file $i" 
-  if ! retry 3 5 "so-elasticsearch-query $uri -d@$file -XPUT" "{\"acknowledged\":true}"; then
+  if ! retry 3 1 "so-elasticsearch-query $uri -d@$file -XPUT" "{\"acknowledged\":true}"; then
     if [[ $should_exit_on_failure -eq 1 ]]; then
       fail "Could not load template file: $file"
     else

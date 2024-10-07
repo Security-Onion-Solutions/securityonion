@@ -8,12 +8,6 @@
 # Elastic agent is not managed by salt. Because of this we must store this base information in a 
 # script that accompanies the soup system. Since so-common is one of those special soup files, 
 # and since this same logic is required during installation, it's included in this file.
-ELASTIC_AGENT_TARBALL_VERSION="8.14.3"
-ELASTIC_AGENT_URL="https://repo.securityonion.net/file/so-repo/prod/2.4/elasticagent/elastic-agent_SO-$ELASTIC_AGENT_TARBALL_VERSION.tar.gz"
-ELASTIC_AGENT_MD5_URL="https://repo.securityonion.net/file/so-repo/prod/2.4/elasticagent/elastic-agent_SO-$ELASTIC_AGENT_TARBALL_VERSION.md5"
-ELASTIC_AGENT_FILE="/nsm/elastic-fleet/artifacts/elastic-agent_SO-$ELASTIC_AGENT_TARBALL_VERSION.tar.gz"
-ELASTIC_AGENT_MD5="/nsm/elastic-fleet/artifacts/elastic-agent_SO-$ELASTIC_AGENT_TARBALL_VERSION.md5"
-ELASTIC_AGENT_EXPANSION_DIR=/nsm/elastic-fleet/artifacts/beats/elastic-agent
 
 DEFAULT_SALT_DIR=/opt/so/saltstack/default
 DOC_BASE_URL="https://docs.securityonion.net/en/2.4"
@@ -174,6 +168,46 @@ check_salt_minion_status() {
 	return $status
 }
 
+# Compare es versions and return the highest version
+compare_es_versions() {
+    # Save the original IFS
+    local OLD_IFS="$IFS"
+
+    IFS=.
+    local i ver1=($1) ver2=($2)
+
+    # Restore the original IFS
+    IFS="$OLD_IFS"
+
+    # Determine the maximum length between the two version arrays
+    local max_len=${#ver1[@]}
+    if [[ ${#ver2[@]} -gt $max_len ]]; then
+        max_len=${#ver2[@]}
+    fi
+
+    # Compare each segment of the versions
+    for ((i=0; i<max_len; i++)); do
+		# If a segment in ver1 or ver2 is missing, set it to 0
+        if [[ -z ${ver1[i]} ]]; then
+            ver1[i]=0
+        fi
+        if [[ -z ${ver2[i]} ]]; then
+            ver2[i]=0
+        fi
+        if ((10#${ver1[i]} > 10#${ver2[i]})); then
+            echo "$1"
+            return 0
+        fi
+        if ((10#${ver1[i]} < 10#${ver2[i]})); then
+            echo "$2"
+            return 0
+        fi
+    done
+
+    echo "$1"  # If versions are equal, return either
+    return 0
+}
+
 copy_new_files() {
   # Copy new files over to the salt dir
   cd $UPDATE_DIR
@@ -263,17 +297,33 @@ fail() {
 	exit 1
 }
 
-get_random_value() {
-	length=${1:-20}
-	head -c 5000 /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w $length | head -n 1
-}
-
 get_agent_count() {
 	if [ -f /opt/so/log/agents/agentstatus.log ]; then
 		AGENTCOUNT=$(cat /opt/so/log/agents/agentstatus.log | grep -wF active | awk '{print $2}')
 	else
 		AGENTCOUNT=0
 	fi
+}
+
+get_elastic_agent_vars() {
+	local path="${1:-/opt/so/saltstack/default}"
+	local defaultsfile="${path}/salt/elasticsearch/defaults.yaml"
+
+	if [ -f "$defaultsfile" ]; then
+		ELASTIC_AGENT_TARBALL_VERSION=$(egrep " +version: " $defaultsfile | awk -F: '{print $2}' | tr -d '[:space:]')
+		ELASTIC_AGENT_URL="https://repo.securityonion.net/file/so-repo/prod/2.4/elasticagent/elastic-agent_SO-$ELASTIC_AGENT_TARBALL_VERSION.tar.gz"
+		ELASTIC_AGENT_MD5_URL="https://repo.securityonion.net/file/so-repo/prod/2.4/elasticagent/elastic-agent_SO-$ELASTIC_AGENT_TARBALL_VERSION.md5"
+		ELASTIC_AGENT_FILE="/nsm/elastic-fleet/artifacts/elastic-agent_SO-$ELASTIC_AGENT_TARBALL_VERSION.tar.gz"
+		ELASTIC_AGENT_MD5="/nsm/elastic-fleet/artifacts/elastic-agent_SO-$ELASTIC_AGENT_TARBALL_VERSION.md5"
+		ELASTIC_AGENT_EXPANSION_DIR=/nsm/elastic-fleet/artifacts/beats/elastic-agent
+	else
+		fail "Could not find salt/elasticsearch/defaults.yaml"
+	fi
+}
+
+get_random_value() {
+	length=${1:-20}
+	head -c 5000 /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w $length | head -n 1
 }
 
 gpg_rpm_import() {
@@ -627,6 +677,8 @@ has_uppercase() {
 }
 
 update_elastic_agent() {
+	local path="${1:-/opt/so/saltstack/default}"
+	get_elastic_agent_vars "$path"
 	echo "Checking if Elastic Agent update is necessary..."
 	download_and_verify "$ELASTIC_AGENT_URL" "$ELASTIC_AGENT_MD5_URL" "$ELASTIC_AGENT_FILE" "$ELASTIC_AGENT_MD5" "$ELASTIC_AGENT_EXPANSION_DIR"
 }

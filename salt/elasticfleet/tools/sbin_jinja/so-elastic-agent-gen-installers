@@ -13,6 +13,9 @@
 
 LOG="/opt/so/log/elasticfleet/so-elastic-agent-gen-installers.log"
 
+# get the variables needed such as ELASTIC_AGENT_TARBALL_VERSION
+get_elastic_agent_vars
+
 # Check to see if we are already running
 NUM_RUNNING=$(pgrep -cf "/bin/bash /sbin/so-elastic-agent-gen-installers")
 [ "$NUM_RUNNING" -gt 1 ] && echo "$(date) - $NUM_RUNNING gen installers script processes running...exiting." >>$LOG && exit 0
@@ -35,6 +38,7 @@ OSARCH=( "linux-x86_64" "windows-x86_64" "darwin-x86_64" "darwin-aarch64" )
 printf  "\n### Creating a temp directory at /nsm/elastic-agent-workspace\n"
 rm -rf /nsm/elastic-agent-workspace
 mkdir -p /nsm/elastic-agent-workspace
+
 
 printf "\n### Extracting outer tarball and then each individual tarball/zip\n"
 tar -xf /nsm/elastic-fleet/artifacts/elastic-agent_SO-$ELASTIC_AGENT_TARBALL_VERSION.tar.gz -C /nsm/elastic-agent-workspace/

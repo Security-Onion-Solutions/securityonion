@@ -112,6 +112,10 @@ update_docker_containers() {
     container_list
   fi
 
+  # all the images using ELASTICSEARCHDEFAULTS.elasticsearch.version
+  # does not include so-elastic-fleet since that container uses so-elastic-agent image
+  local IMAGES_USING_ES_VERSION=("so-elasticsearch")
+
   rm -rf $SIGNPATH >> "$LOG_FILE" 2>&1 
   mkdir -p $SIGNPATH >> "$LOG_FILE" 2>&1 
 
@@ -139,15 +143,36 @@ update_docker_containers() {
       $PROGRESS_CALLBACK $i
     fi
 
+    if [[ " ${IMAGES_USING_ES_VERSION[*]} " =~ [[:space:]]${i}[[:space:]] ]]; then
+      # this is an es container so use version defined in elasticsearch defaults.yaml
+      local UPDATE_DIR='/tmp/sogh/securityonion'
+      if [ ! -d "$UPDATE_DIR" ]; then
+        UPDATE_DIR=/securityonion
+      fi
+      local v1=0
+      local v2=0
+      if [[ -f "$UPDATE_DIR/salt/elasticsearch/defaults.yaml" ]]; then
+        v1=$(egrep " +version: " "$UPDATE_DIR/salt/elasticsearch/defaults.yaml" | awk -F: '{print $2}' | tr -d '[:space:]')
+      fi
+      if [[ -f "$DEFAULT_SALT_DIR/salt/elasticsearch/defaults.yaml" ]]; then
+        v2=$(egrep " +version: " "$DEFAULT_SALT_DIR/salt/elasticsearch/defaults.yaml" | awk -F: '{print $2}' | tr -d '[:space:]')
+      fi
+      local highest_es_version=$(compare_es_versions "$v1" "$v2")
+      local image=$i:$highest_es_version$IMAGE_TAG_SUFFIX
+      local sig_url=https://sigs.securityonion.net/es-$highest_es_version/$image.sig
+    else
+      # this is not an es container so use the so version for the version
+      local image=$i:$VERSION$IMAGE_TAG_SUFFIX
+      local sig_url=https://sigs.securityonion.net/$VERSION/$image.sig
+    fi
     # Pull down the trusted docker image
-    local image=$i:$VERSION$IMAGE_TAG_SUFFIX
     run_check_net_err \
     "docker pull $CONTAINER_REGISTRY/$IMAGEREPO/$image" \
     "Could not pull $image, please ensure connectivity to $CONTAINER_REGISTRY" >> "$LOG_FILE" 2>&1 
     
     # Get signature
     run_check_net_err \
-    "curl --retry 5 --retry-delay 60 -A '$CURLTYPE/$CURRENTVERSION/$OS/$(uname -r)' https://sigs.securityonion.net/$VERSION/$i:$VERSION$IMAGE_TAG_SUFFIX.sig --output $SIGNPATH/$image.sig" \
+    "curl --retry 5 --retry-delay 60 -A '$CURLTYPE/$CURRENTVERSION/$OS/$(uname -r)' $sig_url --output $SIGNPATH/$image.sig" \
     "Could not pull signature file for $image, please ensure connectivity to https://sigs.securityonion.net " \
     noretry >> "$LOG_FILE" 2>&1
     # Dump our hash values

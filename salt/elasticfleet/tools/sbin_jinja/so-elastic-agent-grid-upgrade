@@ -5,6 +5,7 @@
 # this file except in compliance with the Elastic License 2.0.
 
 . /usr/sbin/so-common
+{%- import_yaml 'elasticsearch/defaults.yaml' as ELASTICSEARCHDEFAULTS %}
 
 # Only run on Managers
 if ! is_manager_node; then
@@ -27,10 +28,10 @@ OUTDATED_LIST=$(jq -r '.items | map(.id) | (tojson)'  <<<  "$RAW_JSON")
 
 if [ "$OUTDATED_LIST" != '[]' ]; then
    AGENTNUMBERS=$(jq -r '.total' <<< "$RAW_JSON")
-   printf "Initiating upgrades for $AGENTNUMBERS Agents to Elastic $ELASTIC_AGENT_TARBALL_VERSION...\n\n"
+   printf "Initiating upgrades for $AGENTNUMBERS Agents to Elastic {{ELASTICSEARCHDEFAULTS.elasticsearch.version}}...\n\n"
 
    # Generate updated JSON payload
-   JSON_STRING=$(jq -n --arg ELASTICVERSION $ELASTIC_AGENT_TARBALL_VERSION --arg UPDATELIST $OUTDATED_LIST '{"version": $ELASTICVERSION,"agents": $UPDATELIST }')
+   JSON_STRING=$(jq -n --arg ELASTICVERSION {{ELASTICSEARCHDEFAULTS.elasticsearch.version}} --arg UPDATELIST $OUTDATED_LIST '{"version": $ELASTICVERSION,"agents": $UPDATELIST }')
 
    # Update Node Agents
    curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "http://localhost:5601/api/fleet/agents/bulk_upgrade" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"

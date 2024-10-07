@@ -19,7 +19,7 @@ include:
 
 so-elasticsearch:
   docker_container.running:
-    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elasticsearch:{{ GLOBALS.so_version }}
+    - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elasticsearch:{{ ELASTICSEARCHMERGED.version }}
     - hostname: elasticsearch
     - name: so-elasticsearch
     - user: elasticsearch
