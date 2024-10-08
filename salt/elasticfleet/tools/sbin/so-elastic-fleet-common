@@ -102,6 +102,14 @@ elastic_fleet_package_is_installed() {
     curl -s -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X GET -H 'kbn-xsrf: true' "localhost:5601/api/fleet/epm/packages/$PACKAGE" | jq -r '.item.status'
 }
 
+elastic_fleet_agent_policy_ids() {
+    curl -s -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X GET "localhost:5601/api/fleet/agent_policies" | jq -r .items[].id
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to retrieve agent policies."
+        exit 1
+    fi
+}
+
 elastic_fleet_agent_policy_names() {
     curl -s -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X GET "localhost:5601/api/fleet/agent_policies" | jq -r .items[].name
     if [ $? -ne 0 ]; then
