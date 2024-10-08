@@ -23,7 +23,7 @@ def modify_network_config(image, interface, mode, ip4=None, gw4=None, dns4=None,
     :param image: Path to the QCOW2 image.
     :param interface: Network interface to modify (e.g., 'eth0').
     :param mode: 'dhcp4' or 'static4'.
-    :param ip4: IPv4 address with CIDR notation (e.g., '192.168.1.100/24'). Required for static configuration.
+    :param ip4: IPv4 address with CIDR notation (e.g., '192.168.1.10/24'). Required for static configuration.
     :param gw4: IPv4 gateway (e.g., '192.168.1.1'). Required for static configuration.
     :param dns4: Comma-separated list of IPv4 DNS servers (e.g., '8.8.8.8,8.8.4.4').
     :param search4: DNS search domain for IPv4.
@@ -34,11 +34,11 @@ def modify_network_config(image, interface, mode, ip4=None, gw4=None, dns4=None,
 
     .. code-block:: bash
 
-        salt '*' qcow2.modify_network_config image='/path/to/image.qcow2' interface='eth0' mode='static4' ip4='192.168.1.100/24' gw4='192.168.1.1' dns4='8.8.8.8,8.8.4.4' search4='example.com'
+        salt '*' qcow2.modify_network_config image='/path/to/image.qcow2' interface='eth0' mode='static4' ip4='192.168.1.10/24' gw4='192.168.1.1' dns4='8.8.8.8,8.8.4.4' search4='example.local'
 
     '''
 
-    cmd = ['/usr/sbin/so-qcow2-modify-network.py', '-I', image, '-i', interface]
+    cmd = ['/usr/sbin/so-qcow2-modify-network', '-I', image, '-i', interface]
 
     if mode.lower() == 'dhcp4':
         cmd.append('--dhcp4')
