@@ -2263,13 +2263,14 @@ soc:
             - name: "Detections with Overrides"
               query: "_exists_:so_detection.overrides | groupby so_detection.language | groupby so_detection.ruleset so_detection.isEnabled"
               description: Show Detections that have Overrides
-          detectionEngineStatusQueries:
+          detectionEngineStatusQueries: |
             suricata:
-              IntegrityFailure: 'tags:so-soc AND soc.fields.error: "integrity check failed; discrepancies found" AND soc.fields.detectionEngine:"suricata"'
+              default:
+              IntegrityFailure: 'event.action: "integrity check failed" AND soc.fields.detectionEngine:"suricata" | table event.dataset soc.fields.deployedButNotEnabledCount soc.fields.enabledButNotDeployedCount soc.fields.syncId'
             elastalert:
-              IntegrityFailure: 'tags:so-soc AND soc.fields.error: "integrity check failed; discrepancies found" AND soc.fields.detectionEngine:"elastalert"'
+              IntegrityFailure: 'event.action: "integrity check failed" AND soc.fields.detectionEngine:"elastalert" | table event.dataset soc.fields.deployedButNotEnabledCount soc.fields.enabledButNotDeployedCount soc.fields.syncId'
             strelka:
-              IntegrityFailure: 'tags:so-soc AND soc.fields.error: "integrity check failed; discrepancies found" AND soc.fields.detectionEngine:"strelka"'
+              IntegrityFailure: 'event.action: "integrity check failed" AND soc.fields.detectionEngine:"strelka" | table event.dataset soc.fields.deployedButNotEnabledCount soc.fields.enabledButNotDeployedCount soc.fields.syncId'
         detection:
           showUnreviewedAiSummaries: false
           presets:
