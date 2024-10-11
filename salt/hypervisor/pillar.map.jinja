@@ -1,0 +1,29 @@
+{% set HYPERVISORHOSTS = salt['pillar.get']('hypervisor:hosts', {}) %}
+
+{% import_yaml 'setup/virt/sensor.yaml' as SENSOR %}
+{% import_yaml 'setup/virt/searchnode.yaml' as SEARCHNODE %}
+
+{% set vars = {
+     'sensor': SENSOR,
+     'searchnode': SEARCHNODE
+} %}
+
+{% for host, guestDetails in HYPERVISORHOSTS.items() %}
+{%   if guestDetails['add_guest'] | length > 0 %}
+{%     for newGuest in guestDetails['add_guest'] %}
+{%       set indx = guestDetails['add_guest'].index(newGuest) %}
+{%       do guestDetails['add_guest'].pop(indx) %}
+{%       set NODETYPE = newGuest.split('_') | last %}
+{%       do guestDetails['guests'].update({
+           newGuest: {
+             'cpu': vars[NODETYPE].CPU,
+             'memory': vars[NODETYPE].MEMORY,
+             'disk': vars[NODETYPE].DISKS,
+             'copper': vars[NODETYPE].COPPER,
+             'sfp': vars[NODETYPE].SFP
+           }
+}) %}
+
+{%     endfor %}
+{%   endif %}
+{% endfor %}
