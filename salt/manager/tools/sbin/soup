@@ -1081,9 +1081,12 @@ apply_hotfix() {
 }
 
 failed_soup_restore_items() {
-  systemctl_func "start" "$cron_service_name"
-  systemctl_func "start" "salt-master"
-  systemctl_func "start" "salt-minion"
+  local services=("$cron_service_name", "salt-master", "salt-minion")
+  for SERVICE_NAME in "${services[@]}"; do
+    if ! systemctl is-active --quiet "$SERVICE_NAME"; then
+      systemctl_func "start" "$SERVICE_NAME"
+    fi
+  done
   enable_highstate
   masterunlock
 }
