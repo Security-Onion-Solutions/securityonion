@@ -791,6 +791,7 @@ create_manager_pillars() {
 	redis_pillar
 	idstools_pillar
 	kratos_pillar
+	hydra_pillar
 	soc_pillar
 	idh_pillar
 	influxdb_pillar
@@ -1108,6 +1109,7 @@ generate_passwords(){
   INFLUXTOKEN=$(head -c 64 /dev/urandom | base64 --wrap=0)
   SENSORONIKEY=$(get_random_value)
   KRATOSKEY=$(get_random_value)
+  HYDRAKEY=$(get_random_value)
   REDISPASS=$(get_random_value)
   SOCSRVKEY=$(get_random_value 64)
   IMPORTPASS=$(get_random_value)
@@ -1303,6 +1305,18 @@ kratos_pillar() {
 		"" > "$kratos_pillar_file"
 }
 
+hydra_pillar() {
+	title "Create the Hydra pillar file"
+	touch $adv_hydra_pillar_file
+	printf '%s\n'\
+		"hydra:"\
+		"  config:"\
+		"    secrets:"\
+		"      system:"\
+		"        - '$HYDRAKEY'"\
+		"" > "$hydra_pillar_file"
+}
+
 create_global() {
 	title "Creating the global.sls"
 	touch $adv_global_pillar_file
@@ -1404,10 +1418,10 @@ make_some_dirs() {
 	mkdir -p $local_salt_dir/salt/firewall/portgroups
 	mkdir -p $local_salt_dir/salt/firewall/ports
 
-	for THEDIR in bpf pcap elasticsearch ntp firewall redis backup influxdb strelka sensoroni soc docker zeek suricata nginx telegraf logstash soc manager kratos idstools idh elastalert stig global kafka;do
-	mkdir -p $local_salt_dir/pillar/$THEDIR
-	touch $local_salt_dir/pillar/$THEDIR/adv_$THEDIR.sls
-	touch $local_salt_dir/pillar/$THEDIR/soc_$THEDIR.sls
+	for THEDIR in bpf pcap elasticsearch ntp firewall redis backup influxdb strelka sensoroni soc docker zeek suricata nginx telegraf logstash soc manager kratos hydra idstools idh elastalert stig global kafka;do
+		mkdir -p $local_salt_dir/pillar/$THEDIR
+		touch $local_salt_dir/pillar/$THEDIR/adv_$THEDIR.sls
+		touch $local_salt_dir/pillar/$THEDIR/soc_$THEDIR.sls
 	done
 }
 
@@ -1639,6 +1653,7 @@ reinstall_init() {
 		# Backup (and erase) directories in /nsm to prevent app errors
 		backup_dir /nsm/mysql "$date_string"
 		backup_dir /nsm/kratos "$date_string"
+		backup_dir /nsm/hydra "$date_string"
 		backup_dir /nsm/influxdb "$date_string"
 
 		# Uninstall local Elastic Agent, if installed

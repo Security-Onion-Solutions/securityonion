@@ -47,6 +47,8 @@ base:
     - kibana.adv_kibana
     - kratos.soc_kratos
     - kratos.adv_kratos
+    - hydra.soc_hydra
+    - hydra.adv_hydra
     - redis.nodes
     - redis.soc_redis
     - redis.adv_redis
@@ -96,6 +98,7 @@ base:
     - kibana.secrets
     {% endif %}
     - kratos.soc_kratos
+    - kratos.adv_kratos
     - elasticsearch.soc_elasticsearch
     - elasticsearch.adv_elasticsearch
     - elasticfleet.soc_elasticfleet
@@ -113,8 +116,8 @@ base:
     - kibana.adv_kibana
     - strelka.soc_strelka
     - strelka.adv_strelka
-    - kratos.soc_kratos
-    - kratos.adv_kratos
+    - hydra.soc_hydra
+    - hydra.adv_hydra
     - redis.soc_redis
     - redis.adv_redis
     - influxdb.soc_influxdb
@@ -149,6 +152,8 @@ base:
     - idstools.adv_idstools
     - kratos.soc_kratos
     - kratos.adv_kratos
+    - hydra.soc_hydra
+    - hydra.adv_hydra
     - redis.nodes
     - redis.soc_redis
     - redis.adv_redis
@@ -262,6 +267,7 @@ base:
     - kibana.secrets
     {% endif %}
     - kratos.soc_kratos
+    - kratos.adv_kratos
     - elasticsearch.soc_elasticsearch
     - elasticsearch.adv_elasticsearch
     - elasticfleet.soc_elasticfleet
@@ -277,8 +283,8 @@ base:
     - kibana.adv_kibana
     - backup.soc_backup
     - backup.adv_backup
-    - kratos.soc_kratos
-    - kratos.adv_kratos
+    - hydra.soc_hydra
+    - hydra.adv_hydra
     - redis.soc_redis
     - redis.adv_redis
     - influxdb.soc_influxdb

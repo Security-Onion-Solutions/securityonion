@@ -61,6 +61,7 @@ base:
     - influxdb
     - soc
     - kratos
+    - hydra
     - sensoroni
     - telegraf
     - firewall
@@ -90,6 +91,7 @@ base:
     - strelka.manager
     - soc
     - kratos
+    - hydra
     - firewall
     - manager
     - sensoroni
@@ -122,6 +124,7 @@ base:
     - influxdb
     - soc
     - kratos
+    - hydra
     - firewall
     - sensoroni
     - telegraf
@@ -168,6 +171,7 @@ base:
     - strelka.manager
     - soc
     - kratos
+    - hydra
     - firewall
     - manager
     - sensoroni
@@ -219,6 +223,7 @@ base:
     - strelka.manager
     - soc
     - kratos
+    - hydra
     - sensoroni
     - telegraf
     - firewall
