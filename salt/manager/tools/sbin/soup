@@ -404,6 +404,7 @@ preupgrade_changes() {
     [[ "$INSTALLEDVERSION" == 2.4.80 ]] && up_to_2.4.90
     [[ "$INSTALLEDVERSION" == 2.4.90 ]] && up_to_2.4.100
     [[ "$INSTALLEDVERSION" == 2.4.100 ]] && up_to_2.4.110
+    [[ "$INSTALLEDVERSION" == 2.4.110 ]] && up_to_2.4.120
     true
 }
 
@@ -425,6 +426,7 @@ postupgrade_changes() {
     [[ "$POSTVERSION"  == 2.4.80 ]] && post_to_2.4.90
     [[ "$POSTVERSION"  == 2.4.90 ]] && post_to_2.4.100
     [[ "$POSTVERSION"  == 2.4.100 ]] && post_to_2.4.110
+    [[ "$POSTVERSION"  == 2.4.110 ]] && post_to_2.4.120
     true
 }
 
@@ -515,6 +517,11 @@ post_to_2.4.100() {
 post_to_2.4.110() {
   echo "Nothing to apply"
   POSTVERSION=2.4.110
+}
+
+post_to_2.4.120() {
+  echo "Nothing to apply"
+  POSTVERSION=2.4.120
 }
 
 repo_sync() {
@@ -703,6 +710,29 @@ up_to_2.4.110() {
   echo "Nothing to do for 2.4.110"
 
   INSTALLEDVERSION=2.4.110
+}
+
+up_to_2.4.120() {
+  echo "Nothing to do for 2.4.120"
+
+  add_hydra_pillars
+
+  INSTALLEDVERSION=2.4.120
+}
+
+add_hydra_pillars() {
+  mkdir -p /opt/so/saltstack/local/pillar/hydra
+  touch /opt/so/saltstack/local/pillar/hydra/soc_hydra.sls
+  chmod 660 /opt/so/saltstack/local/pillar/hydra/soc_hydra.sls
+  touch /opt/so/saltstack/local/pillar/hydra/adv_hydra.sls
+  HYDRAKEY=$(get_random_value)
+	printf '%s\n'\
+		"hydra:"\
+		"  config:"\
+		"    secrets:"\
+		"      system:"\
+		"        - '$HYDRAKEY'"\
+		"" > /opt/so/saltstack/local/pillar/hydra/soc_hydra.sls
 }
 
 add_detection_test_pillars() {
