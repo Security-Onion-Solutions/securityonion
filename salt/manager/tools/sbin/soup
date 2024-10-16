@@ -19,6 +19,8 @@ SOUP_LOG=/root/soup.log
 WHATWOULDYOUSAYYAHDOHERE=soup
 whiptail_title='Security Onion UPdater'
 NOTIFYCUSTOMELASTICCONFIG=false
+TOPFILE=/opt/so/saltstack/default/salt/top.sls
+BACKUPTOPFILE=/opt/so/saltstack/default/salt/top.sls.backup
 # used to display messages to the user at the end of soup
 declare -a FINAL_MESSAGE_QUEUE=()
 
@@ -32,10 +34,7 @@ check_err() {
   if [[ $exit_code -ne 0 ]]; then
 
     set +e
-    systemctl_func "start" "$cron_service_name"
-    systemctl_func "start" "salt-master"
-    systemctl_func "start" "salt-minion"
-    enable_highstate
+    failed_soup_restore_items
 
     printf '%s' "Soup failed with error $exit_code: "
     case $exit_code in
@@ -347,8 +346,6 @@ highstate() {
 
 masterlock() {
   echo "Locking Salt Master"
-  TOPFILE=/opt/so/saltstack/default/salt/top.sls
-  BACKUPTOPFILE=/opt/so/saltstack/default/salt/top.sls.backup
   mv -v $TOPFILE $BACKUPTOPFILE
   echo "base:" > $TOPFILE
   echo "  $MINIONID:" >> $TOPFILE
@@ -358,8 +355,12 @@ masterlock() {
 }
 
 masterunlock() {
-  echo "Unlocking Salt Master"
-  mv -v $BACKUPTOPFILE $TOPFILE
+  if [ -f $BACKUPTOPFILE ]; then
+    echo "Unlocking Salt Master"
+    mv -v $BACKUPTOPFILE $TOPFILE
+  else
+    echo "Salt Master does not need unlocked."
+  fi
 }
 
 phases_pillar_2_4_80() {
@@ -402,6 +403,7 @@ preupgrade_changes() {
     [[ "$INSTALLEDVERSION" == 2.4.70 ]] && up_to_2.4.80
     [[ "$INSTALLEDVERSION" == 2.4.80 ]] && up_to_2.4.90
     [[ "$INSTALLEDVERSION" == 2.4.90 ]] && up_to_2.4.100
+    [[ "$INSTALLEDVERSION" == 2.4.100 ]] && up_to_2.4.110
     true
 }
 
@@ -422,6 +424,7 @@ postupgrade_changes() {
     [[ "$POSTVERSION"  == 2.4.70 ]] && post_to_2.4.80
     [[ "$POSTVERSION"  == 2.4.80 ]] && post_to_2.4.90
     [[ "$POSTVERSION"  == 2.4.90 ]] && post_to_2.4.100
+    [[ "$POSTVERSION"  == 2.4.100 ]] && post_to_2.4.110
     true
 }
 
@@ -507,6 +510,11 @@ post_to_2.4.100() {
   echo "Regenerating Elastic Agent Installers"
   /sbin/so-elastic-agent-gen-installers
   POSTVERSION=2.4.100
+}
+
+post_to_2.4.110() {
+  echo "Nothing to apply"
+  POSTVERSION=2.4.110
 }
 
 repo_sync() {
@@ -690,6 +698,11 @@ up_to_2.4.100() {
   # Elastic Update for this release, so download Elastic Agent files
   determine_elastic_agent_upgrade
   INSTALLEDVERSION=2.4.100
+}
+up_to_2.4.110() {
+  echo "Nothing to do for 2.4.110"
+
+  INSTALLEDVERSION=2.4.110
 }
 
 add_detection_test_pillars() {
@@ -1079,6 +1092,16 @@ apply_hotfix() {
   fi
 }
 
+failed_soup_restore_items() {
+  local services=("$cron_service_name" "salt-master" "salt-minion")
+  for SERVICE_NAME in "${services[@]}"; do
+    if ! systemctl is-active --quiet "$SERVICE_NAME"; then
+      systemctl_func "start" "$SERVICE_NAME"
+    fi
+  done
+  enable_highstate
+  masterunlock
+}
 
 #upgrade salt to 3004.1
 #2_3_10_hotfix_1() {
@@ -1117,6 +1140,8 @@ main() {
   echo "Checking to see if this is a manager."
   echo ""
   require_manager
+
+  failed_soup_restore_items
 
   check_pillar_items
 
