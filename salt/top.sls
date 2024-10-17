@@ -12,6 +12,7 @@ base:
   '*':
     - cron.running
     - repo.client
+    - versionlock
     - ntp
     - schedule
     - logrotate
