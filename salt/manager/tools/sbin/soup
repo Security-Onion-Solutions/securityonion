@@ -404,6 +404,7 @@ preupgrade_changes() {
     [[ "$INSTALLEDVERSION" == 2.4.80 ]] && up_to_2.4.90
     [[ "$INSTALLEDVERSION" == 2.4.90 ]] && up_to_2.4.100
     [[ "$INSTALLEDVERSION" == 2.4.100 ]] && up_to_2.4.110
+    [[ "$INSTALLEDVERSION" == 2.4.110 ]] && up_to_2.4.120
     true
 }
 
@@ -425,6 +426,7 @@ postupgrade_changes() {
     [[ "$POSTVERSION"  == 2.4.80 ]] && post_to_2.4.90
     [[ "$POSTVERSION"  == 2.4.90 ]] && post_to_2.4.100
     [[ "$POSTVERSION"  == 2.4.100 ]] && post_to_2.4.110
+    [[ "$POSTVERSION"  == 2.4.110 ]] && post_to_2.4.120
     true
 }
 
@@ -515,6 +517,11 @@ post_to_2.4.100() {
 post_to_2.4.110() {
   echo "Nothing to apply"
   POSTVERSION=2.4.110
+}
+
+post_to_2.4.120() {
+  echo "Nothing to apply"
+  POSTVERSION=2.4.120
 }
 
 repo_sync() {
@@ -694,15 +701,25 @@ up_to_2.4.90() {
 
   INSTALLEDVERSION=2.4.90
 }
+
 up_to_2.4.100() {
   # Elastic Update for this release, so download Elastic Agent files
   determine_elastic_agent_upgrade
   INSTALLEDVERSION=2.4.100
 }
+
 up_to_2.4.110() {
   echo "Nothing to do for 2.4.110"
 
   INSTALLEDVERSION=2.4.110
+}
+
+up_to_2.4.120() {
+  # this is needed for the new versionlock state
+  mkdir /opt/so/saltstack/local/pillar/versionlock
+  touch /opt/so/saltstack/local/pillar/versionlock/adv_versionlock.sls /opt/so/saltstack/local/pillar/versionlock/soc_versionlock.sls
+
+  INSTALLEDVERSION=2.4.120
 }
 
 add_detection_test_pillars() {
