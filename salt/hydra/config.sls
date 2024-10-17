@@ -5,7 +5,7 @@
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
-{%   from "hydra/map.jinja" import hydraMERGED %}
+{%   from "hydra/map.jinja" import HYDRAMERGED %}
 
 hydradir:
   file.directory:
@@ -38,8 +38,9 @@ hydraconfig:
     - group: 928
     - mode: 600
     - template: jinja
+    - makedirs: True
     - defaults:
-        hydraMERGED: {{ hydraMERGED }}
+        HYDRAMERGED: {{ HYDRAMERGED }}
 
 {% else %}
 

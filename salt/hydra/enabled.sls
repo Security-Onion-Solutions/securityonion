@@ -54,10 +54,8 @@ so-hydra:
     {% endif %}
     - restart_policy: unless-stopped
     - watch:
-      - file: hydraschema
       - file: hydraconfig
     - require:
-      - file: hydraschema
       - file: hydraconfig
       - file: hydralogdir
       - file: hydradir
