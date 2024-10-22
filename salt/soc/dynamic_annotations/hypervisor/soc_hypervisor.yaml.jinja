@@ -1,0 +1,12 @@
+{% import_yaml 'soc/dynamic_annotations/hypervisor/hypervisor.yaml' as ANNOTATION %}
+{% set HYPERVISORS = salt['pillar.get']('hypervisor:nodes', {}) %}
+
+{% set TEMPLATE = ANNOTATION.hypervisor.hosts.pop('defaultHost') %}
+{# remove defaultGuest so that it is not shown in Grid Configuration UI #}
+{% do TEMPLATE['guests'].pop('defaultGuest') %}
+
+{% for hypervisor in HYPERVISORS.hypervisor %}
+{%   do ANNOTATION.hypervisor.hosts.update({hypervisor: TEMPLATE}) %}
+{% endfor %}
+
+{{ ANNOTATION | yaml(False) }}
