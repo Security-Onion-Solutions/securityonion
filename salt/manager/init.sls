@@ -48,7 +48,7 @@ yara_log_dir:
 {% if GLOBALS.os_family == 'RedHat' %}
 install_createrepo:
   pkg.installed:
-    - name: createrepo
+    - name: createrepo_c
 {% endif %}
 
 repo_conf_dir:
