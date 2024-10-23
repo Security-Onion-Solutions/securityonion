@@ -1110,6 +1110,7 @@ generate_passwords(){
   SENSORONIKEY=$(get_random_value)
   KRATOSKEY=$(get_random_value)
   HYDRAKEY=$(get_random_value)
+  HYDRASALT=$(get_random_value)
   REDISPASS=$(get_random_value)
   SOCSRVKEY=$(get_random_value 64)
   IMPORTPASS=$(get_random_value)
@@ -1308,12 +1309,18 @@ kratos_pillar() {
 hydra_pillar() {
 	title "Create the Hydra pillar file"
 	touch $adv_hydra_pillar_file
+	touch $hydra_pillar_file
+	chmod 660 $hydra_pillar_file
 	printf '%s\n'\
 		"hydra:"\
 		"  config:"\
 		"    secrets:"\
 		"      system:"\
 		"        - '$HYDRAKEY'"\
+        "    oidc:"\
+        "        subject_identifiers:"\
+        "            pairwise:"\
+        "                salt: '$HYDRASALT'"\
 		"" > "$hydra_pillar_file"
 }
 

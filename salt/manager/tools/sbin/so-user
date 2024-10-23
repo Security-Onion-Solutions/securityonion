@@ -136,6 +136,7 @@ bcryptRounds=${BCRYPT_ROUNDS:-12}
 elasticUsersFile=${ELASTIC_USERS_FILE:-/opt/so/saltstack/local/salt/elasticsearch/files/users}
 elasticRolesFile=${ELASTIC_ROLES_FILE:-/opt/so/saltstack/local/salt/elasticsearch/files/users_roles}
 socRolesFile=${SOC_ROLES_FILE:-/opt/so/conf/soc/soc_users_roles}
+clientRolesFile=${SOC_ROLES_FILE:-/opt/so/conf/soc/soc_client_roles}
 esUID=${ELASTIC_UID:-930}
 esGID=${ELASTIC_GID:-930}
 soUID=${SOCORE_UID:-939}
@@ -282,6 +283,18 @@ function ensureRoleFileExists() {
     fi
     mv "${rolesTmpFile}" "${socRolesFile}"
   fi
+
+  if [[ ! -f "$clientRolesFile" || ! -s "$clientRolesFile" ]]; then
+    # Generate the new client roles file
+    rolesTmpFile="${clientRolesFile}.tmp"
+    createFile "$rolesTmpFile" "$soUID" "$soGID"
+
+    if [[ -d "$clientRolesFile" ]]; then
+      echo "Removing invalid roles directory created by Docker"
+      rm -fr "$clientRolesFile"
+    fi
+    mv "${rolesTmpFile}" "${clientRolesFile}"
+  fi
 }
 
 function syncElasticSystemUser() {
@@ -373,6 +386,9 @@ function syncElastic() {
         sqlite3 -cmd ".timeout ${databaseTimeout}" "$databasePath" >> "$rolesTmpFile"
       [[ $? != 0 ]] && fail "Unable to read role identities from database"
     done < "$socRolesFile"
+
+    # Append the client roles
+    cat "$clientRolesFile" >> "$rolesTmpFile"
 
   else
     echo "Database file or soc roles file does not exist yet, skipping users export"

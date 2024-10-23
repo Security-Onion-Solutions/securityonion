@@ -16,6 +16,7 @@ sync_es_users:
       - /opt/so/saltstack/local/salt/elasticsearch/files/users
       - /opt/so/saltstack/local/salt/elasticsearch/files/users_roles
       - /opt/so/conf/soc/soc_users_roles
+      - /opt/so/conf/soc/soc_client_roles
     - show_changes: False
     - require:
       - docker_container: so-kratos

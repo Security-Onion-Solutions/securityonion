@@ -97,7 +97,7 @@ function manage_user() {
         response=$(echo "$password" | so-user "$op" --email "$email" --firstName "$firstName" --lastName "$lastName" --note "$note" --role "$role" --skip-sync)
         exit_code=$?
         ;;
-      add|enable|disable|delete)
+      enable|disable|delete)
         email=$(echo "$request" | jq -r .email)
         log "Performing user '$op' for user '$email'"
         response=$(so-user "$op" --email "$email" --skip-sync)
@@ -149,6 +149,82 @@ function manage_user() {
   if [[ exit_code -eq 0 ]]; then
     log "Successful command execution: $response"
     respond "$id" "true"
+  else
+    log "Unsuccessful command execution: $response ($exit_code)"
+    respond "$id" "false"
+  fi
+}
+
+function manage_client() {
+  id=$1
+  request=$2
+  op=$(echo "$request" | jq -r .operation)
+
+  webResponse="true"
+  max_tries=10
+  tries=0
+  while [[ $tries -lt $max_tries ]]; do
+    case "$op" in
+      add)
+        role=$(echo "$request" | jq -r .role)
+        name=$(echo "$request" | jq -r .name)
+        note=$(echo "$request" | jq -r .note)
+        log "Performing client '$op' for client with name '$name', note '$note' and role '$role'"
+        response=$(so-client "$op" --name "$name" --note "$note" --role "$role" --skip-sync)
+        webResponse=$resposne
+        exit_code=$?
+        ;;
+      delete)
+        id=$(echo "$request" | jq -r .id)
+        log "Performing client '$op' for client '$id'"
+        response=$(so-client "$op" --id "$id" --skip-sync)
+        exit_code=$?
+        ;;
+      addrole|delrole)
+        id=$(echo "$request" | jq -r .id)
+        role=$(echo "$request" | jq -r .role)
+        log "Performing '$op' for client '$id' with role '$role'"
+        response=$(so-client "$op" --id "$id" --role "$role" --skip-sync)
+        exit_code=$?
+        ;;
+      generate-secret)
+        id=$(echo "$request" | jq -r .id)
+        log "Performing '$op' operation for client '$id'"
+        response=$(so-client "$op" --id "$id" --skip-sync)
+        webResponse=$response
+        exit_code=$?
+        ;;
+      update)
+        id=$(echo "$request" | jq -r .id)
+        name=$(echo "$request" | jq -r .name)
+        note=$(echo "$request" | jq -r .note)
+        log "Performing '$op' update for client '$id' with name '$name', and note '$note'"
+        response=$(so-client "$op" --id "$id" --name "$name" --note "$note")
+        exit_code=$?
+        ;;
+      sync)
+        log "Performing '$op'"
+        response=$(so-user "$op")
+        exit_code=$?
+        ;;
+      *)
+        response="Unsupported client operation: $op"
+        exit_code=1
+        ;;
+    esac
+
+    tries=$((tries+1))
+    if [[ "$response" == "Another process is using so-user"* ]]; then
+      log "Retrying after brief delay to let so-user unlock ($tries/$max_tries)"
+      sleep 5
+    else
+      break
+    fi
+  done
+
+  if [[ exit_code -eq 0 ]]; then
+    log "Successful command execution"
+    respond "$id" "$webResponse"
   else
     log "Unsuccessful command execution: $response ($exit_code)"
     respond "$id" "false"
