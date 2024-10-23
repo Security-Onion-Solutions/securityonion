@@ -45,6 +45,12 @@ yara_log_dir:
       - user
       - group
 
+{% if GLOBALS.os_family == 'RedHat' %}
+install_createrepo:
+  pkg.installed:
+    - name: createrepo_c
+{% endif %}
+
 repo_conf_dir:
   file.directory:
     - name: /opt/so/conf/reposync
