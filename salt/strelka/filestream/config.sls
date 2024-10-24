@@ -99,12 +99,14 @@ filecheck.log:
     - name: /opt/so/log/strelka/filecheck.log
     - user: {{ filecheck_runas }}
     - group: {{ filecheck_runas }}
+    - replace: False
 
 filecheck_stdout.log:
   file.managed:
     - name: /opt/so/log/strelka/filecheck_stdout.log
     - user: {{ filecheck_runas }}
     - group: {{ filecheck_runas }}
+    - replace: False
 
 {% if GLOBALS.md_engine == 'ZEEK' %}
 

@@ -143,7 +143,9 @@ so-elastic-fleet-integrations:
 so-elastic-agent-grid-upgrade:
   cmd.run:
     - name: /usr/sbin/so-elastic-agent-grid-upgrade
-    - retry: True
+    - retry:
+        attempts: 12
+        interval: 5
 
 so-elastic-fleet-integration-upgrade:
   cmd.run:
