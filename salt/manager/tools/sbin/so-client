@@ -1,0 +1,331 @@
+#!/bin/bash
+
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+if [[ -f /usr/sbin/so-common ]]; then
+  source /usr/sbin/so-common
+else
+  source $(dirname $0)/../../../common/tools/sbin/so-common
+fi
+
+
+DEFAULT_ROLE=limited-auditor
+
+function usage() {
+  cat <<USAGE_EOF
+  Usage: $0 <operation> [supporting parameters]
+  
+  where <operation> is one of the following:
+  
+      list: Lists all client IDs and roles currently defined in the oauth2 system
+  
+       add: Adds a new client to the oauth2 system and outputs the generated secret
+            Required parameters: 
+              --name <name>
+            Optional parameters: 
+              --role <role>             (defaults to $DEFAULT_ROLE)
+              --note <note>             (defaults to blank)
+
+    delete: Deletes a client from the oauth2 system
+            Required parameters: 
+              --id <id>
+  
+   addrole: Grants a role to an existing client
+            Required parameters: 
+              --id <id>
+              --role <role>
+  
+   delrole: Removes a role from an existing client
+            Required parameters: 
+              --id <id>
+              --role <role>
+  
+  generate-secret: Regenerates a client's secret and outputs the new secret. 
+            Required parameters: 
+              --id <id>
+            Optional parameters: 
+              --skip-sync               (defers the Elastic sync until the next scheduled time)
+
+USAGE_EOF
+  exit 1
+}
+
+if [[ $# -lt 1 || $1 == --help || $1 == -h || $1 == -? || $1 == --h ]]; then
+  usage
+fi
+
+operation=$1
+shift
+
+while [[ $# -gt 0 ]]; do
+  param=$1
+  shift
+  case "$param" in
+    --id)
+      id=$1
+      shift
+      ;;
+    --role)
+      role=$1
+      shift
+      ;;
+    --name)
+      name=$1
+      shift
+      ;;
+    --note) 
+      note=$1
+      shift
+      ;;
+    *) 
+      echo "Encountered unexpected parameter: $param"
+      usage
+      ;;
+  esac
+done
+
+hydraUrl=${HYDRA_URL:-http://127.0.0.1:4445/admin}
+socRolesFile=${SOC_ROLES_FILE:-/opt/so/conf/soc/soc_clients_roles}
+soUID=${SOCORE_UID:-939}
+soGID=${SOCORE_GID:-939}
+
+function lock() {
+  # Obtain file descriptor lock
+  exec 99>/var/tmp/so-client.lock || fail "Unable to create lock descriptor; if the system was not shutdown gracefully you may need to remove /var/tmp/so-client.lock manually."
+  flock -w 10 99 || fail "Another process is using so-client; if the system was not shutdown gracefully you may need to remove /var/tmp/so-client.lock manually."
+  trap 'rm -f /var/tmp/so-client.lock' EXIT
+}
+
+function fail() {
+  msg=$1
+  echo "$1"
+  exit 1
+}
+
+function require() {
+  cmd=$1
+  which "$1" 2>&1 > /dev/null
+  [[ $? != 0 ]] && fail "This script requires the following command be installed: ${cmd}"
+}
+
+# Verify this environment is capable of running this script
+function verifyEnvironment() {
+  require "jq"
+  require "curl"
+  response=$(curl -Ss -L ${hydraUrl}/)
+  [[ "$response" != "404 page not found" ]] && fail "Unable to communicate with Hydra; specify URL via HYDRA_URL environment variable"
+}
+
+function createFile() {
+  filename=$1
+  uid=$2
+  gid=$3
+
+  mkdir -p $(dirname "$filename")
+  truncate -s 0 "$filename"
+  chmod 600 "$filename"
+  chown "${uid}:${gid}" "$filename"
+}
+
+function ensureRoleFileExists() {
+  if [[ ! -f "$socRolesFile" || ! -s "$socRolesFile" ]]; then
+    # Generate the new roles file
+    rolesTmpFile="${socRolesFile}.tmp"
+    createFile "$rolesTmpFile" "$soUID" "$soGID"
+
+    if [[ -d "$socRolesFile" ]]; then
+      echo "Removing invalid roles directory created by Docker"
+      rm -fr "$socRolesFile"
+    fi
+    mv "${rolesTmpFile}" "${socRolesFile}"
+  fi
+}
+
+function listClients() {
+  response=$(curl -Ss -L ${hydraUrl}/admin/clients)
+  [[ $? != 0 ]] && fail "Unable to communicate with Hydra"
+
+  clientIds=$(echo "${response}" | jq -r ".[] | .client_id" | sort)
+  for clientId in $clientIds; do
+    roles=$(grep ":$clientId\$" "$socRolesFile" | cut -d: -f1 | tr '\n' ' ')
+    echo "$clientId: $roles"
+  done
+}
+
+function addClientRole() {
+  id=$1
+  role=$2
+
+  adjustClientRole "$id" "$role" "add"
+}
+
+function deleteClientRole() {
+  id=$1
+  role=$2
+
+  adjustClientRole "$id" "$role" "del"
+}
+
+function adjustClientRole() {
+  identityId=$1
+  role=$2
+  op=$3
+
+  [[ ${identityId} == "" ]] && fail "Client not found"
+
+  ensureRoleFileExists
+
+  filename="$socRolesFile"
+  hasRole=0
+  grep "^$role:" "$socRolesFile" | grep -q "$identityId" && hasRole=1
+  if [[ "$op" == "add" ]]; then
+    if [[ "$hasRole" == "1" ]]; then
+      echo "Client '$identityId' already has the role: $role"
+      return 1
+    else
+      echo "$role:$identityId" >> "$filename"
+    fi
+  elif [[ "$op" == "del" ]]; then
+    if [[ "$hasRole" -ne 1 ]]; then
+      fail "Client '$identityId' does not have the role: $role"
+    else
+      sed "/^$role:$identityId\$/d" "$filename" > "$filename.tmp"
+      cat "$filename".tmp > "$filename"
+      rm -f "$filename".tmp
+    fi
+  else
+    fail "Unsupported role adjustment operation: $op"
+  fi
+  return 0
+}
+
+function convertNameToId() {
+    name=$1
+
+    name=${name//[^[:alnum:]]/_}
+    echo "$name" | tr '[:upper:]' '[:lower:]'
+}
+
+function createClient() {
+  name=$1
+  role=$2
+  note=$3
+
+  id=$(convertNameToId "$name")
+  now=$(date -u +%FT%TZ)
+  body=$(cat <<EOF
+{
+  "access_token_strategy": "opaque",
+  "client_id": "$id",
+  "client_name": "$name",
+  "metadata": {
+    "note": "$note"
+  }
+}
+EOF
+  )
+  
+  response=$(curl -Ss -L -X POST ${hydraUrl}/admin/clients -d "$body")
+  [[ $? != 0 ]] && fail "Unable to communicate with Hydra"
+
+  secret=$(echo "${response}" | jq -r ".client_secret")
+  addClientRole "$id" "$role"
+}
+
+function generateSecret() {
+  clientId=$1
+  
+  body=$(cat <<EOF
+[
+    {
+        "from": "/client_secret",
+        "op": "replace",
+        "path": "/client_secret"
+    }
+]
+EOF
+  )
+  
+  response=$(curl -Ss -L -X PATCH ${hydraUrl}/admin/clients/$id -d "$body")
+  [[ $? != 0 ]] && fail "Unable to communicate with Hydra"
+
+  echo "$response" | jq -r .client_secret
+}
+
+function deleteClient() {
+  identityId=$1
+
+  [[ ${identityId} == "" ]] && fail "Client not found"
+
+  response=$(curl -Ss -XDELETE -L "${hydraUrl}/admin/client/$identityId")
+  [[ $? != 0 ]] && fail "Unable to communicate with Hydra"
+
+  rolesTmpFile="${socRolesFile}.tmp"
+  createFile "$rolesTmpFile" "$soUID" "$soGID"
+  grep -v "$identityId" "$socRolesFile" > "$rolesTmpFile"
+  cat "$rolesTmpFile" > "$socRolesFile"
+}
+
+case "${operation}" in
+  "add")
+    verifyEnvironment
+    [[ "$name" == "" ]] && fail "A short client name must be provided"
+
+    lock
+    createClient "$name" "${role:-$DEFAULT_ROLE}" "${note}"
+    echo "Successfully added new client to SOC. Run 'so-user sync' to sync with Elasticsearch."
+    ;;
+
+  "list")
+    verifyEnvironment
+    listClients
+    ;;
+
+  "addrole")
+    verifyEnvironment
+    [[ "$id" == "" ]] && fail "Id must be provided"
+    [[ "$role" == "" ]] && fail "Role must be provided"
+
+    lock
+    if addClientRole "$email" "$role"; then
+      echo "Successfully added role to client"
+    fi
+    ;;
+
+  "delrole")
+    verifyEnvironment
+    [[ "$id" == "" ]] && fail "Id must be provided"
+    [[ "$role" == "" ]] && fail "Role must be provided"
+
+    lock
+    deleteClientRole "$email" "$role"
+    echo "Successfully removed role from client"
+    ;;
+
+  "generate-secret")
+    verifyEnvironment
+    [[ "$id" == "" ]] && fail "Id must be provided"
+
+    lock
+    generateSecret "$id"
+    echo "Successfully generated secret"
+    ;;
+
+  "delete")
+    verifyEnvironment
+    [[ "$id" == "" ]] && fail "Id must be provided"
+
+    lock
+    deleteClient "$email"
+    echo "Successfully deleted client. Run 'so-user sync' to sync with Elasticsearch."
+    ;;
+  *)
+    fail "Unsupported operation: $operation"
+    usage
+    ;;
+esac
+
+exit 0

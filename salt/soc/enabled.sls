@@ -83,7 +83,7 @@ so-soc:
       - file: soccustom
       - file: soccustomroles
       - file: socusersroles
-      - file: socclientroles
+      - file: socclientsroles
 
 delete_so-soc_so-status.disabled:
   file.uncomment:
