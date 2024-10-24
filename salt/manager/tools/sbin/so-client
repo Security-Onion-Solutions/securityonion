@@ -87,7 +87,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-hydraUrl=${HYDRA_URL:-http://127.0.0.1:4445/admin}
+hydraUrl=${HYDRA_URL:-http://127.0.0.1:4445}
 socRolesFile=${SOC_ROLES_FILE:-/opt/so/conf/soc/soc_clients_roles}
 soUID=${SOCORE_UID:-939}
 soGID=${SOCORE_GID:-939}
@@ -116,7 +116,7 @@ function verifyEnvironment() {
   require "jq"
   require "curl"
   response=$(curl -Ss -L ${hydraUrl}/)
-  [[ "$response" != "404 page not found" ]] && fail "Unable to communicate with Hydra; specify URL via HYDRA_URL environment variable"
+  [[ "$response" != *"Error 404"* ]] && fail "Unable to communicate with Hydra; specify URL via HYDRA_URL environment variable"
 }
 
 function createFile() {
@@ -145,7 +145,7 @@ function ensureRoleFileExists() {
 }
 
 function listClients() {
-  response=$(curl -Ss -L ${hydraUrl}/admin/clients)
+  response=$(curl -Ss -L -f ${hydraUrl}/admin/clients)
   [[ $? != 0 ]] && fail "Unable to communicate with Hydra"
 
   clientIds=$(echo "${response}" | jq -r ".[] | .client_id" | sort)
@@ -192,7 +192,7 @@ function adjustClientRole() {
     if [[ "$hasRole" -ne 1 ]]; then
       fail "Client '$identityId' does not have the role: $role"
     else
-      sed "/^$role:$identityId\$/d" "$filename" > "$filename.tmp"
+      sed -e "\!^$role:$identityId\$!d" "$filename" > "$filename.tmp"
       cat "$filename".tmp > "$filename"
       rm -f "$filename".tmp
     fi
@@ -206,7 +206,7 @@ function convertNameToId() {
     name=$1
 
     name=${name//[^[:alnum:]]/_}
-    echo "$name" | tr '[:upper:]' '[:lower:]'
+    echo "socl_$name" | tr '[:upper:]' '[:lower:]'
 }
 
 function createClient() {
@@ -216,11 +216,15 @@ function createClient() {
 
   id=$(convertNameToId "$name")
   now=$(date -u +%FT%TZ)
+  secret=$(get_random_value)
   body=$(cat <<EOF
 {
   "access_token_strategy": "opaque",
   "client_id": "$id",
+  "client_secret": "$secret",
   "client_name": "$name",
+  "grant_types": [ "client_credentials" ],
+  "response_types": [ "code" ],
   "metadata": {
     "note": "$note"
   }
@@ -228,31 +232,34 @@ function createClient() {
 EOF
   )
   
-  response=$(curl -Ss -L -X POST ${hydraUrl}/admin/clients -d "$body")
-  [[ $? != 0 ]] && fail "Unable to communicate with Hydra"
-
-  secret=$(echo "${response}" | jq -r ".client_secret")
+  response=$(curl -Ss -L --fail-with-body -X POST ${hydraUrl}/admin/clients -d "$body")
+  if [[ $? != 0 ]]; then
+    error=$(echo $response | jq .error)
+    fail "Failed to submit request to Hydra: $error"
+  fi
   addClientRole "$id" "$role"
 }
 
 function generateSecret() {
   clientId=$1
   
+  secret=$(get_random_value)
   body=$(cat <<EOF
 [
     {
-        "from": "/client_secret",
         "op": "replace",
-        "path": "/client_secret"
+        "path": "/client_secret",
+        "value": "$secret"
     }
 ]
 EOF
   )
   
-  response=$(curl -Ss -L -X PATCH ${hydraUrl}/admin/clients/$id -d "$body")
-  [[ $? != 0 ]] && fail "Unable to communicate with Hydra"
-
-  echo "$response" | jq -r .client_secret
+  response=$(curl -Ss -L --fail-with-body -X PATCH ${hydraUrl}/admin/clients/$id -d "$body")
+  if [[ $? != 0 ]]; then
+    error=$(echo $response | jq .error)
+    fail "Failed to submit request to Hydra: $error"
+  fi
 }
 
 function deleteClient() {
@@ -260,8 +267,11 @@ function deleteClient() {
 
   [[ ${identityId} == "" ]] && fail "Client not found"
 
-  response=$(curl -Ss -XDELETE -L "${hydraUrl}/admin/client/$identityId")
-  [[ $? != 0 ]] && fail "Unable to communicate with Hydra"
+  response=$(curl -Ss -XDELETE -L --fail-with-body "${hydraUrl}/admin/clients/$identityId")
+  if [[ $? != 0 ]]; then
+    error=$(echo $response | jq .error)
+    fail "Failed to submit request to Hydra: $error"
+  fi
 
   rolesTmpFile="${socRolesFile}.tmp"
   createFile "$rolesTmpFile" "$soUID" "$soGID"
@@ -276,7 +286,7 @@ case "${operation}" in
 
     lock
     createClient "$name" "${role:-$DEFAULT_ROLE}" "${note}"
-    echo "Successfully added new client to SOC. Run 'so-user sync' to sync with Elasticsearch."
+    echo "Successfully added user and generated secret: $secret"
     ;;
 
   "list")
@@ -290,7 +300,7 @@ case "${operation}" in
     [[ "$role" == "" ]] && fail "Role must be provided"
 
     lock
-    if addClientRole "$email" "$role"; then
+    if addClientRole "$id" "$role"; then
       echo "Successfully added role to client"
     fi
     ;;
@@ -301,7 +311,7 @@ case "${operation}" in
     [[ "$role" == "" ]] && fail "Role must be provided"
 
     lock
-    deleteClientRole "$email" "$role"
+    deleteClientRole "$id" "$role"
     echo "Successfully removed role from client"
     ;;
 
@@ -311,7 +321,7 @@ case "${operation}" in
 
     lock
     generateSecret "$id"
-    echo "Successfully generated secret"
+    echo "Successfully generated secret: $secret"
     ;;
 
   "delete")
@@ -319,7 +329,7 @@ case "${operation}" in
     [[ "$id" == "" ]] && fail "Id must be provided"
 
     lock
-    deleteClient "$email"
+    deleteClient "$id"
     echo "Successfully deleted client. Run 'so-user sync' to sync with Elasticsearch."
     ;;
   *)
