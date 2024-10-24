@@ -182,6 +182,7 @@ sostatus_log:
   file.managed:
     - name: /opt/so/log/sostatus/status.log
     - mode: 644
+    - replace: False
 
 # Install sostatus check cron. This is used to populate Grid.
 so-status_check_cron:
