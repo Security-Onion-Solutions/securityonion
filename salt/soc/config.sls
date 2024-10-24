@@ -176,6 +176,12 @@ socusersroles:
     - require:
       - sls: manager.sync_es_users
 
+socclientsroles:
+  file.exists:
+    - name: /opt/so/conf/soc/soc_clients_roles
+    - require:
+      - sls: manager.sync_es_users
+
 socuploaddir:
   file.directory:
     - name: /nsm/soc/uploads
