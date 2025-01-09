@@ -1,4 +1,5 @@
 # quick script to create raid
+# this is an example of the base functions
 parted -s /dev/nvme0n1 rm 1
 parted -s /dev/nvme0n1 mklabel gpt
 parted -s /dev/nvme0n1 mkpart primary xfs 0% 100%

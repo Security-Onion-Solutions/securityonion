@@ -1,5 +1,13 @@
 #!/bin/bash
 
+#raid3.sh is a refinement of raid2.sh. raid2.sh was used to create the raid in testing
+#More detailed logging
+#More thorough RAID array cleanup
+#Better organized cleanup procedures
+#Simplified device wiping using more modern tools (sgdisk instead of dd)
+#More robust handling of existing MD arrays
+#The core RAID creation and mounting functionality remains the same between both scripts, but the second version has improved error handling and cleanup procedures.
+
 # Exit on any error
 set -e
 
