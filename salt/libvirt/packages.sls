@@ -28,6 +28,11 @@ install_xorriso:
 install_virt-install:
   pkg.installed:
     - name: virt-install
+
+# needed for for so-qcow2-modify-network - import guestfs
+install_python3-libguestfs:
+  pkg.installed:
+    - name: python3-libguestfs
 ###
 
 libvirt_python_wheel:
