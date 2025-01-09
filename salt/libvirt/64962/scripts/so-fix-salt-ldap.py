@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+# this script comes from the user nf-brentsaner located here https://github.com/saltstack/salt/issues/64962
+
 import datetime
 import grp
 import os
@@ -10,8 +12,6 @@ import shutil
 import dbus  # dnf -y install python3-dbus
 ##
 import lief  # https://pypi.org/project/lief/
-
-# https://github.com/saltstack/salt/issues/64962
 
 salt_root = pathlib.Path('/opt/saltstack')
 src_lib = pathlib.Path('/lib64/libldap.so.2')
