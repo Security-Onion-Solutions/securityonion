@@ -52,23 +52,21 @@ salt_master_service:
       - file: engines_config
     - order: last
 
+{#
 # we need to managed adding the following to salt-master config if there are hypervisors
-#reactor:
+reactor:
+  - 'salt/auth/accept/*':
+    - salt://reactor/check_hypervisor.sls
   #- salt/cloud/*/creating':
   #- salt/cloud/*/requesting
-#  - 'salt/cloud/*/deploying':
-#    - /opt/so/saltstack/default/salt/reactor/createEmptyPillar.sls
-##  - 'salt/cloud/*/created':
-##    - /opt/so/saltstack/default/salt/reactor/setSalt.sls
-##    - /opt/so/saltstack/default/salt/reactor/setHostname.sls
-##    - /opt/so/saltstack/default/salt/reactor/sominion.sls
-#  - 'setup/so-minion':
-#    - /opt/so/saltstack/default/salt/reactor/sominion_setup.sls
-#    - /opt/so/saltstack/default/salt/reactor/virtUpdate.sls
-#  - 'salt/cloud/*/destroyed':
-#    - /opt/so/saltstack/default/salt/reactor/virtReleaseHardware.sls
-#    - /opt/so/saltstack/default/salt/reactor/deleteKey.sls
-
+  - 'salt/cloud/*/deploying':
+    - /opt/so/saltstack/default/salt/reactor/createEmptyPillar.sls
+  - 'setup/so-minion':
+    - /opt/so/saltstack/default/salt/reactor/sominion_setup.sls
+  - 'salt/cloud/*/destroyed':
+    - /opt/so/saltstack/default/salt/reactor/virtReleaseHardware.sls
+    - /opt/so/saltstack/default/salt/reactor/deleteKey.sls
+#}
 
 {% else %}
 
