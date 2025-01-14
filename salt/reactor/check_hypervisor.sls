@@ -1,6 +1,4 @@
 {% if data['id'].endswith(('_hypervisor', '_managerhyper')) %}
 check_and_trigger:
-  runner.state.orchestrate:
-    - args:
-        - mods: orch.setup_hypervisor
+  runner.setup_hypervisor.setup_environment: []
 {% endif %}
