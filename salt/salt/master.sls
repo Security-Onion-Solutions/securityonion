@@ -17,6 +17,10 @@ include:
 {%   if 'hvn' in salt['pillar.get']('features', []) %}
   - salt.cloud
   - salt.cloud.reactor_config_hypervisor
+
+sync_runners:
+  salt.runner:
+    - name: saltutil.sync_runners
 {% endif %}
 
 hold_salt_master_package:
