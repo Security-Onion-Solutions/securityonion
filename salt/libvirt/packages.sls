@@ -1,6 +1,25 @@
-#libvirt_source-packages_dir:
- # file.directory:
- #   - name: /opt/so/conf/libvirt/source-packages
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+#
+# Note: Per the Elastic License 2.0, the second limitation states:
+#
+#   "You may not move, change, disable, or circumvent the license key functionality
+#    in the software, and you may not remove or obscure any functionality in the
+#    software that is protected by the license key."
+
+{% from 'allowed_states.map.jinja' import allowed_states %}
+{% if sls.split('.')[0] in allowed_states %}
+{%   if 'hvn' in salt['pillar.get']('features', []) %}
+
+# allows for creating vm images
+# any node manipulating images needs this
+install_qemu-img:
+  pkg.installed:
+    - name: qemu-img
+
+{%     if 'hyper' in grains.id.split('_') | last %}
 
 install_libvirt-libs:
   pkg.installed:
@@ -10,12 +29,6 @@ install_libvirt-libs:
 install_libvirt-client:
   pkg.installed:
     - name: libvirt-client
-
-# allows for creating vm images
-# any node manipulating images needs this
-install_qemu-img:
-  pkg.installed:
-    - name: qemu-img
 
 install_guestfs-tools:
   pkg.installed:
@@ -47,3 +60,23 @@ libvirt_python_module:
     - name: /opt/saltstack/salt/bin/python3 -m pip install --no-index --find-links=/opt/so/conf/libvirt/source-packages/libvirt-python libvirt-python
     - onchanges:
       - file: libvirt_python_wheel
+
+{%     endif %}
+
+{%   else %}
+{{sls}}_no_license_detected:
+  test.fail_without_changes:
+    - name: {{sls}}_no_license_detected
+    - comment:
+      - "Hypervisor nodes are a feature supported only for customers with a valid license.
+      Contact Security Onion Solutions, LLC via our website at https://securityonionsolutions.com
+      for more information about purchasing a license to enable this feature."
+{%   endif %}
+
+{% else %}
+
+{{sls}}_state_not_allowed:
+  test.fail_without_changes:
+    - name: {{sls}}_state_not_allowed
+
+{% endif %}

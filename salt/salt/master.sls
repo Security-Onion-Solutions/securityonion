@@ -2,14 +2,21 @@
 # or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
+#
+# Note: Per the Elastic License 2.0, the second limitation states:
+#
+#   "You may not move, change, disable, or circumvent the license key functionality
+#    in the software, and you may not remove or obscure any functionality in the
+#    software that is protected by the license key."
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 
 include:
   - salt.minion
-{%   if salt['pillar.get']('hypervisor:nodes', {} ) %}
+{%   if 'hvn' in salt['pillar.get']('features', []) %}
   - salt.cloud
+  - salt.cloud.reactor_config_hypervisor
 {% endif %}
 
 hold_salt_master_package:
@@ -55,10 +62,8 @@ salt_master_service:
 {#
 # we need to managed adding the following to salt-master config if there are hypervisors
 reactor:
-  - 'salt/auth/accept/*':
+  - 'salt/key':
     - salt://reactor/check_hypervisor.sls
-  #- salt/cloud/*/creating':
-  #- salt/cloud/*/requesting
   - 'salt/cloud/*/deploying':
     - /opt/so/saltstack/default/salt/reactor/createEmptyPillar.sls
   - 'setup/so-minion':

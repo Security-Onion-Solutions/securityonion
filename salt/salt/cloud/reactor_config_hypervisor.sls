@@ -10,36 +10,29 @@
 #    software that is protected by the license key."
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
-{% if sls in allowed_states %}
+{% if sls.split('.')[:2]|join('.') in allowed_states %}
 {%   if 'hvn' in salt['pillar.get']('features', []) %}
-{%     from 'vars/globals.map.jinja' import GLOBALS %}
-
-{%     if GLOBALS.is_manager %}
-
-qemu_ssh_client_config:
+reactor_config_hypervisor:
   file.managed:
-    - name: /root/.ssh/config
-    - source: salt://libvirt/ssh/files/config
-
-{%     else %}
-
-# used for qemu+ssh connection between manager and hypervisors
-create_soqemussh_user:
-  user.present:
-    - name: soqemussh
-    - shell: /bin/bash
-    - home: /home/soqemussh
-    - groups:
-      - wheel
-      - qemu
-      - libvirt
-
-soqemussh_pub_key:
-  ssh_auth.present:
-    - user: soqemussh
-    - source: salt://libvirt/ssh/keys/id_ed25519.pub
-
-{%     endif %}
+    - name: /etc/salt/master.d/reactor_hypervisor.conf
+    - contents: |
+        reactor:
+          - 'salt/key':
+            - salt://reactor/check_hypervisor.sls
+          - 'salt/cloud/*/deploying':
+            - /opt/so/saltstack/default/salt/reactor/createEmptyPillar.sls
+          - 'setup/so-minion':
+            - /opt/so/saltstack/default/salt/reactor/sominion_setup.sls
+          - 'salt/cloud/*/destroyed':
+            - /opt/so/saltstack/default/salt/reactor/virtReleaseHardware.sls
+            - /opt/so/saltstack/default/salt/reactor/deleteKey.sls
+    - user: root
+    - group: root
+    - mode: 644
+    - makedirs: True
+    - watch_in:
+      - service: salt_master_service
+    - order: last
 
 {%   else %}
 {{sls}}_no_license_detected:
