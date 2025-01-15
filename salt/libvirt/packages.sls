@@ -15,9 +15,15 @@
 
 # allows for creating vm images
 # any node manipulating images needs this
+# used on manager for setup_hypervisor runner
 install_qemu-img:
   pkg.installed:
     - name: qemu-img
+
+# used on manager for setup_hypervisor runner
+install_xorriso:
+  pkg.installed:
+    - name: xorriso
 
 {%     if 'hyper' in grains.id.split('_') | last %}
 
@@ -33,10 +39,6 @@ install_libvirt-client:
 install_guestfs-tools:
   pkg.installed:
     - name: guestfs-tools
-
-install_xorriso:
-  pkg.installed:
-    - name: xorriso
 
 install_virt-install:
   pkg.installed:
