@@ -224,9 +224,9 @@ function acceptminion() {
 	if [[ "$MINION_ID" == *"_hypervisor" ]]; then
 		FEATURES=$(/usr/sbin/so-yaml.py get /opt/so/saltstack/local/pillar/soc/license.sls features)
 		if [[ $? -ne 0 || ! "$FEATURES" =~ "hvn" ]]; then
-			error_msg="Cannot accept hypervisor minion - hvn feature not enabled in license"
+			error_msg="Hypervisor nodes are a feature supported only for customers with a valid license.\n      Contact Security Onion Solutions, LLC via our website at https://securityonionsolutions.com\n      for more information about purchasing a license to enable this feature."
 			log "ERROR" "$error_msg"
-			echo "Error: $error_msg"
+			echo -e "Error: $error_msg"
 			return 1
 		fi
 	fi
@@ -844,6 +844,13 @@ function createRECEIVER() {
 
 function createHYPERVISOR() {
 	log "INFO" "Creating HYPERVISOR configuration for minion $MINION_ID"
+	FEATURES=$(/usr/sbin/so-yaml.py get /opt/so/saltstack/local/pillar/soc/license.sls features)
+	if [[ $? -ne 0 || ! "$FEATURES" =~ "hvn" ]]; then
+		error_msg="Hypervisor nodes are a feature supported only for customers with a valid license.\n      Contact Security Onion Solutions, LLC via our website at https://securityonionsolutions.com\n      for more information about purchasing a license to enable this feature."
+		log "ERROR" "$error_msg"
+		echo -e "Error: $error_msg"
+		return 1
+	fi
 	add_telegraf_to_minion || return 1
 }
 
@@ -915,6 +922,13 @@ function updateMineAndApplyStates() {
 
 	# We don't want a hypervisor node to highstate until the image is downloaded and built. This will be triggered from the setup_hypervisor runner
 	if [[ "$NODETYPE" == "HYPERVISOR" ]]; then
+		FEATURES=$(/usr/sbin/so-yaml.py get /opt/so/saltstack/local/pillar/soc/license.sls features)
+		if [[ $? -ne 0 || ! "$FEATURES" =~ "hvn" ]]; then
+			error_msg="Hypervisor nodes are a feature supported only for customers with a valid license.\n      Contact Security Onion Solutions, LLC via our website at https://securityonionsolutions.com\n      for more information about purchasing a license to enable this feature."
+			log "ERROR" "$error_msg"
+			echo -e "Error: $error_msg"
+			return 1
+		fi
 		log "INFO" "Skipping state application for hypervisor node"
 		return 0
 	fi
@@ -999,6 +1013,13 @@ case "$OPERATION" in
 
 	"addVM")
 		log "INFO" "Adding VM minion $MINION_ID"
+		FEATURES=$(/usr/sbin/so-yaml.py get /opt/so/saltstack/local/pillar/soc/license.sls features)
+		if [[ $? -ne 0 || ! "$FEATURES" =~ "hvn" ]]; then
+			error_msg="Hypervisor nodes are a feature supported only for customers with a valid license.\n      Contact Security Onion Solutions, LLC via our website at https://securityonionsolutions.com\n      for more information about purchasing a license to enable this feature."
+			log "ERROR" "$error_msg"
+			echo -e "Error: $error_msg"
+			exit 1
+		fi
 		setupMinionFiles || {
 			log "ERROR" "Failed to setup VM minion files for $MINION_ID"
 			exit 1
