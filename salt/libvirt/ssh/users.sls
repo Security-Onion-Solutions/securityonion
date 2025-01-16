@@ -10,7 +10,7 @@
 #    software that is protected by the license key."
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
-{% if sls in allowed_states %}
+{% if sls.split('.')[0] in allowed_states or sls in allowed_states %}
 {%   if 'hvn' in salt['pillar.get']('features', []) %}
 {%     from 'vars/globals.map.jinja' import GLOBALS %}
 

@@ -275,6 +275,7 @@ base:
     - firewall
     - elasticfleet.install_agent_grid
     - libvirt
+    - libvirt.images
     - stig
 
   '*_desktop and G@saltversion:{{saltversion}}':
