@@ -18,6 +18,7 @@ base:
     - telegraf.adv_telegraf
     - versionlock.soc_versionlock
     - versionlock.adv_versionlock
+    - soc.license
 
   '* and not *_desktop':
     - firewall.soc_firewall
@@ -44,7 +45,6 @@ base:
     - logstash.adv_logstash
     - soc.soc_soc
     - soc.adv_soc
-    - soc.license
     - kibana.soc_kibana
     - kibana.adv_kibana
     - kratos.soc_kratos
@@ -88,7 +88,6 @@ base:
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
     - stig.soc_stig
-    - soc.license
 
   '*_eval':
     - secrets
@@ -113,7 +112,6 @@ base:
     - idstools.adv_idstools
     - soc.soc_soc
     - soc.adv_soc
-    - soc.license
     - kibana.soc_kibana
     - kibana.adv_kibana
     - strelka.soc_strelka
@@ -170,7 +168,6 @@ base:
     - manager.adv_manager
     - soc.soc_soc
     - soc.adv_soc
-    - soc.license
     - kibana.soc_kibana
     - kibana.adv_kibana
     - strelka.soc_strelka
@@ -236,7 +233,6 @@ base:
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
     - stig.soc_stig
-    - soc.license
     - kafka.nodes
     - kafka.soc_kafka
     - kafka.adv_kafka
@@ -254,8 +250,6 @@ base:
     - minions.adv_{{ grains.id }}
     - kafka.nodes
     - kafka.soc_kafka
-    - kafka.adv_kafka
-    - soc.license
 
   '*_import':
     - secrets
@@ -277,7 +271,6 @@ base:
     - manager.adv_manager
     - soc.soc_soc
     - soc.adv_soc
-    - soc.license
     - kibana.soc_kibana
     - kibana.adv_kibana
     - backup.soc_backup
@@ -320,4 +313,4 @@ base:
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
     - stig.soc_stig
-    - soc.license
+
