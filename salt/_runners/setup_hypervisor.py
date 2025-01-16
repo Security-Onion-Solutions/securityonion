@@ -13,7 +13,7 @@ but can also be run manually if needed.
 
 CLI Examples:
 
-    # Perform complete environment setup (creates VM named 'so-ol9' with 220G disk by default)
+    # Perform complete environment setup (creates VM named 'sool9' with 220G disk by default)
     salt-run setup_hypervisor.setup_environment
 
     # Setup with custom VM name (uses default 220G disk)
@@ -38,6 +38,7 @@ import os
 import pwd
 import requests
 import salt.utils.files
+import socket
 import sys
 import time
 from cryptography.hazmat.primitives import serialization
@@ -253,7 +254,7 @@ def _check_vm_exists(vm_name: str) -> bool:
         log.info("MAIN: VM %s already exists", vm_name)
     return exists
 
-def setup_environment(vm_name: str = 'so-ol9', disk_size: str = '220G'):
+def setup_environment(vm_name: str = 'sool9', disk_size: str = '220G'):
     """
     Main entry point to set up the hypervisor environment.
     This includes downloading the base image, generating SSH keys for remote access,
@@ -261,7 +262,7 @@ def setup_environment(vm_name: str = 'so-ol9', disk_size: str = '220G'):
 
     Args:
         vm_name (str, optional): Name of the VM to create as part of environment setup.
-                               Defaults to 'so-ol9'.
+                               Defaults to 'sool9'.
         disk_size (str, optional): Size of the VM disk with unit.
                                  Defaults to '220G'.
 
@@ -390,6 +391,9 @@ def create_vm(vm_name: str, disk_size: str = '220G'):
             log.error("CREATEVM: Failed to read SSH public key: %s", str(e))
             return {'success': False, 'error': 'Failed to read SSH public key'}
 
+        # Get hostname for repo configuration
+        manager_hostname = socket.gethostname()
+
         # Create meta-data
         meta_data = f"""instance-id: {vm_name}
 local-hostname: {vm_name}
@@ -404,6 +408,7 @@ preserve_hostname: False
 hostname: {vm_name}
 fqdn: {vm_name}.local
 
+# The passwd hash will be removed at release and is being used for debugging during development
 users:
     - default
     - name: soqemussh
@@ -428,6 +433,16 @@ timezone: UTC
 # Install QEMU guest agent. Enable and start the service
 packages:
   - qemu-guest-agent
+
+write_files:
+  - path: /etc/yum.repos.d/securityonion.repo
+    content: |
+      [securityonion]
+      name=Security Onion Repo
+      baseurl=https://{manager_hostname}/repo
+      enabled=1
+      gpgcheck=1
+      sslverify=0
 
 runcmd:
   - systemctl enable --now qemu-guest-agent
