@@ -623,6 +623,12 @@ function updateMineAndApplyStates() {
 	#checkMine "network.ip_addrs"
 	# calls so-common and set_minionid sets MINIONID to local minion id
 	set_minionid
+
+	# We don't want a hypervisor node to highstate until the image is downloaded and built. This will be triggered from the setup_hypervisor runner
+	if [[ "$NODETYPE" == "HYPERVISOR" ]]; then
+		return 0
+	fi
+
 	# if this is a searchnode or heavynode, start downloading logstash and elasticsearch containers while the manager prepares for the new node
 	if [[ "$NODETYPE" == "SEARCHNODE" || "$NODETYPE" == "HEAVYNODE" ]]; then
 		salt-run state.orch orch.container_download pillar="{'setup': {'newnode': $MINION_ID }}" > /dev/null 2>&1 &
@@ -661,7 +667,7 @@ case "$OPERATION" in
 		updateMineAndApplyStates
 		;;
 
-	"addVirt")
+	"addVM")
 		setupMinionFiles
 		;;
 

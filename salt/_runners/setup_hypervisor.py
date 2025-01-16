@@ -1,3 +1,14 @@
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+#
+# Note: Per the Elastic License 2.0, the second limitation states:
+#
+#   "You may not move, change, disable, or circumvent the license key functionality
+#    in the software, and you may not remove or obscure any functionality in the
+#    software that is protected by the license key."
+
 """
 This runner performs the initial setup required for hypervisor hosts in the environment.
 It handles downloading the Oracle Linux KVM image, setting up SSH keys for secure
@@ -37,10 +48,12 @@ import logging
 import os
 import pwd
 import requests
+import salt.client
 import salt.utils.files
 import socket
 import sys
 import time
+import yaml
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519
 
@@ -54,6 +67,40 @@ stream_handler.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 stream_handler.setFormatter(formatter)
 log.addHandler(stream_handler)
+
+def _check_license():
+    """Check if the license file exists and contains required values."""
+    license_path = '/opt/so/saltstack/local/pillar/soc/license.sls'
+    
+    if not os.path.exists(license_path):
+        log.error("LICENSE: License file not found at %s", license_path)
+        return False
+        
+    try:
+        with salt.utils.files.fopen(license_path, 'r') as f:
+            license_data = yaml.safe_load(f)
+            
+        if not license_data:
+            log.error("LICENSE: Empty or invalid license file")
+            return False
+            
+        license_id = license_data.get('license_id')
+        features = license_data.get('features', [])
+        
+        if not license_id:
+            log.error("LICENSE: No license_id found in license file")
+            return False
+            
+        if 'hvn' not in features:
+            log.error("LICENSE: 'hvn' feature not found in license")
+            return False
+            
+        log.info("LICENSE: License validation successful")
+        return True
+            
+    except Exception as e:
+        log.error("LICENSE: Error reading license file: %s", str(e))
+        return False
 
 def _check_file_exists(path):
     """Check if a file exists and create its directory if needed."""
@@ -254,7 +301,7 @@ def _check_vm_exists(vm_name: str) -> bool:
         log.info("MAIN: VM %s already exists", vm_name)
     return exists
 
-def setup_environment(vm_name: str = 'sool9', disk_size: str = '220G'):
+def setup_environment(vm_name: str = 'sool9', disk_size: str = '220G', minion_id: str = None):
     """
     Main entry point to set up the hypervisor environment.
     This includes downloading the base image, generating SSH keys for remote access,
@@ -269,6 +316,14 @@ def setup_environment(vm_name: str = 'sool9', disk_size: str = '220G'):
     Returns:
         dict: Dictionary containing setup status and VM creation results
     """
+    # Check license before proceeding
+    if not _check_license():
+        return {
+            'success': False,
+            'error': 'Invalid license or missing hvn feature',
+            'vm_result': None
+        }
+
     log.info("MAIN: Starting setup_environment in setup_hypervisor runner")
     
     # Check if environment is already set up
@@ -332,6 +387,21 @@ def setup_environment(vm_name: str = 'sool9', disk_size: str = '220G'):
     success = vm_result.get('success', False)
     log.info("MAIN: Setup environment completed with status: %s", "SUCCESS" if success else "FAILED")
     
+    # If setup was successful and we have a minion_id, run highstate
+    if success and minion_id:
+        log.info("MAIN: Running highstate on hypervisor %s", minion_id)
+        try:
+            # Initialize the LocalClient
+            local = salt.client.LocalClient()
+            # Run highstate on the hypervisor
+            highstate_result = local.cmd(minion_id, 'state.highstate', [], timeout=1800)
+            if highstate_result and minion_id in highstate_result:
+                log.info("MAIN: Highstate completed on %s", minion_id)
+            else:
+                log.error("MAIN: Highstate failed or timed out on %s", minion_id)
+        except Exception as e:
+            log.error("MAIN: Error running highstate on %s: %s", minion_id, str(e))
+
     return {
         'success': success,
         'error': vm_result.get('error') if not success else None,
@@ -349,6 +419,13 @@ def create_vm(vm_name: str, disk_size: str = '220G'):
     Returns:
         dict: Dictionary containing success status and commands to run on hypervisor
     """
+    # Check license before proceeding
+    if not _check_license():
+        return {
+            'success': False,
+            'error': 'Invalid license or missing hvn feature',
+        }
+
     try:
         # Input validation
         if not isinstance(vm_name, str) or not vm_name:
@@ -566,6 +643,11 @@ def regenerate_ssh_keys():
     Returns:
         bool: True if successful, False on error
     """
+    # Check license before proceeding
+    if not _check_license():
+        log.error("MAIN: Invalid license or missing hvn feature")
+        return False
+
     log.info("MAIN: Starting SSH key regeneration")
     try:
         # Verify current state
