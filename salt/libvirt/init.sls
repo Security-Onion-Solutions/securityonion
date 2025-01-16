@@ -79,7 +79,7 @@ set_default_pool:
   virt.pool_running:
     - name: default
     - ptype: dir
-    - target: /var/lib/libvirt/images/coreol9
+    - target: /var/lib/libvirt/images/sool9
     - permissions:
         - mode: 0711
         - owner: qemu
