@@ -370,18 +370,7 @@ def setup_environment(vm_name: str = 'sool9', disk_size: str = '220G', minion_id
         log.info("MAIN: No changes detected, using existing VM %s", vm_name)
         vm_result = {
             'success': True,
-            'vm_dir': f'/opt/so/saltstack/local/salt/libvirt/images/{vm_name}',
-            'commands': [
-                f"virsh pool-create-as --name {vm_name} --type dir --target /opt/so/saltstack/local/salt/libvirt/images/{vm_name}",
-                f"""virt-install --name {vm_name} \\
-    --memory 4096 --vcpus 4 --cpu host \\
-    --disk /opt/so/saltstack/local/salt/libvirt/images/{vm_name}/{vm_name}.qcow2,format=qcow2,bus=virtio \\
-    --disk /opt/so/saltstack/local/salt/libvirt/images/{vm_name}/{vm_name}-cidata.iso,device=cdrom \\
-    --network bridge=br0,model=virtio \\
-    --os-variant=ol9.5 \\
-    --import \\
-    --noautoconsole"""
-            ]
+            'vm_dir': f'/opt/so/saltstack/local/salt/libvirt/images/{vm_name}'
         }
     
     success = vm_result.get('success', False)
@@ -614,23 +603,9 @@ runcmd:
                        user_data_path, meta_data_path],
                       check=True, capture_output=True)
 
-        # Generate commands for hypervisor
-        commands = [
-            f"virsh pool-create-as --name {vm_name} --type dir --target {vm_dir}",
-            f"""virt-install --name {vm_name} \\
-    --memory 4096 --vcpus 4 --cpu host \\
-    --disk {vm_image},format=qcow2,bus=virtio \\
-    --disk {cidata_iso},device=cdrom \\
-    --network bridge=br0,model=virtio \\
-    --os-variant=ol9.5 \\
-    --import \\
-    --noautoconsole"""
-        ]
-
         return {
             'success': True,
-            'vm_dir': vm_dir,
-            'commands': commands
+            'vm_dir': vm_dir
         }
 
     except Exception as e:

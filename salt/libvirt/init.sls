@@ -74,24 +74,21 @@ create_host_bridge:
     - forward: bridge
     - autostart: True
 
-# set the default storage pool to point to the location we want
-set_default_pool:
-  virt.pool_running:
-    - name: default
-    - ptype: dir
-    - target: /var/lib/libvirt/images/sool9
-    - permissions:
-        - mode: 0711
-        - owner: qemu
-        - group: qemu
-        - label: "system_u:object_r:virt_image_t:s0" # this doesnt seem to set the selinux context
-    - autostart: True
+# Disable the default storage pool to avoid conflicts
+disable_default_pool:
+  cmd.run:
+    - name: virsh pool-destroy default && virsh pool-autostart default --disable
+    - onlyif: virsh pool-list | grep default
+    - require:
+      - pkg: install_libvirt-client
+      - service: libvirt_service
 
 disable_default_bridge:
   cmd.run:
     - name: virsh net-destroy default && virsh net-autostart default --disable
     - require:
       - pkg: install_libvirt-client
+      - service: libvirt_service
     - onlyif:
       - virsh net-list | grep default
 
