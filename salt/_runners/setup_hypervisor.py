@@ -486,7 +486,7 @@ users:
       sudo: ALL=(ALL) NOPASSWD:ALL
       lock_passwd: false
       passwd: $6$THWuTZMZhIVMGaaw$w9kozn7z7i0Y9LRVGZwN6mcZag4vMpE3hW6eCtKNHlFpL1XLcOdiIr29JyDxx3MLBXNedIqnqcj4psqCjv58d.
-      ssh-authorized-keys:
+      ssh_authorized_keys:
         - {ssh_pub_key}
 
 # Configure where output will go
@@ -508,9 +508,6 @@ write_files:
       enabled=1
       gpgcheck=1
       sslverify=0
-
-packages:
-  - qemu-guest-agent
 
 runcmd:
   # Remove all repo files except securityonion.repo
