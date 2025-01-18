@@ -6,15 +6,112 @@
 # Elastic License 2.0.
 
 """
-Script to modify the NetworkManager config within a QCOW2 image.
+Script for modifying network configurations within QCOW2 virtual machine images. This script provides
+functionality to update NetworkManager settings, supporting both DHCP and static IP configurations
+without requiring the VM to be running.
 
-Usage:
-    python so-qcow2-modify-network.py -I <qcow2_image_path> -i <interface> (--dhcp4 | --static4 --ip4 <ip_address> --gw4 <gateway>) [--dns4 <dns_servers>] [--search4 <search_domain>]
+The script offers two main configuration modes:
+1. DHCP Configuration: Enable automatic IP address assignment
+2. Static IP Configuration: Set specific IP address, gateway, DNS servers, and search domains
 
-Examples:
-    python so-qcow2-modify-network.py -I /nsm/libvirt/images/sool9/sool9.qcow2 -i eth0 --static4 --ip4 192.168.1.10/24 --gw4 192.168.1.1 --dns4 192.168.1.1,8.8.8.8 --search4 example.local
+This script is designed to work with Security Onion's virtualization infrastructure and is typically
+used during VM provisioning and network reconfiguration tasks.
 
-    python so-qcow2-modify-network.py -I /nsm/libvirt/images/sool9/sool9.qcow2 -i eth0 --dhcp4
+**Usage:**
+    so-qcow2-modify-network -I <qcow2_image_path> -i <interface> (--dhcp4 | --static4 --ip4 <ip_address> --gw4 <gateway>) 
+                           [--dns4 <dns_servers>] [--search4 <search_domain>]
+
+**Options:**
+    -I, --image          Path to the QCOW2 image.
+    -i, --interface      Network interface to modify (e.g., eth0).
+    --dhcp4              Configure interface for DHCP (IPv4).
+    --static4            Configure interface for static IPv4 settings.
+    --ip4                IPv4 address (e.g., 192.168.1.10/24). Required for static IPv4 configuration.
+    --gw4                IPv4 gateway (e.g., 192.168.1.1). Required for static IPv4 configuration.
+    --dns4               Comma-separated list of IPv4 DNS servers (e.g., 8.8.8.8,8.8.4.4).
+    --search4            DNS search domain for IPv4.
+
+**Examples:**
+
+1. **Static IP Configuration with DNS and Search Domain:**
+
+    ```bash
+    so-qcow2-modify-network -I /nsm/libvirt/images/sool9/sool9.qcow2 -i eth0 --static4 \
+        --ip4 192.168.1.10/24 --gw4 192.168.1.1 --dns4 192.168.1.1,192.168.1.2 --search4 example.local
+    ```
+
+    This command configures the network settings in the QCOW2 image with:
+    - Static IPv4 configuration:
+        - IP Address: `192.168.1.10/24`
+        - Gateway: `192.168.1.1`
+        - DNS Servers: `192.168.1.1`, `192.168.1.2`
+        - DNS Search Domain: `example.local`
+
+2. **DHCP Configuration:**
+
+    ```bash
+    so-qcow2-modify-network -I /nsm/libvirt/images/sool9/sool9.qcow2 -i eth0 --dhcp4
+    ```
+
+    This command configures the network interface to use DHCP for automatic IP address assignment.
+
+3. **Static IP Configuration without DNS Settings:**
+
+    ```bash
+    so-qcow2-modify-network -I /nsm/libvirt/images/sool9/sool9.qcow2 -i eth0 --static4 \
+        --ip4 192.168.1.20/24 --gw4 192.168.1.1
+    ```
+
+    This command sets only the basic static IP configuration:
+    - IP Address: `192.168.1.20/24`
+    - Gateway: `192.168.1.1`
+
+**Notes:**
+
+- When using `--static4`, both `--ip4` and `--gw4` options are required.
+- The script validates IP addresses, DNS servers, and interface names before making any changes.
+- DNS servers can be specified as a comma-separated list for multiple servers.
+- The script requires write permissions for the QCOW2 image file.
+- Interface names must contain only alphanumeric characters, underscores, and hyphens.
+
+**Description:**
+
+The `so-qcow2-modify-network` script modifies network configuration within a QCOW2 image using the following process:
+
+1. **Image Access:**
+   - Mounts the QCOW2 image using libguestfs
+   - Locates and accesses the NetworkManager configuration directory
+
+2. **Configuration Update:**
+   - Reads the existing network configuration for the specified interface
+   - Updates IPv4 settings based on provided parameters
+   - Supports both DHCP and static IP configurations
+   - Validates all input parameters before making changes
+
+3. **File Management:**
+   - Creates or updates the NetworkManager connection file
+   - Maintains proper file permissions and format
+   - Safely unmounts the image after changes
+
+**Exit Codes:**
+
+- `0`: Success
+- Non-zero: An error occurred during execution
+
+**Logging:**
+
+- Logs are written to `/opt/so/log/hypervisor/so-qcow2-modify-network.log`
+- Both file and console logging are enabled for real-time monitoring
+- Log entries include:
+  - Timestamps in ISO 8601 format
+  - Severity levels (INFO, WARNING, ERROR)
+  - Detailed error messages for troubleshooting
+- Critical operations logged:
+  - Network configuration changes
+  - Image mount/unmount operations
+  - Validation failures
+  - File access errors
+
 """
 
 import argparse
@@ -95,7 +192,6 @@ def update_ipv4_section(content, mode, ip=None, gateway=None, dns=None, search_d
 
     return updated_content
 
-# modify the network config file for the interface inside the qcow2 image
 def modify_network_config(image_path, interface, mode, ip=None, gateway=None, dns=None, search_domain=None):
     if not os.access(image_path, os.W_OK):
         raise PermissionError(f"Write permission denied for image file: {image_path}")

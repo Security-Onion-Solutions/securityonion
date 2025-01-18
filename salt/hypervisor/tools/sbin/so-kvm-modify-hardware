@@ -6,10 +6,20 @@
 # Elastic License 2.0.
 
 """
-Script to modify hardware parameters of a KVM virtual machine.
+Script for managing hardware configurations of KVM virtual machines. This script provides
+functionality to modify CPU, memory, and PCI device settings without manual XML editing
+or direct libvirt interaction.
+
+The script offers three main configuration capabilities:
+1. CPU Management: Adjust virtual CPU count
+2. Memory Management: Modify memory allocation
+3. PCI Passthrough: Configure PCI device passthrough for direct hardware access
+
+This script is designed to work with Security Onion's virtualization infrastructure and is typically
+used during VM provisioning and hardware reconfiguration tasks.
 
 **Usage:**
-    python so-kvm-modify-hardware.py -v <vm_name> [-c <cpu_count>] [-m <memory_amount>] [-p <pci_id>] [-p <pci_id> ...] [-s]
+    so-kvm-modify-hardware -v <vm_name> [-c <cpu_count>] [-m <memory_amount>] [-p <pci_id>] [-p <pci_id> ...] [-s]
 
 **Options:**
     -v, --vm          Name of the virtual machine to modify.
@@ -20,35 +30,99 @@ Script to modify hardware parameters of a KVM virtual machine.
 
 **Examples:**
 
-1. **Modify VM with Multiple PCI Devices:**
+1. **Modify CPU and Memory with Multiple PCI Devices:**
 
     ```bash
-    python so-kvm-modify-hardware.py -v my_vm -c 4 -m 8192 -p 0000:00:1f.2 -p 0000:00:1f.3 -s
+    so-kvm-modify-hardware -v vm1_sensor -c 4 -m 8192 -p 0000:00:1f.2 -p 0000:00:1f.3 -s
     ```
 
-    This command modifies the VM named `my_vm`, setting the CPU count to 4, memory to 8192 MiB, and adds two PCI devices for passthrough (`0000:00:1f.2` and `0000:00:1f.3`). The VM is then started after modification due to the `-s` flag.
+    This command modifies a VM with the following settings:
+    - VM Name: `vm1_sensor`
+    - Hardware Configuration:
+        - CPUs: `4`
+        - Memory: `8192` MiB
+        - PCI Device Passthrough: `0000:00:1f.2`, `0000:00:1f.3`
+    - The VM is started after modification due to the `-s` flag
 
-2. **Modify VM with Single PCI Device:**
+2. **Add PCI Device Without Other Changes:**
 
     ```bash
-    python so-kvm-modify-hardware.py -v my_vm -p 0000:00:1f.2
+    so-kvm-modify-hardware -v vm2_master -p 0000:00:1f.4
     ```
 
-    This command adds a single PCI device passthrough to the VM named `my_vm`.
+    This command adds a single PCI device passthrough to the VM:
+    - VM Name: `vm2_master`
+    - PCI Device: `0000:00:1f.4`
+    - Existing CPU and memory settings are preserved
 
-3. **Modify VM Without Starting It:**
+3. **Update Resource Allocation:**
 
     ```bash
-    python so-kvm-modify-hardware.py -v my_vm -c 2 -m 4096
+    so-kvm-modify-hardware -v vm3_search -c 2 -m 4096
     ```
 
-    This command sets the CPU count and memory for `my_vm` but does not start it afterward.
+    This command updates only compute resources:
+    - VM Name: `vm3_search`
+    - CPUs: `2`
+    - Memory: `4096` MiB
+    - VM remains stopped after modification
+
+4. **Add Multiple PCI Devices:**
+
+    ```bash
+    so-kvm-modify-hardware -v vm4_node -p 0000:00:1f.2 -p 0000:00:1f.3 -p 0000:00:1f.4 -s
+    ```
+
+    This command adds multiple PCI devices and starts the VM:
+    - VM Name: `vm4_node`
+    - PCI Devices: `0000:00:1f.2`, `0000:00:1f.3`, `0000:00:1f.4`
+    - VM is started after modification
 
 **Notes:**
 
-- The `-p` or `--pci` option can be specified multiple times to pass through multiple PCI devices to the VM.
-- The PCI hardware IDs should be in the format `0000:00:1f.2`.
-- If the `-s` or `--start` flag is not provided, the VM will remain stopped after modification.
+- The script automatically stops the VM if it's running before making modifications.
+- At least one modification option (-c, -m, or -p) should be provided.
+- The PCI hardware IDs must be in the format `domain:bus:slot.function` (e.g., `0000:00:1f.2`).
+- Multiple PCI devices can be added by using the `-p` option multiple times.
+- Without the `-s` flag, the VM remains stopped after modification.
+- Existing hardware configurations are preserved if not explicitly modified.
+
+**Description:**
+
+The `so-kvm-modify-hardware` script modifies hardware parameters of KVM virtual machines using the following process:
+
+1. **VM State Management:**
+   - Connects to the local libvirt daemon
+   - Stops the VM if it's currently running
+   - Retrieves current VM configuration
+
+2. **Hardware Configuration:**
+   - Modifies CPU count if specified
+   - Updates memory allocation if specified
+   - Adds PCI device passthrough configurations if specified
+   - All changes are made through libvirt XML configuration
+
+3. **VM Redefinition:**
+   - Applies the new configuration by redefining the VM
+   - Optionally starts the VM if requested
+   - Ensures clean shutdown and startup during modifications
+
+4. **Error Handling:**
+   - Validates all input parameters
+   - Ensures proper XML structure
+   - Provides detailed error messages for troubleshooting
+
+**Exit Codes:**
+
+- `0`: Success
+- `1`: An error occurred during execution
+
+**Logging:**
+
+- Logs are written to `/opt/so/log/hypervisor/so-kvm-modify-hardware.log`
+- Both file and console logging are enabled for real-time monitoring
+- Log entries include timestamps and severity levels
+- Detailed error messages are logged for troubleshooting
 
 """
 
