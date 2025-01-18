@@ -16,12 +16,42 @@
 include:
   - libvirt.packages
 
-# Copy base image files
-baseimagefiles_sool9:
-  file.recurse:
-    - name: /nsm/libvirt/images/sool9/
-    - source: salt://libvirt/images/sool9/
+# Manage SHA256 hash file
+manage_sha256_sool9:
+  file.managed:
+    - name: /nsm/libvirt/images/sool9/sool9.sha256
+    - source: salt://libvirt/images/sool9/sool9.sha256
     - makedirs: True
+
+# Manage qcow2 image
+manage_qcow2_sool9:
+  file.managed:
+    - name: /nsm/libvirt/images/sool9/sool9.qcow2
+    - source: salt://libvirt/images/sool9/sool9.qcow2
+    - onchanges:
+      - file: manage_sha256_sool9
+
+# Manage cloud-init files
+manage_metadata_sool9:
+  file.managed:
+    - name: /nsm/libvirt/images/sool9/meta-data
+    - source: salt://libvirt/images/sool9/meta-data
+    - require:
+      - file: manage_qcow2_sool9
+
+manage_userdata_sool9:
+  file.managed:
+    - name: /nsm/libvirt/images/sool9/user-data
+    - source: salt://libvirt/images/sool9/user-data
+    - require:
+      - file: manage_qcow2_sool9
+
+manage_cidata_sool9:
+  file.managed:
+    - name: /nsm/libvirt/images/sool9/sool9-cidata.iso
+    - source: salt://libvirt/images/sool9/sool9-cidata.iso
+    - require:
+      - file: manage_qcow2_sool9
 
 # Define the storage pool
 define_storage_pool_sool9:
@@ -30,18 +60,56 @@ define_storage_pool_sool9:
     - ptype: dir
     - target: /nsm/libvirt/images/sool9
     - require:
-      - file: baseimagefiles_sool9
+      - file: manage_metadata_sool9
+      - file: manage_userdata_sool9
+      - file: manage_cidata_sool9
       - cmd: libvirt_python_module
+    - unless:
+      - virsh pool-list --all | grep -q sool9
+
+# Set pool autostart
+set_pool_autostart_sool9:
+  cmd.run:
+    - name: virsh pool-autostart sool9
+    - require:
+      - virt: define_storage_pool_sool9
+    - unless:
+      - virsh pool-info sool9 | grep -q "Autostart.*yes"
 
 # Start the storage pool
 start_storage_pool_sool9:
-  virt.pool_running:
-    - name: sool9
-    - ptype: dir
-    - target: /nsm/libvirt/images/sool9
+  cmd.run:
+    - name: virsh pool-start sool9
     - require:
       - virt: define_storage_pool_sool9
       - cmd: libvirt_python_module
+    - unless:
+      - virsh pool-info sool9 | grep -q "State.*running"
+
+# Stop the VM if running and base image files change
+stop_vm_sool9:
+  module.run:
+    - virt.stop:
+      - name: sool9
+    - onchanges:
+      - file: manage_qcow2_sool9
+    - require_in:
+      - module: undefine_vm_sool9
+    - onlyif:
+      # Only try to stop if VM is actually running
+      - virsh list --state-running --name | grep -q sool9
+
+undefine_vm_sool9:
+  module.run:
+    - virt.undefine:
+      - vm_: sool9
+    - onchanges:
+      - file: manage_qcow2_sool9
+    # Note: When VM doesn't exist, you'll see "error: failed to get domain 'sool9'" - this is expected
+    # [ERROR   ] Command 'virsh' failed with return code: 1
+    # [ERROR   ] stdout: error: failed to get domain 'sool9'
+    - onlyif:
+      - virsh dominfo sool9
 
 # Create and start the VM using virt-install
 create_vm_sool9:
@@ -55,10 +123,11 @@ create_vm_sool9:
           --os-variant=ol9.5 \
           --import \
           --noautoconsole
-    - unless: virsh list --all | grep -q sool9
     - require:
-      - virt: start_storage_pool_sool9
+      - cmd: start_storage_pool_sool9
       - pkg: install_virt-install
+    - onchanges:
+      - file: manage_qcow2_sool9
 
 {%   else %}
 {{sls}}_no_license_detected:

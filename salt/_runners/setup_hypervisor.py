@@ -10,6 +10,9 @@
 #    software that is protected by the license key."
 
 """
+TODO: Change default disk_size from 60G to 220G. this was set to speed up vm start during development
+      Remove passwd hash prior to release. used for development
+
 This runner performs the initial setup required for hypervisor hosts in the environment.
 It handles downloading the Oracle Linux KVM image, setting up SSH keys for secure
 communication, and creating the initial VM.
@@ -24,10 +27,10 @@ but can also be run manually if needed.
 
 CLI Examples:
 
-    # Perform complete environment setup (creates VM named 'sool9' with 220G disk by default)
+    # Perform complete environment setup (creates VM named 'sool9' with 60G disk by default)
     salt-run setup_hypervisor.setup_environment
 
-    # Setup with custom VM name (uses default 220G disk)
+    # Setup with custom VM name (uses default 60G disk)
     salt-run setup_hypervisor.setup_environment myvm
 
     # Setup with custom VM name and disk size
@@ -36,7 +39,7 @@ CLI Examples:
     # Regenerate SSH keys only
     salt-run setup_hypervisor.regenerate_ssh_keys
 
-    # Create additional VM with default disk size (220G)
+    # Create additional VM with default disk size (60G)
     salt-run setup_hypervisor.create_vm myvm2
 
     # Create additional VM with custom disk size
@@ -301,7 +304,7 @@ def _check_vm_exists(vm_name: str) -> bool:
         log.info("MAIN: VM %s already exists", vm_name)
     return exists
 
-def setup_environment(vm_name: str = 'sool9', disk_size: str = '220G', minion_id: str = None):
+def setup_environment(vm_name: str = 'sool9', disk_size: str = '60G', minion_id: str = None):
     """
     Main entry point to set up the hypervisor environment.
     This includes downloading the base image, generating SSH keys for remote access,
@@ -311,7 +314,7 @@ def setup_environment(vm_name: str = 'sool9', disk_size: str = '220G', minion_id
         vm_name (str, optional): Name of the VM to create as part of environment setup.
                                Defaults to 'sool9'.
         disk_size (str, optional): Size of the VM disk with unit.
-                                 Defaults to '220G'.
+                                 Defaults to '60G'.
 
     Returns:
         dict: Dictionary containing setup status and VM creation results
@@ -397,13 +400,13 @@ def setup_environment(vm_name: str = 'sool9', disk_size: str = '220G', minion_id
         'vm_result': vm_result
     }
 
-def create_vm(vm_name: str, disk_size: str = '220G'):
+def create_vm(vm_name: str, disk_size: str = '60G'):
     """
     Create a new VM with cloud-init configuration.
     
     Args:
         vm_name (str): Name of the VM
-        disk_size (str): Size of the disk with unit (default: '220G')
+        disk_size (str): Size of the disk with unit (default: '60G')
     
     Returns:
         dict: Dictionary containing success status and commands to run on hypervisor
@@ -496,10 +499,6 @@ ssh_genkeytypes: ['ed25519', 'rsa']
 # set timezone for VM
 timezone: UTC
 
-# Install QEMU guest agent. Enable and start the service
-packages:
-  - qemu-guest-agent
-
 write_files:
   - path: /etc/yum.repos.d/securityonion.repo
     content: |
@@ -510,15 +509,22 @@ write_files:
       gpgcheck=1
       sslverify=0
 
+packages:
+  - qemu-guest-agent
+
 runcmd:
-  - systemctl enable --now qemu-guest-agent
+  # Remove all repo files except securityonion.repo
+  - for f in /etc/yum.repos.d/*.repo; do if [ "$(basename $f)" != "securityonion.repo" ]; then rm -f "$f"; fi; done
   - systemctl enable --now serial-getty@ttyS0.service
   - systemctl enable --now NetworkManager
+  - systemctl enable --now qemu-guest-agent
   - growpart /dev/vda 2
   - pvresize /dev/vda2
   - lvextend -l +100%FREE /dev/vg_main/lv_root
   - xfs_growfs /dev/vg_main/lv_root
-  - touch /etc/cloud/cloud-init.disabled
+  - systemctl stop cloud-init
+  - systemctl disable cloud-init
+  - dnf remove cloud-init
   - shutdown -P now
 """
         user_data_path = os.path.join(vm_dir, 'user-data')
@@ -602,6 +608,19 @@ runcmd:
         subprocess.run(['mkisofs', '-output', cidata_iso, '-volid', 'CIDATA', '-rock',
                        user_data_path, meta_data_path],
                       check=True, capture_output=True)
+
+        # Generate SHA256 hash of the qcow2 image
+        sha256_hash = hashlib.sha256()
+        with salt.utils.files.fopen(vm_image, 'rb') as f:
+            for chunk in iter(lambda: f.read(4096), b''):
+                sha256_hash.update(chunk)
+        
+        # Write hash to file
+        hash_file = os.path.join(vm_dir, f'{vm_name}.sha256')
+        with salt.utils.files.fopen(hash_file, 'w') as f:
+            f.write(sha256_hash.hexdigest())
+        
+        log.info("CREATEVM: Generated SHA256 hash for %s", vm_image)
 
         return {
             'success': True,
