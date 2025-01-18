@@ -13,37 +13,55 @@
 TODO: Change default disk_size from 6G to 220G. this was set to speed up vm start during development
       Remove passwd hash prior to release. used for development
 
-This runner performs the initial setup required for hypervisor hosts in the environment.
-It handles downloading the Oracle Linux KVM image, setting up SSH keys for secure
-communication, and creating the initial VM.
+This runner performs the initial setup required for hypervisor hosts in the Security Onion environment.
+It handles downloading the Oracle Linux KVM image, setting up SSH keys for secure communication,
+and creating virtual machines with cloud-init configuration.
 
-Functions:
-    setup_environment: Downloads image, sets up SSH keys, and creates initial VM
-    regenerate_ssh_keys: Regenerates SSH keys for remote access
-    create_vm: Creates a new VM with cloud-init configuration
+Usage:
+    salt-run setup_hypervisor.<function> [arguments]
 
-The runner is typically triggered automatically when a new hypervisor minion connects,
-but can also be run manually if needed.
+Options:
+    vm_name:     Name for the virtual machine (alphanumeric, hyphens, underscores)
+    disk_size:   Size of the VM disk with unit (e.g., '6G', '300G')
+    minion_id:   Salt minion ID of the hypervisor (optional)
 
-CLI Examples:
-
-    # Perform complete environment setup (creates VM named 'sool9' with 6G disk by default)
+Examples:
+    # Complete environment setup (default VM 'sool9' with 6G disk)
     salt-run setup_hypervisor.setup_environment
-
-    # Setup with custom VM name (uses default 6G disk)
-    salt-run setup_hypervisor.setup_environment myvm
 
     # Setup with custom VM name and disk size
     salt-run setup_hypervisor.setup_environment myvm 300G
 
-    # Regenerate SSH keys only
+    # Regenerate SSH keys
     salt-run setup_hypervisor.regenerate_ssh_keys
 
-    # Create additional VM with default disk size (6G)
-    salt-run setup_hypervisor.create_vm myvm2
+    # Create additional VM
+    salt-run setup_hypervisor.create_vm myvm2 300G
 
-    # Create additional VM with custom disk size
-    salt-run setup_hypervisor.create_vm myvm3 300G
+    Notes:
+        - Verifies Security Onion license
+        - Downloads and validates Oracle Linux KVM image if needed
+        - Generates Ed25519 SSH keys if not present
+        - Creates/recreates VM based on environment changes
+        - Forces hypervisor configuration via highstate after successful setup (when minion_id provided)
+
+    Description:
+        The setup process includes:
+        1. License validation
+        2. Oracle Linux KVM image download and checksum verification
+        3. SSH key generation for secure VM access
+        4. Cloud-init configuration for VM provisioning
+        5. VM creation with specified disk size
+        6. Hypervisor configuration via highstate (when minion_id provided and setup successful)
+
+Exit Codes:
+    Success: Returns dictionary with 'success': True and VM details
+    Failure: Returns dictionary with 'success': False and error message
+
+Logging:
+    All operations are logged to:
+    - Standard output (INFO level and above)
+    - System log with 'setup_hypervisor' tag
 """
 
 import base64
@@ -318,17 +336,42 @@ def _check_vm_exists(vm_name: str) -> bool:
 def setup_environment(vm_name: str = 'sool9', disk_size: str = '6G', minion_id: str = None):
     """
     Main entry point to set up the hypervisor environment.
-    This includes downloading the base image, generating SSH keys for remote access,
-    and creating the initial VM.
+
+    This function orchestrates the complete setup process for a Security Onion hypervisor,
+    including image management, SSH key setup, and VM creation. It ensures all components
+    are properly configured and validates the environment at each step.
 
     Args:
-        vm_name (str, optional): Name of the VM to create as part of environment setup.
-                               Defaults to 'sool9'.
-        disk_size (str, optional): Size of the VM disk with unit.
-                                 Defaults to '6G'.
+        vm_name (str, optional): Name for the VM to create. Must contain only
+                                alphanumeric characters, hyphens, or underscores.
+                                Defaults to 'sool9'.
+        disk_size (str, optional): Size of the VM disk with unit (e.g., '6G', '300G').
+                                  Must end with 'G' or 'M'. Defaults to '6G'.
+        minion_id (str, optional): Salt minion ID of the hypervisor. When provided,
+                                  forces the hypervisor to apply its configuration via
+                                  highstate after successful environment setup (image
+                                  download, SSH keys, VM creation).
 
     Returns:
-        dict: Dictionary containing setup status and VM creation results
+        dict: A dictionary containing:
+            - success (bool): True if setup completed successfully
+            - error (str): Error message if setup failed, None otherwise
+            - vm_result (dict): Details about VM creation if successful
+
+    Notes:
+        - Verifies Security Onion license
+        - Downloads and validates Oracle Linux KVM image if needed
+        - Generates Ed25519 SSH keys if not present
+        - Creates/recreates VM based on environment changes
+        - Forces hypervisor configuration via highstate after successful setup
+          (when minion_id is provided)
+
+    Example:
+        result = setup_environment('myvm', '300G', 'hypervisor1')
+        if result['success']:
+            print(f"VM created at {result['vm_result']['vm_dir']}")
+        else:
+            print(f"Setup failed: {result['error']}")
     """
     # Check license before proceeding
     if not _check_license():
@@ -413,14 +456,39 @@ def setup_environment(vm_name: str = 'sool9', disk_size: str = '6G', minion_id: 
 
 def create_vm(vm_name: str, disk_size: str = '6G'):
     """
-    Create a new VM with cloud-init configuration.
-    
+    Creates a new virtual machine with cloud-init configuration.
+
+    This function handles the complete VM creation process, including directory setup,
+    image management, and cloud-init configuration. It ensures proper setup of the VM
+    environment with all necessary components.
+
     Args:
-        vm_name (str): Name of the VM
-        disk_size (str): Size of the disk with unit (default: '6G')
-    
+        vm_name (str): Name for the VM. Must contain only alphanumeric characters,
+                      hyphens, or underscores.
+        disk_size (str): Size of the VM disk with unit (e.g., '6G', '300G').
+                        Must end with 'G' or 'M'. Defaults to '6G'.
+
     Returns:
-        dict: Dictionary containing success status and commands to run on hypervisor
+        dict: A dictionary containing:
+            - success (bool): True if VM creation completed successfully
+            - error (str): Error message if creation failed
+            - vm_dir (str): Path to VM directory if successful
+
+    Notes:
+        - Validates Security Onion license
+        - Creates cloud-init ISO for VM configuration
+        - Copies and resizes base Oracle Linux image
+        - Compresses final image for efficiency
+        - Generates SHA256 hash for verification
+        - Configures repositories and GPG keys
+        - Sets up system services and storage
+
+    Example:
+        result = create_vm('myvm', '300G')
+        if result['success']:
+            print(f"VM created at {result['vm_dir']}")
+        else:
+            print(f"Creation failed: {result['error']}")
     """
     # Check license before proceeding
     if not _check_license():
@@ -518,6 +586,10 @@ ssh_genkeytypes: ['ed25519', 'rsa']
 # set timezone for VM
 timezone: UTC
 
+# Disable cloud-init network configuration to prevent conflicts with NetworkManager
+network:
+  config: disabled
+
 write_files:
   - path: /etc/yum.repos.d/securityonion.repo
     content: |
@@ -564,6 +636,7 @@ runcmd:
   - lvextend -l +100%FREE /dev/vg_main/lv_root
   - xfs_growfs /dev/vg_main/lv_root
   - touch /etc/cloud/cloud-init.disabled
+  - rm -f /etc/sysconfig/network-scripts/ifcfg-eth0
 
 power_state:
   delay: "now"
@@ -677,9 +750,37 @@ power_state:
 
 def regenerate_ssh_keys():
     """
-    Regenerate SSH keys.
+    Regenerates SSH keys used for hypervisor VM access.
+
+    This function handles the complete process of SSH key regeneration, including
+    validation, cleanup of existing keys, and generation of new keys with proper
+    permissions and distribution.
+
     Returns:
-        bool: True if successful, False on error
+        bool: True if keys were successfully regenerated, False otherwise
+
+    Notes:
+        - Validates Security Onion license
+        - Removes existing keys if present
+        - Generates new Ed25519 key pair
+        - Sets secure permissions (600 for private, 644 for public)
+        - Distributes public key to required locations
+
+    Description:
+        The function performs these steps:
+        1. Validates Security Onion license
+        2. Checks for existing SSH keys
+        3. Removes old keys if present
+        4. Creates required directories with secure permissions
+        5. Generates new Ed25519 key pair
+        6. Sets appropriate file permissions
+        7. Distributes public key to required locations
+
+    Example:
+        if regenerate_ssh_keys():
+            print("SSH keys successfully regenerated")
+        else:
+            print("Failed to regenerate SSH keys")
     """
     # Check license before proceeding
     if not _check_license():
