@@ -46,6 +46,7 @@ CLI Examples:
     salt-run setup_hypervisor.create_vm myvm3 300G
 """
 
+import base64
 import hashlib
 import logging
 import os
@@ -70,6 +71,16 @@ stream_handler.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 stream_handler.setFormatter(formatter)
 log.addHandler(stream_handler)
+
+def _read_and_encode_key(key_path: str) -> str:
+    """Read a key file and return its base64 encoded content."""
+    try:
+        with salt.utils.files.fopen(key_path, 'rb') as f:
+            content = f.read()
+            return base64.b64encode(content).decode('utf-8')
+    except Exception as e:
+        log.error("Error reading key file %s: %s", key_path, str(e))
+        raise
 
 def _check_license():
     """Check if the license file exists and contains required values."""
@@ -463,6 +474,14 @@ def create_vm(vm_name: str, disk_size: str = '6G'):
         # Get hostname for repo configuration
         manager_hostname = socket.gethostname()
 
+        # Read and encode GPG keys
+        keys_dir = '/opt/so/saltstack/default/salt/repo/client/files/oracle/keys'
+        oracle_key = _read_and_encode_key(os.path.join(keys_dir, 'RPM-GPG-KEY-oracle'))
+        epel_key = _read_and_encode_key(os.path.join(keys_dir, 'RPM-GPG-KEY-EPEL-9'))
+        salt_key = _read_and_encode_key(os.path.join(keys_dir, 'SALT-PROJECT-GPG-PUBKEY-2023.pub'))
+        docker_key = _read_and_encode_key(os.path.join(keys_dir, 'docker.pub'))
+        securityonion_key = _read_and_encode_key(os.path.join(keys_dir, 'securityonion.pub'))
+
         # Create meta-data
         meta_data = f"""instance-id: {vm_name}
 local-hostname: {vm_name}
@@ -508,9 +527,34 @@ write_files:
       enabled=1
       gpgcheck=1
       sslverify=0
+  - path: /etc/pki/rpm-gpg/RPM-GPG-KEY-oracle
+    encoding: b64
+    content: |
+      {oracle_key}
+  - path: /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-9
+    encoding: b64
+    content: |
+      {epel_key}
+  - path: /etc/pki/rpm-gpg/SALT-PROJECT-GPG-PUBKEY-2023.pub
+    encoding: b64
+    content: |
+      {salt_key}
+  - path: /etc/pki/rpm-gpg/docker.pub
+    encoding: b64
+    content: |
+      {docker_key}
+  - path: /etc/pki/rpm-gpg/securityonion.pub
+    encoding: b64
+    content: |
+      {securityonion_key}
 
 runcmd:
-  # Remove all repo files except securityonion.repo
+  # Import GPG keys and remove repo files except securityonion.repo
+  - rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-oracle
+  - rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-9
+  - rpm --import /etc/pki/rpm-gpg/SALT-PROJECT-GPG-PUBKEY-2023.pub
+  - rpm --import /etc/pki/rpm-gpg/docker.pub
+  - rpm --import /etc/pki/rpm-gpg/securityonion.pub
   - for f in /etc/yum.repos.d/*.repo; do if [ "$(basename $f)" != "securityonion.repo" ]; then rm -f "$f"; fi; done
   - systemctl enable --now serial-getty@ttyS0.service
   - systemctl enable --now NetworkManager
