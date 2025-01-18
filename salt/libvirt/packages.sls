@@ -25,11 +25,24 @@ install_xorriso:
   pkg.installed:
     - name: xorriso
 
-{%     if 'hyper' in grains.id.split('_') | last %}
-
 install_libvirt-libs:
   pkg.installed:
     - name: libvirt-libs
+
+libvirt_python_wheel:
+  file.recurse:
+    - name: /opt/so/conf/libvirt/source-packages/libvirt-python
+    - source: salt://libvirt/source-packages/libvirt-python
+    - makedirs: True
+    - clean: True
+
+libvirt_python_module:
+  cmd.run:
+    - name: /opt/saltstack/salt/bin/python3 -m pip install --no-index --find-links=/opt/so/conf/libvirt/source-packages/libvirt-python libvirt-python
+    - onchanges:
+      - file: libvirt_python_wheel
+
+{%     if 'hyper' in grains.id.split('_') | last %}
 
 # provides virsh
 install_libvirt-client:
@@ -49,19 +62,6 @@ install_python3-libguestfs:
   pkg.installed:
     - name: python3-libguestfs
 ###
-
-libvirt_python_wheel:
-  file.recurse:
-    - name: /opt/so/conf/libvirt/source-packages/libvirt-python
-    - source: salt://libvirt/source-packages/libvirt-python
-    - makedirs: True
-    - clean: True
-
-libvirt_python_module:
-  cmd.run:
-    - name: /opt/saltstack/salt/bin/python3 -m pip install --no-index --find-links=/opt/so/conf/libvirt/source-packages/libvirt-python libvirt-python
-    - onchanges:
-      - file: libvirt_python_wheel
 
 {%     endif %}
 
