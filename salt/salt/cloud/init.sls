@@ -17,6 +17,7 @@
 
 include:
   - libvirt.packages
+  - libvirt.ssh.users
 
 install_salt_cloud:
   pkg.installed:
