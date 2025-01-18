@@ -93,6 +93,9 @@ stop_vm_sool9:
       - name: sool9
     - onchanges:
       - file: manage_qcow2_sool9
+      - file: manage_metadata_sool9
+      - file: manage_userdata_sool9
+      - file: manage_cidata_sool9
     - require_in:
       - module: undefine_vm_sool9
     - onlyif:
@@ -105,6 +108,9 @@ undefine_vm_sool9:
       - vm_: sool9
     - onchanges:
       - file: manage_qcow2_sool9
+      - file: manage_metadata_sool9
+      - file: manage_userdata_sool9
+      - file: manage_cidata_sool9
     # Note: When VM doesn't exist, you'll see "error: failed to get domain 'sool9'" - this is expected
     # [ERROR   ] Command 'virsh' failed with return code: 1
     # [ERROR   ] stdout: error: failed to get domain 'sool9'
@@ -128,6 +134,9 @@ create_vm_sool9:
       - pkg: install_virt-install
     - onchanges:
       - file: manage_qcow2_sool9
+      - file: manage_metadata_sool9
+      - file: manage_userdata_sool9
+      - file: manage_cidata_sool9
 
 {%   else %}
 {{sls}}_no_license_detected:
