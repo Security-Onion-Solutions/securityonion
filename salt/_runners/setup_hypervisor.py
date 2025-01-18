@@ -10,7 +10,7 @@
 #    software that is protected by the license key."
 
 """
-TODO: Change default disk_size from 60G to 220G. this was set to speed up vm start during development
+TODO: Change default disk_size from 6G to 220G. this was set to speed up vm start during development
       Remove passwd hash prior to release. used for development
 
 This runner performs the initial setup required for hypervisor hosts in the environment.
@@ -27,10 +27,10 @@ but can also be run manually if needed.
 
 CLI Examples:
 
-    # Perform complete environment setup (creates VM named 'sool9' with 60G disk by default)
+    # Perform complete environment setup (creates VM named 'sool9' with 6G disk by default)
     salt-run setup_hypervisor.setup_environment
 
-    # Setup with custom VM name (uses default 60G disk)
+    # Setup with custom VM name (uses default 6G disk)
     salt-run setup_hypervisor.setup_environment myvm
 
     # Setup with custom VM name and disk size
@@ -39,7 +39,7 @@ CLI Examples:
     # Regenerate SSH keys only
     salt-run setup_hypervisor.regenerate_ssh_keys
 
-    # Create additional VM with default disk size (60G)
+    # Create additional VM with default disk size (6G)
     salt-run setup_hypervisor.create_vm myvm2
 
     # Create additional VM with custom disk size
@@ -304,7 +304,7 @@ def _check_vm_exists(vm_name: str) -> bool:
         log.info("MAIN: VM %s already exists", vm_name)
     return exists
 
-def setup_environment(vm_name: str = 'sool9', disk_size: str = '60G', minion_id: str = None):
+def setup_environment(vm_name: str = 'sool9', disk_size: str = '6G', minion_id: str = None):
     """
     Main entry point to set up the hypervisor environment.
     This includes downloading the base image, generating SSH keys for remote access,
@@ -314,7 +314,7 @@ def setup_environment(vm_name: str = 'sool9', disk_size: str = '60G', minion_id:
         vm_name (str, optional): Name of the VM to create as part of environment setup.
                                Defaults to 'sool9'.
         disk_size (str, optional): Size of the VM disk with unit.
-                                 Defaults to '60G'.
+                                 Defaults to '6G'.
 
     Returns:
         dict: Dictionary containing setup status and VM creation results
@@ -400,13 +400,13 @@ def setup_environment(vm_name: str = 'sool9', disk_size: str = '60G', minion_id:
         'vm_result': vm_result
     }
 
-def create_vm(vm_name: str, disk_size: str = '60G'):
+def create_vm(vm_name: str, disk_size: str = '6G'):
     """
     Create a new VM with cloud-init configuration.
     
     Args:
         vm_name (str): Name of the VM
-        disk_size (str): Size of the disk with unit (default: '60G')
+        disk_size (str): Size of the disk with unit (default: '6G')
     
     Returns:
         dict: Dictionary containing success status and commands to run on hypervisor
@@ -519,10 +519,13 @@ runcmd:
   - pvresize /dev/vda2
   - lvextend -l +100%FREE /dev/vg_main/lv_root
   - xfs_growfs /dev/vg_main/lv_root
-  - systemctl stop cloud-init
-  - systemctl disable cloud-init
-  - dnf -y remove cloud-init
-  - shutdown -P now
+  - touch /etc/cloud/cloud-init.disabled
+
+power_state:
+  delay: "now"
+  mode: poweroff
+  timeout: 30
+  condition: True
 """
         user_data_path = os.path.join(vm_dir, 'user-data')
         with salt.utils.files.fopen(user_data_path, 'w') as f:
