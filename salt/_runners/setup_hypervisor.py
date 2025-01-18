@@ -521,7 +521,7 @@ runcmd:
   - xfs_growfs /dev/vg_main/lv_root
   - systemctl stop cloud-init
   - systemctl disable cloud-init
-  - dnf remove cloud-init
+  - dnf -y remove cloud-init
   - shutdown -P now
 """
         user_data_path = os.path.join(vm_dir, 'user-data')
