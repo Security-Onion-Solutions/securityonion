@@ -276,6 +276,7 @@ base:
     - elasticfleet.install_agent_grid
     - libvirt
     - libvirt.images
+    - hypervisor
     - stig
 
   '*_desktop and G@saltversion:{{saltversion}}':
