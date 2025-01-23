@@ -1,0 +1,18 @@
+{
+  "description" : "zeek.quic",
+  "processors" : [
+    { "set":      { "field": "event.dataset",                           "value": "quic" } },
+    { "set":      { "field": "network.transport",                       "value": "udp"  } },
+    { "json":     { "field": "message",                                 "target_field": "message2",                       "ignore_failure": true    } },
+    { "rename": 	{ "field": "message2.version",	                    "target_field": "quic.version",		              "ignore_missing": true 	} },
+    { "rename": 	{ "field": "message2.client_initial_dcid",	        "target_field": "quic.client_initial_dcid",		  "ignore_missing": true 	} },
+    { "rename": 	{ "field": "message2.client_scid",	                "target_field": "quic.client_scid",		          "ignore_missing": true 	} },
+    { "rename": 	{ "field": "message2.server_scid",	                "target_field": "quic.server_scid",		          "ignore_missing": true 	} },
+    { "rename": 	{ "field": "message2.server_name",	                "target_field": "quic.server_name",		          "ignore_missing": true 	} },
+    { "rename": 	{ "field": "message2.client_protocol",	            "target_field": "quic.client_protocol",		      "ignore_missing": true 	} },
+    { "rename": 	{ "field": "message2.history",	                    "target_field": "quic.history",                   "ignore_missing": true 	} },
+    { "remove":		{ "field": "message2.tags",		                                                                      "ignore_failure": true    } },
+    { "remove":   { "field": ["host"],                                                                                    "ignore_failure": true    } },
+    { "pipeline":       { "name": "zeek.common" } }
+  ]
+}

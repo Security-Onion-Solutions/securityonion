@@ -164,7 +164,6 @@ so-nginx:
       - x509: managerssl_crt
 {%     endif%}
       - file: navigatorconfig
-      - file: navigatordefaultlayer
 {%   endif %}
 
 delete_so-nginx_so-status.disabled:

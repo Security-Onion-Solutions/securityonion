@@ -150,6 +150,7 @@ if [[ $EXCLUDE_FALSE_POSITIVE_ERRORS == 'Y' ]]; then
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|app_layer.error"              # false positive (suricata 7) in stats.log e.g. app_layer.error.imap.parser | Total | 0
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|is not an ip string literal"  # false positive (Open Canary logging out blank IP addresses)
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|syncing rule"                 # false positive (rule sync log line includes rule name which can contain 'error') 
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|request_unauthorized"         # false positive (login failures to Hydra result in an 'error' log) 
 fi
 
 if [[ $EXCLUDE_KNOWN_ERRORS == 'Y' ]]; then
@@ -210,6 +211,7 @@ if [[ $EXCLUDE_KNOWN_ERRORS == 'Y' ]]; then
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|integrity check failed"       # Detections: Exclude false positive due to automated testing
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|syncErrors"                   # Detections: Not an actual error
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|Initialized license manager"  # SOC log: before fields.status was changed to fields.licenseStatus
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|from NIC checksum offloading" # zeek reporter.log
 fi
 
 RESULT=0
@@ -247,6 +249,9 @@ exclude_log "soctopus.log" # Soctopus is removed as of 2.4.70, logs may still be
 exclude_log "agentstatus.log" # ignore this log since it tracks agents in error state
 exclude_log "detections_runtime-status_yara.log" # temporarily ignore this log until Detections is more stable
 exclude_log "/nsm/kafka/data/" # ignore Kafka data directory from log check.
+
+# Include Zeek reporter.log to detect errors after running known good pcap(s) through sensor
+echo "/nsm/zeek/spool/logger/reporter.log" >> /tmp/log_check_files
 
 for log_file in $(cat /tmp/log_check_files); do
     status "Checking log file $log_file"

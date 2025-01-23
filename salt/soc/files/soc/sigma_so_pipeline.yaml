@@ -45,24 +45,25 @@ transformations:
       rule_conditions:
       - type: logsource
         category: antivirus
-    # Drops the Hashes field which is specific to Sysmon logs
-    # Ingested sysmon logs will have the Hashes field mapped to ECS specific fields
-    - id: hashes_drop_sysmon-specific-field
-      type: drop_detection_item
+    # Transforms the `Hashes` field to ECS fields
+    # ECS fields are used by the hash fields emitted by Elastic Defend
+    # If shipped with Elastic Agent, sysmon logs will also have hashes mapped to ECS fields    
+    - id: hashes_break_out_field
+      type: hashes_fields
+      valid_hash_algos: ["MD5", "SHA1", "SHA256", "SHA512", "IMPHASH"]
+      field_prefix: "file"
+      drop_algo_prefix: False
       field_name_conditions:
         - type: include_fields
           fields:
-          - winlog.event_data.Hashes
-      rule_conditions:
-      - type: logsource
-        product: windows
+            - winlog.event_data.Hashes
     - id: hashes_process-creation
       type: field_name_mapping
       mapping:
-        winlog.event_data.sha256: process.hash.sha256
-        winlog.event_data.sha1: process.hash.sha1
-        winlog.event_data.md5: process.hash.md5
-        winlog.event_data.Imphash: process.pe.imphash
+        fileSHA256: process.hash.sha256
+        fileSHA1: process.hash.sha1
+        fileMD5: process.hash.md5
+        fileIMPHASH: process.pe.imphash
       rule_conditions:
       - type: logsource
         product: windows
@@ -70,10 +71,10 @@ transformations:
     - id: hashes_image-load
       type: field_name_mapping
       mapping:
-        winlog.event_data.sha256: dll.hash.sha256
-        winlog.event_data.sha1: dll.hash.sha1
-        winlog.event_data.md5: dll.hash.md5
-        winlog.event_data.Imphash: dll.pe.imphash
+        fileSHA256: dll.hash.sha256
+        fileSHA1: dll.hash.sha1
+        fileMD5: dll.hash.md5
+        fileIMPHASH: dll.pe.imphash
       rule_conditions:
       - type: logsource
         product: windows
@@ -81,10 +82,10 @@ transformations:
     - id: hashes_driver-load
       type: field_name_mapping
       mapping:
-        winlog.event_data.sha256: dll.hash.sha256
-        winlog.event_data.sha1: dll.hash.sha1
-        winlog.event_data.md5: dll.hash.md5
-        winlog.event_data.Imphash: dll.pe.imphash
+        fileSHA256: dll.hash.sha256
+        fileSHA1: dll.hash.sha1
+        fileMD5: dll.hash.md5
+        fileIMPHASH: dll.pe.imphash
       rule_conditions:
       - type: logsource
         product: windows

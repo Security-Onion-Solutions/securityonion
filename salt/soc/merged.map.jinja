@@ -35,11 +35,19 @@
 {# since cases is not a valid soc config item and only used for the map files, remove it from being placed in the config #}
 {% do SOCMERGED.config.server.modules.pop('cases') %}
 
-{# set Sigma rules based on role if defined and default if not #}
+{# set enabled Sigma rules based on role if defined and default if not #}
+{# this particular config is deprecated as of 2.4.120 - use enabledSigmaRules instead #}
 {% if GLOBALS.role in SOCMERGED.config.server.modules.elastalertengine.autoEnabledSigmaRules %}
 {%   do SOCMERGED.config.server.modules.elastalertengine.update({'autoEnabledSigmaRules': SOCMERGED.config.server.modules.elastalertengine.autoEnabledSigmaRules[GLOBALS.role]}) %}
 {% else %}
 {%   do SOCMERGED.config.server.modules.elastalertengine.update({'autoEnabledSigmaRules': SOCMERGED.config.server.modules.elastalertengine.autoEnabledSigmaRules.default}) %}
+{% endif %}
+
+{# set enabled Sigma rules based on role if defined and default if not #}
+{% if GLOBALS.role in SOCMERGED.config.server.modules.elastalertengine.enabledSigmaRules %}
+{%   do SOCMERGED.config.server.modules.elastalertengine.update({'enabledSigmaRules': SOCMERGED.config.server.modules.elastalertengine.enabledSigmaRules[GLOBALS.role]}) %}
+{% else %}
+{%   do SOCMERGED.config.server.modules.elastalertengine.update({'enabledSigmaRules': SOCMERGED.config.server.modules.elastalertengine.enabledSigmaRules.default}) %}
 {% endif %}
 
 {# set elastalertengine.rulesRepos and strelkaengine.rulesRepos based on airgap or not #}

@@ -176,6 +176,15 @@ socusersroles:
     - require:
       - sls: manager.sync_es_users
 
+socclientsroles:
+  file.managed:
+    - name: /opt/so/conf/soc/soc_clients_roles
+    - user: 939
+    - group: 939
+    - mode: 600
+    - allow_empty: true
+    - create: true
+
 socuploaddir:
   file.directory:
     - name: /nsm/soc/uploads

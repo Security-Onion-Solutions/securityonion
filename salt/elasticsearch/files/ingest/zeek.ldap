@@ -1,0 +1,25 @@
+{
+    "description": "zeek.ldap",
+    "processors": [
+        {"set":      {"field": "event.dataset",                 "value": "ldap"}},
+        {"json":     {"field": "message",                       "target_field": "message2",                     "ignore_failure": true}},
+        {"rename":   {"field": "message2.message_id",           "target_field": "ldap.message_id",              "ignore_missing": true}},
+        {"rename":   {"field": "message2.opcode",               "target_field": "ldap.opcode",                  "ignore_missing": true}},
+        {"rename":   {"field": "message2.result",               "target_field": "ldap.result",                  "ignore_missing": true}},
+        {"rename":   {"field": "message2.diagnostic_message",   "target_field": "ldap.diagnostic_message",      "ignore_missing": true}},
+        {"rename":   {"field": "message2.version",              "target_field": "ldap.version",                 "ignore_missing": true}},
+        {"rename":   {"field": "message2.object",               "target_field": "ldap.object",                  "ignore_missing": true}},
+        {"rename":   {"field": "message2.argument",             "target_field": "ldap.argument",                "ignore_missing": true}},
+        {"rename":   {"field": "message2.scope",                "target_field": "ldap_search.scope",            "ignore_missing":true}},
+        {"rename":   {"field": "message2.deref_aliases",        "target_field": "ldap_search.deref_aliases",    "ignore_missing":true}},
+        {"rename":   {"field": "message2.base_object",          "target_field": "ldap.object",                  "ignore_missing":true}},
+        {"rename":   {"field": "message2.result_count",         "target_field": "ldap_search.result_count",     "ignore_missing":true}},
+        {"rename":   {"field": "message2.filter",               "target_field": "ldap_search.filter",           "ignore_missing":true}},
+        {"rename":   {"field": "message2.attributes",           "target_field": "ldap_search.attributes",       "ignore_missing":true}},
+        {"script":   {"source": "if (ctx.containsKey('ldap') && ctx.ldap.containsKey('diagnostic_message') && ctx.ldap.diagnostic_message != null) {\n          String message = ctx.ldap.diagnostic_message;\n\n          // get user and property from SASL success\n          if (message.toLowerCase().contains(\"sasl(0): successful result\")) {\n            Pattern pattern = /user:\\s*([^ ]+)\\s*property:\\s*([^ ]+)/i;\n            Matcher matcher = pattern.matcher(message);\n            if (matcher.find()) {\n              ctx.ldap.user_email = matcher.group(1);  // Extract user email\n              ctx.ldap.property = matcher.group(2);    // Extract property\n            }\n          }\n          if (message.toLowerCase().contains(\"ldaperr:\")) {\n            Pattern pattern = /comment:\\s*([^,]+)/i;\n            Matcher matcher = pattern.matcher(message);\n\n            if (matcher.find()) {\n              ctx.ldap.comment = matcher.group(1);\n            }\n          }\n        }","ignore_failure": true}},
+        {"script":   {"source": "if (ctx.containsKey('ldap') && ctx.ldap.containsKey('object') && ctx.ldap.object != null) {\n    String message = ctx.ldap.object;\n\n    // parse common name from ldap object\n    if (message.toLowerCase().contains(\"cn=\")) {\n        Pattern pattern = /cn=([^,]+)/i;\n        Matcher matcher = pattern.matcher(message);\n        if (matcher.find()) {\n            ctx.ldap.common_name = matcher.group(1);  // Extract CN\n        }\n    }\n    // build domain from ldap object\n    if (message.toLowerCase().contains(\"dc=\")) {\n        Pattern dcPattern = /dc=([^,]+)/i;\n        Matcher dcMatcher = dcPattern.matcher(message);\n\n        StringBuilder domainBuilder = new StringBuilder();\n        while (dcMatcher.find()) {\n            if (domainBuilder.length() > 0 ){\n                domainBuilder.append(\".\");\n            }\n            domainBuilder.append(dcMatcher.group(1));\n        }\n        if (domainBuilder.length() > 0) {\n            ctx.ldap.domain = domainBuilder.toString();\n        }\n    }\n    // create list of any organizational units from ldap object\n    if (message.toLowerCase().contains(\"ou=\")) {\n        Pattern ouPattern = /ou=([^,]+)/i;\n        Matcher ouMatcher = ouPattern.matcher(message);\n        ctx.ldap.organizational_unit = [];\n\n        while (ouMatcher.find()) {\n            ctx.ldap.organizational_unit.add(ouMatcher.group(1));\n        }\n        if(ctx.ldap.organizational_unit.isEmpty()) {\n          ctx.remove(\"ldap.organizational_unit\");\n        }\n    }\n}\n","ignore_failure": true}},
+        {"remove":   {"field": "message2.tags","ignore_failure": true}},
+        {"remove":   {"field": ["host"],"ignore_failure": true}},
+        {"pipeline": {"name": "zeek.common"}}
+    ]
+}

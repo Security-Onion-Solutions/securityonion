@@ -830,6 +830,7 @@ create_manager_pillars() {
 	redis_pillar
 	idstools_pillar
 	kratos_pillar
+	hydra_pillar
 	soc_pillar
 	idh_pillar
 	influxdb_pillar
@@ -1000,7 +1001,12 @@ docker_seed_update() {
 docker_seed_registry() {
 	local VERSION="$SOVERSION"
 
-	if ! [ -f /nsm/docker-registry/docker/registry.tar ]; then
+	if [ -f /nsm/docker-registry/docker/registry.tar ]; then
+		logCmd "tar xvf /nsm/docker-registry/docker/registry.tar -C /nsm/docker-registry/docker"
+		logCmd "rm /nsm/docker-registry/docker/registry.tar"
+	elif [ -d /nsm/docker-registry/docker/registry ] && [ -f /etc/SOCLOUD ]; then
+		echo "Using existing docker registry content for cloud install"
+	else
 		if [ "$install_type" == 'IMPORT' ]; then
 			container_list 'so-import'	
 		else
@@ -1010,9 +1016,6 @@ docker_seed_registry() {
 		docker_seed_update_percent=25
 
 		update_docker_containers 'netinstall' '' 'docker_seed_update' '/dev/stdout' 2>&1 | tee -a "$setup_log"
-	else
-		logCmd "tar xvf /nsm/docker-registry/docker/registry.tar -C /nsm/docker-registry/docker"
-		logCmd "rm /nsm/docker-registry/docker/registry.tar"
 	fi
 }
 
@@ -1147,6 +1150,8 @@ generate_passwords(){
   INFLUXTOKEN=$(head -c 64 /dev/urandom | base64 --wrap=0)
   SENSORONIKEY=$(get_random_value)
   KRATOSKEY=$(get_random_value)
+  HYDRAKEY=$(get_random_value)
+  HYDRASALT=$(get_random_value)
   REDISPASS=$(get_random_value)
   SOCSRVKEY=$(get_random_value 64)
   IMPORTPASS=$(get_random_value)
@@ -1338,6 +1343,24 @@ kratos_pillar() {
 		"" > "$kratos_pillar_file"
 }
 
+hydra_pillar() {
+	title "Create the Hydra pillar file"
+	touch $adv_hydra_pillar_file
+	touch $hydra_pillar_file
+	chmod 660 $hydra_pillar_file
+	printf '%s\n'\
+		"hydra:"\
+		"  config:"\
+		"    secrets:"\
+		"      system:"\
+		"        - '$HYDRAKEY'"\
+        "    oidc:"\
+        "        subject_identifiers:"\
+        "            pairwise:"\
+        "                salt: '$HYDRASALT'"\
+		"" > "$hydra_pillar_file"
+}
+
 create_global() {
 	title "Creating the global.sls"
 	touch $adv_global_pillar_file
@@ -1439,7 +1462,7 @@ make_some_dirs() {
 	mkdir -p $local_salt_dir/salt/firewall/portgroups
 	mkdir -p $local_salt_dir/salt/firewall/ports
 
-	for THEDIR in bpf pcap elasticsearch ntp firewall redis backup influxdb strelka sensoroni soc docker zeek suricata nginx telegraf logstash soc manager kratos idstools idh elastalert stig global kafka versionlock hypervisor; do
+	for THEDIR in bpf pcap elasticsearch ntp firewall redis backup influxdb strelka sensoroni soc docker zeek suricata nginx telegraf logstash soc manager kratos hydra idstools idh elastalert stig global kafka versionlock hypervisor; do
 	mkdir -p $local_salt_dir/pillar/$THEDIR
 	touch $local_salt_dir/pillar/$THEDIR/adv_$THEDIR.sls
 	touch $local_salt_dir/pillar/$THEDIR/soc_$THEDIR.sls
@@ -1674,6 +1697,7 @@ reinstall_init() {
 		# Backup (and erase) directories in /nsm to prevent app errors
 		backup_dir /nsm/mysql "$date_string"
 		backup_dir /nsm/kratos "$date_string"
+		backup_dir /nsm/hydra "$date_string"
 		backup_dir /nsm/influxdb "$date_string"
 
 		# Uninstall local Elastic Agent, if installed

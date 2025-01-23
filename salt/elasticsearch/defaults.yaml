@@ -111,15 +111,23 @@ elasticsearch:
                 match_mapping_type: string
           settings:
             index:
+              lifecycle:
+                name: so-case-logs
               mapping:
                 total_fields:
                   limit: 1500
               number_of_replicas: 0
+              auto_expand_replicas: 0-2
               number_of_shards: 1
               refresh_interval: 30s
               sort:
                 field: '@timestamp'
                 order: desc
+      policy:
+        phases:
+          hot:
+            actions: {}
+            min_age: 0ms
     so-common:
       close: 30
       delete: 365
@@ -258,15 +266,23 @@ elasticsearch:
                 match_mapping_type: string
           settings:
             index:
+              lifecycle:
+                name: so-detection-logs
               mapping:
                 total_fields:
                   limit: 1500
               number_of_replicas: 0
+              auto_expand_replicas: 0-2
               number_of_shards: 1
               refresh_interval: 30s
               sort:
                 field: '@timestamp'
                 order: desc
+      policy:
+        phases:
+          hot:
+            actions: {}
+            min_age: 0ms
     so-endgame:
       index_sorting: false
       index_template:
@@ -789,6 +805,116 @@ elasticsearch:
             index:
               lifecycle:
                 name: so-kratos-logs
+              mapping:
+                total_fields:
+                  limit: 5000
+              number_of_replicas: 0
+              number_of_shards: 1
+              refresh_interval: 30s
+              sort:
+                field: '@timestamp'
+                order: desc
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
+      warm: 7
+    so-hydra:
+      close: 30
+      delete: 365
+      index_sorting: false
+      index_template:
+        composed_of:
+        - agent-mappings
+        - dtc-agent-mappings
+        - base-mappings
+        - dtc-base-mappings
+        - client-mappings
+        - dtc-client-mappings
+        - container-mappings
+        - destination-mappings
+        - dtc-destination-mappings
+        - pb-override-destination-mappings
+        - dll-mappings
+        - dns-mappings
+        - dtc-dns-mappings
+        - ecs-mappings
+        - dtc-ecs-mappings
+        - error-mappings
+        - event-mappings
+        - dtc-event-mappings
+        - file-mappings
+        - dtc-file-mappings
+        - group-mappings
+        - host-mappings
+        - dtc-host-mappings
+        - http-mappings
+        - dtc-http-mappings
+        - log-mappings
+        - network-mappings
+        - dtc-network-mappings
+        - observer-mappings
+        - dtc-observer-mappings
+        - organization-mappings
+        - package-mappings
+        - process-mappings
+        - dtc-process-mappings
+        - related-mappings
+        - rule-mappings
+        - dtc-rule-mappings
+        - server-mappings
+        - service-mappings
+        - dtc-service-mappings
+        - source-mappings
+        - dtc-source-mappings
+        - pb-override-source-mappings
+        - threat-mappings
+        - tls-mappings
+        - url-mappings
+        - user_agent-mappings
+        - dtc-user_agent-mappings
+        - common-settings
+        - common-dynamic-mappings
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates: []
+        index_patterns:
+        - logs-hydra-so*
+        priority: 500
+        template:
+          mappings:
+            date_detection: false
+            dynamic_templates:
+            - strings_as_keyword:
+                mapping:
+                  ignore_above: 1024
+                  type: keyword
+                match_mapping_type: string
+          settings:
+            index:
+              lifecycle:
+                name: so-hydra-logs
               mapping:
                 total_fields:
                   limit: 5000
@@ -3085,6 +3211,52 @@ elasticsearch:
               set_priority:
                 priority: 50
             min_age: 30d
+    so-logs-cisco_secure_email_gateway_x_log:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - logs-cisco_secure_email_gateway.log@package
+        - logs-cisco_secure_email_gateway.log@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          hidden: false
+          allow_custom_routing: false
+        ignore_missing_component_templates:
+        - logs-cisco_secure_email_gateway.log@custom
+        index_patterns:
+        - logs-cisco_secure_email_gateway.log-*
+        priority: 501
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-logs-cisco_secure_email_gateway.log-logs
+              number_of_replicas: 0
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
     so-logs-cisco_umbrella_x_log:
       index_sorting: false
       index_template:
@@ -3499,6 +3671,834 @@ elasticsearch:
               set_priority:
                 priority: 50
             min_age: 30d
+    so-logs-cloudflare_logpush_x_access_request:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - logs-cloudflare_logpush.access_request@package
+        - logs-cloudflare_logpush.access_request@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          hidden: false
+          allow_custom_routing: false
+        ignore_missing_component_templates:
+        - logs-cloudflare_logpush.access_request@custom
+        index_patterns:
+        - logs-cloudflare_logpush.access_request-*
+        priority: 501
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-logs-cloudflare_logpush.access_request-logs
+              number_of_replicas: 0
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
+    so-logs-cloudflare_logpush_x_audit:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - logs-cloudflare_logpush.audit@package
+        - logs-cloudflare_logpush.audit@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          hidden: false
+          allow_custom_routing: false
+        ignore_missing_component_templates:
+        - logs-cloudflare_logpush.audit@custom
+        index_patterns:
+        - logs-cloudflare_logpush.audit-*
+        priority: 501
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-logs-cloudflare_logpush.audit-logs
+              number_of_replicas: 0
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
+    so-logs-cloudflare_logpush_x_casb:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - logs-cloudflare_logpush.casb@package
+        - logs-cloudflare_logpush.casb@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          hidden: false
+          allow_custom_routing: false
+        ignore_missing_component_templates:
+        - logs-cloudflare_logpush.casb@custom
+        index_patterns:
+        - logs-cloudflare_logpush.casb-*
+        priority: 501
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-logs-cloudflare_logpush.casb-logs
+              number_of_replicas: 0
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
+    so-logs-cloudflare_logpush_x_device_posture:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - logs-cloudflare_logpush.device_posture@package
+        - logs-cloudflare_logpush.device_posture@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          hidden: false
+          allow_custom_routing: false
+        ignore_missing_component_templates:
+        - logs-cloudflare_logpush.device_posture@custom
+        index_patterns:
+        - logs-cloudflare_logpush.device_posture-*
+        priority: 501
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-logs-cloudflare_logpush.device_posture-logs
+              number_of_replicas: 0
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
+    so-logs-cloudflare_logpush_x_dns:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - logs-cloudflare_logpush.dns@package
+        - logs-cloudflare_logpush.dns@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          hidden: false
+          allow_custom_routing: false
+        ignore_missing_component_templates:
+        - logs-cloudflare_logpush.dns@custom
+        index_patterns:
+        - logs-cloudflare_logpush.dns-*
+        priority: 501
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-logs-cloudflare_logpush.dns-logs
+              number_of_replicas: 0
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
+    so-logs-cloudflare_logpush_x_dns_firewall:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - logs-cloudflare_logpush.dns_firewall@package
+        - logs-cloudflare_logpush.dns_firewall@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          hidden: false
+          allow_custom_routing: false
+        ignore_missing_component_templates:
+        - logs-cloudflare_logpush.dns_firewall@custom
+        index_patterns:
+        - logs-cloudflare_logpush.dns_firewall-*
+        priority: 501
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-logs-cloudflare_logpush.dns_firewall-logs
+              number_of_replicas: 0
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
+    so-logs-cloudflare_logpush_x_firewall_event:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - logs-cloudflare_logpush.firewall_event@package
+        - logs-cloudflare_logpush.firewall_event@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          hidden: false
+          allow_custom_routing: false
+        ignore_missing_component_templates:
+        - logs-cloudflare_logpush.firewall_event@custom
+        index_patterns:
+        - logs-cloudflare_logpush.firewall_event-*
+        priority: 501
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-logs-cloudflare_logpush.firewall_event-logs
+              number_of_replicas: 0
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
+    so-logs-cloudflare_logpush_x_gateway_dns:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - logs-cloudflare_logpush.gateway_dns@package
+        - logs-cloudflare_logpush.gateway_dns@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          hidden: false
+          allow_custom_routing: false
+        ignore_missing_component_templates:
+        - logs-cloudflare_logpush.gateway_dns@custom
+        index_patterns:
+        - logs-cloudflare_logpush.gateway_dns-*
+        priority: 501
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-logs-cloudflare_logpush.gateway_dns-logs
+              number_of_replicas: 0
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
+    so-logs-cloudflare_logpush_x_gateway_http:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - logs-cloudflare_logpush.gateway_http@package
+        - logs-cloudflare_logpush.gateway_http@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          hidden: false
+          allow_custom_routing: false
+        ignore_missing_component_templates:
+        - logs-cloudflare_logpush.gateway_http@custom
+        index_patterns:
+        - logs-cloudflare_logpush.gateway_http-*
+        priority: 501
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-logs-cloudflare_logpush.gateway_http-logs
+              number_of_replicas: 0
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
+    so-logs-cloudflare_logpush_x_gateway_network:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - logs-cloudflare_logpush.gateway_network@package
+        - logs-cloudflare_logpush.gateway_network@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          hidden: false
+          allow_custom_routing: false
+        ignore_missing_component_templates:
+        - logs-cloudflare_logpush.gateway_network@custom
+        index_patterns:
+        - logs-cloudflare_logpush.gateway_network-*
+        priority: 501
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-logs-cloudflare_logpush.gateway_network-logs
+              number_of_replicas: 0
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
+    so-logs-cloudflare_logpush_x_http_request:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - logs-cloudflare_logpush.http_request@package
+        - logs-cloudflare_logpush.http_request@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          hidden: false
+          allow_custom_routing: false
+        ignore_missing_component_templates:
+        - logs-cloudflare_logpush.http_request@custom
+        index_patterns:
+        - logs-cloudflare_logpush.http_request-*
+        priority: 501
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-logs-cloudflare_logpush.http_request-logs
+              number_of_replicas: 0
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
+    so-logs-cloudflare_logpush_x_magic_ids:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - logs-cloudflare_logpush.magic_ids@package
+        - logs-cloudflare_logpush.magic_ids@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          hidden: false
+          allow_custom_routing: false
+        ignore_missing_component_templates:
+        - logs-cloudflare_logpush.magic_ids@custom
+        index_patterns:
+        - logs-cloudflare_logpush.magic_ids-*
+        priority: 501
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-logs-cloudflare_logpush.magic_ids-logs
+              number_of_replicas: 0
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
+    so-logs-cloudflare_logpush_x_nel_report:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - logs-cloudflare_logpush.nel_report@package
+        - logs-cloudflare_logpush.nel_report@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          hidden: false
+          allow_custom_routing: false
+        ignore_missing_component_templates:
+        - logs-cloudflare_logpush.nel_report@custom
+        index_patterns:
+        - logs-cloudflare_logpush.nel_report-*
+        priority: 501
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-logs-cloudflare_logpush.nel_report-logs
+              number_of_replicas: 0
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
+    so-logs-cloudflare_logpush_x_network_analytics:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - logs-cloudflare_logpush.network_analytics@package
+        - logs-cloudflare_logpush.network_analytics@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          hidden: false
+          allow_custom_routing: false
+        ignore_missing_component_templates:
+        - logs-cloudflare_logpush.network_analytics@custom
+        index_patterns:
+        - logs-cloudflare_logpush.network_analytics-*
+        priority: 501
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-logs-cloudflare_logpush.network_analytics-logs
+              number_of_replicas: 0
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
+    so-logs-cloudflare_logpush_x_network_session:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - logs-cloudflare_logpush.network_session@package
+        - logs-cloudflare_logpush.network_session@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          hidden: false
+          allow_custom_routing: false
+        ignore_missing_component_templates:
+        - logs-cloudflare_logpush.network_session@custom
+        index_patterns:
+        - logs-cloudflare_logpush.network_session-*
+        priority: 501
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-logs-cloudflare_logpush.network_session-logs
+              number_of_replicas: 0
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
+    so-logs-cloudflare_logpush_x_sinkhole_http:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - logs-cloudflare_logpush.sinkhole_http@package
+        - logs-cloudflare_logpush.sinkhole_http@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          hidden: false
+          allow_custom_routing: false
+        ignore_missing_component_templates:
+        - logs-cloudflare_logpush.sinkhole_http@custom
+        index_patterns:
+        - logs-cloudflare_logpush.sinkhole_http-*
+        priority: 501
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-logs-cloudflare_logpush.sinkhole_http-logs
+              number_of_replicas: 0
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
+    so-logs-cloudflare_logpush_x_spectrum_event:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - logs-cloudflare_logpush.spectrum_event@package
+        - logs-cloudflare_logpush.spectrum_event@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          hidden: false
+          allow_custom_routing: false
+        ignore_missing_component_templates:
+        - logs-cloudflare_logpush.spectrum_event@custom
+        index_patterns:
+        - logs-cloudflare_logpush.spectrum_event-*
+        priority: 501
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-logs-cloudflare_logpush.spectrum_event-logs
+              number_of_replicas: 0
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
+    so-logs-cloudflare_logpush_x_workers_trace:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - logs-cloudflare_logpush.workers_trace@package
+        - logs-cloudflare_logpush.workers_trace@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          hidden: false
+          allow_custom_routing: false
+        ignore_missing_component_templates:
+        - logs-cloudflare_logpush.workers_trace@custom
+        index_patterns:
+        - logs-cloudflare_logpush.workers_trace-*
+        priority: 501
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-logs-cloudflare_logpush.workers_trace-logs
+              number_of_replicas: 0
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
     so-logs-crowdstrike_x_alert:
       index_sorting: False
       index_template:
@@ -3507,6 +4507,8 @@ elasticsearch:
         template:
           settings:
             index:
+              lifecycle:
+                name: so-logs-crowdstrike.alert-logs
               number_of_replicas: 0
         composed_of:
         - logs-crowdstrike.alert@package
@@ -3551,6 +4553,8 @@ elasticsearch:
         template:
           settings:
             index:
+              lifecycle:
+                name: so-logs-crowdstrike.falcon-logs
               number_of_replicas: 0
         composed_of:
         - logs-crowdstrike.falcon@package
@@ -3595,6 +4599,8 @@ elasticsearch:
         template:
           settings:
             index:
+              lifecycle:
+                name: so-logs-crowdstrike.fdr-logs
               number_of_replicas: 0
         composed_of:
         - logs-crowdstrike.fdr@package
@@ -3639,6 +4645,8 @@ elasticsearch:
         template:
           settings:
             index:
+              lifecycle:
+                name: so-logs-crowdstrike.host-logs
               number_of_replicas: 0
         composed_of:
         - logs-crowdstrike.host@package
@@ -8099,6 +9107,7 @@ elasticsearch:
       index_sorting: false
       index_template:
         composed_of:
+        - okta-mappings
         - logs-okta.system@package
         - logs-okta.system@custom
         - so-fleet_globals-1
@@ -10181,6 +11190,52 @@ elasticsearch:
               set_priority:
                 priority: 50
             min_age: 30d
+    so-logs-ti_opencti_x_indicator:
+      index_sorting: False
+      index_template:
+        composed_of:
+          - "logs-ti_opencti.indicator@package"
+          - "logs-ti_opencti.indicator@custom"
+          - "so-fleet_globals-1"
+          - "so-fleet_agent_id_verification-1"
+        data_stream:
+          hidden: false
+          allow_custom_routing: false
+        ignore_missing_component_templates:
+          - "logs-ti_opencti.indicator@custom"
+        index_patterns:
+          - "logs-ti_opencti.indicator-*"
+        priority: 501
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-logs-ti_opencti.indicator-logs
+              number_of_replicas: 0
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
     so-logs-ti_otx_x_pulses_subscribed:
       index_sorting: false
       index_template:
@@ -10248,6 +11303,144 @@ elasticsearch:
             index:
               lifecycle:
                 name: so-logs-ti_otx.threat-logs
+              number_of_replicas: 0
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
+    so-logs-ti_rapid7_threat_command_x_alert:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - logs-ti_rapid7_threat_command.alert@package
+        - logs-ti_rapid7_threat_command.alert@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          hidden: false
+          allow_custom_routing: false
+        ignore_missing_component_templates:
+        - logs-ti_rapid7_threat_command.alert@custom
+        index_patterns:
+        - logs-ti_rapid7_threat_command.alert-*
+        priority: 501
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-logs-ti_rapid7_threat_command.alert-logs
+              number_of_replicas: 0
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
+    so-logs-ti_rapid7_threat_command_x_ioc:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - logs-ti_rapid7_threat_command.ioc@package
+        - logs-ti_rapid7_threat_command.ioc@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          hidden: false
+          allow_custom_routing: false
+        ignore_missing_component_templates:
+        - logs-ti_rapid7_threat_command.ioc@custom
+        index_patterns:
+        - logs-ti_rapid7_threat_command.ioc-*
+        priority: 501
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-logs-ti_rapid7_threat_command.ioc-logs
+              number_of_replicas: 0
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
+    so-logs-ti_rapid7_threat_command_x_vulnerability:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - logs-ti_rapid7_threat_command.vulnerability@package
+        - logs-ti_rapid7_threat_command.vulnerability@custom
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          hidden: false
+          allow_custom_routing: false
+        ignore_missing_component_templates:
+        - logs-ti_rapid7_threat_command.vulnerability@custom
+        index_patterns:
+        - logs-ti_rapid7_threat_command.vulnerability-*
+        priority: 501
+        template:
+          settings:
+            index:
+              lifecycle:
+                name: so-logs-ti_rapid7_threat_command.vulnerability-logs
               number_of_replicas: 0
       policy:
         phases:
@@ -10419,6 +11612,8 @@ elasticsearch:
         template:
           settings:
             index:
+              lifecycle:
+                name: so-logs-trend_micro_vision_one.alert-logs
               number_of_replicas: 0
         composed_of:
           - "logs-trend_micro_vision_one.alert@package"
@@ -10463,6 +11658,8 @@ elasticsearch:
         template:
           settings:
             index:
+              lifecycle:
+                name: so-logs-trend_micro_vision_one.audit-logs
               number_of_replicas: 0
         ignore_missing_component_templates:
         - "logs-trend_micro_vision_one.audit@custom"
@@ -10507,6 +11704,8 @@ elasticsearch:
         template:
           settings:
             index:
+              lifecycle:
+                name: so-logs-trend_micro_vision_one.detection-logs
               number_of_replicas: 0
         ignore_missing_component_templates:
         - "logs-trend_micro_vision_one.detection@custom"
@@ -10551,6 +11750,8 @@ elasticsearch:
         template:
           settings:
             index:
+              lifecycle:
+                name: so-logs-trend_micro_vision_one.deep_security-logs
               number_of_replicas: 0
         ignore_missing_component_templates:
         - "logs-trendmicro.deep_security@custom"

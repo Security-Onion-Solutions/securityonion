@@ -19,6 +19,17 @@ include:
 
 {% if INSTALLEDSALTVERSION|string != SALTVERSION|string %}
 
+{# this is added in 2.4.120 to remove salt repo files pointing to saltproject.io to accomodate the move to broadcom and new bootstrap-salt script #}
+{%   if salt['pkg.version_cmp'](GLOBALS.so_version, '2.4.120') == -1 %}
+{%     set saltrepofile = '/etc/yum.repos.d/salt.repo' %}
+{%     if grains.os_family == 'Debian' %}
+{%       set saltrepofile = '/etc/apt/sources.list.d/salt.list' %}
+{%     endif %}
+remove_saltproject_io_repo_minion:
+  file.absent:
+    - name: {{ saltrepofile }}
+{%   endif %}
+
 unhold_salt_packages:
   pkg.unheld:
     - pkgs:

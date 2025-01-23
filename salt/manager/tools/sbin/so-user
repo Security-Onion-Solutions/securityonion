@@ -100,23 +100,23 @@ while [[ $# -gt 0 ]]; do
   shift
   case "$param" in
     --email)
-      email=$1
+      email=$(echo $1 | sed 's/"/\\"/g')
       shift
       ;;
     --role)
-      role=$1
+      role=$(echo $1 | sed 's/"/\\"/g')
       shift
       ;;
     --firstName)
-      firstName=$1
+      firstName=$(echo $1 | sed 's/"/\\"/g')
       shift
       ;;
     --lastName) 
-      lastName=$1
+      lastName=$(echo $1 | sed 's/"/\\"/g')
       shift
       ;;
     --note) 
-      note=$1
+      note=$(echo $1 | sed 's/"/\\"/g')
       shift
       ;;
     --skip-sync) 
@@ -241,6 +241,10 @@ function updatePassword() {
     [[ $? != 0 ]] && fail "Unable to clear aal2 identity IDs"
     echo "delete from identity_credentials where identity_id='${identityId}' and identity_credential_type_id in (select id from identity_credential_types where name in ('totp', 'webauthn', 'oidc'));" | sqlite3 -cmd ".timeout ${databaseTimeout}" "$databasePath"
     [[ $? != 0 ]] && fail "Unable to clear aal2 identity credentials"
+    echo "delete from session_devices where session_id in (select id from sessions where identity_id='${identityId}');" | sqlite3 -cmd ".timeout ${databaseTimeout}" "$databasePath"
+    [[ $? != 0 ]] && fail "Unable to clear session devices"
+    echo "delete from sessions where identity_id='${identityId}';" | sqlite3 -cmd ".timeout ${databaseTimeout}" "$databasePath"
+    [[ $? != 0 ]] && fail "Unable to clear sessions"
     echo "update identities set available_aal='aal1' where id='${identityId}';" | sqlite3 -cmd ".timeout ${databaseTimeout}" "$databasePath"
     [[ $? != 0 ]] && fail "Unable to reset aal"
   fi
@@ -357,7 +361,6 @@ function syncElastic() {
       random_crypt=$(get_random_value 53)
       user_data_formatted=$(echo "${user_data_formatted}" | sed -r "s/^(.+:)\$/\\1\$2a\$12${random_crypt}/")
     fi
-
     echo "${user_data_formatted}" >> "$usersTmpFile"
 
     # Append the user roles
@@ -373,7 +376,6 @@ function syncElastic() {
         sqlite3 -cmd ".timeout ${databaseTimeout}" "$databasePath" >> "$rolesTmpFile"
       [[ $? != 0 ]] && fail "Unable to read role identities from database"
     done < "$socRolesFile"
-
   else
     echo "Database file or soc roles file does not exist yet, skipping users export"
   fi

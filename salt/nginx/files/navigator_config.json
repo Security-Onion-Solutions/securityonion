@@ -1,33 +1,53 @@
 {%- set URL_BASE = salt['pillar.get']('global:url_base', '') %}
 
 {
-    "versions": [
+    "collection_index_url": "",
+
+"versions": {
+    "enabled": true,
+    "entries": [
         {
-            "name": "ATT&CK v14",
-            "version": "14",
+            "name": "MITRE ATT&CK",
+            "version": "16",
             "domains": [
-                {   
+                {
                     "name": "Enterprise",
                     "identifier": "enterprise-attack",
-                    "data": ["assets/so/enterprise-attack.json"]
+                    "data": ["assets/mitre/enterprise-attack.json"]
                 }
             ]
         }
-    ],
+    ]
+},
 
-    "custom_context_menu_items": [ {"label": "view related plays","url": "  https://{{URL_BASE}}/playbook/projects/detection-playbooks/issues?utf8=%E2%9C%93&set_filter=1&sort=id%3Adesc&f%5B%5D=cf_15&op%5Bcf_15%5D=%3D&f%5B%5D=&c%5B%5D=status&c%5B%5D=cf_10&c%5B%5D=cf_13&c%5B%5D=cf_18&c%5B%5D=cf_19&c%5B%5D=cf_1&c%5B%5D=updated_on&v%5Bcf_15%5D%5B%5D=~Technique_ID~"}],
+    "custom_context_menu_items": [ 
+        {"label": "View related Detections","url": "  https://{{URL_BASE}}/#/detections?q=*{{ "{{technique_attackID}}" }}*+|+groupby+so_detection.language+|+groupby+so_detection.ruleset+so_detection.isEnabled+|+groupby+%22so_detection.category%22&z=America/New_York&el=500&gl=50&rt=0&rtu=hours"},
+        {"label": "View related Alerts","url": "  https://{{URL_BASE}}/#/alerts?q=*{{ "{{technique_attackID}}" }}*+|+groupby+rule.name+event.module*+event.severity_label+rule.uuid&z=America/New_York&el=500&gl=500&rt=15&rtu=days"}
+        ],
 
     "default_layers": {
         "enabled": true,
-        "urls": ["assets/so/nav_layer_playbook.json"]
+        "urls": ["assets/so/navigator_layer_all_detections.json","assets/so/navigator_layer_sigma.json","assets/so/navigator_layer_suricata.json","assets/so/navigator_layer_alerts.json"]
     },
 
     "comment_color": "yellow",
     "link_color": "blue",
     "banner": "",
+    "customize_features": [
+        {"name": "multiselect", "enabled": true, "description": "Disable to remove the multiselect panel from interface."},
+        {"name": "export_render", "enabled": true, "description": "Disable to remove the button to render the current layer."},
+        {"name": "export_excel", "enabled": true, "description": "Disable to remove the button to export the current layer to MS Excel (.xlsx) format."},
+        {"name": "legend", "enabled": true, "description": "Disable to remove the legend panel from the interface."},
+        {"name": "background_color", "enabled": true, "description": "Disable to remove the background color effect on manually assigned colors."},
+        {"name": "non_aggregate_score_color", "enabled": true, "description": "Disable to remove the color effect on non-aggregate scores."},
+        {"name": "aggregate_score_color", "enabled": true, "description": "Disable to remove the color effect on aggregate scores."},
+        {"name": "comment_underline", "enabled": true, "description": "Disable to remove the comment underline effect on techniques."},
+        {"name": "metadata_underline", "enabled": true, "description": "Disable to remove the metadata underline effect on techniques."},
+        {"name": "link_underline", "enabled": true, "description": "Disable to remove the hyperlink underline effect on techniques."}
+    ],
     "features": [
-        {"name": "leave_site_dialog", "enabled": true, "description": "Disable to remove the dialog prompt when leaving site."},
-        {"name": "tabs", "enabled": true, "description": "Disable to remove the ability to open new tabs."},
+        {"name": "leave_site_dialog", "enabled": false, "description": "Disable to remove the dialog prompt when leaving site."},
+        {"name": "tabs", "disabled": true, "description": "Disable to remove the ability to open new tabs."},
         {"name": "selecting_techniques", "enabled": true, "description": "Disable to remove the ability to select techniques."},
         {"name": "header", "enabled": true, "description": "Disable to remove the header containing banner."},
         {"name": "subtechniques", "enabled": true, "description": "Disable to remove all sub-technique features from the interface."},

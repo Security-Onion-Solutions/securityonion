@@ -11,6 +11,7 @@
 {%   else %}
 {%     set UPDATE_DIR='/tmp/sogh/securityonion' %}
 {%   endif %}
+{%   set SOVERSION = salt['file.read']('/etc/soversion').strip() %}
 
 remove_common_soup:
   file.absent:
@@ -106,6 +107,17 @@ copy_so-repo-sync_sbin:
     - source: {{UPDATE_DIR}}/salt/manager/tools/sbin/so-repo-sync
     - force: True
     - preserve: True
+
+{# this is added in 2.4.120 to remove salt repo files pointing to saltproject.io to accomodate the move to broadcom and new bootstrap-salt script #}
+{%   if salt['pkg.version_cmp'](SOVERSION, '2.4.120') == -1 %}
+{%     set saltrepofile = '/etc/yum.repos.d/salt.repo' %}
+{%     if grains.os_family == 'Debian' %}
+{%       set saltrepofile = '/etc/apt/sources.list.d/salt.list' %}
+{%     endif %}
+remove_saltproject_io_repo_manager:
+  file.absent:
+    - name: {{ saltrepofile }}
+{%   endif %}
 
 {% else %}
 fix_23_soup_sbin:

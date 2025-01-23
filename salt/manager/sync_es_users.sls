@@ -6,6 +6,10 @@ so-user.lock:
   file.missing:
     - name: /var/tmp/so-user.lock
 
+so-client.lock:
+  file.missing:
+    - name: /var/tmp/so-client.lock
+
 # Must run before elasticsearch docker container is started!
 sync_es_users:
   cmd.run:

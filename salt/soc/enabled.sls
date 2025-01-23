@@ -34,6 +34,7 @@ so-soc:
       - /opt/so/log/soc/:/opt/sensoroni/logs/:rw
       - /opt/so/conf/soc/soc.json:/opt/sensoroni/sensoroni.json:ro
       - /opt/so/conf/soc/ai_summary_repos:/opt/sensoroni/ai_summary_repos:rw
+      - /opt/so/conf/navigator/layers/:/opt/sensoroni/navigator/:rw
 {% if SOCMERGED.telemetryEnabled and not GLOBALS.airgap %}
       - /opt/so/conf/soc/analytics.js:/opt/sensoroni/html/js/analytics.js:ro
 {% endif %}
@@ -44,6 +45,7 @@ so-soc:
       - /opt/so/conf/soc/custom.js:/opt/sensoroni/html/js/custom.js:ro
       - /opt/so/conf/soc/custom_roles:/opt/sensoroni/rbac/custom_roles:ro
       - /opt/so/conf/soc/soc_users_roles:/opt/sensoroni/rbac/users_roles:rw
+      - /opt/so/conf/soc/soc_clients_roles:/opt/sensoroni/rbac/clients_roles:rw
       - /opt/so/conf/soc/queue:/opt/sensoroni/queue:rw
       - /opt/so/saltstack:/opt/so/saltstack:rw
       - /opt/so/conf/soc/migrations:/opt/so/conf/soc/migrations:rw
@@ -82,6 +84,7 @@ so-soc:
       - file: soccustom
       - file: soccustomroles
       - file: socusersroles
+      - file: socclientsroles
 
 delete_so-soc_so-status.disabled:
   file.uncomment:

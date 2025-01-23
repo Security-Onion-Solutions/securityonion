@@ -215,14 +215,29 @@ soc:
               duplicates: True
               forcedType: string
               jinjaEscaped: True
+          enabledSigmaRules:
+            default: &enabledSigmaRules
+              description: 'Sigma rules to automatically enable on initial import. The format is a YAML list, with the ability to filter for ruleset, level, product, category and service. Refer to the documentation for further details. These will be applied based on role if defined and default if not.'
+              global: True
+              helpLink: sigma.html
+              multiline: True
+              syntax: yaml
+              forcedType: string
+              jinjaEscaped: True
+            so-eval: *enabledSigmaRules
+            so-import: *enabledSigmaRules
           autoEnabledSigmaRules:
             default: &autoEnabledSigmaRules
-              description: 'Sigma rules to automatically enable on initial import. Format is $Ruleset+$Level - for example, for the core community ruleset and critical level rules: core+critical. These will be applied based on role if defined and default if not.'
+              description: 'DEPRECATED: Will be removed in a future release - use enabledSigmaRules instead.'
               global: True
               advanced: True
               helpLink: sigma.html
             so-eval: *autoEnabledSigmaRules
             so-import: *autoEnabledSigmaRules
+          autoUpdateEnabled:
+            description: 'Automatically update Sigma rules on a regular basis. This will update the rules based on the configured frequency.'
+            global: True
+            advanced: True
           communityRulesImportFrequencySeconds:
             description: 'How often to check for new Sigma rules (in seconds). This applies to both Community Rule Packages and any configured Git repos.'
             global: True
@@ -329,6 +344,10 @@ soc:
           showAiSummaries:
             description: Show AI summaries for Strelka rules.
             global: True
+          autoUpdateEnabled:
+            description: 'Automatically update YARA rules on a regular basis. This will update the rules based on the configured frequency.'
+            global: True
+            advanced: True
           autoEnabledYaraRules:
             description: 'YARA rules to automatically enable on initial import. Format is $Ruleset - for example, for the default shipped ruleset: securityonion-yara'
             global: True
@@ -367,6 +386,10 @@ soc:
           showAiSummaries:
             description: Show AI summaries for Suricata rules.
             global: True
+          autoUpdateEnabled:
+            description: 'Automatically update Suricata rules on a regular basis. This will update the rules based on the configured frequency.'
+            global: True
+            advanced: True
           communityRulesImportFrequencySeconds:
             description: 'How often to check for new Suricata rules (in seconds).'
             global: True
@@ -396,6 +419,15 @@ soc:
             advanced: True
             forcedType: "[]string"
             helpLink: detections.html#rule-engine-status
+        navigator:
+          intervalMinutes:
+            description: How often to generate the Navigator Layers. (minutes)
+            global: True
+            helpLink: attack-navigator.html
+          lookbackDays:
+            description: How far back to search for ATT&CK-tagged alerts. (days)
+            global: True
+            helpLink: attack-navigator.html
       client:
         enableReverseLookup:
           description: Set to true to enable reverse DNS lookups for IP addresses in the SOC UI.

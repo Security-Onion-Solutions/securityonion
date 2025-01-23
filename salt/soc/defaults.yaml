@@ -119,6 +119,13 @@ soc:
         - identity_id
         - http_request.headers.user-agent
         - msg
+      ':hydra:':
+        - soc_timestamp
+        - event.dataset
+        - http_request.headers.x-real-ip
+        - identity_id
+        - http_request.headers.user-agent
+        - msg
       '::conn':
         - soc_timestamp
         - event.dataset
@@ -277,6 +284,27 @@ soc:
         - kerberos.service
         - kerberos.request_type
         - log.id.uid
+      '::ldap':
+        - soc_timestamp
+        - event.dataset
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - ldap.result
+        - ldap.common_name
+        - ldap.object
+        - ldap.opcode
+      '::ldap_search':
+        - soc_timestamp
+        - event.dataset
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - ldap.result
+        - ldap.object
+        - ldap_search.filter
       '::modbus':
         - soc_timestamp
         - event.dataset
@@ -332,6 +360,16 @@ soc:
         - file.os
         - file.subsystem
         - log.id.fuid
+      '::quic':
+        - soc_timestamp
+        - event.dataset
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - quic.server_name
+        - log.id.uid
+        - network.community_id
       '::radius':
         - soc_timestamp
         - event.dataset
@@ -1311,6 +1349,8 @@ soc:
           jobDir: jobs
         kratos:
           hostUrl:
+        hydra:
+          hostUrl:
         elastalertengine:
           aiRepoUrl: https://github.com/Security-Onion-Solutions/securityonion-resources
           aiRepoBranch: generated-summaries-published
@@ -1318,16 +1358,49 @@ soc:
           showAiSummaries: true
           autoUpdateEnabled: true
           autoEnabledSigmaRules:
-            default:
-              - core+critical
-              - securityonion-resources+critical
-              - securityonion-resources+high
-            so-eval:
-              - securityonion-resources+critical
-              - securityonion-resources+high
-            so-import:
-              - securityonion-resources+critical
-              - securityonion-resources+high
+            default: []
+            so-eval: []
+            so-import: []
+          enabledSigmaRules:
+            default: |-
+              # SOS - resources ruleset
+              - ruleset: ["securityonion-resources"]
+                level: ["critical", "high"]
+                product: ["*"]
+                category: ["*"]
+                service: ["*"]
+              # SigmaHQ - Core ruleset - Logsource: System events supported by Elastic Agent
+              - ruleset: ["core"]
+                level: ["critical"]
+                product: ["*"]
+                category: ["process_creation", "file_event", "registry_event", "network_connection", "dns_query"]
+                service: ["*"]
+              # SigmaHQ - Core ruleset - Logsource: Windows eventlogs
+              - ruleset: ["core"]
+                level: ["critical"]
+                product: ["windows"]
+                category: ["*"]
+                service: ["security", "system", "dns-client", "application"]
+              # SigmaHQ - Core ruleset - Logsource: misc
+              - ruleset: ["core"]
+                level: ["critical"]
+                product: ["*"]
+                category: ["antivirus"]
+                service: ["*"]
+            so-eval: |-
+              # SOS - resources ruleset
+              - ruleset: ["securityonion-resources"]
+                level: ["critical", "high"]
+                product: ["*"]
+                category: ["*"]
+                service: ["*"]
+            so-import: |-
+              # SOS - resources ruleset
+              - ruleset: ["securityonion-resources"]
+                level: ["critical", "high"]
+                product: ["*"]
+                category: ["*"]
+                service: ["*"]
           communityRulesImportFrequencySeconds: 86400
           communityRulesImportErrorSeconds: 300
           failAfterConsecutiveErrorCount: 10
@@ -1400,6 +1473,7 @@ soc:
             - rbac/custom_roles
           userFiles:
             - rbac/users_roles
+            - rbac/clients_roles
         strelkaengine:
           aiRepoUrl: https://github.com/Security-Onion-Solutions/securityonion-resources
           aiRepoBranch: generated-summaries-published
@@ -1449,6 +1523,10 @@ soc:
           integrityCheckFrequencySeconds: 1200
           ignoredSidRanges:
             - '1100000-1101000'
+        navigator:
+          intervalMinutes: 30
+          outputPath: /opt/sensoroni/navigator
+          lookbackDays: 3
       client:
         enableReverseLookup: false
         docsUrl: /docs/
@@ -1639,23 +1717,23 @@ soc:
               showSubtitle: true
             - name: HTTP
               description: HTTP grouped by destination port
-              query: 'tags:http | groupby destination.port'
+              query: '(tags:http OR tags:http2) | groupby destination.port'
               showSubtitle: true
             - name: HTTP
               description: HTTP grouped by status code and message
-              query: 'tags:http | groupby http.status_code http.status_message'
+              query: '(tags:http OR tags:http2) | groupby http.status_code http.status_message'
               showSubtitle: true
             - name: HTTP
               description: HTTP grouped by method and user agent
-              query: 'tags:http | groupby http.method http.useragent'
+              query: '(tags:http OR tags:http2) | groupby http.method http.useragent'
               showSubtitle: true
             - name: HTTP
               description: HTTP grouped by virtual host
-              query: 'tags:http | groupby http.virtual_host'
+              query: '(tags:http OR tags:http2) | groupby http.virtual_host'
               showSubtitle: true
             - name: HTTP
               description: HTTP with exe downloads
-              query: 'tags:http AND file.resp_mime_types:*exec* | groupby http.virtual_host'
+              query: '(tags:http OR tags:http2) AND file.resp_mime_types:*exec* | groupby http.virtual_host'
               showSubtitle: true
             - name: Intel
               description: Intel framework hits grouped by indicator
@@ -1668,6 +1746,14 @@ soc:
             - name: KERBEROS
               description: KERBEROS grouped by service
               query: 'tags:kerberos | groupby kerberos.service'
+              showSubtitle: true
+            - name: LDAP
+              description: LDAP grouped by source ip and result
+              query: 'tags:ldap | groupby source.ip ldap.result'
+              showSubtitle: true
+            - name: LDAP_SEARCH
+              description: LDAP_SEARCH grouped by source.ip and filter
+              query: 'tags:ldap_search | groupby source.ip | groupby ldap_search.filter'
               showSubtitle: true
             - name: MODBUS
               description: MODBUS grouped by function
@@ -1688,6 +1774,10 @@ soc:
             - name: PE
               description: PE files list
               query: 'tags:pe | groupby file.machine file.os file.subsystem'
+              showSubtitle: true
+            - name: QUIC
+              description: QUIC connections
+              query: 'tags:quic | groupby quic.server_name | groupby source.ip quic.server_name destination.ip'
               showSubtitle: true
             - name: RADIUS
               description: RADIUS grouped by username
@@ -1882,25 +1972,40 @@ soc:
               query: 'tags:ftp | groupby ftp.command | groupby -sankey ftp.command source.ip | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name | groupby ftp.argument | groupby ftp.user'
             - name: HTTP
               description: HTTP (Hyper Text Transport Protocol) network metadata
-              query: 'tags:http | groupby http.method | groupby -sankey http.method http.virtual_host | groupby http.virtual_host | groupby http.uri | groupby http.useragent | groupby http.status_code | groupby http.status_message | groupby file.resp_mime_types | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
+              query: '(tags:http OR tags:http2) | groupby http.method | groupby -sankey http.method http.virtual_host | groupby http.virtual_host | groupby http.uri | groupby http.useragent | groupby http.status_code | groupby http.status_message | groupby file.resp_mime_types | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
             - name: Intel
               description: Zeek Intel framework hits
               query: 'tags:intel | groupby intel.indicator | groupby -sankey intel.indicator source.ip | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby intel.indicator_type | groupby intel.seen_where'
+            - name: IPSec
+              description: IPSec VPN connection metadata
+              query: 'tags:ipsec | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby destination.geo.country_name | groupby ipsec.version'
             - name: IRC
               description: IRC (Internet Relay Chat) network metadata
               query: 'tags:irc | groupby irc.command.type | groupby -sankey irc.command.type irc.username | groupby irc.username | groupby irc.nickname | groupby irc.command.value | groupby irc.command.info | groupby source.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'
             - name: Kerberos
               description: Kerberos network metadata
               query: 'tags:kerberos | groupby kerberos.service | groupby -sankey kerberos.service source.ip | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby kerberos.client | groupby kerberos.request_type'
+            - name: LDAP
+              description: LDAP (Lightweight Directory Access Protocol) network metadata
+              query: 'tags:ldap | groupby source.ip | groupby destination.ip | groupby destination.port | groupby ldap.user_email | groupby ldap.property | groupby ldap.result | groupby ldap.common_name | groupby ldap.organizational_unit | groupby ldap.domain | groupby ldap.version | groupby ldap.object'
+            - name: LDAP_SEARCH
+              description: LDAP_SEARCH (Lightweight Directory Access Protocol) Search network metadata
+              query: 'tags:ldap_search | groupby source.ip | groupby destination.ip | groupby destination.port | groupby ldap_search.scope | groupby ldap.object | groupby ldap.domain | groupby ldap_search.filter'
             - name: MySQL
               description: MySQL network metadata
               query: 'tags:mysql | groupby mysql.command | groupby -sankey mysql.command source.ip | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby mysql.argument | groupby mysql.success | groupby mysql.response | groupby mysql.rows'
             - name: NTLM
               description: NTLM (New Technology LAN Manager) network metadata
               query: 'tags:ntlm | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby ntlm.server.dns.name | groupby ntlm.server.nb.name | groupby ntlm.server.tree.name | groupby ntlm.success | groupby source.ip | groupby destination.ip'
+            - name: OpenVPN
+              description: OpenVPN connection metadata
+              query: 'tags:openvpn | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby destination.geo.country_name'
             - name: PE
               description: PE (Portable Executable) files transferred via network traffic
               query: 'tags:pe | groupby file.machine | groupby -sankey file.machine file.os | groupby file.os | groupby -sankey file.os file.subsystem | groupby file.subsystem | groupby file.section_names | groupby file.is_exe | groupby file.is_64bit'
+            - name: QUIC
+              description: QUIC network metadata
+              query: 'tags:quic | groupby quic.server_name | groupby -sankey quic.server_name source.ip | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name | groupby quic.server_scid | groupby quic.version | groupby quic.client_protocol'
             - name: RADIUS
               description: RADIUS (Remote Authentication Dial-In User Service) network metadata
               query: 'tags:radius | groupby user.name | groupby -sankey user.name source.ip | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby destination_geo.organization_name'

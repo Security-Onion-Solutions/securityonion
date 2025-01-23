@@ -1,0 +1,38 @@
+{
+  "description": "zeek.ipsec",
+  "processors": [
+    {"set": { "field": "event.dataset","value": "ipsec"}},
+    {"json": { "field": "message","target_field": "message2","ignore_failure": true}},
+    {"rename": {"field": "message2.initiator_spi","target_field": "ipsec.initiator_spi","ignore_missing": true}},
+    {"rename": {"field": "message2.responder_spi","target_field": "ipsec.responder_spi","ignore_missing": true}},
+    {"rename": {"field": "message2.maj_ver","target_field": "ipsec.maj_version","ignore_missing": true}},
+    {"rename": {"field": "message2.min_ver","target_field": "ipsec.min_version","ignore_missing": true}},
+    {"set": {"ignore_failure": true,"field": "ipsec.version","value": "{{ipsec.maj_version}}.{{ipsec.min_version}}"}},
+    {"rename": {"field": "message2.exchange_type","target_field": "ipsec.exchange_type","ignore_missing": true}},
+    {"rename": {"field": "message2.flag_e","target_field": "ipsec.flag_e","ignore_missing": true}},
+    {"rename": {"field": "message2.flag_c","target_field": "ipsec.flag_c","ignore_missing": true}},
+    {"rename": {"field": "message2.flag_a","target_field": "ipsec.flag_a","ignore_missing": true}},
+    {"rename": {"field": "message2.flag_i","target_field": "ipsec.flag_i","ignore_missing": true}},
+    {"rename": {"field": "message2.flag_v","target_field": "ipsec.flag_v","ignore_missing": true}},
+    {"rename": {"field": "message2.flag_r","target_field": "ipsec.flag_r","ignore_missing": true}},
+    {"rename": {"field": "message2.message_id","target_field": "ipsec.message_id","ignore_missing": true}},
+    {"rename": {"field": "message2.vendor_ids","target_field": "ipsec.vendor_ids","ignore_missing": true}},
+    {"rename": {"field": "message2.notify_messages","target_field": "ipsec.notify_messages","ignore_missing": true}},
+    {"rename": {"field": "message2.transforms","target_field": "ipsec.transforms","ignore_missing": true}},
+    {"rename": {"field": "message2.ke_dh_groups","target_field": "ipsec.ke_dh_groups","ignore_missing": true}},
+    {"rename": {"field": "message2.proposals","target_field": "ipsec.proposals","ignore_missing": true}},
+    {"rename": {"field": "message2.certificates","target_field": "ipsec.certificates","ignore_missing": true}},
+    {"rename": {"field": "message2.transform_attributes","target_field": "ipsec.transform_attributes","ignore_missing": true}},
+    {"rename": {"field": "message2.length","target_field": "ipsec.length","ignore_missing": true}},
+    {"rename": {"field": "message2.hash","target_field": "ipsec.hash","ignore_missing": true}},
+    {"rename": {"field": "message2.doi","target_field": "ipsec.doi","ignore_missing": true}},
+    {"rename": {"field": "message2.situation","target_field": "ipsec.situation","ignore_missing": true}},
+    {"script": {
+      "lang": "painless",
+      "description": "Remove ipsec fields with empty arrays",
+      "source": "if (ctx.containsKey('ipsec') && ctx.ipsec instanceof Map) {\n        for (String field : ['certificates', 'ke_dh_groups', 'notify_messages', 'proposals', 'transforms', 'transform_attributes', 'vendor_ids']) {\n          if (ctx.ipsec[field] instanceof List && ctx.ipsec[field].isEmpty()) {\n            ctx.ipsec.remove(field);\n          }\n        }\n      }",
+      "ignore_failure": true
+      }},
+    {"pipeline": {"name": "zeek.common"}}
+  ]
+}
