@@ -131,7 +131,7 @@ def modify_network_config(image, interface, mode, ip4=None, gw4=None, dns4=None,
 def modify_hardware_config(vm_name, cpu=None, memory=None, pci=None, start=False):
     '''
     Usage:
-        salt '*' qcow2.modify_hardware_config vm_name=<name> [cpu=<count>] [memory=<size>] [pci=<id>] [start=<bool>]
+        salt '*' qcow2.modify_hardware_config vm_name=<name> [cpu=<count>] [memory=<size>] [pci=<id>] [pci=<id>] [start=<bool>]
 
     Options:
         vm_name
@@ -143,7 +143,8 @@ def modify_hardware_config(vm_name, cpu=None, memory=None, pci=None, start=False
             Amount of memory to assign in MiB (positive integer)
             Optional - VM's current memory size retained if not specified
         pci
-            PCI hardware ID to passthrough to the VM (e.g., '0000:00:1f.2')
+            PCI hardware ID(s) to passthrough to the VM (e.g., '0000:c7:00.0')
+            Can be specified multiple times for multiple devices
             Optional - no PCI passthrough if not specified
         start
             Boolean flag to start the VM after modification
@@ -158,13 +159,13 @@ def modify_hardware_config(vm_name, cpu=None, memory=None, pci=None, start=False
 
         2. **Enable PCI Passthrough:**
             ```bash
-            salt '*' qcow2.modify_hardware_config vm_name='sensor1' pci='0000:00:1f.2' start=True
+            salt '*' qcow2.modify_hardware_config vm_name='sensor1' pci='0000:c7:00.0' pci='0000:c4:00.0' start=True
             ```
             This configures PCI passthrough and starts the VM
 
         3. **Complete Hardware Configuration:**
             ```bash
-            salt '*' qcow2.modify_hardware_config vm_name='sensor1' cpu=8 memory=16384 pci='0000:00:1f.2' start=True
+            salt '*' qcow2.modify_hardware_config vm_name='sensor1' cpu=8 memory=16384 pci='0000:c7:00.0' start=True
             ```
             This sets CPU, memory, PCI passthrough, and starts the VM
 
@@ -210,7 +211,17 @@ def modify_hardware_config(vm_name, cpu=None, memory=None, pci=None, start=False
         else:
             raise ValueError('memory must be a positive integer.')
     if pci:
-        cmd.extend(['-p', pci])
+        # Handle PCI IDs (can be a single device or comma-separated list)
+        if isinstance(pci, str):
+            devices = [dev.strip() for dev in pci.split(',') if dev.strip()]
+        elif isinstance(pci, list):
+            devices = pci
+        else:
+            devices = [pci]
+
+        # Add each device with its own -p flag
+        for device in devices:
+            cmd.extend(['-p', str(device)])
     if start:
         cmd.append('-s')
 
