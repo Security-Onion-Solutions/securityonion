@@ -237,6 +237,63 @@ class HardwareManager:
             
         return pci_ids
 
+    def claim_cpu_memory(self, cpu_count: Optional[int], memory_gb: Optional[int]) -> None:
+        """
+        Claim CPU cores and memory from the free pool.
+        
+        Args:
+            cpu_count: Number of CPU cores to claim, or None if no CPU requested
+            memory_gb: Amount of memory in GB to claim, or None if no memory requested
+            
+        Raises:
+            ValueError: If requested resources exceed available resources
+        """
+        if cpu_count is None and memory_gb is None:
+            return
+            
+        config = self.read_hypervisor_config()
+        hw_config = config['hypervisor']['hardware']
+        
+        # Validate and claim CPU cores
+        if cpu_count is not None:
+            if cpu_count > hw_config['cpu']['free']:
+                raise ValueError(f"Not enough CPU cores available. Requested: {cpu_count}, Free: {hw_config['cpu']['free']}")
+            hw_config['cpu']['free'] -= cpu_count
+            
+        # Validate and claim memory
+        if memory_gb is not None:
+            if memory_gb > hw_config['memory']['free']:
+                raise ValueError(f"Not enough memory available. Requested: {memory_gb}GB, Free: {hw_config['memory']['free']}GB")
+            hw_config['memory']['free'] -= memory_gb
+            
+        self.write_hypervisor_config(config)
+        log.info("Successfully claimed CPU cores: %s, Memory: %sGB", cpu_count, memory_gb)
+
+    def release_cpu_memory(self, cpu_count: Optional[int], memory_gb: Optional[int]) -> None:
+        """
+        Release CPU cores and memory back to the free pool.
+        
+        Args:
+            cpu_count: Number of CPU cores to release, or None if no CPU to release
+            memory_gb: Amount of memory in GB to release, or None if no memory to release
+        """
+        if cpu_count is None and memory_gb is None:
+            return
+            
+        config = self.read_hypervisor_config()
+        hw_config = config['hypervisor']['hardware']
+        
+        # Return CPU cores to free pool
+        if cpu_count is not None:
+            hw_config['cpu']['free'] += cpu_count
+            
+        # Return memory to free pool
+        if memory_gb is not None:
+            hw_config['memory']['free'] += memory_gb
+            
+        self.write_hypervisor_config(config)
+        log.info("Successfully released CPU cores: %s, Memory: %sGB", cpu_count, memory_gb)
+
     def claim_hardware(self, hw_type: str, indices: List[int]) -> None:
         """
         Move hardware from free to claimed in the hypervisor configuration.
@@ -413,7 +470,8 @@ def execute_salt_cloud(profile: str, hostname: str, role: str, config: dict, pci
         log.error("Failed to execute so-salt-cloud: %s", str(e))
         raise
 
-def release_hardware(hw_manager: HardwareManager, hw_type: str, indices: List[int]) -> None:
+def release_hardware(hw_manager: HardwareManager, hw_type: str, indices: List[int], 
+                    cpu_count: Optional[int] = None, memory_gb: Optional[int] = None) -> None:
     """
     Release claimed hardware back to free pool.
     
@@ -421,6 +479,8 @@ def release_hardware(hw_manager: HardwareManager, hw_type: str, indices: List[in
         hw_manager: HardwareManager instance
         hw_type: Type of hardware (disk, copper, sfp)
         indices: List of hardware indices to release
+        cpu_count: Number of CPU cores to release, or None if no CPU to release
+        memory_gb: Amount of memory in GB to release, or None if no memory to release
     """
     config = hw_manager.read_hypervisor_config()
     hw_config = config['hypervisor']['hardware'][hw_type]
@@ -471,7 +531,12 @@ def process_add_file(file_path: str, base_path: str) -> None:
         
         # Phase 2: Claim hardware only after all validation passes
         try:
-            # Claim all hardware
+            # Claim CPU and memory first
+            cpu_count = config.get('cpu')
+            memory_gb = config.get('memory')
+            hw_manager.claim_cpu_memory(cpu_count, memory_gb)
+            
+            # Then claim PCI hardware
             for hw_type, indices in hardware_to_claim.items():
                 hw_manager.claim_hardware(hw_type, indices)
             
@@ -485,8 +550,16 @@ def process_add_file(file_path: str, base_path: str) -> None:
                     config['hostname'], role)
             
         except Exception as e:
-            # If anything fails after claiming, release claimed hardware
+            # If anything fails after claiming, release all hardware
             log.error("Failed after hardware claim, attempting to release hardware: %s", str(e))
+            
+            # Release CPU and memory
+            try:
+                hw_manager.release_cpu_memory(cpu_count, memory_gb)
+            except Exception as release_error:
+                log.error("Failed to release CPU/memory: %s", str(release_error))
+            
+            # Release PCI hardware
             for hw_type, indices in hardware_to_claim.items():
                 try:
                     release_hardware(hw_manager, hw_type, indices)
