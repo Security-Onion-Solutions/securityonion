@@ -19,3 +19,10 @@ set_highstate:
   file.append:
     - name: /etc/salt/minion
     - text: 'startup_states: highstate'
+
+restart_salt_minion:
+  service.running:
+    - name: salt-minion
+    - enable: True
+    - watch:
+      - file: set_highstate
