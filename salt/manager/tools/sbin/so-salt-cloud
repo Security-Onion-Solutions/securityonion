@@ -35,18 +35,28 @@ between salt-cloud, network configuration, hardware management, and security com
 ensure proper VM provisioning and configuration.
 
 Usage:
+    # Create a VM:
     so-salt-cloud -p <profile> <vm_name> (--dhcp4 | --static4 --ip4 <ip_address> --gw4 <gateway>) 
                             [-c <cpu_count>] [-m <memory_amount>] [-P <pci_id>] [-P <pci_id> ...] [--dns4 <dns_servers>] [--search4 <search_domain>]
+
+    # Delete a VM:
+    so-salt-cloud -p <profile> <vm_name> -d [-y]
 
 Options:
     -p, --profile         The cloud profile to build the VM from.
     <vm_name>             The name of the VM.
+    -d, --destroy         Delete the specified VM.
+    -y, --assume-yes      Default yes in answer to all confirmation questions.
+
+    Network Configuration (required for VM creation):
     --dhcp4               Configure interface for DHCP (IPv4).
     --static4             Configure interface for static IPv4 settings.
     --ip4                 IPv4 address (e.g., 192.168.1.10/24). Required for static IPv4 configuration.
     --gw4                 IPv4 gateway (e.g., 192.168.1.1). Required for static IPv4 configuration.
     --dns4                Comma-separated list of IPv4 DNS servers (e.g., 8.8.8.8,8.8.4.4).
     --search4             DNS search domain for IPv4.
+
+    Hardware Configuration (optional):
     -c, --cpu             Number of virtual CPUs to assign.
     -m, --memory          Amount of memory to assign in MiB.
     -P, --pci             PCI hardware ID(s) to passthrough to the VM (e.g., 0000:c7:00.0). Can be specified multiple times.
@@ -109,6 +119,20 @@ Examples:
         - Gateway: 192.168.1.1
         - DNS Server: 192.168.1.1
         - DNS Search Domain: example.local
+
+6. Delete a VM with Confirmation:
+
+    Command:
+    so-salt-cloud -p sool9-hyper1 vm1_sensor -d
+
+    This command deletes the VM named vm1_sensor and will prompt for confirmation before proceeding.
+
+7. Delete a VM without Confirmation:
+
+    Command:
+    so-salt-cloud -p sool9-hyper1 vm1_sensor -yd
+
+    This command deletes the VM named vm1_sensor without prompting for confirmation.
 
 Notes:
 
@@ -189,6 +213,7 @@ import sys
 import threading
 import salt.client
 import logging
+import yaml
 
 # Initialize Salt local client
 local = salt.client.LocalClient()
@@ -228,8 +253,94 @@ def call_so_firewall_minion(ip, role):
     except Exception as e:
         logger.error(f"An error occurred while calling so-firewall-minion: {e}")
 
-def call_salt_cloud(profile, vm_name):
+def get_vm_ip(vm_name):
+    """Get IP address of VM before deletion"""
     try:
+        # Get IP from minion's pillar file
+        pillar_file = f"/opt/so/saltstack/local/pillar/minions/{vm_name}.sls"
+        with open(pillar_file, 'r') as f:
+            pillar_data = yaml.safe_load(f)
+            
+        if pillar_data and 'host' in pillar_data and 'mainip' in pillar_data['host']:
+            return pillar_data['host']['mainip']
+        raise Exception(f"Could not find mainip in pillar file {pillar_file}")
+    except FileNotFoundError:
+        raise Exception(f"Pillar file not found: {pillar_file}")
+    except Exception as e:
+        logger.error(f"Failed to get IP for VM {vm_name}: {e}")
+        raise
+
+def cleanup_deleted_vm(ip, role):
+    """Handle cleanup tasks when a VM is deleted"""
+    try:
+        # Remove IP from firewall
+        process = subprocess.Popen(
+            ['/usr/sbin/so-firewall', '--apply', 'removehost', ip],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True
+        )
+        
+        for line in iter(process.stdout.readline, ''):
+            if line:
+                logger.info(line.rstrip('\n'))
+                
+        process.stdout.close()
+        process.wait()
+        
+        if process.returncode == 0:
+            logger.info(f"Successfully removed IP {ip} from firewall configuration")
+        else:
+            logger.error(f"Failed to remove IP {ip} from firewall configuration")
+            
+    except Exception as e:
+        logger.error(f"Error during VM cleanup: {e}")
+
+def delete_vm(profile, vm_name, assume_yes=False):
+    """Delete a VM and perform cleanup tasks"""
+    try:
+        # Get VM's IP before deletion for cleanup
+        ip = get_vm_ip(vm_name)
+        role = vm_name.split("_")[1]
+        
+        # Run salt-cloud destroy command
+        cmd = ['salt-cloud', '-p', profile, vm_name, '-d']
+        if assume_yes:
+            cmd.append('-y')
+            
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True
+        )
+        
+        # Monitor output
+        for line in iter(process.stdout.readline, ''):
+            if line:
+                logger.info(line.rstrip('\n'))
+                
+        process.stdout.close()
+        process.wait()
+        
+        if process.returncode == 0:
+            # Start cleanup tasks
+            cleanup_deleted_vm(ip, role)
+            logger.info(f"Successfully deleted VM {vm_name}")
+        else:
+            logger.error(f"Failed to delete VM {vm_name}")
+            
+    except Exception as e:
+        logger.error(f"Failed to delete VM {vm_name}: {e}")
+        raise
+
+def call_salt_cloud(profile, vm_name, destroy=False, assume_yes=False):
+    """Call salt-cloud to create or destroy a VM"""
+    try:
+        if destroy:
+            delete_vm(profile, vm_name, assume_yes)
+            return
+
         # Start the salt-cloud command as a subprocess
         process = subprocess.Popen(
             ['salt-cloud', '-p', profile, vm_name, '-l', 'info'],
@@ -317,45 +428,60 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description="Call salt-cloud and pass the profile and VM name to it.")
     parser.add_argument('-p', '--profile', type=str, required=True, help="The cloud profile to build the VM from.")
     parser.add_argument('vm_name', type=str, help="The name of the VM.")
+    parser.add_argument('-d', '--destroy', action='store_true', help='Delete the specified VM')
+    parser.add_argument('-y', '--assume-yes', action='store_true', help='Default yes in answer to all confirmation questions')
 
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("--dhcp4", action="store_true", help="Configure interface for DHCP (IPv4).")
-    group.add_argument("--static4", action="store_true", help="Configure interface for static IPv4 settings.")
+    # Create a group for network config arguments
+    network_group = parser.add_argument_group('Network Configuration')
+    # Make the group mutually exclusive but not required by default
+    mode_group = network_group.add_mutually_exclusive_group()
+    mode_group.add_argument("--dhcp4", action="store_true", help="Configure interface for DHCP (IPv4).")
+    mode_group.add_argument("--static4", action="store_true", help="Configure interface for static IPv4 settings.")
 
-    parser.add_argument("--ip4", help="IPv4 address (e.g., 192.168.1.10/24). Required for static IPv4 configuration.")
-    parser.add_argument("--gw4", help="IPv4 gateway (e.g., 192.168.1.1). Required for static IPv4 configuration.")
-    parser.add_argument("--dns4", help="Comma-separated list of IPv4 DNS servers (e.g., 8.8.8.8,8.8.4.4).")
-    parser.add_argument("--search4", help="DNS search domain for IPv4.")
-    parser.add_argument('-c', '--cpu', type=int, help='Number of virtual CPUs to assign.')
-    parser.add_argument('-m', '--memory', type=int, help='Amount of memory to assign in MiB.')
-    parser.add_argument('-P', '--pci', action='append', help='PCI hardware ID(s) to passthrough to the VM (e.g., 0000:c7:00.0). Can be specified multiple times.')
+    # Add other network and hardware arguments
+    network_group.add_argument("--ip4", help="IPv4 address (e.g., 192.168.1.10/24). Required for static IPv4 configuration.")
+    network_group.add_argument("--gw4", help="IPv4 gateway (e.g., 192.168.1.1). Required for static IPv4 configuration.")
+    network_group.add_argument("--dns4", help="Comma-separated list of IPv4 DNS servers (e.g., 8.8.8.8,8.8.4.4).")
+    network_group.add_argument("--search4", help="DNS search domain for IPv4.")
+    network_group.add_argument('-c', '--cpu', type=int, help='Number of virtual CPUs to assign.')
+    network_group.add_argument('-m', '--memory', type=int, help='Amount of memory to assign in MiB.')
+    network_group.add_argument('-P', '--pci', action='append', help='PCI hardware ID(s) to passthrough to the VM (e.g., 0000:c7:00.0). Can be specified multiple times.')
 
     args = parser.parse_args()
 
-    if args.static4:
-        if not args.ip4 or not args.gw4:
-            parser.error("Both --ip4 and --gw4 are required for static IPv4 configuration.")
+    # Only validate network config if not destroying
+    if not args.destroy:
+        if not args.dhcp4 and not args.static4:
+            parser.error("One of --dhcp4 or --static4 is required for VM creation")
+        if args.static4 and (not args.ip4 or not args.gw4):
+            parser.error("Both --ip4 and --gw4 are required for static IPv4 configuration")
+
     return args
 
 def main():
     try:
         args = parse_arguments()
 
-        if args.dhcp4:
-            mode = "dhcp4"
-        elif args.static4:
-            mode = "static4"
+        if args.destroy:
+            # Handle VM deletion
+            call_salt_cloud(args.profile, args.vm_name, destroy=True, assume_yes=args.assume_yes)
         else:
-            mode = "dhcp4"  # Default to DHCP if not specified
+            # Handle VM creation
+            if args.dhcp4:
+                mode = "dhcp4"
+            elif args.static4:
+                mode = "static4"
+            else:
+                mode = "dhcp4"  # Default to DHCP if not specified
 
-        # Step 1: Modify network configuration
-        run_qcow2_modify_network_config(args.profile, mode, args.ip4, args.gw4, args.dns4, args.search4)
+            # Step 1: Modify network configuration
+            run_qcow2_modify_network_config(args.profile, mode, args.ip4, args.gw4, args.dns4, args.search4)
 
-        # Step 2: Provision the VM (without starting it)
-        call_salt_cloud(args.profile, args.vm_name)
+            # Step 2: Provision the VM (without starting it)
+            call_salt_cloud(args.profile, args.vm_name)
 
-        # Step 3: Modify hardware configuration
-        run_qcow2_modify_hardware_config(args.profile, args.vm_name, cpu=args.cpu, memory=args.memory, pci_list=args.pci, start=True)
+            # Step 3: Modify hardware configuration
+            run_qcow2_modify_hardware_config(args.profile, args.vm_name, cpu=args.cpu, memory=args.memory, pci_list=args.pci, start=True)
 
     except KeyboardInterrupt:
         logger.error("so-salt-cloud: Operation cancelled by user.")
