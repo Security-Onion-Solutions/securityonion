@@ -580,26 +580,6 @@ def process_add_file(file_path: str, base_path: str) -> None:
         log.error("Failed to process add file %s: %s", file_path, str(e))
         raise
 
-def monitor_add_files(base_path: str) -> None:
-    """
-    Monitor directories for add_* files and process them.
-    
-    Args:
-        base_path: Base path to monitor for add_* files
-    """
-    pattern = os.path.join(base_path, '*', 'add_*')
-    
-    try:
-        for file_path in glob.glob(pattern):
-            log.info("Found new VM request file: %s", file_path)
-            try:
-                process_add_file(file_path, base_path)
-            except Exception as e:
-                log.error("Failed to process file %s: %s", file_path, str(e))
-    except Exception as e:
-        log.error("Error monitoring add files: %s", str(e))
-        raise
-
 def start(interval: int = DEFAULT_INTERVAL,
           base_path: str = DEFAULT_BASE_PATH) -> None:
     """
@@ -614,19 +594,26 @@ def start(interval: int = DEFAULT_INTERVAL,
     if not validate_hvn_license():
         return
     
-    processed_files = set()
     while True:
         try:
-            for file_path in glob.glob(os.path.join(base_path, '*', 'add_*')):
-                if file_path not in processed_files:
+            pattern = os.path.join(base_path, '*', 'add_*')
+            log.debug("Scanning for VM request files with pattern: %s", pattern)
+            
+            try:
+                files = glob.glob(pattern)
+                if files:
+                    log.debug("Found %d VM request file(s): %s", len(files), files)
+                
+                for file_path in files:
+                    log.info("Processing VM request file: %s", file_path)
                     try:
                         process_add_file(file_path, base_path)
-                        processed_files.add(file_path)
                     except Exception as e:
                         log.error("Failed to process file %s: %s", file_path, str(e))
-                        # Still mark as processed to avoid retrying
-                        processed_files.add(file_path)
+            except Exception as e:
+                log.error("Error scanning for VM request files: %s", str(e))
+                
         except Exception as e:
             log.error("Error in main engine loop: %s", str(e))
-        
+            
         time.sleep(interval)
