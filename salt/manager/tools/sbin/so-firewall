@@ -33,7 +33,7 @@ defaultsFilename = "/opt/so/saltstack/default/salt/firewall/defaults.yaml"
 def showUsage(options, args):
   usage = f'''Usage: {sys.argv[0]} [OPTIONS] <COMMAND> [ARGS...]
   Options:
-   --apply         - After updating the firewall configuration files, apply the new firewall state
+   --apply         - After updating the firewall configuration files, apply the new firewall state with queue=True
 
   General commands:
     help           - Prints this usage information.
@@ -105,7 +105,8 @@ def includehost(options, args):
 
 def apply(options, args):
   logger.info("Applying firewall configuration changes")
-  proc = subprocess.run(['salt-call', 'state.apply', 'firewall', 'queue=True'])
+  salt_args = ['salt-call', 'state.apply', 'firewall', 'queue=True']
+  proc = subprocess.run(salt_args)
   if proc.returncode != 0:
     logger.error("Failed to apply firewall changes")
   else:

@@ -33,8 +33,11 @@ sool9-{{host}}:
     log_file: /opt/so/log/salt/minion
   grains:
     hypervisor_host: {{host ~ "_" ~ role}}
-  #preflight_cmds:
-  #  - echo "preflight_cmds"
+  preflight_cmds:
+    - |
+      timeout 600 bash -c 'trap "echo \"Preflight Check: Failed to establish repo connectivity\"; exit 1" TERM; \
+        while ! dnf makecache --repoid=securityonion >/dev/null 2>&1; do echo "Preflight Check: Waiting for repo connectivity..."; \
+        sleep 5; done && echo "Preflight Check: Successfully connected to repo" || exit 1; [ $? -eq 0 ]'
   # the destination directory will be created if it doesn't exist
   #file_map:
   #  /opt/so/saltstack/default/salt/salt/mine_functions.sls: /opt/so/conf/salt/cloud_file_map/salt/salt/mine_functions.sls

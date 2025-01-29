@@ -28,7 +28,9 @@ This script integrates multiple components to provide a streamlined VM deploymen
 
 4. Security Integration:
    - Automatic firewall rule configuration
-   - Integrates with so-firewall-minion for firewall setup on the manager
+   - Directly integrates with so-firewall for consistent VM management
+   - Configures role-based firewall rules for new VMs
+   - Uses same firewall integration approach for both adding and removing VMs
 
 This script serves as the primary interface for VM deployment in Security Onion, coordinating 
 between salt-cloud, network configuration, hardware management, and security components to 
@@ -174,9 +176,9 @@ The so-salt-cloud script automates the provisioning and configuration of virtual
 4. Security Integration Phase:
    - Monitors salt-cloud output for VM IP address assignment
    - Extracts role information from VM name
-   - Launches so-firewall-minion in a separate thread for non-blocking operation
+   - Calls so-firewall directly to configure firewall rules
    - Configures role-based firewall rules automatically
-   - Ensures security policies are in place before VM is accessible
+   - Ensures security policies are in place for VM access
    - Logs all security-related operations for audit purposes
 
 The script implements extensive error handling and logging throughout each phase:
@@ -190,7 +192,7 @@ The script implements extensive error handling and logging throughout each phase
 Integration points:
 - Works with Security Onion's salt-cloud provider
 - Interfaces with qcow2 module for image and hardware management
-- Coordinates with so-firewall-minion for security configuration
+- Directly integrates with so-firewall for security configuration
 - Uses libvirt for VM management
 - Leverages SaltStack for distributed execution
 
@@ -232,11 +234,21 @@ console_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 logger.addHandler(console_handler)
 
-def call_so_firewall_minion(ip, role):
+def add_host_to_firewall(ip, role):
+    """Configure firewall rules for a new VM.
+    
+    Args:
+        ip (str): The IP address of the VM to add to the firewall
+        role (str): The role of the VM (e.g., 'sensor', 'manager', etc.)
+        
+    This function calls so-firewall directly to configure firewall rules,
+    maintaining consistency with how firewall rules are managed during
+    VM deletion.
+    """
     try:
-        # Start so-firewall-minion as a subprocess
+        # Call so-firewall directly with --apply
         process = subprocess.Popen(
-            ['/usr/sbin/so-firewall-minion', f'--ip={ip}', f'--role={role}'],
+            ['/usr/sbin/so-firewall', 'includehost', role.lower(), ip, '--apply'],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True
@@ -251,7 +263,7 @@ def call_so_firewall_minion(ip, role):
         process.wait()
 
     except Exception as e:
-        logger.error(f"An error occurred while calling so-firewall-minion: {e}")
+        logger.error(f"An error occurred while adding host to firewall: {e}")
 
 def get_vm_ip(vm_name):
     """Get IP address of VM before deletion"""
@@ -366,8 +378,8 @@ def call_salt_cloud(profile, vm_name, destroy=False, assume_yes=False):
                     if len(parts) > 1:
                         ip_address = parts[1].strip()
                         logger.info(f"Extracted IP address: {ip_address}")
-                        # Create and start a thread to run so-firewall-minion
-                        thread = threading.Thread(target=call_so_firewall_minion, args=(ip_address, role.upper()))
+                        # Create and start a thread to add host to firewall
+                        thread = threading.Thread(target=add_host_to_firewall, args=(ip_address, role))
                         thread.start()
                     else:
                         logger.error("No IP address found.")
