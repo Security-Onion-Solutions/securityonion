@@ -6,8 +6,23 @@
 # this state was seperated from salt.minion state since it is called during setup
 # GLOBALS are imported in the salt.minion state and that is not available at that point in setup
 # this state is included in the salt.minion state
+
+{% set role = salt['grains.get']('role', '') %}
+{% if role  == 'so-hypervisor' -%}
+{%   set interface = 'br0' %}
+{% else %}
+{%   set interface = pillar.host.mainint %}
+{% endif %}
+
 mine_functions:
   file.managed:
     - name: /etc/salt/minion.d/mine_functions.conf
-    - source: salt://salt/etc/minion.d/mine_functions.conf.jinja
-    - template: jinja
+    - contents: |
+        mine_interval: 25
+        mine_functions:
+          network.ip_addrs:
+            - interface: {{ interface }}
+        {%- if role in ['so-eval','so-import','so-manager','so-managersearch','so-standalone'] %}
+          x509.get_pem_entries:
+            - glob_path: '/etc/pki/ca.crt'
+        {% endif -%}
