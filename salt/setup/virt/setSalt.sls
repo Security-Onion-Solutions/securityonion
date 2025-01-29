@@ -8,21 +8,11 @@ set_role_grain:
     - name: role
     - value: so-{{ grains.id.split("_") | last }}
 
-# remove the initial cron
-remove_init_node_cron:
-  cron.absent:
-    - name: salt-call state.apply setup.virt.init
-    - identifier: init_node_cron
-    - user: root
-
 set_highstate:
   file.append:
     - name: /etc/salt/minion
     - text: 'startup_states: highstate'
 
-restart_salt_minion:
-  service.running:
+enable_salt_minion:
+  service.enabled:
     - name: salt-minion
-    - enable: True
-    - watch:
-      - file: set_highstate

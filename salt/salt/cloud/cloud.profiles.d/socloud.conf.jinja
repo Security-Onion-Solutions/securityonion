@@ -3,6 +3,8 @@
    https://securityonion.net/license; you may not use this file except in compliance with the
    Elastic License 2.0. #}
 
+{#- https://docs.saltproject.io/en/latest/topics/cloud/misc.html #}
+
 {%- for role, hosts in HYPERVISORS.items() %}
 {%-   for host in hosts.keys() -%}
 
@@ -34,17 +36,15 @@ sool9-{{host}}:
   #preflight_cmds:
   #  - echo "preflight_cmds"
   # the destination directory will be created if it doesn't exist
-  file_map:
-    /opt/so/saltstack/default/salt/setup/virt/initial_schedule.sls: /opt/so/conf/salt/cloud_file_map/salt/setup/virt/initial_schedule.sls
-    /opt/so/saltstack/default/salt/salt/mine_functions.sls: /opt/so/conf/salt/cloud_file_map/salt/salt/mine_functions.sls
+  #file_map:
+  #  /opt/so/saltstack/default/salt/salt/mine_functions.sls: /opt/so/conf/salt/cloud_file_map/salt/salt/mine_functions.sls
+  # if calling states with pillar values, need to pass them in since minion pillars are not set until setup.virt.sominion state runs
   inline_script:
     - |
       sudo salt-call state.apply salt.mine_functions \
-        --local \
-        --file-root=/opt/so/conf/salt/cloud_file_map/salt/ \
         pillar='{"host": {"mainint": "eth0"}}'
-    - "sudo salt-call state.apply setup.virt.initial_schedule --local --file-root=/opt/so/conf/salt/cloud_file_map/salt/"
-  #  - "rpm --import /tmp/securityonion.pub"
+    - 'sudo salt-call mine.update'
+    - 'sudo salt-call state.apply setup.virt'
   # grains to add to the minion
 
 {%-   endfor %}
