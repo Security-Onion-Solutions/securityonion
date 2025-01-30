@@ -1,0 +1,304 @@
+#!/bin/bash
+
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+# Usage:
+#     so-nsm-mount
+#
+# Options:
+#     None - script automatically detects and configures NVMe devices
+#
+# Examples:
+#     1. Configure and mount NVMe devices:
+#         ```bash
+#         sudo so-nsm-mount
+#         ```
+#
+# Notes:
+#     - Requires root privileges
+#     - Automatically detects unmounted NVMe devices
+#     - Handles multiple NVMe devices:
+#         * Creates PV from each device
+#         * Combines all devices into single volume group
+#         * Creates single logical volume using total space
+#     - Safely handles existing LVM configurations:
+#         * Preserves proper existing configurations
+#         * Provides cleanup instructions if conflicts found
+#     - Creates or extends LVM configuration if no conflicts
+#     - Uses XFS filesystem
+#     - Configures persistent mount via /etc/fstab
+#     - Safe to run multiple times
+#
+# Description:
+#     This script automates the configuration and mounting of NVMe devices
+#     as /nsm in Security Onion virtual machines. It performs these steps:
+#
+#     1. Safety Checks:
+#        - Verifies root privileges
+#        - Checks if /nsm is already mounted
+#        - Detects available unmounted NVMe devices
+#
+#     2. LVM Configuration Check:
+#        - If device is part of "system" VG with "nsm" LV:
+#          * Uses existing configuration
+#          * Exits successfully
+#        - If device is part of different LVM configuration:
+#          * Logs current configuration details
+#          * Provides specific cleanup instructions
+#          * Exits with error to prevent data loss
+#
+#     3. New Configuration (if no conflicts):
+#        - Creates physical volume on each NVMe device
+#        - Combines all devices into single "system" volume group
+#        - Creates single "nsm" logical volume using total space
+#        - Creates XFS filesystem
+#        - Updates /etc/fstab for persistence
+#        - Mounts the filesystem as /nsm
+#
+# Exit Codes:
+#     0: Success conditions:
+#        - Devices configured and mounted
+#        - Already properly mounted
+#     1: Error conditions:
+#        - Must be run as root
+#        - No available NVMe devices found
+#        - Device has conflicting LVM configuration
+#        - Device preparation failed
+#        - LVM operation failed
+#        - Filesystem/mount operation failed
+#
+# Logging:
+#     - All operations logged to both console and /opt/so/log/so-nsm-mount.log
+
+set -e
+
+LOG_FILE="/opt/so/log/so-nsm-mount.log"
+VG_NAME="system"
+LV_NAME="nsm"
+MOUNT_POINT="/nsm"
+
+# Function to log messages
+log() {
+    local msg="$(date '+%Y-%m-%d %H:%M:%S') $1"
+    echo "$msg" | tee -a "$LOG_FILE"
+}
+
+# Function to check if running as root
+check_root() {
+    if [ "$EUID" -ne 0 ]; then
+        log "Error: Failed to execute - script must be run as root"
+        exit 1
+    fi
+}
+
+# Function to check LVM configuration of a device
+check_lvm_config() {
+    local device=$1
+    local vg_name
+    local lv_name
+    
+    # Check if device is a PV
+    if ! pvs "$device" &>/dev/null; then
+        return 0
+    fi
+    
+    # Get VG name if any
+    vg_name=$(pvs --noheadings -o vg_name "$device" | tr -d ' ')
+    if [ -z "$vg_name" ]; then
+        return 0
+    fi
+    
+    # If it's our expected configuration
+    if [ "$vg_name" = "$VG_NAME" ]; then
+        if lvs "$VG_NAME/$LV_NAME" &>/dev/null; then
+            # Our expected configuration exists
+            if ! mountpoint -q "$MOUNT_POINT"; then
+                log "Found existing LVM configuration. Remounting $MOUNT_POINT"
+                mount "$MOUNT_POINT"
+            fi
+            exit 0
+        fi
+    fi
+    
+    # Get all LVs in the VG
+    local lvs_in_vg=$(lvs --noheadings -o lv_name "$vg_name" 2>/dev/null | tr '\n' ',' | sed 's/,$//')
+    
+    log "Error: Device $device is part of existing LVM configuration:"
+    log "  Volume Group: $vg_name"
+    log "  Logical Volumes: ${lvs_in_vg:-none}"
+    log ""
+    log "To preserve data safety, no changes will be made."
+    log ""
+    log "If you want to repurpose this device for /nsm, verify it's safe to proceed:"
+    log "1. Check current usage: lsblk $device"
+    log "2. Then run this command to clean up (CAUTION: THIS WILL DESTROY ALL DATA):"
+    log "   umount $MOUNT_POINT 2>/dev/null; "
+    for lv in $(echo "$lvs_in_vg" | tr ',' ' '); do
+        log "   lvremove -f /dev/$vg_name/$lv; "
+    done
+    log "   vgreduce $vg_name $device && pvremove -ff -y $device && wipefs -a $device"
+    
+    exit 1
+}
+
+# Function to detect NVMe devices
+detect_nvme_devices() {
+    local devices=()
+    for dev in /dev/nvme*n1; do
+        if [ -b "$dev" ]; then
+            # Skip if device is already part of a mounted filesystem
+            if ! lsblk -no MOUNTPOINT "$dev" | grep -q .; then
+                devices+=("$dev")
+            fi
+        fi
+    done
+
+    if [ ${#devices[@]} -eq 0 ]; then
+        log "Error: No available NVMe devices found"
+        exit 1
+    fi
+
+    echo "${devices[@]}"
+}
+
+# Function to prepare devices for LVM
+prepare_devices() {
+    local devices=("$@")
+    
+    for device in "${devices[@]}"; do
+        # Check existing LVM configuration first
+        check_lvm_config "$device"
+        
+        # Clean existing signatures
+        if ! wipefs -a "$device" 2>wipefs.err; then
+            log "Error: Failed to clean signatures on $device: $(cat wipefs.err)"
+            rm -f wipefs.err
+            exit 1
+        fi
+        rm -f wipefs.err
+
+        # Create physical volume
+        if ! pvcreate -ff -y "$device" 2>pv.err; then
+            log "Error: Failed to create physical volume on $device: $(cat pv.err)"
+            rm -f pv.err
+            exit 1
+        fi
+        rm -f pv.err
+        size=$(lsblk -dbn -o SIZE "$device" | numfmt --to=iec)
+        log "Created physical volume: $device ($size)"
+    done
+}
+
+# Function to setup LVM
+setup_lvm() {
+    local devices=("$@")
+    
+    # Create or extend volume group
+    if vgs "$VG_NAME" &>/dev/null; then
+        # Extend existing VG
+        if ! vgextend "$VG_NAME" "${devices[@]}" 2>vg.err; then
+            log "Error: Failed to extend volume group $VG_NAME: $(cat vg.err)"
+            rm -f vg.err
+            exit 1
+        fi
+        rm -f vg.err
+        size=$(vgs --noheadings -o vg_size --units h "$VG_NAME" | tr -d ' ')
+        log "Extended volume group: $VG_NAME (total size: $size)"
+    else
+        # Create new VG
+        if ! vgcreate "$VG_NAME" "${devices[@]}" 2>vg.err; then
+            log "Error: Failed to create volume group $VG_NAME: $(cat vg.err)"
+            rm -f vg.err
+            exit 1
+        fi
+        rm -f vg.err
+        size=$(vgs --noheadings -o vg_size --units h "$VG_NAME" | tr -d ' ')
+        log "Created volume group: $VG_NAME (size: $size)"
+    fi
+
+    # Create logical volume using all available space
+    if ! lvs "$VG_NAME/$LV_NAME" &>/dev/null; then
+        if ! lvcreate -l 100%FREE -n "$LV_NAME" "$VG_NAME" 2>lv.err; then
+            log "Error: Failed to create logical volume $LV_NAME: $(cat lv.err)"
+            rm -f lv.err
+            exit 1
+        fi
+        rm -f lv.err
+        size=$(lvs --noheadings -o lv_size --units h "$VG_NAME/$LV_NAME" | tr -d ' ')
+        log "Created logical volume: $LV_NAME (size: $size)"
+    fi
+}
+
+# Function to create and mount filesystem
+setup_filesystem() {
+    local device="/dev/$VG_NAME/$LV_NAME"
+    
+    # Create XFS filesystem if needed
+    if ! blkid "$device" | grep -q "TYPE=\"xfs\""; then
+        if ! mkfs.xfs -f "$device" 2>mkfs.err; then
+            log "Error: Failed to create XFS filesystem: $(cat mkfs.err)"
+            rm -f mkfs.err
+            exit 1
+        fi
+        rm -f mkfs.err
+        size=$(lvs --noheadings -o lv_size --units h "$VG_NAME/$LV_NAME" | tr -d ' ')
+        log "Created XFS filesystem: $device (size: $size)"
+    fi
+
+    # Create mount point
+    mkdir -p "$MOUNT_POINT"
+
+    # Update fstab if needed
+    if ! grep -q "^$device.*$MOUNT_POINT" /etc/fstab; then
+        echo "$device $MOUNT_POINT xfs rw,relatime,seclabel,attr2,inode64,logbufs=8,logbsize=32k,noquota 0 0" >> /etc/fstab
+        log "Updated fstab configuration for $device"
+    fi
+
+    # Mount the filesystem
+    if ! mountpoint -q "$MOUNT_POINT"; then
+        if ! mount "$MOUNT_POINT" 2>mount.err; then
+            log "Error: Failed to mount $MOUNT_POINT: $(cat mount.err)"
+            rm -f mount.err
+            exit 1
+        fi
+        rm -f mount.err
+        size=$(df -h "$MOUNT_POINT" | awk 'NR==2 {print $2}')
+        log "Mounted filesystem: $device on $MOUNT_POINT (size: $size)"
+    fi
+}
+
+# Main function
+main() {
+    check_root
+
+    # Check if already mounted
+    if mountpoint -q "$MOUNT_POINT"; then
+        size=$(df -h "$MOUNT_POINT" | awk 'NR==2 {print $2}')
+        log "$MOUNT_POINT already mounted (size: $size)"
+        exit 0
+    fi
+
+    # Detect NVMe devices
+    local devices
+    devices=($(detect_nvme_devices))
+    log "Detected NVMe devices:"
+    for dev in "${devices[@]}"; do
+        size=$(lsblk -dbn -o SIZE "$dev" | numfmt --to=iec)
+        log "  - $dev ($size)"
+    done
+
+    # Prepare devices
+    prepare_devices "${devices[@]}"
+    
+    # Setup LVM
+    setup_lvm "${devices[@]}"
+    
+    # Create and mount filesystem
+    setup_filesystem
+}
+
+# Run main function
+main "$@"

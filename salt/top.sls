@@ -8,6 +8,9 @@
 {% set INSTALLEDSALTVERSION = grains.saltversion %}
 
 base:
+  'salt-cloud:driver:libvirt':
+    - match: grain
+    - storage
 
   '*':
     - cron.running
