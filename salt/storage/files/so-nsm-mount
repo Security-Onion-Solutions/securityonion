@@ -311,8 +311,6 @@ is_system_vg() {
 deactivate_lvm() {
     local device=$1
     local vg=$2
-    local ret=0
-    local retry=3
     
     # Safety check - never touch system VGs
     if is_system_vg "$vg"; then
@@ -339,41 +337,8 @@ deactivate_lvm() {
         done <<< "$lvs_to_deactivate"
     fi
     
-    # Give it a moment to settle
-    sleep 2
-    
-    # Try to reduce VG with retries
-    log "    Removing device from volume group $vg"
-    while [ $retry -gt 0 ]; do
-        if vgreduce -f "$vg" "$device" 2>/dev/null; then
-            break
-        fi
-        log "    WARNING: Failed to remove from VG, retrying... ($retry attempts left)"
-        retry=$((retry - 1))
-        sleep 2
-    done
-    
-    # If retries failed, try force removal
-    if [ $retry -eq 0 ]; then
-        log "    WARNING: Failed normal removal, attempting forced cleanup"
-        if ! vgreduce --removemissing --force "$vg" 2>/dev/null; then
-            log_error "Failed to remove device from VG even with force"
-            ret=1
-        fi
-    fi
-    
-    # Only remove PV if device is fully removed from VG
-    if ! pvs --noheadings -o vg_name "$device" | grep -q "[A-Za-z0-9]"; then
-        log "    Removing physical volume"
-        if ! pvremove -ff -y "$device" 2>/dev/null; then
-            log_error "Failed to remove physical volume"
-            ret=1
-        fi
-    else
-        log "    WARNING: Device still part of VG, skipping PV removal"
-    fi
-    
-    return $ret
+    # No need to attempt VG removal - secure erase will handle it
+    return 0
 }
 
 # Function to cleanup device
