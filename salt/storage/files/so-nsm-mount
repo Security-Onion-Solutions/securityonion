@@ -938,12 +938,24 @@ main() {
         exit 0
     fi
 
-    # Log initial system state
-    log "Initial system state:"
+    # Log initial system state with context
+    log "----------------------------------------"
+    log "Checking initial system state"
+    log "NOTE: If any drives were previously used in another system, you may see"
+    log "      warnings about missing devices or volume groups below. These warnings"
+    log "      are normal and expected when reusing drives. They indicate the drive"
+    log "      was part of a previous system's configuration and will be automatically"
+    log "      cleaned up in the following steps."
+    log "----------------------------------------"
+    
     log_cmd "lsblk" "Block devices"
     log_cmd "pvs" "Physical volumes"
     log_cmd "vgs" "Volume groups"
     log_cmd "lvs" "Logical volumes"
+    
+    log "----------------------------------------"
+    log "Proceeding with cleanup of any previous configurations and setup for /nsm"
+    log "----------------------------------------"
 
     # Check if LVM is already configured
     if vgs "$VG_NAME" &>/dev/null && lvs "$VG_NAME/$LV_NAME" &>/dev/null; then
