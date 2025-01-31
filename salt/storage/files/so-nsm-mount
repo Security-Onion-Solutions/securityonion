@@ -159,16 +159,7 @@ check_lvm_config() {
         if lvs "$VG_NAME/$LV_NAME" &>/dev/null; then
             # Log LV details
             log_cmd "lvs --noheadings -o lv_name,lv_size,lv_path $VG_NAME/$LV_NAME" "Logical volume details"
-            
-            # Check mount status
-            if mountpoint -q "$MOUNT_POINT"; then
-                log_cmd "df -h $MOUNT_POINT" "Current mount details"
-            else
-                log "Found existing LVM configuration. Remounting $MOUNT_POINT"
-                log_cmd "grep -P \"^/dev/$VG_NAME/$LV_NAME\\s\" /etc/fstab" "Existing fstab entry"
-                mount "$MOUNT_POINT"
-            fi
-            exit 0
+            return 0
         fi
     fi
     
@@ -251,8 +242,7 @@ validate_device_state() {
         if [[ "$vg" == "$VG_NAME" ]]; then
             if lvs "$VG_NAME/$LV_NAME" &>/dev/null; then
                 log "Device $device is already properly configured in VG $VG_NAME"
-                log "Skipping device"
-                return 1
+                return 0
             fi
         fi
     fi
@@ -295,6 +285,7 @@ log_device_details() {
 detect_nvme_devices() {
     local -a devices=()
     local -a available_devices=()
+    local -a configured_devices=()
     
     {
         log "----------------------------------------"
@@ -321,13 +312,34 @@ detect_nvme_devices() {
             log_device_details "$dev"
             
             if validate_device_state "$dev"; then
-                available_devices+=("$dev")
-                log "Status: Available for use"
+                if pvs "$dev" &>/dev/null; then
+                    local vg=$(pvs --noheadings -o vg_name "$dev" | tr -d ' ')
+                    if [[ "$vg" == "$VG_NAME" ]]; then
+                        configured_devices+=("$dev")
+                        log "Status: Already configured in VG $VG_NAME"
+                    else
+                        available_devices+=("$dev")
+                        log "Status: Available for use"
+                    fi
+                else
+                    available_devices+=("$dev")
+                    log "Status: Available for use"
+                fi
             else
                 log "Status: Not available (see previous messages)"
             fi
             log "----------------------------------------"
         done
+        
+        if [ ${#configured_devices[@]} -gt 0 ]; then
+            log "Found ${#configured_devices[@]} device(s) already configured:"
+            for dev in "${configured_devices[@]}"; do
+                local size=$(lsblk -dbn -o SIZE "$dev" 2>/dev/null | numfmt --to=iec)
+                log "  - $dev ($size)"
+            done
+            log "Proceeding with mount setup"
+            return 0
+        fi
         
         if [ ${#available_devices[@]} -eq 0 ]; then
             log_error "No available NVMe devices found"
@@ -556,6 +568,15 @@ setup_filesystem() {
         exit 1
     fi
     
+    # Check for existing /nsm directory
+    if [[ -d "$MOUNT_POINT" ]]; then
+        log "WARNING: $MOUNT_POINT directory already exists"
+        if [[ -n "$(ls -A "$MOUNT_POINT")" ]]; then
+            log "WARNING: $MOUNT_POINT is not empty"
+            log "Contents will be hidden when mounted"
+        fi
+    fi
+    
     # Check filesystem type - don't fail if blkid fails
     local fs_type
     fs_type=$(blkid -o value -s TYPE "$device" 2>/dev/null || echo "none")
@@ -684,26 +705,36 @@ main() {
     log_cmd "vgs" "Volume groups"
     log_cmd "lvs" "Logical volumes"
 
-    # Detect NVMe devices
-    local -a devices=()
-    mapfile -t devices < <(detect_nvme_devices)
-    
-    if [ ${#devices[@]} -eq 0 ]; then
-        log_error "No NVMe devices available for use"
-        exit 1
-    fi
+    # Check if LVM is already configured
+    if vgs "$VG_NAME" &>/dev/null && lvs "$VG_NAME/$LV_NAME" &>/dev/null; then
+        log "Found existing LVM configuration"
+        log "Proceeding with filesystem setup"
+    else
+        # Detect NVMe devices
+        local -a devices=()
+        mapfile -t devices < <(detect_nvme_devices)
+        
+        if [ ${#devices[@]} -eq 0 ]; then
+            log_error "No NVMe devices found"
+            exit 1
+        fi
 
-    # Prepare devices and get list of successfully prepared ones
-    local -a prepared_devices=()
-    mapfile -t prepared_devices < <(prepare_devices "${devices[@]}")
-    
-    if [ ${#prepared_devices[@]} -eq 0 ]; then
-        log_error "No devices were successfully prepared"
-        exit 1
+        # Prepare devices and get list of successfully prepared ones
+        local -a prepared_devices=()
+        mapfile -t prepared_devices < <(prepare_devices "${devices[@]}")
+        
+        if [ ${#prepared_devices[@]} -eq 0 ]; then
+            if vgs "$VG_NAME" &>/dev/null && lvs "$VG_NAME/$LV_NAME" &>/dev/null; then
+                log "Devices already configured, proceeding with filesystem setup"
+            else
+                log_error "No devices were successfully prepared and no existing configuration found"
+                exit 1
+            fi
+        else
+            # Setup LVM with prepared devices
+            setup_lvm "${prepared_devices[@]}"
+        fi
     fi
-    
-    # Setup LVM with prepared devices
-    setup_lvm "${prepared_devices[@]}"
     
     # Create and mount filesystem
     setup_filesystem
