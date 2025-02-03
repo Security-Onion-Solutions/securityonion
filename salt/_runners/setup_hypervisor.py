@@ -10,8 +10,7 @@
 #    software that is protected by the license key."
 
 """
-TODO: Change default disk_size from 6G to 220G. this was set to speed up vm start during development
-      Remove passwd hash prior to release. used for development
+TODO: Remove passwd hash prior to release. used for development
 
 This runner performs the initial setup required for hypervisor hosts in the Security Onion environment.
 It handles downloading the Oracle Linux KVM image, setting up SSH keys for secure communication,
@@ -22,11 +21,11 @@ Usage:
 
 Options:
     vm_name:     Name for the virtual machine (alphanumeric, hyphens, underscores)
-    disk_size:   Size of the VM disk with unit (e.g., '6G', '300G')
+    disk_size:   Size of the VM disk with unit (e.g., '220G', '300G')
     minion_id:   Salt minion ID of the hypervisor (optional)
 
 Examples:
-    # Complete environment setup (default VM 'sool9' with 6G disk)
+    # Complete environment setup (default VM 'sool9' with 220G disk)
     salt-run setup_hypervisor.setup_environment
 
     # Setup with custom VM name and disk size
@@ -325,7 +324,8 @@ def _check_vm_exists(vm_name: str) -> bool:
         vm_image,
         cidata_iso,
         os.path.join(vm_dir, 'meta-data'),
-        os.path.join(vm_dir, 'user-data')
+        os.path.join(vm_dir, 'user-data'),
+        os.path.join(vm_dir, 'network-data')
     ]
     
     exists = all(os.path.exists(f) for f in required_files)
@@ -333,7 +333,7 @@ def _check_vm_exists(vm_name: str) -> bool:
         log.info("MAIN: VM %s already exists", vm_name)
     return exists
 
-def setup_environment(vm_name: str = 'sool9', disk_size: str = '6G', minion_id: str = None):
+def setup_environment(vm_name: str = 'sool9', disk_size: str = '220G', minion_id: str = None):
     """
     Main entry point to set up the hypervisor environment.
 
@@ -345,8 +345,8 @@ def setup_environment(vm_name: str = 'sool9', disk_size: str = '6G', minion_id: 
         vm_name (str, optional): Name for the VM to create. Must contain only
                                 alphanumeric characters, hyphens, or underscores.
                                 Defaults to 'sool9'.
-        disk_size (str, optional): Size of the VM disk with unit (e.g., '6G', '300G').
-                                  Must end with 'G' or 'M'. Defaults to '6G'.
+        disk_size (str, optional): Size of the VM disk with unit (e.g., '220G', '300G').
+                                  Must end with 'G' or 'M'. Defaults to '220G'.
         minion_id (str, optional): Salt minion ID of the hypervisor. When provided,
                                   forces the hypervisor to apply its configuration via
                                   highstate after successful environment setup (image
@@ -454,7 +454,7 @@ def setup_environment(vm_name: str = 'sool9', disk_size: str = '6G', minion_id: 
         'vm_result': vm_result
     }
 
-def create_vm(vm_name: str, disk_size: str = '6G'):
+def create_vm(vm_name: str, disk_size: str = '220G'):
     """
     Creates a new virtual machine with cloud-init configuration.
 
@@ -465,8 +465,8 @@ def create_vm(vm_name: str, disk_size: str = '6G'):
     Args:
         vm_name (str): Name for the VM. Must contain only alphanumeric characters,
                       hyphens, or underscores.
-        disk_size (str): Size of the VM disk with unit (e.g., '6G', '300G').
-                        Must end with 'G' or 'M'. Defaults to '6G'.
+        disk_size (str): Size of the VM disk with unit (e.g., '220G', '300G').
+                        Must end with 'G' or 'M'. Defaults to '220G'.
 
     Returns:
         dict: A dictionary containing:
@@ -558,6 +558,13 @@ local-hostname: {vm_name}
         with salt.utils.files.fopen(meta_data_path, 'w') as f:
             f.write(meta_data)
 
+        # Create network-data
+        network_data = """network:
+  config: disabled"""
+        network_data_path = os.path.join(vm_dir, 'network-data')
+        with salt.utils.files.fopen(network_data_path, 'w') as f:
+            f.write(network_data)
+
         # Create user-data
         user_data = f"""#cloud-config
 preserve_hostname: False
@@ -585,10 +592,6 @@ ssh_genkeytypes: ['ed25519', 'rsa']
 
 # set timezone for VM
 timezone: UTC
-
-# Disable cloud-init network configuration to prevent conflicts with NetworkManager
-network:
-  config: disabled
 
 write_files:
   - path: /etc/yum.repos.d/securityonion.repo
@@ -723,7 +726,7 @@ power_state:
         # Create cloud-init ISO
         cidata_iso = os.path.join(vm_dir, f'{vm_name}-cidata.iso')
         subprocess.run(['mkisofs', '-output', cidata_iso, '-volid', 'CIDATA', '-rock',
-                       user_data_path, meta_data_path],
+                       user_data_path, meta_data_path, network_data_path],
                       check=True, capture_output=True)
 
         # Generate SHA256 hash of the qcow2 image
