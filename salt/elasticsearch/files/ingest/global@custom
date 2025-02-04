@@ -8,7 +8,9 @@
   "processors": [
     { "set":        { "ignore_failure": true,  "field": "event.module", "value": "elastic_agent" } },
     { "split":      { "if": "ctx.event?.dataset != null && ctx.event.dataset.contains('.')", "field": "event.dataset", "separator": "\\.", "target_field": "module_temp"  } },
+    { "split":      { "if": "ctx.data_stream?.dataset.contains('.')", "field":"data_stream.dataset", "separator":"\\.", "target_field":"datastream_dataset_temp", "ignore_missing":true } },
     { "set":        { "if": "ctx.module_temp != null", "override": true, "field": "event.module", "value": "{{module_temp.0}}" } },
+    { "set":        { "if": "ctx.datastream_dataset_temp[0] == 'network_traffic'", "field":"event.module", "value":"{{ datastream_dataset_temp.0 }}", "ignore_failure":true, "description":"Fix EA network packet capture" } },
     { "gsub":       { "if": "ctx.event?.dataset != null && ctx.event.dataset.contains('.')", "field": "event.dataset", "pattern": "^[^.]*.", "replacement": "", "target_field": "dataset_tag_temp" } },
     { "append":     { "if": "ctx.dataset_tag_temp != null", "field": "tags", "value": "{{dataset_tag_temp}}", "allow_duplicates": false  } },
     { "set":        { "if": "ctx.network?.direction == 'egress'", "override": true, "field": "network.initiated", "value": "true" } },
@@ -22,6 +24,6 @@
     { "set":        { "if": "ctx.event?.module == 'fim'", "override": true, "field": "event.module", "value": "file_integrity" } },
     { "rename":        { "if": "ctx.winlog?.provider_name == 'Microsoft-Windows-Windows Defender'", "ignore_missing": true, "field": "winlog.event_data.Threat Name", "target_field": "winlog.event_data.threat_name" } },
     { "set":        { "if": "ctx?.metadata?.kafka != null" , "field": "kafka.id", "value": "{{metadata.kafka.partition}}{{metadata.kafka.offset}}{{metadata.kafka.timestamp}}", "ignore_failure": true } },
-    { "remove":     { "field": [ "message2", "type", "fields", "category", "module", "dataset", "event.dataset_temp", "dataset_tag_temp", "module_temp" ], "ignore_missing": true, "ignore_failure": true } } 
+    { "remove":     { "field": [ "message2", "type", "fields", "category", "module", "dataset", "event.dataset_temp", "dataset_tag_temp", "module_temp", "datastream_dataset_temp" ], "ignore_missing": true, "ignore_failure": true } }
   ]
 }
