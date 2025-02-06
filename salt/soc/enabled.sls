@@ -51,6 +51,7 @@ so-soc:
       - /opt/so/conf/soc/migrations:/opt/so/conf/soc/migrations:rw
       - /nsm/backup/detections-migration:/nsm/backup/detections-migration:ro
       - /opt/so/state:/opt/so/state:rw
+      - /etc/pki/ca.crt:/opt/sensoroni/html/so-ca.crt:ro
     - extra_hosts:
     {% for node in DOCKER_EXTRA_HOSTS %}
     {%   for hostname, ip in node.items() %}
