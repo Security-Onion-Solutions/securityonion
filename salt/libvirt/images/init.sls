@@ -144,6 +144,8 @@ wait_for_cloud_init_sool9:
     - name: /usr/sbin/so-wait-cloud-init -n sool9
     - require:
       - cmd: create_vm_sool9
+    - onchanges:
+      - cmd: create_vm_sool9
     - timeout: 600
 
 # Configure network predictability after cloud-init
@@ -152,6 +154,8 @@ configure_network_predictable_sool9:
     - name: /usr/sbin/so-qcow2-network-predictable -n sool9
     - require:
       - cmd: wait_for_cloud_init_sool9
+    - onchanges:
+      - cmd: create_vm_sool9
 
 {%   else %}
 {{sls}}_no_license_detected:
