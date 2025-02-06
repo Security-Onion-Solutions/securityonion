@@ -117,7 +117,7 @@ undefine_vm_sool9:
     - onlyif:
       - virsh dominfo sool9
 
-# Create and start the VM using virt-install
+# Create and start the VM, letting cloud-init run
 create_vm_sool9:
   cmd.run:
     - name: |
@@ -137,6 +137,21 @@ create_vm_sool9:
       - file: manage_metadata_sool9
       - file: manage_userdata_sool9
       - file: manage_cidata_sool9
+
+# Wait for cloud-init to complete and VM to shutdown
+wait_for_cloud_init_sool9:
+  cmd.run:
+    - name: /usr/sbin/so-wait-cloud-init -n sool9
+    - require:
+      - cmd: create_vm_sool9
+    - timeout: 600
+
+# Configure network predictability after cloud-init
+configure_network_predictable_sool9:
+  cmd.run:
+    - name: /usr/sbin/so-qcow2-network-predictable -n sool9
+    - require:
+      - cmd: wait_for_cloud_init_sool9
 
 {%   else %}
 {{sls}}_no_license_detected:

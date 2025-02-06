@@ -14,6 +14,13 @@ The script offers two main configuration modes:
 1. DHCP Configuration: Enable automatic IP address assignment
 2. Static IP Configuration: Set specific IP address, gateway, DNS servers, and search domains
 
+For both configuration modes, the script automatically sets the following NetworkManager connection properties:
+- connection.autoconnect: yes (ensures interface connects automatically)
+- connection.autoconnect-priority: 999 (sets connection priority)
+- connection.autoconnect-retries: -1 (unlimited connection retries)
+- connection.multi-connect: 0 (single connection mode)
+- connection.wait-device-timeout: -1 (wait indefinitely for device)
+
 This script is designed to work with Security Onion's virtualization infrastructure and is typically
 used during VM provisioning and network reconfiguration tasks.
 
@@ -23,7 +30,7 @@ used during VM provisioning and network reconfiguration tasks.
 
 **Options:**
     -I, --image          Path to the QCOW2 image.
-    -i, --interface      Network interface to modify (e.g., eth0).
+    -i, --interface      Network interface to modify (e.g., enp1s0).
     --dhcp4              Configure interface for DHCP (IPv4).
     --static4            Configure interface for static IPv4 settings.
     --ip4                IPv4 address (e.g., 192.168.1.10/24). Required for static IPv4 configuration.
@@ -36,7 +43,7 @@ used during VM provisioning and network reconfiguration tasks.
 1. **Static IP Configuration with DNS and Search Domain:**
 
     ```bash
-    so-qcow2-modify-network -I /nsm/libvirt/images/sool9/sool9.qcow2 -i eth0 --static4 \
+    so-qcow2-modify-network -I /nsm/libvirt/images/sool9/sool9.qcow2 -i enp1s0 --static4 \
         --ip4 192.168.1.10/24 --gw4 192.168.1.1 --dns4 192.168.1.1,192.168.1.2 --search4 example.local
     ```
 
@@ -50,7 +57,7 @@ used during VM provisioning and network reconfiguration tasks.
 2. **DHCP Configuration:**
 
     ```bash
-    so-qcow2-modify-network -I /nsm/libvirt/images/sool9/sool9.qcow2 -i eth0 --dhcp4
+    so-qcow2-modify-network -I /nsm/libvirt/images/sool9/sool9.qcow2 -i enp1s0 --dhcp4
     ```
 
     This command configures the network interface to use DHCP for automatic IP address assignment.
@@ -58,7 +65,7 @@ used during VM provisioning and network reconfiguration tasks.
 3. **Static IP Configuration without DNS Settings:**
 
     ```bash
-    so-qcow2-modify-network -I /nsm/libvirt/images/sool9/sool9.qcow2 -i eth0 --static4 \
+    so-qcow2-modify-network -I /nsm/libvirt/images/sool9/sool9.qcow2 -i enp1s0 --static4 \
         --ip4 192.168.1.20/24 --gw4 192.168.1.1
     ```
 
@@ -122,7 +129,9 @@ import logging
 import os
 import ipaddress
 import configparser
+import uuid
 from io import StringIO
+import libvirt
 from so_logging_utils import setup_logging
 
 # Set up logging using the so_logging_utils library
@@ -154,33 +163,91 @@ def validate_interface_name(interface_name):
     if not re.match(r'^[a-zA-Z0-9_\-]+$', interface_name):
         raise ValueError(f"Invalid interface name: {interface_name}")
 
-def update_ipv4_section(content, mode, ip=None, gateway=None, dns=None, search_domain=None):
+def check_base_domain_status(image_path):
+    """
+    Check if the base domain corresponding to the image path is currently running.
+    Base domains should not be running when modifying their configuration.
+
+    Parameters:
+        image_path (str): Path to the QCOW2 image.
+
+    Returns:
+        bool: True if the base domain is running, False otherwise.
+    """
+    base_domain = os.path.basename(os.path.dirname(image_path))
+    logger.info(f"Verifying base domain status for image: {image_path}")
+    logger.info(f"Checking if base domain '{base_domain}' is running...")
+    
+    try:
+        conn = libvirt.open('qemu:///system')
+        try:
+            dom = conn.lookupByName(base_domain)
+            is_running = dom.isActive()
+            if is_running:
+                logger.error(f"Base domain '{base_domain}' is running - cannot modify configuration")
+            return is_running
+        except libvirt.libvirtError:
+            logger.info(f"Base domain '{base_domain}' not found or not running")
+            return False
+        finally:
+            conn.close()
+    except libvirt.libvirtError as e:
+        logger.error(f"Failed to connect to libvirt: {e}")
+        return False
+
+def update_network_config(content, mode, ip=None, gateway=None, dns=None, search_domain=None):
     config = configparser.ConfigParser(strict=False)
     config.optionxform = str
     config.read_string(content)
 
+    # Ensure connection section exists and set required properties
+    if 'connection' not in config.sections():
+        logger.info("Creating new connection section in network configuration")
+        config.add_section('connection')
+    
+    # Set mandatory connection properties
+    config.set('connection', 'autoconnect', 'yes')
+    config.set('connection', 'autoconnect-priority', '999')
+    config.set('connection', 'autoconnect-retries', '-1')
+    config.set('connection', 'multi-connect', '0')
+    config.set('connection', 'wait-device-timeout', '-1')
+
+    # Ensure ipv4 section exists
     if 'ipv4' not in config.sections():
+        logger.info("Creating new IPv4 section in network configuration")
         config.add_section('ipv4')
 
     if mode == "dhcp4":
+        logger.info("Configuring DHCP settings:")
+        logger.info("  method: auto (DHCP enabled)")
+        logger.info("  Removing any existing static configuration")
         config.set('ipv4', 'method', 'auto')
         config.remove_option('ipv4', 'address1')
         config.remove_option('ipv4', 'addresses')
         config.remove_option('ipv4', 'dns')
         config.remove_option('ipv4', 'dns-search')
     elif mode == "static4":
+        logger.info("Configuring static IP settings:")
+        logger.info("  method: manual (static configuration)")
         config.set('ipv4', 'method', 'manual')
         if ip and gateway:
+            logger.info(f"  Setting address: {ip}")
+            logger.info(f"  Setting gateway: {gateway}")
             config.set('ipv4', 'address1', f"{ip},{gateway}")
         else:
+            logger.error("Missing required IP address or gateway for static configuration")
             raise ValueError("Both IP address and gateway are required for static configuration.")
         if dns:
+            logger.info(f"  Setting DNS servers: {dns}")
             config.set('ipv4', 'dns', f"{dns};")
         else:
+            logger.info("  No DNS servers specified")
             config.remove_option('ipv4', 'dns')
         if search_domain:
+            logger.info(f"  Setting search domain: {search_domain}")
             config.set('ipv4', 'dns-search', f"{search_domain};")
         else:
+            logger.info("  No search domain specified")
             config.remove_option('ipv4', 'dns-search')
     else:
         raise ValueError(f"Invalid mode '{mode}'. Expected 'dhcp4' or 'static4'.")
@@ -193,50 +260,138 @@ def update_ipv4_section(content, mode, ip=None, gateway=None, dns=None, search_d
     return updated_content
 
 def modify_network_config(image_path, interface, mode, ip=None, gateway=None, dns=None, search_domain=None):
+    """
+    Modifies network configuration in a QCOW2 image, ensuring specific connection settings are set.
+    
+    Handles both eth0 and predictable network interface names (e.g., enp1s0).
+    If the requested interface configuration is not found but eth0.nmconnection exists,
+    it will be renamed and updated with the proper interface configuration.
+    """
+    # Check if base domain is running
+    if check_base_domain_status(image_path):
+        raise RuntimeError("Cannot modify network configuration while base domain is running")
+
     if not os.access(image_path, os.W_OK):
+        logger.error(f"Permission denied: Cannot write to image file {image_path}")
         raise PermissionError(f"Write permission denied for image file: {image_path}")
+
+    logger.info(f"Configuring network for VM image: {image_path}")
+    logger.info(f"Network configuration details for interface {interface}:")
+    logger.info(f"  Mode: {mode.upper()}")
+    if mode == "static4":
+        logger.info(f"  IP Address: {ip}")
+        logger.info(f"  Gateway: {gateway}")
+        logger.info(f"  DNS Servers: {dns if dns else 'Not configured'}")
+        logger.info(f"  Search Domain: {search_domain if search_domain else 'Not configured'}")
 
     g = guestfs.GuestFS(python_return_dict=True)
     try:
+        logger.info("Initializing GuestFS and mounting image...")
         g.set_network(False)
         g.selinux = False
         g.add_drive_opts(image_path, format="qcow2")
         g.launch()
     except RuntimeError as e:
+        logger.error(f"Failed to initialize GuestFS: {e}")
         raise RuntimeError(f"Failed to initialize GuestFS or launch appliance: {e}")
 
     try:
         os_list = g.inspect_os()
         if not os_list:
+            logger.error(f"No operating system found in image: {image_path}")
             raise RuntimeError(f"Unable to find any OS in {image_path}.")
 
         root_fs = os_list[0]
         try:
             g.mount(root_fs, "/")
+            logger.info("Successfully mounted VM image filesystem")
         except RuntimeError as e:
+            logger.error(f"Failed to mount filesystem: {e}")
             raise RuntimeError(f"Failed to mount the filesystem: {e}")
 
         if not g.is_dir(NETWORK_CONFIG_DIR):
+            logger.error(f"NetworkManager configuration directory not found: {NETWORK_CONFIG_DIR}")
             raise FileNotFoundError(f"NetworkManager configuration directory not found in the image at {NETWORK_CONFIG_DIR}.")
 
-        config_file_path = f"{NETWORK_CONFIG_DIR}/{interface}.nmconnection"
+        requested_config_path = f"{NETWORK_CONFIG_DIR}/{interface}.nmconnection"
+        eth0_config_path = f"{NETWORK_CONFIG_DIR}/eth0.nmconnection"
+        config_file_path = None
+        current_content = None
 
+        # Try to read the requested interface config first
         try:
-            file_content = g.read_file(config_file_path)
+            file_content = g.read_file(requested_config_path)
             current_content = file_content.decode('utf-8')
+            config_file_path = requested_config_path
+            logger.info(f"Found existing network configuration for interface {interface}")
         except RuntimeError:
-            raise FileNotFoundError(f"Configuration file for {interface} not found at {config_file_path}.")
+            # If not found, try eth0 config
+            try:
+                file_content = g.read_file(eth0_config_path)
+                current_content = file_content.decode('utf-8')
+                config_file_path = eth0_config_path
+                logger.info("Found eth0 network configuration, will update for new interface")
+            except RuntimeError:
+                logger.error(f"No network configuration found for either {interface} or eth0")
+                raise FileNotFoundError(f"No network configuration found at {requested_config_path} or {eth0_config_path}")
         except UnicodeDecodeError:
-            raise ValueError(f"Failed to decode the configuration file for {interface}.")
+            logger.error(f"Failed to decode network configuration file")
+            raise ValueError(f"Failed to decode the configuration file")
 
-        updated_content = update_ipv4_section(current_content, mode, ip, gateway, dns, search_domain)
+        # If using eth0 config, update interface-specific fields
+        if config_file_path == eth0_config_path:
+            config = configparser.ConfigParser(strict=False)
+            config.optionxform = str
+            config.read_string(current_content)
+            
+            if 'connection' not in config.sections():
+                config.add_section('connection')
+            
+            # Update interface-specific fields
+            config.set('connection', 'id', interface)
+            config.set('connection', 'interface-name', interface)
+            config.set('connection', 'uuid', str(uuid.uuid4()))
+            
+            # Write updated content back to string
+            output = StringIO()
+            config.write(output, space_around_delimiters=False)
+            current_content = output.getvalue()
+            output.close()
+            
+            # Update config file path to new interface name
+            config_file_path = requested_config_path
+
+        logger.info("Applying network configuration changes...")
+        updated_content = update_network_config(current_content, mode, ip, gateway, dns, search_domain)
 
         try:
             g.write(config_file_path, updated_content.encode('utf-8'))
+            # Set proper permissions (600) on the network configuration file
+            g.chmod(0o600, config_file_path)
+            logger.info("Successfully wrote updated network configuration with proper permissions (600)")
+
+            # If we renamed eth0 to the new interface, remove the old eth0 config
+            if config_file_path == requested_config_path and eth0_config_path != requested_config_path:
+                try:
+                    g.rm(eth0_config_path)
+                    logger.info("Removed old eth0 configuration file")
+                except RuntimeError:
+                    logger.warning("Could not remove old eth0 configuration file - it may have already been removed")
+
         except RuntimeError as e:
+            logger.error(f"Failed to write network configuration: {e}")
             raise IOError(f"Failed to write updated configuration to {config_file_path}: {e}")
 
-        logger.info(f"Updated {interface} network configuration in {image_path} using {mode.upper()} mode.")
+        logger.info(f"Successfully updated network configuration:")
+        logger.info(f"  Image: {image_path}")
+        logger.info(f"  Interface: {interface}")
+        logger.info(f"  Mode: {mode.upper()}")
+        if mode == "static4":
+            logger.info(f"  Settings applied:")
+            logger.info(f"    IP Address: {ip}")
+            logger.info(f"    Gateway: {gateway}")
+            logger.info(f"    DNS Servers: {dns if dns else 'Not configured'}")
+            logger.info(f"    Search Domain: {search_domain if search_domain else 'Not configured'}")
 
     except Exception as e:
         raise e
@@ -247,7 +402,7 @@ def modify_network_config(image_path, interface, mode, ip=None, gateway=None, dn
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Modify IPv4 settings in a QCOW2 image for a specified network interface.")
     parser.add_argument("-I", "--image", required=True, help="Path to the QCOW2 image.")
-    parser.add_argument("-i", "--interface", required=True, help="Network interface to modify (e.g., eth0).")
+    parser.add_argument("-i", "--interface", required=True, help="Network interface to modify (e.g., enp1s0).")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--dhcp4", action="store_true", help="Configure interface for DHCP (IPv4).")
     group.add_argument("--static4", action="store_true", help="Configure interface for static IPv4 settings.")
@@ -265,30 +420,42 @@ def parse_arguments():
 
 def main():
     try:
+        logger.info("Starting network configuration update...")
         args = parse_arguments()
 
+        logger.info("Validating interface name...")
         validate_interface_name(args.interface)
 
         if args.dhcp4:
             mode = "dhcp4"
+            logger.info("Using DHCP configuration mode")
         elif args.static4:
             mode = "static4"
+            logger.info("Using static IP configuration mode")
             if not args.ip4 or not args.gw4:
+                logger.error("Missing required parameters for static configuration")
                 raise ValueError("Both --ip4 and --gw4 are required for static IPv4 configuration.")
+            
+            logger.info("Validating IP addresses...")
             validate_ip_address(args.ip4, description="IPv4 address")
             validate_ip_address(args.gw4, description="IPv4 gateway")
             if args.dns4:
                 validate_dns_addresses(args.dns4)
         else:
+            logger.error("No configuration mode specified")
             raise ValueError("Either --dhcp4 or --static4 must be specified.")
 
         modify_network_config(args.image, args.interface, mode, args.ip4, args.gw4, args.dns4, args.search4)
+        logger.info("Network configuration update completed successfully")
 
     except KeyboardInterrupt:
         logger.error("Operation cancelled by user.")
         sys.exit(1)
     except Exception as e:
-        logger.error(f"An error occurred: {e}")
+        if "base domain is running" in str(e):
+            logger.error("Cannot proceed: Base domain must not be running when modifying network configuration")
+        else:
+            logger.error(f"An error occurred: {e}")
         sys.exit(1)
 
 if __name__ == "__main__":

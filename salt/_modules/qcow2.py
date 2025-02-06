@@ -38,7 +38,7 @@ def modify_network_config(image, interface, mode, ip4=None, gw4=None, dns4=None,
         image
             Path to the QCOW2 image file that will be modified
         interface
-            Network interface name to configure (e.g., 'eth0')
+            Network interface name to configure (e.g., 'enp1s0')
         mode
             Network configuration mode, either 'dhcp4' or 'static4'
         ip4
@@ -57,13 +57,13 @@ def modify_network_config(image, interface, mode, ip4=None, gw4=None, dns4=None,
     Examples:
         1. **Configure DHCP:**
             ```bash
-            salt '*' qcow2.modify_network_config image='/nsm/libvirt/images/sool9/sool9.qcow2' interface='eth0' mode='dhcp4'
+            salt '*' qcow2.modify_network_config image='/nsm/libvirt/images/sool9/sool9.qcow2' interface='enp1s0' mode='dhcp4'
             ```
-            This configures eth0 to use DHCP for IP assignment
+            This configures enp1s0 to use DHCP for IP assignment
 
         2. **Configure Static IP:**
             ```bash
-            salt '*' qcow2.modify_network_config image='/nsm/libvirt/images/sool9/sool9.qcow2' interface='eth0' mode='static4' ip4='192.168.1.10/24' gw4='192.168.1.1' dns4='192.168.1.1,8.8.8.8' search4='example.local'
+            salt '*' qcow2.modify_network_config image='/nsm/libvirt/images/sool9/sool9.qcow2' interface='enp1s0' mode='static4' ip4='192.168.1.10/24' gw4='192.168.1.1' dns4='192.168.1.1,8.8.8.8' search4='example.local'
             ```
             This sets a static IP configuration with DNS servers and search domain
 
