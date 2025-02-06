@@ -48,6 +48,21 @@ pillarWatch_engine:
     - name: /etc/salt/engines/pillarWatch.py
     - source: salt://salt/engines/master/pillarWatch.py
 
+{%   if 'hvn' in salt['pillar.get']('features', []) %}
+virtual_node_manager_engine:
+  file.managed:
+    - name: /etc/salt/engines/virtual_node_manager.py
+    - source: salt://salt/engines/master/virtual_node_manager.py
+    - watch_in:
+      - service: salt_master_service
+
+virtual_node_manager_engine_config:
+  file.managed:
+    - name: /etc/salt/master.d/virtual_node_manager_engine.conf
+    - source: salt://salt/files/virtual_node_manager_engine.conf
+
+{% endif %}
+
 engines_config:
   file.managed:
     - name: /etc/salt/master.d/engines.conf
