@@ -1,0 +1,36 @@
+{%- import_yaml 'soc/dyanno/hypervisor/hypervisor.yaml' as ANNOTATION -%}
+
+{%- set TEMPLATE = ANNOTATION.hypervisor.hosts.pop('defaultHost') -%}
+
+{%- macro update_description(description, cpu_free, mem_free, disk_free, copper_free, sfp_free) -%}
+{{- description | replace('CPUFREE', cpu_free | string) 
+                | replace('MEMFREE', mem_free | string) 
+                | replace('DISKFREE', disk_free | string)
+                | replace('COPPERFREE', copper_free | string)
+                | replace('SFPFREE', sfp_free | string) -}}
+{%- endmacro -%}
+
+{%- for role in HYPERVISORS -%}
+{%-   for hypervisor in HYPERVISORS[role].keys() -%}
+{%-     set cpu_free = HYPERVISORS[role][hypervisor].available_cpu -%}
+{%-     set mem_free = HYPERVISORS[role][hypervisor].available_memory -%}
+{%-     set disk_free = HYPERVISORS[role][hypervisor].available_disk -%}
+{%-     set copper_free = HYPERVISORS[role][hypervisor].available_copper -%}
+{%-     set sfp_free = HYPERVISORS[role][hypervisor].available_sfp -%}
+      
+{%-     set updated_template = TEMPLATE.copy() -%}
+{%-     do updated_template.nodes.update({
+        'description': update_description(
+          TEMPLATE.nodes.description,
+          cpu_free,
+          mem_free,
+          disk_free,
+          copper_free,
+          sfp_free
+        )
+      }) -%}
+{%-     do ANNOTATION.hypervisor.hosts.update({hypervisor: updated_template}) -%}
+{%-   endfor -%}
+{%- endfor -%}
+
+{{- ANNOTATION | yaml(False) -}}
