@@ -14,15 +14,5 @@ hypervisor_host_directory_{{hypervisor}}:
   file.directory:
     - name: /opt/so/saltstack/local/salt/hypervisor/hosts/{{hypervisor}}
     - makedirs: True
-
-add_searchnode_file_{{hypervisor}}:
-  file.managed:
-    - name: /opt/so/saltstack/local/salt/hypervisor/hosts/{{hypervisor}}/add_searchnode
-    - source: salt://soc/dyanno/hypervisor/add_node
-
-add_sensor_file_{{hypervisor}}:
-  file.managed:
-    - name: /opt/so/saltstack/local/salt/hypervisor/hosts/{{hypervisor}}/add_sensor
-    - source: salt://soc/dyanno/hypervisor/add_node
 {%   endfor %}
 {% endfor %}
