@@ -209,6 +209,7 @@ Logging:
 """
 
 import argparse
+import os
 import subprocess
 import re
 import sys
@@ -346,12 +347,61 @@ def delete_vm(profile, vm_name, assume_yes=False):
         logger.error(f"Failed to delete VM {vm_name}: {e}")
         raise
 
+def _add_hypervisor_host_key(hostname):
+    """Add hypervisor host key to root's known_hosts file.
+    
+    Args:
+        hostname (str): The hostname or IP of the hypervisor
+        
+    Returns:
+        bool: True if key was added or already exists, False on error
+    """
+    try:
+        known_hosts = '/root/.ssh/known_hosts'
+        os.makedirs(os.path.dirname(known_hosts), exist_ok=True)
+        
+        # Check if key already exists using ssh-keygen
+        if os.path.exists(known_hosts):
+            check_result = subprocess.run(['ssh-keygen', '-F', hostname],
+                                        capture_output=True, text=True)
+            if check_result.returncode == 0 and check_result.stdout.strip():
+                logger.info("Host key for %s already in known_hosts", hostname)
+                return True
+            
+        # Get host key using ssh-keyscan
+        logger.info("Scanning host key for %s", hostname)
+        process = subprocess.run(['ssh-keyscan', '-H', hostname],
+                               capture_output=True, text=True)
+        
+        if process.returncode == 0 and process.stdout:
+            # Append new key
+            with open(known_hosts, 'a') as f:
+                f.write(process.stdout)
+            logger.info("Added host key for %s to known_hosts", hostname)
+            return True
+        else:
+            logger.error("Failed to get host key for %s: %s",
+                      hostname, process.stderr)
+            return False
+            
+    except Exception as e:
+        logger.error("Error adding host key for %s: %s", hostname, str(e))
+        return False
+
 def call_salt_cloud(profile, vm_name, destroy=False, assume_yes=False):
     """Call salt-cloud to create or destroy a VM"""
     try:
         if destroy:
             delete_vm(profile, vm_name, assume_yes)
             return
+
+        # Extract hypervisor hostname from profile (e.g., sool9-jpphype1 -> jpphype1)
+        hypervisor = profile.split('-', 1)[1] if '-' in profile else None
+        if hypervisor:
+            logger.info("Ensuring host key exists for hypervisor %s", hypervisor)
+            if not _add_hypervisor_host_key(hypervisor):
+                logger.error("Failed to add host key for %s, cannot proceed with VM creation", hypervisor)
+                sys.exit(1)
 
         # Start the salt-cloud command as a subprocess
         process = subprocess.Popen(
@@ -394,6 +444,29 @@ def call_salt_cloud(profile, vm_name, destroy=False, assume_yes=False):
     except Exception as e:
         logger.error(f"An error occurred while calling salt-cloud: {e}")
 
+def format_qcow2_output(operation, result):
+    """Format the output from qcow2 module operations for better readability.
+    
+    Args:
+        operation (str): The name of the operation (e.g., 'Network configuration', 'Hardware configuration')
+        result (dict): The result dictionary from the qcow2 module
+        
+    Returns:
+        None - logs the formatted output directly
+    """
+    for host, host_result in result.items():
+        if isinstance(host_result, dict):
+            # Extract and format stderr which contains the detailed log
+            if 'stderr' in host_result:
+                logger.info(f"{operation} on {host}:")
+                for line in host_result['stderr'].split('\n'):
+                    if line.strip():
+                        logger.info(f"  {line.strip()}")
+            if host_result.get('retcode', 0) != 0:
+                logger.error(f"{operation} failed on {host} with return code {host_result.get('retcode')}")
+        else:
+            logger.info(f"{operation} result from {host}: {host_result}")
+
 def run_qcow2_modify_hardware_config(profile, vm_name, cpu=None, memory=None, pci_list=None, start=False):
     hv_name = profile.split('-')[1]
     target = hv_name + "_*"
@@ -411,8 +484,8 @@ def run_qcow2_modify_hardware_config(profile, vm_name, cpu=None, memory=None, pc
             # Pass all PCI devices as a comma-separated list
             args_list.append('pci=' + ','.join(pci_list))
 
-        r = local.cmd(target, 'qcow2.modify_hardware_config', args_list)
-        logger.info(f'qcow2.modify_hardware_config: {r}')
+        result = local.cmd(target, 'qcow2.modify_hardware_config', args_list)
+        format_qcow2_output('Hardware configuration', result)
     except Exception as e:
         logger.error(f"An error occurred while running qcow2.modify_hardware_config: {e}")
 
@@ -423,7 +496,7 @@ def run_qcow2_modify_network_config(profile, mode, ip=None, gateway=None, dns=No
     interface = 'enp1s0'
 
     try:
-        r = local.cmd(target, 'qcow2.modify_network_config', [
+        result = local.cmd(target, 'qcow2.modify_network_config', [
             'image=' + image,
             'interface=' + interface,
             'mode=' + mode,
@@ -432,7 +505,7 @@ def run_qcow2_modify_network_config(profile, mode, ip=None, gateway=None, dns=No
             'dns4=' + dns if dns else '',
             'search4=' + search_domain if search_domain else ''
         ])
-        logger.info(f'qcow2.modify_network_config: {r}')
+        format_qcow2_output('Network configuration', result)
     except Exception as e:
         logger.error(f"An error occurred while running qcow2.modify_network_config: {e}")
 
@@ -473,6 +546,29 @@ def parse_arguments():
 def main():
     try:
         args = parse_arguments()
+        
+        # Log the initial request
+        if args.destroy:
+            logger.info(f"Received request to destroy VM '{args.vm_name}' using profile '{args.profile}'{' with --assume-yes' if args.assume_yes else ''}")
+        else:
+            # Build network config string
+            network_config = "using DHCP" if args.dhcp4 else f"with static IP {args.ip4}, gateway {args.gw4}"
+            if args.dns4:
+                network_config += f", DNS {args.dns4}"
+            if args.search4:
+                network_config += f", search domain {args.search4}"
+            
+            # Build hardware config string
+            hw_config = []
+            if args.cpu:
+                hw_config.append(f"{args.cpu} CPUs")
+            if args.memory:
+                hw_config.append(f"{args.memory}MB RAM")
+            if args.pci:
+                hw_config.append(f"PCI devices: {', '.join(args.pci)}")
+            hw_string = f" and hardware config: {', '.join(hw_config)}" if hw_config else ""
+            
+            logger.info(f"Received request to create VM '{args.vm_name}' using profile '{args.profile}' {network_config}{hw_string}")
 
         if args.destroy:
             # Handle VM deletion
