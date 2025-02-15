@@ -8,9 +8,9 @@
 """
 Salt Engine for Virtual Node Management
 
-This engine manages the automated provisioning of virtual machines in Security Onion's 
-virtualization infrastructure. It monitors directories for VM creation requests and 
-handles the entire provisioning process including hardware allocation.
+This engine manages the automated provisioning of virtual machines in Security Onion's
+virtualization infrastructure. It processes VM configurations from a nodes file and handles
+the entire provisioning process including hardware allocation, state tracking, and file ownership.
 
 Usage:
     engines:
@@ -19,31 +19,55 @@ Usage:
           base_path: /opt/so/saltstack/local/salt/hypervisor/hosts
 
 Options:
-    interval: Time in seconds between directory scans (default: 30)
-    base_path: Base directory to monitor for VM requests (default: /opt/so/saltstack/local/salt/hypervisor/hosts)
+    interval: Time in seconds between processing cycles (default: 30)
+    base_path: Base directory containing hypervisor configurations (default: /opt/so/saltstack/local/salt/hypervisor/hosts)
     
-    Memory values in VM configuration YAML files should be specified in GB. These values
+    Memory values in VM configuration should be specified in GB. These values
     will automatically be converted to MiB when passed to so-salt-cloud.
+
+Configuration Files:
+    nodes: JSON file containing VM configurations
+        - Located at <base_path>/<hypervisor>/nodes
+        - Contains array of VM configurations
+        - Each VM config specifies hardware and network settings
+
+    defaults.yaml: Hardware capabilities configuration
+        - Located at /opt/so/saltstack/default/salt/hypervisor/defaults.yaml
+        - Defines available hardware per model
+        - Maps hardware indices to PCI IDs
 
 Examples:
     1. Basic Configuration:
         engines:
           - virtual_node_manager: {}
         
-        Uses default settings to monitor for VM requests.
+        Uses default settings to process VM configurations.
 
-    2. Custom Scan Interval:
+    2. Custom Interval:
         engines:
           - virtual_node_manager:
               interval: 60
         
-        Scans for new requests every 60 seconds.
+        Processes configurations every 60 seconds.
+
+State Files:
+    VM Tracking Files:
+        - <vm_name>: Active VM configuration and status
+        - <vm_name>_failed: Failed VM creation details
+        - <vm_name>_invalidHW: Invalid hardware request details
+    
+    Lock Files:
+        - .lock: Prevents concurrent processing of VMs
+        - Contains VM name and timestamp
+        - Automatically removed after processing
 
 Notes:
     - Requires 'hvn' feature license
-    - Monitors for files named: add_sensor, add_searchnode, add_idh, add_receiver, add_heavynode, add_fleet
-    - Hardware allocation is tracked in hypervisor YAML files
-    - Creates VM-specific hardware tracking files
+    - Uses hypervisor's sosmodel grain for hardware capabilities
+    - Hardware allocation based on model-specific configurations
+    - All created files maintain socore ownership
+    - Comprehensive logging for troubleshooting
+    - Lock files prevent concurrent processing
 
 Description:
     The engine operates in the following phases:
@@ -52,22 +76,26 @@ Description:
        - Verifies 'hvn' feature is licensed
        - Prevents operation if license is invalid
 
-    2. File Monitoring
-       - Scans configured directory for add_* files
-       - Parses VM configuration from YAML
+    2. Configuration Processing
+       - Reads nodes file from each hypervisor directory
        - Validates configuration parameters
+       - Compares against existing VM tracking files
 
     3. Hardware Allocation
-       - Reads hypervisor hardware inventory
-       - Claims requested PCI devices
-       - Updates hardware tracking
-       - Creates VM hardware record
+       - Retrieves hypervisor model from grains cache
+       - Loads model-specific hardware capabilities
+       - Validates hardware requests against model limits
+       - Converts hardware indices to PCI IDs
+       - Ensures proper type handling for hardware indices
+       - Creates state tracking files with socore ownership
 
     4. VM Provisioning
-       - Executes so-salt-cloud with configuration
-       - Handles network setup
-       - Configures hardware passthrough
-       - Manages VM startup
+       - Creates lock file to prevent concurrent operations
+       - Executes so-salt-cloud with validated configuration
+       - Handles network setup (static/DHCP)
+       - Configures hardware passthrough with converted PCI IDs
+       - Updates VM state tracking
+       - Removes lock file after completion
 
 Exit Codes:
     0: Success
@@ -75,19 +103,41 @@ Exit Codes:
     2: Configuration error
     3: Hardware allocation failure
     4: VM provisioning failure
+    5: Invalid hardware request
 
 Logging:
     Log files are written to /opt/so/log/salt/engines/virtual_node_manager.log
-    Critical operations, errors, and hardware allocation events are logged
+    Comprehensive logging includes:
+    - Hardware validation details
+    - PCI ID conversion process
+    - Command execution details
+    - Error conditions with full context
+    - File ownership operations
+    - Lock file management
 """
 
 import os
 import glob
 import yaml
+import json
 import time
 import logging
 import subprocess
-from typing import Dict, List, Optional, Tuple
+import pwd
+import grp
+import salt.config
+import salt.runner
+from typing import Dict, List, Optional, Tuple, Any
+from datetime import datetime
+
+# Get socore uid/gid
+SOCORE_UID = pwd.getpwnam('socore').pw_uid
+SOCORE_GID = grp.getgrnam('socore').gr_gid
+
+# Initialize Salt runner once
+opts = salt.config.master_config('/etc/salt/master')
+opts['output'] = 'json'
+runner = salt.runner.RunnerClient(opts)
 
 # Configure logging
 log = logging.getLogger(__name__)
@@ -98,20 +148,52 @@ DEFAULT_INTERVAL = 30
 DEFAULT_BASE_PATH = '/opt/so/saltstack/local/salt/hypervisor/hosts'
 VALID_ROLES = ['sensor', 'searchnode', 'idh', 'receiver', 'heavynode', 'fleet']
 LICENSE_PATH = '/opt/so/saltstack/local/pillar/soc/license.sls'
+DEFAULTS_PATH = '/opt/so/saltstack/default/salt/hypervisor/defaults.yaml'
 
-def ensure_claimed_section(hw_config: dict) -> dict:
+def read_json_file(file_path: str) -> Any:
     """
-    Ensure the claimed section exists and is a dict.
-    
-    Args:
-        hw_config: Hardware configuration section containing 'claimed' key
-    
-    Returns:
-        The claimed section as a dict
+    Read and parse a JSON file.
+    Returns an empty array if the file is empty.
     """
-    if hw_config['claimed'] is None or not isinstance(hw_config['claimed'], dict):
-        hw_config['claimed'] = {}
-    return hw_config['claimed']
+    try:
+        with open(file_path, 'r') as f:
+            content = f.read().strip()
+            if not content:
+                return []
+            return json.loads(content)
+    except Exception as e:
+        log.error("Failed to read JSON file %s: %s", file_path, str(e))
+        raise
+
+def set_socore_ownership(path: str) -> None:
+    """Set socore ownership on file or directory."""
+    try:
+        os.chown(path, SOCORE_UID, SOCORE_GID)
+        log.debug("Set socore ownership on %s", path)
+    except Exception as e:
+        log.error("Failed to set socore ownership on %s: %s", path, str(e))
+        raise
+
+def write_json_file(file_path: str, data: Any) -> None:
+    """Write data to a JSON file with socore ownership."""
+    try:
+        # Create parent directory if it doesn't exist
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        with open(file_path, 'w') as f:
+            json.dump(data, f, indent=2)
+        set_socore_ownership(file_path)
+    except Exception as e:
+        log.error("Failed to write JSON file %s: %s", file_path, str(e))
+        raise
+
+def read_yaml_file(file_path: str) -> dict:
+    """Read and parse a YAML file."""
+    try:
+        with open(file_path, 'r') as f:
+            return yaml.safe_load(f)
+    except Exception as e:
+        log.error("Failed to read YAML file %s: %s", file_path, str(e))
+        raise
 
 def convert_pci_id(pci_id: str) -> str:
     """
@@ -127,218 +209,245 @@ def convert_pci_id(pci_id: str) -> str:
         >>> convert_pci_id('pci_0000_c7_00_0')
         '0000:c7:00.0'
     """
-    # Remove 'pci_' prefix
-    pci_id = pci_id.replace('pci_', '')
-    
-    # Split into components
-    parts = pci_id.split('_')
-    if len(parts) != 4:
-        raise ValueError(f"Invalid PCI ID format: {pci_id}. Expected format: pci_domain_bus_slot_function")
+    try:
+        # Remove 'pci_' prefix
+        pci_id = pci_id.replace('pci_', '')
         
-    # Reconstruct with proper format (using period for function)
-    domain, bus, slot, function = parts
-    return f"{domain}:{bus}:{slot}.{function}"
+        # Split into components
+        parts = pci_id.split('_')
+        if len(parts) != 4:
+            raise ValueError(f"Invalid PCI ID format: {pci_id}. Expected format: pci_domain_bus_slot_function")
+            
+        # Reconstruct with proper format (using period for function)
+        domain, bus, slot, function = parts
+        return f"{domain}:{bus}:{slot}.{function}"
+    except Exception as e:
+        log.error("Failed to convert PCI ID %s: %s", pci_id, str(e))
+        raise
 
-class HardwareManager:
+def create_lock_file(hypervisor_path: str, vm_name: str) -> bool:
+    """Create .lock file for VM processing."""
+    lock_file = os.path.join(hypervisor_path, '.lock')
+    try:
+        if os.path.exists(lock_file):
+            log.warning("Lock file already exists at %s", lock_file)
+            return False
+        write_json_file(lock_file, {
+            'vm': vm_name,
+            'timestamp': datetime.now().isoformat()
+        })
+        return True
+    except Exception as e:
+        log.error("Failed to create lock file: %s", str(e))
+        return False
+
+def remove_lock_file(hypervisor_path: str) -> None:
+    """Remove .lock file after processing."""
+    lock_file = os.path.join(hypervisor_path, '.lock')
+    try:
+        if os.path.exists(lock_file):
+            os.remove(lock_file)
+    except Exception as e:
+        log.error("Failed to remove lock file: %s", str(e))
+
+def is_locked(hypervisor_path: str) -> bool:
+    """Check if hypervisor directory is locked."""
+    return os.path.exists(os.path.join(hypervisor_path, '.lock'))
+
+def get_hypervisor_model(hypervisor: str) -> str:
+    """Get sosmodel from hypervisor grains."""
+    log.info(hypervisor) #MOD
+    try:
+        # Get cached grains using Salt runner
+        grains = runner.cmd(
+            'cache.grains',
+            [f'{hypervisor}_*', 'glob']
+        )
+        log.info(grains) #MOD
+        if not grains:
+            raise ValueError(f"No grains found for hypervisor {hypervisor}")
+            
+        # Get the first minion ID that matches our hypervisor
+        minion_id = next(iter(grains.keys()))
+        log.info(minion_id) #MOD
+        model = grains[minion_id].get('sosmodel')
+        log.info(model) #MOD
+        if not model:
+            raise ValueError(f"No sosmodel grain found for hypervisor {hypervisor}")
+            
+        log.debug("Found model %s for hypervisor %s", model, hypervisor)
+        return model
+        
+    except Exception as e:
+        log.error("Failed to get hypervisor model: %s", str(e))
+        raise
+
+def load_hardware_defaults(model: str) -> dict:
+    """Load hardware configuration from defaults.yaml."""
+    try:
+        defaults = read_yaml_file(DEFAULTS_PATH)
+        if not defaults or 'hypervisor' not in defaults:
+            raise ValueError("Invalid defaults.yaml structure")
+        if 'model' not in defaults['hypervisor']:
+            raise ValueError("No model configurations found in defaults.yaml")
+        if model not in defaults['hypervisor']['model']:
+            raise ValueError(f"Model {model} not found in defaults.yaml")
+        return defaults['hypervisor']['model'][model]
+    except Exception as e:
+        log.error("Failed to load hardware defaults: %s", str(e))
+        raise
+
+def validate_hardware_request(model_config: dict, requested_hw: dict) -> Tuple[bool, Optional[dict]]:
     """
-    Manages hardware allocation and tracking for virtual machines.
-    Handles reading hypervisor configuration, claiming PCI devices,
-    and maintaining hardware tracking files.
-    """
+    Validate hardware request against model capabilities.
     
-    def __init__(self, hypervisor: str, base_path: str):
-        """Initialize the hardware manager for a specific hypervisor."""
-        self.hypervisor = hypervisor
-        self.base_path = base_path
-        self.hypervisor_file = os.path.join(base_path, hypervisor, f"{hypervisor}.yaml")
-
-    def read_hypervisor_config(self) -> dict:
-        """
-        Read and initialize the hypervisor's hardware configuration file.
-        Ensures all hardware sections have a valid claimed section.
-        """
+    Returns:
+        Tuple of (is_valid, error_details)
+    """
+    errors = {}
+    log.debug("Validating hardware request: %s", requested_hw)
+    log.debug("Against model config: %s", model_config['hardware'])
+    
+    # Validate CPU
+    if 'cpu' in requested_hw:
         try:
-            with open(self.hypervisor_file, 'r') as f:
-                config = yaml.safe_load(f)
-            
-            # Initialize any null claimed sections
-            modified = False
-            for hw_type in ['disk', 'copper', 'sfp']:
-                hw_config = config['hypervisor']['hardware'][hw_type]
-                if hw_config['claimed'] is None:
-                    log.debug("Initializing null claimed section for %s", hw_type)
-                    hw_config['claimed'] = {}
-                    modified = True
-            
-            # Save if we made any changes
-            if modified:
-                log.info("Updating hypervisor config with initialized claimed sections")
-                self.write_hypervisor_config(config)
-            
-            return config
-        except Exception as e:
-            log.error("Failed to read hypervisor configuration: %s", str(e))
-            raise
+            cpu_count = int(requested_hw['cpu'])
+            log.debug("Validating CPU request: %d against maximum: %d",
+                     cpu_count, model_config['hardware']['cpu'])
+            if cpu_count > model_config['hardware']['cpu']:
+                errors['cpu'] = f"Requested {cpu_count} CPU cores exceeds maximum {model_config['hardware']['cpu']}"
+        except ValueError:
+            errors['cpu'] = "Invalid CPU value"
 
-    def write_hypervisor_config(self, config: dict) -> None:
-        """Write updated configuration back to the hypervisor file."""
+    # Validate Memory
+    if 'memory' in requested_hw:
         try:
-            with open(self.hypervisor_file, 'w') as f:
-                yaml.dump(config, f, default_flow_style=False)
-        except Exception as e:
-            log.error("Failed to write hypervisor configuration: %s", str(e))
-            raise
+            memory = int(requested_hw['memory'])
+            log.debug("Validating memory request: %dGB against maximum: %dGB",
+                     memory, model_config['hardware']['memory'])
+            if memory > model_config['hardware']['memory']:
+                errors['memory'] = f"Requested {memory}GB memory exceeds maximum {model_config['hardware']['memory']}GB"
+        except ValueError:
+            errors['memory'] = "Invalid memory value"
 
-    def get_pci_ids(self, hw_type: str, indices: Optional[List[int]]) -> List[str]:
-        """
-        Look up PCI IDs for requested hardware indices.
-        
-        Args:
-            hw_type: Type of hardware (disk, copper, sfp)
-            indices: List of hardware indices to look up, or None if no hardware requested
-        
-        Returns:
-            List of PCI IDs
-        """
-        # Skip if no indices provided
-        if indices is None:
-            return []
-            
-        config = self.read_hypervisor_config()
-        log.debug("Full config structure: %s", config)
-        log.debug("Looking up indices %s for hardware type %s", indices, hw_type)
-        pci_ids = []
-        
-        try:
-            hardware_section = config['hypervisor']['hardware']
-            log.debug("Hardware section: %s", hardware_section)
-            if hw_type not in hardware_section:
-                raise ValueError(f"Hardware type {hw_type} not found in configuration")
-            
-            hw_config = hardware_section[hw_type]
-            free_hw = hw_config['free']
-            claimed_hw = ensure_claimed_section(hw_config)
-            
-            log.debug("Free hardware section for %s: %s", hw_type, free_hw)
-            log.debug("Claimed hardware section for %s: %s", hw_type, claimed_hw)
-            
-            for idx in indices:
-                if idx in free_hw:
-                    pci_id = convert_pci_id(free_hw[idx])
-                    log.debug("Converting PCI ID from %s to %s", free_hw[idx], pci_id)
-                    pci_ids.append(pci_id)
-                elif idx in claimed_hw:
-                    raise ValueError(f"Hardware index {idx} for {hw_type} is already claimed")
-                else:
-                    raise ValueError(f"Hardware index {idx} for {hw_type} does not exist")
-        except KeyError as e:
-            log.error("Invalid hardware configuration structure: %s", str(e))
-            raise
-            
-        return pci_ids
+    # Validate PCI devices
+    for hw_type in ['disk', 'copper', 'sfp']:
+        if hw_type in requested_hw and requested_hw[hw_type]:
+            try:
+                indices = [int(x) for x in str(requested_hw[hw_type]).split(',')]
+                log.debug("Validating %s indices: %s", hw_type, indices)
+                
+                if hw_type not in model_config['hardware']:
+                    log.error("Hardware type %s not found in model config", hw_type)
+                    errors[hw_type] = f"No {hw_type} configuration found in model"
+                    continue
+                    
+                available_indices = set(int(k) for k in model_config['hardware'][hw_type].keys())
+                log.debug("Available %s indices: %s", hw_type, available_indices)
+                
+                invalid_indices = [idx for idx in indices if idx not in available_indices]
+                if invalid_indices:
+                    log.error("Invalid %s indices found: %s", hw_type, invalid_indices)
+                    errors[hw_type] = f"Invalid {hw_type} indices: {invalid_indices}"
+            except ValueError:
+                log.error("Invalid %s indices format: %s", hw_type, requested_hw[hw_type])
+                errors[hw_type] = f"Invalid {hw_type} indices format"
+            except KeyError:
+                log.error("No %s configuration found in model", hw_type)
+                errors[hw_type] = f"No {hw_type} configuration found in model"
 
-    def claim_cpu_memory(self, cpu_count: Optional[int], memory_gb: Optional[int]) -> None:
-        """
-        Claim CPU cores and memory from the free pool.
+    if errors:
+        log.error("Hardware validation failed with errors: %s", errors)
+    else:
+        log.debug("Hardware validation successful")
         
-        Args:
-            cpu_count: Number of CPU cores to claim, or None if no CPU requested
-            memory_gb: Amount of memory in GB to claim, or None if no memory requested
-            
-        Raises:
-            ValueError: If requested resources exceed available resources
-        """
-        if cpu_count is None and memory_gb is None:
-            return
-            
-        config = self.read_hypervisor_config()
-        hw_config = config['hypervisor']['hardware']
-        
-        # Validate and claim CPU cores
-        if cpu_count is not None:
-            if cpu_count > hw_config['cpu']['free']:
-                raise ValueError(f"Not enough CPU cores available. Requested: {cpu_count}, Free: {hw_config['cpu']['free']}")
-            hw_config['cpu']['free'] -= cpu_count
-            
-        # Validate and claim memory
-        if memory_gb is not None:
-            if memory_gb > hw_config['memory']['free']:
-                raise ValueError(f"Not enough memory available. Requested: {memory_gb}GB, Free: {hw_config['memory']['free']}GB")
-            hw_config['memory']['free'] -= memory_gb
-            
-        self.write_hypervisor_config(config)
-        log.info("Successfully claimed CPU cores: %s, Memory: %sGB", cpu_count, memory_gb)
+    return (len(errors) == 0, errors if errors else None)
 
-    def release_cpu_memory(self, cpu_count: Optional[int], memory_gb: Optional[int]) -> None:
-        """
-        Release CPU cores and memory back to the free pool.
-        
-        Args:
-            cpu_count: Number of CPU cores to release, or None if no CPU to release
-            memory_gb: Amount of memory in GB to release, or None if no memory to release
-        """
-        if cpu_count is None and memory_gb is None:
-            return
+def check_hardware_availability(hypervisor_path: str, vm_name: str) -> bool:
+    """Check if requested hardware is already claimed by another VM."""
+    try:
+        # List all VM tracking files
+        files = glob.glob(os.path.join(hypervisor_path, '*_*'))
+        for file_path in files:
+            # Skip the VM we're checking and any failed/invalid VMs
+            basename = os.path.basename(file_path)
+            if basename.startswith(vm_name) or '_failed' in basename or '_invalidHW' in basename:
+                continue
             
-        config = self.read_hypervisor_config()
-        hw_config = config['hypervisor']['hardware']
-        
-        # Return CPU cores to free pool
-        if cpu_count is not None:
-            hw_config['cpu']['free'] += cpu_count
-            
-        # Return memory to free pool
-        if memory_gb is not None:
-            hw_config['memory']['free'] += memory_gb
-            
-        self.write_hypervisor_config(config)
-        log.info("Successfully released CPU cores: %s, Memory: %sGB", cpu_count, memory_gb)
+            # Check if any hardware overlaps
+            vm_config = read_json_file(file_path)
+            if 'hardware' in vm_config and 'allocated' in vm_config['hardware']:
+                # TODO: Implement hardware conflict checking
+                pass
+        return True
+    except Exception as e:
+        log.error("Failed to check hardware availability: %s", str(e))
+        return False
 
-    def claim_hardware(self, hw_type: str, indices: List[int]) -> None:
-        """
-        Move hardware from free to claimed in the hypervisor configuration.
+def create_vm_tracking_file(hypervisor_path: str, vm_name: str, config: dict) -> None:
+    """Create VM tracking file with initial state."""
+    file_path = os.path.join(hypervisor_path, vm_name)
+    log.debug("Creating VM tracking file at %s", file_path)
+    try:
+        # Create parent directory if it doesn't exist
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        set_socore_ownership(os.path.dirname(file_path))
         
-        Args:
-            hw_type: Type of hardware (disk, copper, sfp)
-            indices: List of hardware indices to claim
-        """
-        config = self.read_hypervisor_config()
-        
-        try:
-            hw_config = config['hypervisor']['hardware'][hw_type]
-            ensure_claimed_section(hw_config)
-            
-            for idx in indices:
-                if idx in hw_config['free']:
-                    pci_id = hw_config['free'][idx]
-                    hw_config['claimed'][idx] = pci_id
-                    del hw_config['free'][idx]
-                else:
-                    raise ValueError(f"{hw_type} hardware index {idx} not available")
-            
-            self.write_hypervisor_config(config)
-            log.info("Successfully claimed %s hardware indices: %s", hw_type, indices)
-        except Exception as e:
-            log.error("Failed to claim hardware: %s", str(e))
-            raise
+        data = {
+            'config': config,
+            'status': 'creating',
+            'hardware': {
+                'allocated': {}
+            }
+        }
+        # Write file and set ownership
+        with open(file_path, 'w') as f:
+            json.dump(data, f, indent=2)
+        set_socore_ownership(file_path)
+        log.debug("Successfully created VM tracking file with socore ownership")
+    except Exception as e:
+        log.error("Failed to create VM tracking file: %s", str(e))
+        raise
 
-    def create_vm_hardware_file(self, hostname: str, role: str, hardware: dict) -> None:
-        """
-        Create a YAML file tracking hardware allocated to a VM.
-        
-        Args:
-            hostname: Name of the VM
-            role: VM role (sensor, searchnode, etc.)
-            hardware: Dictionary of allocated hardware
-        """
-        vm_file = os.path.join(self.base_path, self.hypervisor, f"{hostname}_{role}.yaml")
-        try:
-            with open(vm_file, 'w') as f:
-                yaml.dump({'hardware': hardware}, f, default_flow_style=False)
-            log.info("Created hardware tracking file for %s_%s", hostname, role)
-        except Exception as e:
-            log.error("Failed to create VM hardware file: %s", str(e))
-            raise
+def mark_vm_failed(vm_file: str, error_code: int, message: str) -> None:
+    """Mark VM as failed with error details."""
+    try:
+        # Rename file to add _failed suffix if not already present
+        if not vm_file.endswith('_failed'):
+            new_file = f"{vm_file}_failed"
+            os.rename(vm_file, new_file)
+            vm_file = new_file
+
+        # Update file contents
+        data = read_json_file(vm_file)
+        data['status'] = 'failed'
+        data['error'] = {
+            'code': error_code,
+            'message': message,
+            'timestamp': datetime.now().isoformat()
+        }
+        write_json_file(vm_file, data)
+    except Exception as e:
+        log.error("Failed to mark VM as failed: %s", str(e))
+        raise
+
+def mark_invalid_hardware(hypervisor_path: str, vm_name: str, config: dict, error_details: dict) -> None:
+    """Create invalid hardware tracking file with error details."""
+    file_path = os.path.join(hypervisor_path, f"{vm_name}_invalidHW")
+    try:
+        data = {
+            'config': config,
+            'error': {
+                'code': 5,
+                'message': "Invalid hardware configuration",
+                'invalid_hardware': error_details,
+                'timestamp': datetime.now().isoformat()
+            }
+        }
+        write_json_file(file_path, data)
+    except Exception as e:
+        log.error("Failed to create invalid hardware file: %s", str(e))
+        raise
 
 def validate_hvn_license() -> bool:
     """Check if the license file exists and contains required values."""
@@ -374,211 +483,215 @@ def validate_hvn_license() -> bool:
         log.error("LICENSE: Error reading license file: %s", str(e))
         return False
 
-def parse_add_file(file_path: str) -> Tuple[str, str, dict]:
-    """
-    Parse an add_* file to extract VM configuration.
+def process_vm_creation(hypervisor_path: str, vm_config: dict) -> None:
+    """Process a single VM creation request."""
+    # Get the actual hypervisor name (last directory in path)
+    hypervisor = os.path.basename(hypervisor_path)
+    vm_name = f"{vm_config['hostname']}_{vm_config['role']}"
     
-    Returns:
-        Tuple of (hypervisor, role, config)
-    """
     try:
-        # Extract hypervisor and role from path
-        path_parts = file_path.split(os.path.sep)
-        hypervisor = path_parts[-2]
-        role = path_parts[-1].replace('add_', '')
-        
-        if role not in VALID_ROLES:
-            raise ValueError(f"Invalid role: {role}")
-        
-        # Read and parse YAML configuration
-        with open(file_path, 'r') as f:
-            config = yaml.safe_load(f)
-            
-        required_fields = ['hostname', 'network_mode']
-        if config.get('network_mode') == 'static4':
-            required_fields.extend(['ip4', 'gw4'])
-            
-        for field in required_fields:
-            if field not in config:
-                raise ValueError(f"Missing required field: {field}")
-        
-        # Validate hardware sections
-        for hw_type in ['disk', 'copper', 'sfp']:
-            if hw_type in config and config[hw_type] is not None:
-                if not isinstance(config[hw_type], list):
-                    raise ValueError(f"{hw_type} must be a list when present")
-                
-        return hypervisor, role, config
-    except Exception as e:
-        log.error("Failed to parse add file %s: %s", file_path, str(e))
-        raise
+        # Create lock file
+        if not create_lock_file(hypervisor_path, vm_name):
+            return
 
-def convert_gb_to_mib(gb: int) -> int:
-    """
-    Convert memory value from GB to MiB.
-    
-    Args:
-        gb: Memory value in gigabytes
-        
-    Returns:
-        Memory value in mebibytes (1 GB = 1024 MiB)
-    """
-    return gb * 1024
+        # Get hypervisor model and capabilities
+        model = get_hypervisor_model(hypervisor)
+        model_config = load_hardware_defaults(model)
 
-def execute_salt_cloud(profile: str, hostname: str, role: str, config: dict, pci_ids: List[str]) -> None:
-    """
-    Execute so-salt-cloud to create the VM.
-    
-    Args:
-        profile: Salt cloud profile name
-        hostname: VM hostname
-        role: VM role
-        config: VM configuration
-        pci_ids: List of PCI IDs for hardware passthrough
-    """
-    try:
-        cmd = ['so-salt-cloud', '-p', f'sool9-{profile}', f'{hostname}_{role}']
+        # Validate hardware request
+        is_valid, errors = validate_hardware_request(model_config, vm_config)
+        if not is_valid:
+            mark_invalid_hardware(hypervisor_path, vm_name, vm_config, errors)
+            return
+
+        # Check hardware availability
+        if not check_hardware_availability(hypervisor_path, vm_name):
+            mark_vm_failed(os.path.join(hypervisor_path, vm_name), 3, 
+                         "Requested hardware is already in use")
+            return
+
+        # Create tracking file
+        create_vm_tracking_file(hypervisor_path, vm_name, vm_config)
+
+        # Build so-salt-cloud command
+        log.debug("Building so-salt-cloud command for VM %s", vm_name)
+        cmd = ['so-salt-cloud', '-p', f'sool9-{hypervisor}', vm_name]
+        log.debug("Base command: %s", ' '.join(cmd))
         
         # Add network configuration
-        if config['network_mode'] == 'static4':
-            cmd.extend(['--static4', '--ip4', config['ip4'], '--gw4', config['gw4']])
-            if 'dns4' in config:
-                cmd.extend(['--dns4', ','.join(config['dns4'])])
-            if 'search4' in config:
-                cmd.extend(['--search4', config['search4']])
+        if vm_config['network_mode'] == 'static4':
+            log.debug("Adding static network configuration")
+            cmd.extend(['--static4', '--ip4', vm_config['ip4'], '--gw4', vm_config['gw4']])
+            if 'dns4' in vm_config:
+                cmd.extend(['--dns4', vm_config['dns4']])
+            if 'search4' in vm_config:
+                cmd.extend(['--search4', vm_config['search4']])
         else:
+            log.debug("Using DHCP network configuration")
             cmd.append('--dhcp4')
             
         # Add hardware configuration
-        if 'cpu' in config:
-            cmd.extend(['-c', str(config['cpu'])])
-        if 'memory' in config:
-            # Convert memory from GB to MiB for so-salt-cloud
-            memory_mib = convert_gb_to_mib(config['memory'])
+        if 'cpu' in vm_config:
+            log.debug("Adding CPU configuration: %s cores", vm_config['cpu'])
+            cmd.extend(['-c', str(vm_config['cpu'])])
+        if 'memory' in vm_config:
+            memory_mib = int(vm_config['memory']) * 1024
+            log.debug("Adding memory configuration: %sGB (%sMiB)", vm_config['memory'], memory_mib)
             cmd.extend(['-m', str(memory_mib)])
             
-        # Add PCI devices
-        for pci_id in pci_ids:
-            cmd.extend(['-P', pci_id])
-            
-        log.info("Executing: %s", ' '.join(cmd))
-        subprocess.run(cmd, check=True)
-    except subprocess.CalledProcessError as e:
-        log.error("so-salt-cloud execution failed: %s", str(e))
-        raise
-    except Exception as e:
-        log.error("Failed to execute so-salt-cloud: %s", str(e))
-        raise
-
-def release_hardware(hw_manager: HardwareManager, hw_type: str, indices: List[int], 
-                    cpu_count: Optional[int] = None, memory_gb: Optional[int] = None) -> None:
-    """
-    Release claimed hardware back to free pool.
-    
-    Args:
-        hw_manager: HardwareManager instance
-        hw_type: Type of hardware (disk, copper, sfp)
-        indices: List of hardware indices to release
-        cpu_count: Number of CPU cores to release, or None if no CPU to release
-        memory_gb: Amount of memory in GB to release, or None if no memory to release
-    """
-    config = hw_manager.read_hypervisor_config()
-    hw_config = config['hypervisor']['hardware'][hw_type]
-    
-    for idx in indices:
-        if idx in hw_config['claimed']:
-            pci_id = hw_config['claimed'][idx]
-            hw_config['free'][idx] = pci_id
-            del hw_config['claimed'][idx]
-    
-    hw_manager.write_hypervisor_config(config)
-    log.info("Released %s hardware indices: %s", hw_type, indices)
-
-def process_add_file(file_path: str, base_path: str) -> None:
-    """
-    Process a single add_* file for VM creation.
-    
-    Args:
-        file_path: Path to the add_* file
-        base_path: Base path for hypervisor configuration
-    """
-    try:
-        hypervisor, role, config = parse_add_file(file_path)
-        log.debug("Parsed config from add file: %s", config)
-        hw_manager = HardwareManager(hypervisor, base_path)
-        
-        # Phase 1: Collect all hardware information without claiming
-        pci_ids = []
-        hardware_to_claim = {}  # Store hardware to claim for each type
-        hardware_tracking = {
-            'cpu': config.get('cpu'),
-            'memory': config.get('memory')
-        }
-        
-        # Validate all hardware first
+        # Add PCI devices with proper conversion
         for hw_type in ['disk', 'copper', 'sfp']:
-            indices = config.get(hw_type)
-            if indices is not None:
-                # Validate indices are available before claiming
-                hw_pci_ids = hw_manager.get_pci_ids(hw_type, indices)
-                if hw_pci_ids:
-                    hardware_to_claim[hw_type] = indices
-                    pci_ids.extend(hw_pci_ids)
-                    hardware_tracking[hw_type] = [
-                        {'id': idx, 'pci': pci_id}
-                        for idx, pci_id in zip(indices, hw_pci_ids)
-                    ]
-        
-        # Phase 2: Claim hardware only after all validation passes
+            if hw_type in vm_config and vm_config[hw_type]:
+                log.debug("Processing %s hardware configuration", hw_type)
+                indices = [int(x) for x in str(vm_config[hw_type]).split(',')]
+                log.debug("Requested %s indices: %s", hw_type, indices)
+                for idx in indices:
+                    try:
+                        log.debug("Looking up PCI ID for %s index %d in model config", hw_type, idx)
+                        log.debug("Model config for %s: %s", hw_type, model_config['hardware'][hw_type])
+                        
+                        # Convert all keys to integers for comparison
+                        hw_config = {int(k): v for k, v in model_config['hardware'][hw_type].items()}
+                        log.debug("Converted hardware config: %s", hw_config)
+                        
+                        pci_id = hw_config[idx]
+                        log.debug("Found PCI ID for %s index %d: %s", hw_type, idx, pci_id)
+                        converted_pci_id = convert_pci_id(pci_id)
+                        log.debug("Converted PCI ID from %s to %s", pci_id, converted_pci_id)
+                        cmd.extend(['-P', converted_pci_id])
+                    except Exception as e:
+                        log.error("Failed to process PCI ID for %s index %d: %s", hw_type, idx, str(e))
+                        log.error("Hardware config keys: %s, looking for index: %s",
+                                list(model_config['hardware'][hw_type].keys()), idx)
+                        raise
+            
+        # Execute so-salt-cloud
+        log.info("Executing command: %s", ' '.join(cmd))
         try:
-            # Claim CPU and memory first
-            cpu_count = config.get('cpu')
-            memory_gb = config.get('memory')
-            hw_manager.claim_cpu_memory(cpu_count, memory_gb)
-            
-            # Then claim PCI hardware
-            for hw_type, indices in hardware_to_claim.items():
-                hw_manager.claim_hardware(hw_type, indices)
-            
-            # Create VM
-            execute_salt_cloud(hypervisor, config['hostname'], role, config, pci_ids)
-            
-            # Create hardware tracking file
-            hw_manager.create_vm_hardware_file(config['hostname'], role, hardware_tracking)
-            
-            log.info("Successfully processed VM creation request: %s_%s", 
-                    config['hostname'], role)
-            
-        except Exception as e:
-            # If anything fails after claiming, release all hardware
-            log.error("Failed after hardware claim, attempting to release hardware: %s", str(e))
-            
-            # Release CPU and memory
-            try:
-                hw_manager.release_cpu_memory(cpu_count, memory_gb)
-            except Exception as release_error:
-                log.error("Failed to release CPU/memory: %s", str(release_error))
-            
-            # Release PCI hardware
-            for hw_type, indices in hardware_to_claim.items():
-                try:
-                    release_hardware(hw_manager, hw_type, indices)
-                except Exception as release_error:
-                    log.error("Failed to release %s hardware %s: %s", 
-                            hw_type, indices, str(release_error))
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            log.debug("Command completed successfully")
+            log.debug("Command stdout: %s", result.stdout)
+            if result.stderr:
+                log.warning("Command stderr (non-fatal): %s", result.stderr)
+        except subprocess.CalledProcessError as e:
+            error_msg = f"so-salt-cloud execution failed (code {e.returncode})"
+            if e.stdout:
+                log.error("Command stdout: %s", e.stdout)
+            if e.stderr:
+                log.error("Command stderr: %s", e.stderr)
+                error_msg = f"{error_msg}: {e.stderr}"
+            log.error(error_msg)
+            mark_vm_failed(os.path.join(hypervisor_path, vm_name), 4, error_msg)
             raise
-            
-        finally:
-            # Always clean up the add file
-            try:
-                os.remove(file_path)
-                log.info("Cleaned up add file: %s", file_path)
-            except Exception as e:
-                log.error("Failed to clean up add file: %s", str(e))
-                
-    except Exception as e:
-        log.error("Failed to process add file %s: %s", file_path, str(e))
+        
+        # Update tracking file status
+        tracking_file = os.path.join(hypervisor_path, vm_name)
+        data = read_json_file(tracking_file)
+        data['status'] = 'running'
+        write_json_file(tracking_file, data)
+        log.info("Successfully updated VM status to running")
+        
+    except subprocess.CalledProcessError as e:
+        error_msg = f"so-salt-cloud execution failed (code {e.returncode})"
+        if e.stdout:
+            log.error("Command stdout: %s", e.stdout)
+        if e.stderr:
+            log.error("Command stderr: %s", e.stderr)
+            error_msg = f"{error_msg}: {e.stderr}"
+        log.error(error_msg)
+        mark_vm_failed(os.path.join(hypervisor_path, vm_name), 4, error_msg)
         raise
+    except Exception as e:
+        error_msg = f"VM creation failed: {str(e)}"
+        log.error(error_msg)
+        # If we haven't created the tracking file yet, create a failed one
+        if not os.path.exists(os.path.join(hypervisor_path, vm_name)):
+            mark_vm_failed(os.path.join(hypervisor_path, f"{vm_name}_failed"), 4, error_msg)
+    finally:
+        remove_lock_file(hypervisor_path)
+
+def process_vm_deletion(hypervisor_path: str, vm_name: str) -> None:
+    """Process a single VM deletion request."""
+    try:
+        if not create_lock_file(hypervisor_path, vm_name):
+            return
+            
+        # Get the actual hypervisor name (last directory in path)
+        hypervisor = os.path.basename(hypervisor_path)
+        cmd = ['so-salt-cloud', '-p', f'sool9-{hypervisor}', vm_name, '-yd']
+        
+        log.info("Executing: %s", ' '.join(cmd))
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        
+        # Log command output
+        if result.stdout:
+            log.debug("Command stdout: %s", result.stdout)
+        if result.stderr:
+            log.warning("Command stderr: %s", result.stderr)
+            
+        # Check return code
+        if result.returncode != 0:
+            error_msg = f"so-salt-cloud deletion failed (code {result.returncode}): {result.stderr}"
+            log.error(error_msg)
+            raise subprocess.CalledProcessError(
+                result.returncode, cmd,
+                output=result.stdout,
+                stderr=result.stderr
+            )
+        
+        # Remove VM tracking file
+        vm_file = os.path.join(hypervisor_path, vm_name)
+        if os.path.exists(vm_file):
+            os.remove(vm_file)
+            log.info("Successfully removed VM tracking file")
+            
+    except Exception as e:
+        log.error("Error processing VM deletion: %s", str(e))
+        raise
+    finally:
+        remove_lock_file(hypervisor_path)
+
+def process_hypervisor(hypervisor_path: str) -> None:
+    """Process VM configurations for a single hypervisor."""
+    try:
+        if is_locked(hypervisor_path):
+            return
+
+        # Read nodes file
+        nodes_file = os.path.join(hypervisor_path, 'nodes')
+        if not os.path.exists(nodes_file):
+            return
+            
+        nodes_config = read_json_file(nodes_file)
+        if not nodes_config:
+            return
+            
+        # Get existing VMs
+        existing_vms = set()
+        for file_path in glob.glob(os.path.join(hypervisor_path, '*_*')):
+            basename = os.path.basename(file_path)
+            if not any(x in basename for x in ['_failed', '_invalidHW']):
+                existing_vms.add(basename)
+                
+        # Process new VMs
+        configured_vms = set()
+        for vm_config in nodes_config:
+            if 'hostname' not in vm_config or 'role' not in vm_config:
+                log.error("Invalid VM configuration: missing hostname or role")
+                continue
+                
+            vm_name = f"{vm_config['hostname']}_{vm_config['role']}"
+            configured_vms.add(vm_name)
+            
+            if vm_name not in existing_vms:
+                process_vm_creation(hypervisor_path, vm_config)
+                
+        # Process VM deletions
+        for vm_name in existing_vms - configured_vms:
+            process_vm_deletion(hypervisor_path, vm_name)
+            
+    except Exception as e:
+        log.error("Failed to process hypervisor %s: %s", hypervisor_path, str(e))
 
 def start(interval: int = DEFAULT_INTERVAL,
           base_path: str = DEFAULT_BASE_PATH) -> None:
@@ -586,8 +699,8 @@ def start(interval: int = DEFAULT_INTERVAL,
     Main engine loop.
     
     Args:
-        interval: Time in seconds between directory scans
-        base_path: Base path to monitor for VM requests
+        interval: Time in seconds between processing cycles
+        base_path: Base path containing hypervisor configurations
     """
     log.info("Starting virtual node manager engine")
     
@@ -596,23 +709,11 @@ def start(interval: int = DEFAULT_INTERVAL,
     
     while True:
         try:
-            pattern = os.path.join(base_path, '*', 'add_*')
-            log.debug("Scanning for VM request files with pattern: %s", pattern)
-            
-            try:
-                files = glob.glob(pattern)
-                if files:
-                    log.debug("Found %d VM request file(s): %s", len(files), files)
-                
-                for file_path in files:
-                    log.info("Processing VM request file: %s", file_path)
-                    try:
-                        process_add_file(file_path, base_path)
-                    except Exception as e:
-                        log.error("Failed to process file %s: %s", file_path, str(e))
-            except Exception as e:
-                log.error("Error scanning for VM request files: %s", str(e))
-                
+            # Process each hypervisor directory
+            for hypervisor_path in glob.glob(os.path.join(base_path, '*')):
+                if os.path.isdir(hypervisor_path):
+                    process_hypervisor(hypervisor_path)
+                    
         except Exception as e:
             log.error("Error in main engine loop: %s", str(e))
             

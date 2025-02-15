@@ -14,5 +14,10 @@ hypervisor_host_directory_{{hypervisor}}:
   file.directory:
     - name: /opt/so/saltstack/local/salt/hypervisor/hosts/{{hypervisor}}
     - makedirs: True
+    - user: socore
+    - group: socore
+    - recurse:
+      - user
+      - group
 {%   endfor %}
 {% endfor %}
