@@ -77,7 +77,6 @@ import time
 import yaml
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519
-
 # Configure logging
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
@@ -442,11 +441,21 @@ def setup_environment(vm_name: str = 'sool9', disk_size: str = '220G', minion_id
             # Run highstate on the hypervisor
             highstate_result = local.cmd(minion_id, 'state.highstate', [], timeout=1800)
             if highstate_result and minion_id in highstate_result:
-                log.info("MAIN: Highstate completed on %s", minion_id)
+                log.info("MAIN: Highstate triggered on %s", minion_id)
             else:
                 log.error("MAIN: Highstate failed or timed out on %s", minion_id)
+                return {
+                    'success': False,
+                    'error': 'Highstate failed or timed out',
+                    'vm_result': None
+                }
         except Exception as e:
             log.error("MAIN: Error running highstate on %s: %s", minion_id, str(e))
+            return {
+                'success': False,
+                'error': f'Error running highstate: {str(e)}',
+                'vm_result': None
+            }
 
     return {
         'success': success,
