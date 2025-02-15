@@ -272,6 +272,15 @@ function deleteMinionFiles () {
 }
 
 # Create the minion file
+function ensure_socore_ownership() {
+	log "INFO" "Setting socore ownership on minion files"
+	chown -R socore:socore /opt/so/saltstack/local/pillar/minions/
+	if [ $? -ne 0 ]; then
+		log "ERROR" "Failed to set socore ownership on minion files"
+		return 1
+	fi
+}
+
 function create_minion_files() {
 	mkdir -p /opt/so/saltstack/local/pillar/minions
 	if [ $? -ne 0 ]; then
@@ -292,6 +301,9 @@ function create_minion_files() {
 			return 1
 		fi
 	fi
+
+	# Set proper ownership after file creation
+	ensure_socore_ownership || return 1
 }
 
 # Add Elastic settings to the minion file
@@ -995,6 +1007,9 @@ function setupMinionFiles() {
 
 	# Create node-specific configuration
 	create$NODETYPE || return 1
+	
+	# Ensure proper ownership after all content is written
+	ensure_socore_ownership || return 1
 	
 	log "INFO" "Successfully created minion files for $MINION_ID"
 }
