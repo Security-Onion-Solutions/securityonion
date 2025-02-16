@@ -52,9 +52,8 @@ Examples:
 
 State Files:
     VM Tracking Files:
-        - <vm_name>: Active VM configuration and status
-        - <vm_name>_failed: Failed VM creation details
-        - <vm_name>_invalidHW: Invalid hardware request details
+        - <vm_name>: Active VM with status 'creating' or 'running'
+        - <vm_name>.error: Error state with detailed message
 Notes:
     - Requires 'hvn' feature license
     - Uses hypervisor's sosmodel grain for hardware capabilities
@@ -106,9 +105,8 @@ Exit Codes:
     0: Success
     1: Invalid license
     2: Configuration error
-    3: Hardware allocation failure
-    4: VM provisioning failure
-    5: Invalid hardware request
+    3: Hardware validation failure (hardware doesn't exist in model or is already in use by another VM)
+    4: VM provisioning failure (so-salt-cloud execution failed)
 
 Logging:
     Log files are written to /opt/so/log/salt/engines/virtual_node_manager.log
@@ -281,14 +279,15 @@ def validate_hardware_request(model_config: dict, requested_hw: dict) -> Tuple[b
         Tuple of (is_valid, error_details)
     """
     errors = {}
-    log.debug("Validating hardware request: %s", requested_hw)
-    log.debug("Against model config: %s", model_config['hardware'])
+    log.debug("Validating if requested hardware exists in model configuration")
+    log.debug("Requested hardware: %s", requested_hw)
+    log.debug("Model hardware configuration: %s", model_config['hardware'])
     
     # Validate CPU
     if 'cpu' in requested_hw:
         try:
             cpu_count = int(requested_hw['cpu'])
-            log.debug("Validating CPU request: %d against maximum: %d",
+            log.debug("Checking if %d CPU cores exist in model (maximum: %d)",
                      cpu_count, model_config['hardware']['cpu'])
             if cpu_count > model_config['hardware']['cpu']:
                 errors['cpu'] = f"Requested {cpu_count} CPU cores exceeds maximum {model_config['hardware']['cpu']}"
@@ -299,7 +298,7 @@ def validate_hardware_request(model_config: dict, requested_hw: dict) -> Tuple[b
     if 'memory' in requested_hw:
         try:
             memory = int(requested_hw['memory'])
-            log.debug("Validating memory request: %dGB against maximum: %dGB",
+            log.debug("Checking if %dGB memory exists in model (maximum: %dGB)",
                      memory, model_config['hardware']['memory'])
             if memory > model_config['hardware']['memory']:
                 errors['memory'] = f"Requested {memory}GB memory exceeds maximum {model_config['hardware']['memory']}GB"
@@ -311,19 +310,19 @@ def validate_hardware_request(model_config: dict, requested_hw: dict) -> Tuple[b
         if hw_type in requested_hw and requested_hw[hw_type]:
             try:
                 indices = [int(x) for x in str(requested_hw[hw_type]).split(',')]
-                log.debug("Validating %s indices: %s", hw_type, indices)
+                log.debug("Checking if %s indices %s exist in model", hw_type, indices)
                 
                 if hw_type not in model_config['hardware']:
                     log.error("Hardware type %s not found in model config", hw_type)
                     errors[hw_type] = f"No {hw_type} configuration found in model"
                     continue
                     
-                available_indices = set(int(k) for k in model_config['hardware'][hw_type].keys())
-                log.debug("Available %s indices: %s", hw_type, available_indices)
+                model_indices = set(int(k) for k in model_config['hardware'][hw_type].keys())
+                log.debug("Model has %s indices: %s", hw_type, model_indices)
                 
-                invalid_indices = [idx for idx in indices if idx not in available_indices]
+                invalid_indices = [idx for idx in indices if idx not in model_indices]
                 if invalid_indices:
-                    log.error("Invalid %s indices found: %s", hw_type, invalid_indices)
+                    log.error("%s indices %s do not exist in model", hw_type, invalid_indices)
                     errors[hw_type] = f"Invalid {hw_type} indices: {invalid_indices}"
             except ValueError:
                 log.error("Invalid %s indices format: %s", hw_type, requested_hw[hw_type])
@@ -339,26 +338,117 @@ def validate_hardware_request(model_config: dict, requested_hw: dict) -> Tuple[b
         
     return (len(errors) == 0, errors if errors else None)
 
-def check_hardware_availability(hypervisor_path: str, vm_name: str) -> bool:
-    """Check if requested hardware is already claimed by another VM."""
-    try:
-        # List all VM tracking files
-        files = glob.glob(os.path.join(hypervisor_path, '*_*'))
-        for file_path in files:
-            # Skip the VM we're checking and any failed/invalid VMs
-            basename = os.path.basename(file_path)
-            if basename.startswith(vm_name) or '_failed' in basename or '_invalidHW' in basename:
-                continue
+def check_hardware_availability(hypervisor_path: str, vm_name: str, requested_hw: dict, model_config: dict) -> Tuple[bool, Optional[dict]]:
+    """
+    Check if requested hardware is available.
+    
+    Args:
+        hypervisor_path: Path to hypervisor directory
+        vm_name: Name of requesting VM
+        requested_hw: Hardware being requested
+        model_config: Model hardware configuration
+    
+    Returns:
+        Tuple of (is_available, error_details)
+    """
+    log.debug("Checking if requested hardware is currently in use by other VMs")
+    log.debug("VM requesting hardware: %s", vm_name)
+    log.debug("Hardware being requested: %s", requested_hw)
+    
+    errors = {}
+    
+    # Track total CPU/memory usage
+    total_cpu = 0
+    total_memory = 0
+    
+    # Track used unique resources and which VM is using them
+    used_resources = {
+        'disk': {},    # {index: vm_name}
+        'copper': {},  # {index: vm_name}
+        'sfp': {}      # {index: vm_name}
+    }
+    
+    # Calculate current usage from existing VMs
+    log.debug("Scanning existing VMs to check hardware usage")
+    for vm_file in glob.glob(os.path.join(hypervisor_path, '*_*')):
+        basename = os.path.basename(vm_file)
+        # Skip if it's the same VM requesting hardware or in error state
+        if basename.startswith(vm_name):
+            log.debug("Skipping file %s (same VM requesting hardware)", basename)
+            continue
+        if basename.endswith('.error'):
+            log.debug("Skipping file %s (error state)", basename)
+            continue
             
-            # Check if any hardware overlaps
-            vm_config = read_json_file(file_path)
-            if 'hardware' in vm_config and 'allocated' in vm_config['hardware']:
-                # TODO: Implement hardware conflict checking
-                pass
-        return True
-    except Exception as e:
-        log.error("Failed to check hardware availability: %s", str(e))
-        return False
+        vm_config = read_json_file(vm_file)
+        if 'config' not in vm_config or vm_config.get('status') != 'running':
+            log.debug("Skipping VM %s (not running)", basename)
+            continue
+            
+        config = vm_config['config']
+        log.debug("Processing running VM %s", basename)
+        
+        # Add to CPU/memory totals
+        vm_cpu = int(config.get('cpu', 0))
+        vm_memory = int(config.get('memory', 0))
+        total_cpu += vm_cpu
+        total_memory += vm_memory
+        log.debug("Found running VM %s using CPU: %d, Memory: %dGB", basename, vm_cpu, vm_memory)
+        
+        # Track unique resources
+        for hw_type in ['disk', 'copper', 'sfp']:
+            if hw_type in config and config[hw_type]:
+                indices = [int(x) for x in str(config[hw_type]).split(',')]
+                for idx in indices:
+                    used_resources[hw_type][idx] = basename.replace('_sensor', '')  # Store VM name without role
+                log.debug("VM %s is using %s indices: %s", basename, hw_type, indices)
+    
+    log.debug("Total hardware currently in use - CPU: %d, Memory: %dGB", total_cpu, total_memory)
+    log.debug("Hardware indices currently in use: %s", used_resources)
+    
+    # Check CPU capacity
+    requested_cpu = int(requested_hw.get('cpu', 0))
+    total_cpu_needed = total_cpu + requested_cpu
+    log.debug("Checking CPU capacity - Currently in use: %d + Requested: %d = %d (Max: %d)",
+             total_cpu, requested_cpu, total_cpu_needed, model_config['hardware']['cpu'])
+    if total_cpu_needed > model_config['hardware']['cpu']:
+        errors['cpu'] = f"Total CPU usage ({total_cpu_needed}) would exceed capacity ({model_config['hardware']['cpu']})"
+    
+    # Check memory capacity
+    requested_memory = int(requested_hw.get('memory', 0))
+    total_memory_needed = total_memory + requested_memory
+    log.debug("Checking memory capacity - Currently in use: %d + Requested: %d = %d (Max: %d)",
+             total_memory, requested_memory, total_memory_needed, model_config['hardware']['memory'])
+    if total_memory_needed > model_config['hardware']['memory']:
+        errors['memory'] = f"Total memory usage ({total_memory_needed}GB) would exceed capacity ({model_config['hardware']['memory']}GB)"
+    
+    # Check for hardware conflicts
+    for hw_type in ['disk', 'copper', 'sfp']:
+        if hw_type in requested_hw and requested_hw[hw_type]:
+            requested_indices = [int(x) for x in str(requested_hw[hw_type]).split(',')]
+            log.debug("Checking for %s conflicts - Requesting indices: %s, Currently in use: %s",
+                     hw_type, requested_indices, used_resources[hw_type])
+            conflicts = {}  # {index: vm_name}
+            for idx in requested_indices:
+                if idx in used_resources[hw_type]:
+                    conflicts[idx] = used_resources[hw_type][idx]
+            
+            if conflicts:
+                # Create one sentence per conflict
+                conflict_details = []
+                hw_name = hw_type.upper() if hw_type == 'sfp' else hw_type.capitalize()
+                for idx, vm in conflicts.items():
+                    conflict_details.append(f"{hw_name} index {idx} in use by {vm}")
+                
+                log.debug("Found conflicting %s indices: %s", hw_type, conflict_details)
+                errors[hw_type] = ". ".join(conflict_details) + "."
+    
+    if errors:
+        log.debug("Hardware validation failed with errors: %s", errors)
+    else:
+        log.debug("Hardware validation successful")
+    
+    return (len(errors) == 0, errors if errors else None)
 
 def create_vm_tracking_file(hypervisor_path: str, vm_name: str, config: dict) -> None:
     """Create VM tracking file with initial state."""
@@ -371,52 +461,58 @@ def create_vm_tracking_file(hypervisor_path: str, vm_name: str, config: dict) ->
         
         data = {
             'config': config,
-            'status': 'creating',
-            'hardware': {
-                'allocated': {}
-            }
+            'status': 'creating'
         }
         # Write file and set ownership
-        with open(file_path, 'w') as f:
-            json.dump(data, f, indent=2)
-        set_socore_ownership(file_path)
+        write_json_file(file_path, data)
         log.debug("Successfully created VM tracking file with socore ownership")
     except Exception as e:
         log.error("Failed to create VM tracking file: %s", str(e))
         raise
 
 def mark_vm_failed(vm_file: str, error_code: int, message: str) -> None:
-    """Mark VM as failed with error details."""
+    """Create error file with VM failure details."""
     try:
-        # Rename file to add _failed suffix if not already present
-        if not vm_file.endswith('_failed'):
-            new_file = f"{vm_file}_failed"
-            os.rename(vm_file, new_file)
-            vm_file = new_file
+        # Get original config if it exists
+        config = {}
+        if os.path.exists(vm_file):
+            data = read_json_file(vm_file)
+            config = data.get('config', {})
+            # Remove the original file since we'll create an error file
+            os.remove(vm_file)
 
-        # Update file contents
-        data = read_json_file(vm_file)
-        data['status'] = 'failed'
-        data['error'] = {
-            'code': error_code,
-            'message': message,
-            'timestamp': datetime.now().isoformat()
+        # Create error file
+        error_file = f"{vm_file}.error"
+        data = {
+            'config': config,
+            'status': 'error',
+            'error_details': {
+                'message': message,
+                'timestamp': datetime.now().isoformat()
+            }
         }
-        write_json_file(vm_file, data)
+        write_json_file(error_file, data)
     except Exception as e:
-        log.error("Failed to mark VM as failed: %s", str(e))
+        log.error("Failed to create error file: %s", str(e))
         raise
 
 def mark_invalid_hardware(hypervisor_path: str, vm_name: str, config: dict, error_details: dict) -> None:
-    """Create invalid hardware tracking file with error details."""
-    file_path = os.path.join(hypervisor_path, f"{vm_name}_invalidHW")
+    """Create error file with hardware validation failure details."""
+    file_path = os.path.join(hypervisor_path, f"{vm_name}.error")
     try:
+        # Build error message from error details
+        error_messages = []
+        for hw_type, message in error_details.items():
+            error_messages.append(message)
+        
+        # Join all messages with proper sentence structure
+        full_message = "Hardware validation failure: " + " ".join(error_messages)
+        
         data = {
             'config': config,
-            'error': {
-                'code': 5,
-                'message': "Invalid hardware configuration",
-                'invalid_hardware': error_details,
+            'status': 'error',
+            'error_details': {
+                'message': full_message,
                 'timestamp': datetime.now().isoformat()
             }
         }
@@ -480,16 +576,17 @@ def process_vm_creation(hypervisor_path: str, vm_config: dict) -> None:
         model = get_hypervisor_model(hypervisor)
         model_config = load_hardware_defaults(model)
 
-        # Initial hardware validation
+        # Initial hardware validation against model
         is_valid, errors = validate_hardware_request(model_config, vm_config)
         if not is_valid:
             mark_invalid_hardware(hypervisor_path, vm_name, vm_config, errors)
             return
 
         # Check hardware availability
-        if not check_hardware_availability(hypervisor_path, vm_name):
-            mark_vm_failed(os.path.join(hypervisor_path, vm_name), 3,
-                        "Requested hardware is already in use")
+        is_available, availability_errors = check_hardware_availability(
+            hypervisor_path, vm_name, vm_config, model_config)
+        if not is_available:
+            mark_invalid_hardware(hypervisor_path, vm_name, vm_config, availability_errors)
             return
 
         # Create tracking file
@@ -618,7 +715,7 @@ def process_hypervisor(hypervisor_path: str) -> None:
         existing_vms = set()
         for file_path in glob.glob(os.path.join(hypervisor_path, '*_*')):
             basename = os.path.basename(file_path)
-            if not any(x in basename for x in ['_failed', '_invalidHW']):
+            if not basename.endswith('.error'):
                 existing_vms.add(basename)
                 
         # Process new VMs
