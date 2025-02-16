@@ -11,6 +11,11 @@
                 | replace('SFPFREE', sfp_free | string) -}}
 {%- endmacro -%}
 
+{%- macro update_label(label, total, free) -%}
+{{- label | replace('TOTAL', total | string)
+         | replace('FREE', free | string) -}}
+{%- endmacro -%}
+
 {%- macro get_available_pci(hw_config, device_type, used_indices) -%}
 {%- set available = [] -%}
 {%- for idx in hw_config.get(device_type, {}).keys() -%}
@@ -29,7 +34,7 @@
 {# Calculate used CPU and memory #}
 {%-     set used_cpu = 0 -%}
 {%-     set used_memory = 0 -%}
-{%-     set ns = namespace(used_cpu=0, used_memory=0) -%} #MOD
+{%-     set ns = namespace(used_cpu=0, used_memory=0) -%}
 {%-     for hostname, vm_data in vms.items() -%}
 {%-       set vm_config = vm_data.config -%}
 {%-       set ns.used_cpu = ns.used_cpu + vm_config.cpu | int -%}
@@ -55,8 +60,33 @@
 {%-     set disk_free = get_available_pci(hw_config, 'disk', used_disk) -%}
 {%-     set copper_free = get_available_pci(hw_config, 'copper', used_copper) -%}
 {%-     set sfp_free = get_available_pci(hw_config, 'sfp', used_sfp) -%}
-      
+
+{# Get total resources #}
+{%-     set cpu_total = hw_config.cpu -%}
+{%-     set mem_total = hw_config.memory -%}
+{%-     set disk_total = hw_config.disk.keys() | join(',') -%}
+{%-     set copper_total = hw_config.copper.keys() | join(',') -%}
+{%-     set sfp_total = hw_config.sfp.keys() | join(',') -%}
+
+{# Update field labels with total and free values #}
 {%-     set updated_template = TEMPLATE.copy() -%}
+{%-     set updated_elements = [] -%}
+{%-     for field in updated_template.uiElements -%}
+{%-       set updated_field = field.copy() -%}
+{%-       if field.field == 'cpu' -%}
+{%-         do updated_field.update({'label': field.label | replace('FREE', cpu_free | string) | replace('TOTAL', cpu_total | string)}) -%}
+{%-       elif field.field == 'memory' -%}
+{%-         do updated_field.update({'label': field.label | replace('FREE', mem_free | string) | replace('TOTAL', mem_total | string)}) -%}
+{%-       elif field.field == 'disk' -%}
+{%-         do updated_field.update({'label': field.label | replace('FREE', disk_free) | replace('TOTAL', disk_total)}) -%}
+{%-       elif field.field == 'copper' -%}
+{%-         do updated_field.update({'label': field.label | replace('FREE', copper_free) | replace('TOTAL', copper_total)}) -%}
+{%-       elif field.field == 'sfp' -%}
+{%-         do updated_field.update({'label': field.label | replace('FREE', sfp_free) | replace('TOTAL', sfp_total)}) -%}
+{%-       endif -%}
+{%-       do updated_elements.append(updated_field) -%}
+{%-     endfor -%}
+{%-     do updated_template.update({'uiElements': updated_elements}) -%}
 {%-     do updated_template.update({
         'title': hypervisor,
         'description': update_description(
