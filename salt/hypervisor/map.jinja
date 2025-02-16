@@ -1,0 +1,45 @@
+{# Import defaults.yaml for model hardware capabilities #}
+{% import_yaml 'hypervisor/defaults.yaml' as DEFAULTS %}
+
+{# Get hypervisor nodes from pillar #}
+{% set NODES = salt['pillar.get']('hypervisor:nodes', {}) %}
+
+{# Build enhanced HYPERVISORS structure #}
+{% set HYPERVISORS = {} %}
+{% for role, hypervisors in NODES.items() %}
+  {% do HYPERVISORS.update({role: {}}) %}
+  {% for hypervisor, config in hypervisors.items() %}
+    {# Get model from cached grains using Salt runner #}
+    {% set grains = salt.saltutil.runner('cache.grains', tgt=hypervisor ~ '_*', tgt_type='glob') %}
+    {% set model = '' %}
+    {% if grains %}
+      {% set minion_id = grains.keys() | first %}
+      {% set model = grains[minion_id].get('sosmodel', '') %}
+    {% endif %}
+    {% set model_config = DEFAULTS.hypervisor.model.get(model, {}) %}
+    
+    {# Get VM list and states #}
+    {% set vms = {} %}
+    {% import_json 'hypervisor/hosts/' ~ hypervisor ~ 'VMs' as vm_list %}
+    
+    {# Load state for each VM #}
+    {% for vm in vm_list %}
+      {% set hostname = vm.get('hostname', '') %}
+      {% set role = vm.get('role', '') %}
+      {% if hostname and role %}
+        {% import_json 'hypervisor/hosts/' ~ hypervisor ~ '/' ~ hostname ~ '_' ~ role as vm_state %}
+        {% do vms.update({hostname: vm_state}) %}
+      {% endif %}
+    {% endfor %}
+    
+    {# Merge node config with model capabilities and VM states #}
+    {% do HYPERVISORS[role].update({
+      hypervisor: {
+        'config': config,
+        'model': model,
+        'hardware': model_config.get('hardware', {}),
+        'vms': vms
+      }
+    }) %}
+  {% endfor %}
+{% endfor %}

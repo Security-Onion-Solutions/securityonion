@@ -1,27 +1,66 @@
 {%- import_yaml 'soc/dyanno/hypervisor/hypervisor.yaml' as ANNOTATION -%}
+{%- from 'hypervisor/map.jinja' import HYPERVISORS -%}
 
 {%- set TEMPLATE = ANNOTATION.hypervisor.hosts.pop('defaultHost') -%}
 
 {%- macro update_description(description, cpu_free, mem_free, disk_free, copper_free, sfp_free) -%}
-{{- description | replace('CPUFREE', cpu_free | string) 
-                | replace('MEMFREE', mem_free | string) 
+{{- description | replace('CPUFREE', cpu_free | string)
+                | replace('MEMFREE', mem_free | string)
                 | replace('DISKFREE', disk_free | string)
                 | replace('COPPERFREE', copper_free | string)
                 | replace('SFPFREE', sfp_free | string) -}}
 {%- endmacro -%}
 
+{%- macro get_available_pci(hw_config, device_type, used_indices) -%}
+{%- set available = [] -%}
+{%- for idx in hw_config.get(device_type, {}).keys() -%}
+  {%- if idx | string not in used_indices -%}
+    {%- do available.append(idx) -%}
+  {%- endif -%}
+{%- endfor -%}
+{{- available | join(',') -}}
+{%- endmacro -%}
+
 {%- for role in HYPERVISORS -%}
 {%-   for hypervisor in HYPERVISORS[role].keys() -%}
-{%-     set cpu_free = HYPERVISORS[role][hypervisor].available_cpu -%}
-{%-     set mem_free = HYPERVISORS[role][hypervisor].available_memory -%}
-{%-     set disk_free = HYPERVISORS[role][hypervisor].available_disk -%}
-{%-     set copper_free = HYPERVISORS[role][hypervisor].available_copper -%}
-{%-     set sfp_free = HYPERVISORS[role][hypervisor].available_sfp -%}
+{%-     set hw_config = HYPERVISORS[role][hypervisor].hardware -%}
+{%-     set vms = HYPERVISORS[role][hypervisor].vms -%}
+
+{# Calculate used CPU and memory #}
+{%-     set used_cpu = 0 -%}
+{%-     set used_memory = 0 -%}
+{%-     set ns = namespace(used_cpu=0, used_memory=0) -%} #MOD
+{%-     for hostname, vm_data in vms.items() -%}
+{%-       set vm_config = vm_data.config -%}
+{%-       set ns.used_cpu = ns.used_cpu + vm_config.cpu | int -%}
+{%-       set ns.used_memory = ns.used_memory + vm_config.memory | int -%}
+{%-     endfor -%}
+
+{# Calculate available resources #}
+{%-     set cpu_free = hw_config.cpu - ns.used_cpu -%}
+{%-     set mem_free = hw_config.memory - ns.used_memory -%}
+
+{# Get used PCI indices #}
+{%-     set used_disk = [] -%}
+{%-     set used_copper = [] -%}
+{%-     set used_sfp = [] -%}
+{%-     for hostname, vm in vms.items() -%}
+{%-       set config = vm.get('config', {}) -%}
+{%-       do used_disk.extend((config.get('disk', '') | string).split(',') | map('trim') | list) -%}
+{%-       do used_copper.extend((config.get('copper', '') | string).split(',') | map('trim') | list) -%}
+{%-       do used_sfp.extend((config.get('sfp', '') | string).split(',') | map('trim') | list) -%}
+{%-     endfor -%}
+
+{# Get available PCI indices #}
+{%-     set disk_free = get_available_pci(hw_config, 'disk', used_disk) -%}
+{%-     set copper_free = get_available_pci(hw_config, 'copper', used_copper) -%}
+{%-     set sfp_free = get_available_pci(hw_config, 'sfp', used_sfp) -%}
       
 {%-     set updated_template = TEMPLATE.copy() -%}
-{%-     do updated_template.nodes.update({
+{%-     do updated_template.update({
+        'title': hypervisor,
         'description': update_description(
-          TEMPLATE.nodes.description,
+          TEMPLATE.description,
           cpu_free,
           mem_free,
           disk_free,
@@ -29,7 +68,7 @@
           sfp_free
         )
       }) -%}
-{%-     do ANNOTATION.hypervisor.hosts.update({hypervisor: updated_template}) -%}
+{%-     do ANNOTATION.hypervisor.hosts.update({hypervisor ~ 'VMs': updated_template}) -%}
 {%-   endfor -%}
 {%- endfor -%}
 

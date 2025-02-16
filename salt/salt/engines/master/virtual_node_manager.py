@@ -9,7 +9,7 @@
 Salt Engine for Virtual Node Management
 
 This engine manages the automated provisioning of virtual machines in Security Onion's
-virtualization infrastructure. It processes VM configurations from a nodes file and handles
+virtualization infrastructure. It processes VM configurations from a VMs file and handles
 the entire provisioning process including hardware allocation, state tracking, and file ownership.
 
 Usage:
@@ -26,8 +26,8 @@ Options:
     will automatically be converted to MiB when passed to so-salt-cloud.
 
 Configuration Files:
-    nodes: JSON file containing VM configurations
-        - Located at <base_path>/<hypervisor>/nodes
+    <hypervisorHostname>VMs: JSON file containing VM configurations
+        - Located at <base_path>/<hypervisorHostname>VMs
         - Contains array of VM configurations
         - Each VM config specifies hardware and network settings
 
@@ -54,6 +54,7 @@ State Files:
     VM Tracking Files:
         - <vm_name>: Active VM with status 'creating' or 'running'
         - <vm_name>.error: Error state with detailed message
+
 Notes:
     - Requires 'hvn' feature license
     - Uses hypervisor's sosmodel grain for hardware capabilities
@@ -76,7 +77,7 @@ Description:
       - Prevents operation if license is invalid
 
    3. Configuration Processing
-      - Reads nodes file from each hypervisor directory
+      - Reads VMs file for each hypervisor
       - Validates configuration parameters
       - Compares against existing VM tracking files
 
@@ -693,7 +694,7 @@ def process_hypervisor(hypervisor_path: str) -> None:
     are protected by the engine-wide lock that is acquired at engine start.
     
     The function performs the following steps:
-    1. Reads and validates nodes configuration
+    1. Reads VMs configuration from <hypervisorHostname>VMs file
     2. Identifies existing VMs
     3. Processes new VM creation requests
     4. Handles VM deletions for removed configurations
@@ -702,13 +703,18 @@ def process_hypervisor(hypervisor_path: str) -> None:
         hypervisor_path: Path to the hypervisor directory
     """
     try:
-        # Detection phase - no lock needed
-        nodes_file = os.path.join(hypervisor_path, 'nodes')
-        if not os.path.exists(nodes_file):
+        # Get hypervisor name from path
+        hypervisor = os.path.basename(hypervisor_path)
+        
+        # Read VMs file instead of nodes
+        vms_file = os.path.join(os.path.dirname(hypervisor_path), f"{hypervisor}VMs")
+        if not os.path.exists(vms_file):
+            log.debug("No VMs file found at %s", vms_file)
             return
             
-        nodes_config = read_json_file(nodes_file)
+        nodes_config = read_json_file(vms_file)
         if not nodes_config:
+            log.debug("Empty VMs configuration in %s", vms_file)
             return
             
         # Get existing VMs - no lock needed

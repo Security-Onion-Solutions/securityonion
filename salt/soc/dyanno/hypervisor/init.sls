@@ -1,4 +1,4 @@
-{% from 'soc/dyanno/hypervisor/map.jinja' import HYPERVISORS %}
+{% from 'hypervisor/map.jinja' import HYPERVISORS %}
 
 hypervisor_annotation:
   file.managed:
