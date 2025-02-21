@@ -23,6 +23,13 @@ hypervisor_sbin:
     - source: salt://hypervisor/tools/sbin
     - file_mode: 744
 
+hypervisor_sbin_jinja:
+  file.recurse:
+    - name: /usr/sbin
+    - source: salt://hypervisor/tools/sbin_jinja
+    - template: jinja
+    - file_mode: 744
+
 {%   else %}
 {{sls}}_no_license_detected:
   test.fail_without_changes:

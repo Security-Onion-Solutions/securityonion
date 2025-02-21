@@ -1,3 +1,16 @@
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+#
+# Note: Per the Elastic License 2.0, the second limitation states:
+#
+#   "You may not move, change, disable, or circumvent the license key functionality
+#    in the software, and you may not remove or obscure any functionality in the
+#    software that is protected by the license key."
+
+{% if 'hvn' in salt['pillar.get']('features', []) %}
+
 {% do salt.log.info('soc/dyanno/hypervisor/write_status: Running') %}
 {% set vm_name = pillar.get('vm_name') %}
 {% set hypervisor = pillar.get('hypervisor') %}
@@ -64,6 +77,19 @@ write_status_file:
     - require:
       - file: ensure_status_dir
 {% else %}
+
 {%   do salt.log.debug('soc/dyanno/hypervisor/write_status: File not written. ' ~ process_steps[new_index] ~ ' cannot overwrite ' ~ process_steps[current_index] ~ '.' ) %}
+
 {% endif %}
+
 {% do salt.log.info('soc/dyanno/hypervisor/write_status: Completed') %}
+
+{% else %}
+
+{% do salt.log.error(
+  'Hypervisor nodes are a feature supported only for customers with a valid license.'
+  'Contact Security Onion Solutions, LLC via our website at https://securityonionsolutions.com'
+  'for more information about purchasing a license to enable this feature.'
+) %}
+
+{% endif %}
