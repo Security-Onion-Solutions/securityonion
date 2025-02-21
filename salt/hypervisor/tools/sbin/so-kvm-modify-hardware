@@ -25,7 +25,7 @@ used during VM provisioning and hardware reconfiguration tasks.
     -v, --vm          Name of the virtual machine to modify.
     -c, --cpu         Number of virtual CPUs to assign.
     -m, --memory      Amount of memory to assign in MiB.
-    -p, --pci         PCI hardware ID(s) to passthrough to the VM (e.g., 0000:c7:00.0). Can be specified multiple times.
+    -p, --pci         PCI hardware ID(s) to passthrough to the VM (e.g., 0000:00:1f.2). Can be specified multiple times.
                       Format: domain:bus:device.function
     -s, --start       Start the VM after modification.
 
@@ -124,16 +124,34 @@ The `so-kvm-modify-hardware` script modifies hardware parameters of KVM virtual 
 - Both file and console logging are enabled for real-time monitoring
 - Log entries include timestamps and severity levels
 - Detailed error messages are logged for troubleshooting
-
 """
 
 import argparse
 import sys
 import libvirt
 import logging
+import socket
 import xml.etree.ElementTree as ET
+from io import StringIO
 from so_vm_utils import start_vm, stop_vm
 from so_logging_utils import setup_logging
+import subprocess
+
+# Get hypervisor name from local hostname
+HYPERVISOR = socket.gethostname()
+
+# Custom log handler to capture output
+class StringIOHandler(logging.Handler):
+    def __init__(self):
+        super().__init__()
+        self.strio = StringIO()
+
+    def emit(self, record):
+        msg = self.format(record)
+        self.strio.write(msg + '\n')
+
+    def get_value(self):
+        return self.strio.getvalue()
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Modify hardware parameters of a KVM virtual machine.')
@@ -226,12 +244,15 @@ def redefine_vm(conn, new_xml_desc, logger):
 
 def main():
     # Set up logging using the so_logging_utils library
+    string_handler = StringIOHandler()
+    string_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
     logger = setup_logging(
         logger_name='so-kvm-modify-hardware',
         log_file_path='/opt/so/log/hypervisor/so-kvm-modify-hardware.log',
         log_level=logging.INFO,
         format_str='%(asctime)s - %(levelname)s - %(message)s'
     )
+    logger.addHandler(string_handler)
 
     try:
         args = parse_arguments()
@@ -247,6 +268,15 @@ def main():
             conn = libvirt.open(None)
         except libvirt.libvirtError as e:
             logger.error(f"Failed to open connection to libvirt: {e}")
+            try:
+                subprocess.run([
+                    'so-salt-emit-vm-deployment-status-event',
+                    '-v', vm_name,
+                    '-H', HYPERVISOR,
+                    '-s', 'Hardware Configuration Failed'
+                ], check=True)
+            except subprocess.CalledProcessError as e:
+                logger.error(f"Failed to emit failure status event: {e}")
             sys.exit(1)
 
         # Stop VM if running
@@ -262,16 +292,57 @@ def main():
         if start_vm_flag:
             dom = conn.lookupByName(vm_name)
             start_vm(dom, logger)
+            logger.info(f"VM '{vm_name}' started successfully.")
         else:
             logger.info("VM start flag not provided; VM will remain stopped.")
 
         # Close connection
         conn.close()
+
+        # Send success status event
+        try:
+            subprocess.run([
+                'so-salt-emit-vm-deployment-status-event',
+                '-v', vm_name,
+                '-H', HYPERVISOR,
+                '-s', 'Hardware Configuration'
+            ], check=True)
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to emit success status event: {e}")
+
     except KeyboardInterrupt:
-        logger.error("Operation cancelled by user.")
+        error_msg = "Operation cancelled by user"
+        logger.error(error_msg)
+        try:
+            subprocess.run([
+                'so-salt-emit-vm-deployment-status-event',
+                '-v', vm_name,
+                '-H', HYPERVISOR,
+                '-s', 'Hardware Configuration Failed'
+            ], check=True)
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to emit failure status event: {e}")
         sys.exit(1)
     except Exception as e:
-        logger.error(f"An error occurred: {e}")
+        error_msg = str(e)
+        if "Failed to open connection to libvirt" in error_msg:
+            error_msg = f"Failed to connect to libvirt: {error_msg}"
+        elif "Failed to redefine VM" in error_msg:
+            error_msg = f"Failed to apply hardware changes: {error_msg}"
+        elif "Failed to modify VM XML" in error_msg:
+            error_msg = f"Failed to update hardware configuration: {error_msg}"
+        else:
+            error_msg = f"An error occurred: {error_msg}"
+        logger.error(error_msg)
+        try:
+            subprocess.run([
+                'so-salt-emit-vm-deployment-status-event',
+                '-v', vm_name,
+                '-h', HYPERVISOR,
+                '-s', 'Hardware Configuration Failed'
+            ], check=True)
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to emit failure status event: {e}")
         sys.exit(1)
 
 if __name__ == '__main__':

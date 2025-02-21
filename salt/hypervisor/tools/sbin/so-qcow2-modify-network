@@ -118,7 +118,6 @@ The `so-qcow2-modify-network` script modifies network configuration within a QCO
   - Image mount/unmount operations
   - Validation failures
   - File access errors
-
 """
 
 import argparse
@@ -127,20 +126,41 @@ import re
 import sys
 import logging
 import os
+import socket
 import ipaddress
 import configparser
 import uuid
 from io import StringIO
 import libvirt
 from so_logging_utils import setup_logging
+import subprocess
+
+# Get hypervisor name from local hostname
+HYPERVISOR = socket.gethostname()
+
+# Custom log handler to capture output
+class StringIOHandler(logging.Handler):
+    def __init__(self):
+        super().__init__()
+        self.strio = StringIO()
+
+    def emit(self, record):
+        msg = self.format(record)
+        self.strio.write(msg + '\n')
+
+    def get_value(self):
+        return self.strio.getvalue()
 
 # Set up logging using the so_logging_utils library
+string_handler = StringIOHandler()
+string_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logger = setup_logging(
     logger_name='so-qcow2-modify-network',
     log_file_path='/opt/so/log/hypervisor/so-qcow2-modify-network.log',
     log_level=logging.INFO,
     format_str='%(asctime)s - %(levelname)s - %(message)s'
 )
+logger.addHandler(string_handler)
 
 NETWORK_CONFIG_DIR = "/etc/NetworkManager/system-connections"
 
@@ -403,6 +423,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description="Modify IPv4 settings in a QCOW2 image for a specified network interface.")
     parser.add_argument("-I", "--image", required=True, help="Path to the QCOW2 image.")
     parser.add_argument("-i", "--interface", required=True, help="Network interface to modify (e.g., enp1s0).")
+    parser.add_argument("-n", "--vm-name", required=True, help="Full name of the VM (hostname_role).")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--dhcp4", action="store_true", help="Configure interface for DHCP (IPv4).")
     group.add_argument("--static4", action="store_true", help="Configure interface for static IPv4 settings.")
@@ -448,15 +469,47 @@ def main():
         modify_network_config(args.image, args.interface, mode, args.ip4, args.gw4, args.dns4, args.search4)
         logger.info("Network configuration update completed successfully")
 
+        # Send success status event
+        try:
+            subprocess.run([
+                'so-salt-emit-vm-deployment-status-event',
+                '-v', args.vm_name,
+                '-H', HYPERVISOR,
+                '-s', 'IP Configuration'
+            ], check=True)
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to emit success status event: {e}")
+
     except KeyboardInterrupt:
-        logger.error("Operation cancelled by user.")
+        error_msg = "Operation cancelled by user"
+        logger.error(error_msg)
+        try:
+            subprocess.run([
+                'so-salt-emit-vm-deployment-status-event',
+                '-v', args.vm_name,
+                '-H', HYPERVISOR,
+                '-s', 'IP Configuration Failed'
+            ], check=True)
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to emit failure status event: {e}")
         sys.exit(1)
     except Exception as e:
-        if "base domain is running" in str(e):
+        error_msg = str(e)
+        if "base domain is running" in error_msg:
             logger.error("Cannot proceed: Base domain must not be running when modifying network configuration")
+            error_msg = "Base domain must not be running when modifying network configuration"
         else:
             logger.error(f"An error occurred: {e}")
+        try:
+            subprocess.run([
+                'so-salt-emit-vm-deployment-status-event',
+                '-v', args.vm_name,
+                '-H', HYPERVISOR,
+                '-s', 'IP Configuration Failed'
+            ], check=True)
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to emit failure status event: {e}")
         sys.exit(1)
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

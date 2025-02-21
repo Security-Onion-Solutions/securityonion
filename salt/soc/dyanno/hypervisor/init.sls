@@ -5,6 +5,8 @@ hypervisor_annotation:
     - name: /opt/so/saltstack/default/salt/hypervisor/soc_hypervisor.yaml
     - source: salt://soc/dyanno/hypervisor/soc_hypervisor.yaml.jinja
     - template: jinja
+    - user: socore
+    - group: socore
     - defaults:
         HYPERVISORS: {{ HYPERVISORS }}
 

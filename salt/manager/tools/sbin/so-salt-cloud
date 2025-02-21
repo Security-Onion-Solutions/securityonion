@@ -489,7 +489,7 @@ def run_qcow2_modify_hardware_config(profile, vm_name, cpu=None, memory=None, pc
     except Exception as e:
         logger.error(f"An error occurred while running qcow2.modify_hardware_config: {e}")
 
-def run_qcow2_modify_network_config(profile, mode, ip=None, gateway=None, dns=None, search_domain=None):
+def run_qcow2_modify_network_config(profile, vm_name, mode, ip=None, gateway=None, dns=None, search_domain=None):
     hv_name = profile.split('-')[1]
     target = hv_name + "_*"
     image = '/nsm/libvirt/images/sool9/sool9.qcow2'
@@ -500,6 +500,7 @@ def run_qcow2_modify_network_config(profile, mode, ip=None, gateway=None, dns=No
             'image=' + image,
             'interface=' + interface,
             'mode=' + mode,
+            'vm_name=' + vm_name,
             'ip4=' + ip if ip else '',
             'gw4=' + gateway if gateway else '',
             'dns4=' + dns if dns else '',
@@ -583,7 +584,7 @@ def main():
                 mode = "dhcp4"  # Default to DHCP if not specified
 
             # Step 1: Modify network configuration
-            run_qcow2_modify_network_config(args.profile, mode, args.ip4, args.gw4, args.dns4, args.search4)
+            run_qcow2_modify_network_config(args.profile, args.vm_name, mode, args.ip4, args.gw4, args.dns4, args.search4)
 
             # Step 2: Provision the VM (without starting it)
             call_salt_cloud(args.profile, args.vm_name)

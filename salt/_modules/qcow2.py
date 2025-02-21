@@ -29,10 +29,10 @@ __virtualname__ = 'qcow2'
 def __virtual__():
     return __virtualname__
 
-def modify_network_config(image, interface, mode, ip4=None, gw4=None, dns4=None, search4=None):
+def modify_network_config(image, interface, mode, vm_name, ip4=None, gw4=None, dns4=None, search4=None):
     '''
     Usage:
-        salt '*' qcow2.modify_network_config image=<path> interface=<iface> mode=<mode> [ip4=<addr>] [gw4=<addr>] [dns4=<servers>] [search4=<domain>]
+        salt '*' qcow2.modify_network_config image=<path> interface=<iface> mode=<mode> vm_name=<name> [ip4=<addr>] [gw4=<addr>] [dns4=<servers>] [search4=<domain>]
 
     Options:
         image
@@ -41,6 +41,8 @@ def modify_network_config(image, interface, mode, ip4=None, gw4=None, dns4=None,
             Network interface name to configure (e.g., 'enp1s0')
         mode
             Network configuration mode, either 'dhcp4' or 'static4'
+        vm_name
+            Full name of the VM (hostname_role)
         ip4
             IPv4 address with CIDR notation (e.g., '192.168.1.10/24')
             Required when mode='static4'
@@ -94,7 +96,7 @@ def modify_network_config(image, interface, mode, ip4=None, gw4=None, dns4=None,
         - Success/failure status is logged for verification
     '''
 
-    cmd = ['/usr/sbin/so-qcow2-modify-network', '-I', image, '-i', interface]
+    cmd = ['/usr/sbin/so-qcow2-modify-network', '-I', image, '-i', interface, '-n', vm_name]
 
     if mode.lower() == 'dhcp4':
         cmd.append('--dhcp4')

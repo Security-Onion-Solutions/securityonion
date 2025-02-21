@@ -19,13 +19,21 @@ reactor_config_hypervisor:
         reactor:
           - 'salt/key':
             - salt://reactor/check_hypervisor.sls
+          - 'salt/cloud/*/creating':
+            - /opt/so/saltstack/default/salt/reactor/vm_status.sls
           - 'salt/cloud/*/deploying':
             - /opt/so/saltstack/default/salt/reactor/createEmptyPillar.sls
+            - /opt/so/saltstack/default/salt/reactor/vm_status.sls
           - 'setup/so-minion':
             - /opt/so/saltstack/default/salt/reactor/sominion_setup.sls
+            - /opt/so/saltstack/default/salt/reactor/vm_status.sls
+          - 'salt/cloud/*/created':
+            - /opt/so/saltstack/default/salt/reactor/vm_status.sls
+          - 'soc/dyanno/hypervisor/*':
+            - /opt/so/saltstack/default/salt/reactor/vm_status.sls
           - 'salt/cloud/*/destroyed':
-            - /opt/so/saltstack/default/salt/reactor/virtReleaseHardware.sls
             - /opt/so/saltstack/default/salt/reactor/deleteKey.sls
+            - /opt/so/saltstack/default/salt/reactor/vm_status.sls
     - user: root
     - group: root
     - mode: 644

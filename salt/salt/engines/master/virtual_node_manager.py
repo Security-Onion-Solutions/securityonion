@@ -462,7 +462,8 @@ def create_vm_tracking_file(hypervisor_path: str, vm_name: str, config: dict) ->
         
         data = {
             'config': config,
-            'status': 'creating'
+            'status': 'creating',
+            'timestamp': datetime.now().isoformat()
         }
         # Write file and set ownership
         write_json_file(file_path, data)
@@ -487,9 +488,10 @@ def mark_vm_failed(vm_file: str, error_code: int, message: str) -> None:
         data = {
             'config': config,
             'status': 'error',
+            'timestamp': datetime.now().isoformat(),
             'error_details': {
-                'message': message,
-                'timestamp': datetime.now().isoformat()
+                'code': error_code,
+                'message': message
             }
         }
         write_json_file(error_file, data)
@@ -512,9 +514,10 @@ def mark_invalid_hardware(hypervisor_path: str, vm_name: str, config: dict, erro
         data = {
             'config': config,
             'status': 'error',
+            'timestamp': datetime.now().isoformat(),
             'error_details': {
-                'message': full_message,
-                'timestamp': datetime.now().isoformat()
+                'code': 3,  # Hardware validation failure code
+                'message': full_message
             }
         }
         write_json_file(file_path, data)
@@ -577,6 +580,17 @@ def process_vm_creation(hypervisor_path: str, vm_config: dict) -> None:
         model = get_hypervisor_model(hypervisor)
         model_config = load_hardware_defaults(model)
 
+        # Send Processing status event
+        try:
+            subprocess.run([
+                'so-salt-emit-vm-deployment-status-event',
+                '-v', vm_name,
+                '-H', hypervisor,
+                '-s', 'Processing'
+            ], check=True)
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to emit success status event: {e}")
+
         # Initial hardware validation against model
         is_valid, errors = validate_hardware_request(model_config, vm_config)
         if not is_valid:
@@ -626,10 +640,11 @@ def process_vm_creation(hypervisor_path: str, vm_config: dict) -> None:
         # Execute command
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
         
-        # Update tracking file status
+        # Update tracking file status with timestamp
         tracking_file = os.path.join(hypervisor_path, vm_name)
         data = read_json_file(tracking_file)
         data['status'] = 'running'
+        data['timestamp'] = datetime.now().isoformat()
         write_json_file(tracking_file, data)
         
     except subprocess.CalledProcessError as e:
@@ -721,7 +736,8 @@ def process_hypervisor(hypervisor_path: str) -> None:
         existing_vms = set()
         for file_path in glob.glob(os.path.join(hypervisor_path, '*_*')):
             basename = os.path.basename(file_path)
-            if not basename.endswith('.error'):
+            # Skip error and status files
+            if not basename.endswith('.error') and not basename.endswith('.status'):
                 existing_vms.add(basename)
                 
         # Process new VMs

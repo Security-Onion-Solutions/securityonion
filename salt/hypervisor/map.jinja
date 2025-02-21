@@ -6,9 +6,12 @@
 
 {# Build enhanced HYPERVISORS structure #}
 {% set HYPERVISORS = {} %}
+{% do salt.log.info('salt/hypervisor/map.jinja: NODES content: ' ~ NODES | tojson) %}
 {% for role, hypervisors in NODES.items() %}
+  {% do salt.log.info('salt/hypervisor/map.jinja: Processing role: ' ~ role) %}
   {% do HYPERVISORS.update({role: {}}) %}
   {% for hypervisor, config in hypervisors.items() %}
+    {% do salt.log.info('salt/hypervisor/map.jinja: Processing hypervisor: ' ~ hypervisor ~ ' with config: ' ~ config | tojson) %}
     {# Get model from cached grains using Salt runner #}
     {% set grains = salt.saltutil.runner('cache.grains', tgt=hypervisor ~ '_*', tgt_type='glob') %}
     {% set model = '' %}
@@ -18,17 +21,54 @@
     {% endif %}
     {% set model_config = DEFAULTS.hypervisor.model.get(model, {}) %}
     
-    {# Get VM list and states #}
+    {# Get VM list from VMs file #}
     {% set vms = {} %}
-    {% import_json 'hypervisor/hosts/' ~ hypervisor ~ 'VMs' as vm_list %}
+    {% set vm_list = [] %}
+    {% set vm_list_file = 'hypervisor/hosts/' ~ hypervisor ~ 'VMs' %}
+    {% do salt.log.info('salt/hypervisor/map.jinja: VM list file: ' ~ vm_list_file) %}
+    {% import_json vm_list_file as vm_list %}
+    {% if vm_list %}
+      {% do salt.log.info('salt/hypervisor/map.jinja: VM list content: ' ~ vm_list | tojson) %}
+    {% else %}
+      {# we won't get here if the vm_list_file doesn't exist because we will get TemplateNotFound on the import_json #}
+      {% do salt.log.info('salt/hypervisor/map.jinja: VM list empty: ' ~ vm_list_file) %}
+    {% endif %}
     
-    {# Load state for each VM #}
+    {# Load status and configuration for each VM #}
     {% for vm in vm_list %}
+      {# Get VM details from list entry #}
       {% set hostname = vm.get('hostname', '') %}
       {% set role = vm.get('role', '') %}
-      {% if hostname and role %}
-        {% import_json 'hypervisor/hosts/' ~ hypervisor ~ '/' ~ hostname ~ '_' ~ role as vm_state %}
-        {% do vms.update({hostname: vm_state}) %}
+      {% do salt.log.info('salt/hypervisor/map.jinja: Processing VM - hostname: ' ~ hostname ~ ', role: ' ~ role) %}
+      
+      {# Load VM configuration from config file #}
+      {% set vm_file = 'hypervisor/hosts/' ~ hypervisor ~ '/' ~ hostname ~ '_' ~ role %}
+      {% do salt.log.info('salt/hypervisor/map.jinja: VM config file: ' ~ vm_file) %}
+      {% import_json vm_file as vm_state %}
+      {% if vm_state %}
+        {% do salt.log.info('salt/hypervisor/map.jinja: VM config content: ' ~ vm_state | tojson) %}
+        {% set vm_data = {'config': vm_state.config} %}
+        
+        {# Load VM status from status file #}
+        {% set status_file = vm_file ~ '.status' %}
+        {% do salt.log.info('salt/hypervisor/map.jinja: VM status file: ' ~ status_file) %}
+        {% import_json status_file as status_data %}
+        {% if status_data %}
+          {% do salt.log.info('salt/hypervisor/map.jinja: VM status content: ' ~ status_data | tojson) %}
+          {% do vm_data.update({'status': status_data}) %}
+        {% else %}
+          {% do salt.log.info('salt/hypervisor/map.jinja: Status file empty: ' ~ status_file) %}
+          {% do vm_data.update({
+            'status': {
+              'status': '',
+              'details': null,
+              'timestamp': ''
+            }
+          }) %}
+        {% endif %}
+        {% do vms.update({hostname: vm_data}) %}
+      {% else %}
+        {% do salt.log.info('salt/hypervisor/map.jinja: Config file empty: ' ~ vm_file) %}
       {% endif %}
     {% endfor %}
     

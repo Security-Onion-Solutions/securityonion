@@ -3,8 +3,27 @@
 
 {%- set TEMPLATE = ANNOTATION.hypervisor.hosts.pop('defaultHost') -%}
 
-{%- macro update_description(description, cpu_free, mem_free, disk_free, copper_free, sfp_free) -%}
-{{- description -}}
+{%- macro update_description(description, cpu_free, mem_free, disk_free, copper_free, sfp_free, vm_list) -%}
+{{- description }}
+
+Resource Summary:
+- CPU: {{ cpu_free }} cores available
+- Memory: {{ mem_free }}GB available
+- Disk Slots: {{ disk_free if disk_free else 'None' }} available
+- Copper Ports: {{ copper_free if copper_free else 'None' }} available
+- SFP Ports: {{ sfp_free if sfp_free else 'None' }} available
+
+{%- if vm_list %}
+Virtual Machines:
+{%- for hostname, vm_data in vm_list.items() %}
+- {{ hostname }}:
+  Status: {{ vm_data.get('status', {}).get('status', 'Unknown') }}
+  Details: {{ vm_data.get('status', {}).get('details', 'No details available') }}
+  Last Updated: {{ vm_data.get('status', {}).get('timestamp', 'Never') }}
+{%- endfor %}
+{%- else %}
+No Virtual Machines Found
+{%- endif %}
 {%- endmacro -%}
 
 {%- macro update_label(label, total, free) -%}
@@ -91,7 +110,8 @@
           mem_free,
           disk_free,
           copper_free,
-          sfp_free
+          sfp_free,
+          vms
         )
       }) -%}
 {%-     do ANNOTATION.hypervisor.hosts.update({hypervisor ~ 'VMs': updated_template}) -%}

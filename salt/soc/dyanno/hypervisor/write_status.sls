@@ -1,0 +1,69 @@
+{% do salt.log.info('soc/dyanno/hypervisor/write_status: Running') %}
+{% set vm_name = pillar.get('vm_name') %}
+{% set hypervisor = pillar.get('hypervisor') %}
+{% set status_data = pillar.get('status_data', {}) %}
+{% set event_tag = pillar.get('event_tag') %}
+{% do salt.log.debug('soc/dyanno/hypervisor/write_status: tag: ' ~ event_tag) %}
+{% set base_path = '/opt/so/saltstack/local/salt/hypervisor/hosts' %}
+{% set status_dir = base_path ~ '/' ~ hypervisor %}
+{% set status_file = status_dir ~ '/' ~ vm_name ~ '.status' %}
+
+# Define the list of process steps in order (case-sensitive)
+{% set process_steps = ['Processing', 'IP Configuration', 'Starting Create', 'Executing Deploy Script', 'Initialize Minion Pillars', 'Created Instance', 'Hardware Configuration', 'Highstate Triggered', 'Destroyed Instance'] %}
+{% set new_index = process_steps.index(status_data.get('status')) %}
+{% do salt.log.debug('soc/dyanno/hypervisor/write_status: new_index: ' ~ new_index|string) %}
+
+# Function to read and parse current JSON status file
+{% macro get_current_status(status_file) %}
+{% do salt.log.debug('soc/dyanno/hypervisor/write_status: getting current status from file: ' ~ status_file) %}
+
+{% set rel_path_status_file = 'hypervisor/hosts' ~ '/' ~ hypervisor ~ '/' ~ vm_name ~ '.status' %}
+{# If the status file doesn't exist, then we are just now Processing, so return -1 #}
+{% if salt['file.file_exists'](status_file)%}
+{%   import_json rel_path_status_file as current_status %}
+{%   do salt.log.debug('soc/dyanno/hypervisor/write_status: current status: ' ~ current_status) %}
+{%   do salt.log.debug('soc/dyanno/hypervisor/write_status: current status: ' ~ current_status.get('status')) %}
+{%   if current_status.get('status') in process_steps %}
+{%     set current_index = process_steps.index(current_status.get('status')) %}
+{%     do salt.log.debug('soc/dyanno/hypervisor/write_status: current_index: ' ~ current_index|string) %}
+{%-    set return_value = current_index -%}
+{%   else %}
+{%-    set return_value = -1 -%}
+{%   endif %}
+{% else %}
+{%   set return_value = -1 %}
+{% endif %}
+{{- return_value -}}
+{% endmacro %}
+
+{% set current_index = get_current_status(status_file)|int %}
+{% do salt.log.debug('soc/dyanno/hypervisor/write_status: ' ~ status_file ~ ' current status index: ' ~ current_index|string) %}
+
+ensure_status_dir:
+  file.directory:
+    - name: {{ status_dir }}
+    - user: 939
+    - group: 939
+    - mode: 755
+    - makedirs: True
+
+
+{# Some of the status updates trigger within a second of each other can can cause, for example, IP Configuration orchestration to process before the Processing #}
+{# This check has been put in place to ensure a status sooner in the process can't overwrite this file if a status later in the process wrote to it first. #}
+{# The final step is Destroyed, so we allow Processing to overwrite that incase someone creates a new VM with same name that was previously destroyed. #}
+{% if new_index > current_index or current_index == process_steps | length - 1 %}
+write_status_file:
+  file.serialize:
+    - name: {{ status_file }}
+    - dataset: {{ status_data|json }}
+    - formatter: json
+    - user: 939
+    - group: 939
+    - mode: 600
+    - indent: 2
+    - require:
+      - file: ensure_status_dir
+{% else %}
+{%   do salt.log.debug('soc/dyanno/hypervisor/write_status: File not written. ' ~ process_steps[new_index] ~ ' cannot overwrite ' ~ process_steps[current_index] ~ '.' ) %}
+{% endif %}
+{% do salt.log.info('soc/dyanno/hypervisor/write_status: Completed') %}
