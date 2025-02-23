@@ -12,76 +12,72 @@
 {% if 'hvn' in salt['pillar.get']('features', []) %}
 
 {% do salt.log.info('dyanno_hypervisor_orch: Running') %}
-{% set event_data = pillar.get('event_data', {}) %}
-{% set event_tag = pillar.get('event_tag', '') %}
-{% set timestamp = event_data.get('_stamp') %}
-{% do salt.log.debug('dyanno_hypervisor_orch: tag: ' ~ event_tag) %}
-
+{% set data = pillar.get('data', {}) %}
+{% set tag = pillar.get('tag', '') %}
+{% set timestamp = data.get('_stamp') %}
+{% do salt.log.debug('dyanno_hypervisor_orch: tag: ' ~ tag) %}
+{% do salt.log.debug('dyanno_hypervisor_orch: Received data: ' ~ data|json|string) %}
 
 {# Our custom tag #}
-{% if event_tag.startswith('soc/dyanno/hypervisor') %}
-{%   set status_data = event_data.get('data')%}
+{% if tag.startswith('soc/dyanno/hypervisor') %}
+{%   set status_data = data.get('data')%}
 {%   do salt.log.debug('dyanno_hypervisor_orch: Received data: ' ~ status_data|json|string) %}
 {%   do salt.log.debug('dyanno_hypervisor_orch: Setting vm_name, hypervisor and status') %}
 {%   set vm_name = status_data.get('vm_name') %}
 {%   set hypervisor = status_data.get('hypervisor') %}
 {%   set status = status_data.get('status') %}
-{%   set details = status_data.get('details', '') %}
-{%   do salt.log.info('dyanno_hypervisor_orch: vm_name: ' ~ vm_name ~ ' hypervisor: ' ~ hypervisor ~ ' status: ' ~ status) %}
+{% endif %}
+
+{# setup/so-minion tag #}
+{% if tag == ('setup/so-minion') %}
+{%   set status_data = data.get('data')%}
+{%   do salt.log.debug('dyanno_hypervisor_orch: Received data: ' ~ status_data|json|string) %}
+{%   do salt.log.debug('dyanno_hypervisor_orch: Setting vm_name, hypervisor and status') %}
+{%   set vm_name = data.get('id') %}
+{%   set grains = salt.saltutil.runner('cache.grains', tgt=vm_name).get(vm_name) %}
+{%   if grains %}
+{%     do salt.log.debug('dyanno_hypervisor_orch: Got cache.grains ' ~ grains|string) %}
+{%     if grains.get('salt-cloud').get('profile') %}
+{%       do salt.log.debug('dyanno_hypervisor_orch: Found salt-cloud:profile grain: ' ~ grains.get('salt-cloud').get('profile')|string) %}
+{%       set hypervisor = grains.get('salt-cloud').get('profile').split('-')[1] %}
+{%       do salt.log.debug('dyanno_hypervisor_orch: Got hypervisor: ' ~ hypervisor) %}
+{%     endif %}
+{%   else %}
+{%     do salt.log.debug('dyanno_hypervisor_orch: Did not get cache.grains.') %}
+{%   endif %}
+{%   set hypervisor = hypervisor %}
+{%   set status = 'Initialize Minion Pillars' %}
 {% endif %}
 
 {# salt-cloud tag #}
-{% if 'salt/cloud/' in event_tag and event_tag.endswith('/destroyed') %}
-{%   set status_data = event_data %}
+{% if tag.startswith('salt/cloud/') and (tag.endswith('/creating') or tag.endswith('/deploying') or tag.endswith('/created') or tag.endswith('/destroyed')) %}
+{%   do salt.log.debug('dyanno_hypervisor_orch: Received data: ' ~ data|json|string) %}
 {%   do salt.log.debug('dyanno_hypervisor_orch: Setting vm_name, hypervisor and status') %}
-{%   do salt.log.debug('dyanno_hypervisor_orch: Received data: ' ~ status_data|json|string) %}
-{%   set vm_name = status_data.get('name') %}
-{%   set hypervisor = None %}
-{%   set status = status_data.get('event') %}
-{%   do salt.log.info('dyanno_hypervisor_orch: vm_name: ' ~ vm_name ~ ' hypervisor: ' ~ hypervisor ~ ' status: ' ~ status) %}
-{% endif %}
-
-{#
-{% if event_tag.startswith('soc/dyanno/hypervisor') %}
-{%   if vm_name and status and hypervisor %}
-{%     do salt.log.info('dyanno_hypervisor_orch: soc.dyanno.hypervisor.write_status state running - vm_name: ' ~ vm_name ~ ' hypervisor: ' ~ hypervisor ~ ' status: ' ~ status) %}
-# Write status file
-
-write_vm_status:
-  salt.runner:
-    - name: state.orchestrate
-    - mods: soc.dyanno.hypervisor.write_status
-    - pillar:
-        vm_name: {{ vm_name }}
-        hypervisor: {{ hypervisor }}
-        status_data:
-          timestamp: {{ timestamp }}
-          status: {{ status }}
-          details: {{ details }}
-        event_tag: {{ event_tag }}
-
-write_vm_status:
-  salt.state:
-    - tgt: 'G@role:so-manager or G@role:so-managersearch or G@role:so-standalone or G@role:so-eval'
-    - tgt_type: compound
-    - sls:
-      - soc.dyanno.hypervisor.write_status
-    - concurrent: True
-    - pillar:
-        vm_name: {{ vm_name }}
-        hypervisor: {{ hypervisor }}
-        status_data:
-          timestamp: {{ timestamp }}
-          status: {{ status }}
-          details: {{ details }}
-        event_tag: {{ event_tag }}
-
-
-{%   else %}
-{%     do salt.log.error('dyanno_hypervisor_orch: Missing required fields - vm_name: ' ~ vm_name ~ ' hypervisor: ' ~ hypervisor ~ ' status: ' ~ status) %}
+{%   set vm_name = tag.split('/')[2] %}
+{%   do salt.log.debug('dyanno_hypervisor_orch: Got vm_name from tag: ' ~ vm_name) %}
+{%   if tag.endswith('/deploying') %}
+{%     set hypervisor = data.get('kwargs').get('cloud_grains').get('profile').split('-')[1] %}
 {%   endif %}
+{%   if data.get('profile', False) %}
+{%     do salt.log.debug('dyanno_hypervisor_orch: Did not get cache.grains.') %}
+{%     set hypervisor = data.profile.split('-')[1] %}
+{%     do salt.log.debug('dyanno_hypervisor_orch: Got hypervisor from data: ' ~ hypervisor) %}
+{%   else %}
+{%     set grains = salt.saltutil.runner('cache.grains', tgt=vm_name).get(vm_name) %}
+{%     if grains %}
+{%       do salt.log.debug('dyanno_hypervisor_orch: Got cache.grains: ' ~ grains|string) %}
+{%       if grains.get('salt-cloud').get('profile') %}
+{%         do salt.log.debug('dyanno_hypervisor_orch: Found salt-cloud:profile grain: ' ~ grains.get('salt-cloud').get('profile')|string) %}
+{%         set hypervisor = grains.get('salt-cloud').get('profile').split('-')[1] %}
+{%         do salt.log.debug('dyanno_hypervisor_orch: Got hypervisor: ' ~ hypervisor) %}
+{%       endif %}
+{%     endif %}
+{%   endif %}
+{%   set status = data.get('event').title() %}
 {% endif %}
-#}
+
+{% do salt.log.info('dyanno_hypervisor_orch: vm_name: ' ~ vm_name ~ ' hypervisor: ' ~ hypervisor ~ ' status: ' ~ status) %}
+
 
 {# We will need to populate hypervisor:hosts in this orch and pass to state to run as runner
 update_hypervisor_status:
@@ -94,6 +90,18 @@ update_hypervisor_status:
 {% endif %}
 #}
 
+write_vm_status:
+  salt.runner:
+    - name: state.orchestrate
+    - mods: soc.dyanno.hypervisor.write_status
+    - pillar:
+        vm_name: {{ vm_name }}
+        hypervisor: {{ hypervisor }}
+        status_data:
+          timestamp: {{ timestamp }}
+          status: {{ status }}
+        event_tag: {{ tag }}
+
 # Update hypervisor status
 update_hypervisor_annotation:
   salt.state:
@@ -102,10 +110,8 @@ update_hypervisor_annotation:
     - sls:
       - soc.dyanno.hypervisor
     - concurrent: True
-{#% if event_tag.startswith('soc/dyanno/hypervisor') %}
     - require:
       - salt: write_vm_status
-{% endif %#}
 
 {% do salt.log.info('dyanno_hypervisor_orch: Completed') %}
 
