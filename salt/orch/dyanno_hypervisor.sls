@@ -11,6 +11,23 @@
 
 {% if 'hvn' in salt['pillar.get']('features', []) %}
 
+{# Macro to find hypervisor name from VM status file #}
+{% macro find_hypervisor_from_status(vm_name) -%}
+  {%- set path = salt['file.find']('/opt/so/saltstack/local/salt/hypervisor/hosts/',type='f', name=vm_name ~ '.status') -%}
+  {%- if path | length == 1 -%}
+    {%- set parts = path[0].split('/') -%}
+    {%- set hypervisor = parts[-2] -%}
+    {%- do salt.log.debug('dyanno_hypervisor_orch: Found hypervisor from file.find: ' ~ hypervisor) -%}
+    {{- hypervisor -}}
+  {%- elif path | length == 0 -%}
+    {%- do salt.log.error('dyanno_hypervisor_orch: ' ~ vm_name ~ ' not found in any hypervisor directories') -%}
+    {{- '' -}}
+  {%- else -%}
+    {%- do salt.log.error('dyanno_hypervisor_orch: Found ' ~ vm_name ~ ' in multiple hypervisor directories: ' ~ path | string) -%}
+    {{- '' -}}
+  {%- endif -%}
+{%- endmacro %}
+
 {% do salt.log.info('dyanno_hypervisor_orch: Running') %}
 
 {% set data = pillar.get('data', {}) %}
@@ -35,20 +52,10 @@
 {%   do salt.log.debug('dyanno_hypervisor_orch: Received data: ' ~ status_data|json|string) %}
 {%   do salt.log.debug('dyanno_hypervisor_orch: Setting vm_name, hypervisor and status') %}
 {%   set vm_name = data.get('id') %}
-{%   set grains = salt.saltutil.runner('cache.grains', tgt=vm_name).get(vm_name) %}
-{%   if grains %}
-{%     do salt.log.debug('dyanno_hypervisor_orch: Got cache.grains ' ~ grains|string) %}
-{%     if grains.get('salt-cloud').get('profile') %}
-{%       do salt.log.debug('dyanno_hypervisor_orch: Found salt-cloud:profile grain: ' ~ grains.get('salt-cloud').get('profile')|string) %}
-{%       set hypervisor = grains.get('salt-cloud').get('profile').split('-')[1] %}
-{%       do salt.log.debug('dyanno_hypervisor_orch: Got hypervisor: ' ~ hypervisor) %}
-{%     endif %}
-{%   else %}
-{%     do salt.log.debug('dyanno_hypervisor_orch: Did not get cache.grains.') %}
-{%   endif %}
-{%   set hypervisor = hypervisor %}
+{%   set hypervisor = find_hypervisor_from_status(vm_name) %}
 {%   set status = 'Initialize Minion Pillars' %}
 {% endif %}
+
 
 {# salt-cloud tag #}
 {% if tag.startswith('salt/cloud/') and (tag.endswith('/creating') or tag.endswith('/deploying') or tag.endswith('/created') or tag.endswith('/destroyed')) %}
@@ -66,17 +73,7 @@
 {%     set hypervisor = data.profile.split('-')[1] %}
 {%     do salt.log.debug('dyanno_hypervisor_orch: Got hypervisor from data: ' ~ hypervisor) %}
 {%   else %}
-{#     If not in the event, find it by the .status file location #}
-{%     set path = salt['file.find']('/opt/so/saltstack/local/salt/hypervisor/hosts/',type='f', name=vm_name ~ '.status') %}
-{%     if path | length == 1 %}
-{%       set parts =  path[0].split('/') %}
-{%       set hypervisor = parts[-2] %}
-{%       do salt.log.debug('dyanno_hypervisor_orch: Found hypervisor from file.find: ' ~ hypervisor) %}
-{%     elif path | length == 0 %}
-{%       do salt.log.error('dyanno_hypervisor_orch: ' ~ vm_name ~ ' not found in any hypervisor directories') %}
-{%     else %}
-{%       do salt.log.error('dyanno_hypervisor_orch: Found ' ~ vm_name ~ ' in multiple hypervisor directories: ' ~ path | string) %}
-{%     endif %}
+{%     set hypervisor = find_hypervisor_from_status(vm_name) %}
 {%   endif %}
 {%   set status = data.get('event').title() %}
 {% endif %}

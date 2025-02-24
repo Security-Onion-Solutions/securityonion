@@ -22,7 +22,17 @@
 {% set status_file = status_dir ~ '/' ~ vm_name ~ '.status' %}
 
 # Define the list of process steps in order (case-sensitive)
-{% set process_steps = ['Processing', 'IP Configuration', 'Starting Create', 'Executing Deploy Script', 'Initialize Minion Pillars', 'Created Instance', 'Hardware Configuration', 'Highstate Triggered', 'Destroyed Instance'] %}
+{% set process_steps = [
+    'Processing',
+    'IP Configuration',
+    'Starting Create',
+    'Executing Deploy Script',
+    'Initialize Minion Pillars',
+    'Created Instance',
+    'Hardware Configuration',
+    'Highstate Triggered',
+    'Destroyed Instance'
+] %}
 {% set new_index = process_steps.index(status_data.get('status')) %}
 {% do salt.log.debug('soc/dyanno/hypervisor/write_status: new_index: ' ~ new_index|string) %}
 

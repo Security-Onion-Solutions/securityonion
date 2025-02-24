@@ -736,9 +736,8 @@ def process_hypervisor(hypervisor_path: str) -> None:
         nodes_config = read_json_file(vms_file)
         if not nodes_config:
             log.debug("Empty VMs configuration in %s", vms_file)
-            return
             
-        # Get existing VMs - no lock needed
+        # Get existing VMs
         existing_vms = set()
         for file_path in glob.glob(os.path.join(hypervisor_path, '*_*')):
             basename = os.path.basename(file_path)
@@ -761,7 +760,12 @@ def process_hypervisor(hypervisor_path: str) -> None:
                 process_vm_creation(hypervisor_path, vm_config)
                 
         # Process VM deletions
-        for vm_name in existing_vms - configured_vms:
+        vms_to_delete = existing_vms - configured_vms
+        log.debug(f"Existing VMs: {existing_vms}")
+        log.debug(f"Configured VMs: {configured_vms}")
+        log.debug(f"VMs to delete: {vms_to_delete}")
+        for vm_name in vms_to_delete:
+            log.info(f"Initiating deletion process for VM: {vm_name}")
             process_vm_deletion(hypervisor_path, vm_name)
             
     except Exception as e:
