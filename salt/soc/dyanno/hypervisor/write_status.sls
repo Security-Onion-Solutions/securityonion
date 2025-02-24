@@ -64,7 +64,7 @@ ensure_status_dir:
 {# Some of the status updates trigger within a second of each other can can cause, for example, IP Configuration orchestration to process before the Processing #}
 {# This check has been put in place to ensure a status sooner in the process can't overwrite this file if a status later in the process wrote to it first. #}
 {# The final step is Destroyed, so we allow Processing to overwrite that incase someone creates a new VM with same name that was previously destroyed. #}
-{% if new_index > current_index or current_index == process_steps | length - 1 %}
+{% if new_index > current_index or (current_index == process_steps | length - 1 and new_index == 0) %}
 write_status_file:
   file.serialize:
     - name: {{ status_file }}
