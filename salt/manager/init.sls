@@ -14,6 +14,7 @@ include:
   - manager.sync_es_users
   - manager.elasticsearch
   - manager.kibana
+  - manager.managed_soc_annotations
 
 repo_log_dir:
   file.directory:

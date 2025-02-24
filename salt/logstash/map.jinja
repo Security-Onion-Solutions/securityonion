@@ -33,9 +33,18 @@
 
 {# Append Kafka input pipeline when Kafka is enabled #}
 {% if GLOBALS.pipeline == 'KAFKA' %}
-{%   do LOGSTASH_MERGED.defined_pipelines.search.remove('so/0900_input_redis.conf.jinja') %}
-{%   do LOGSTASH_MERGED.defined_pipelines.search.append('so/0800_input_kafka.conf.jinja') %}
-{%   do LOGSTASH_MERGED.defined_pipelines.manager.append('so/0800_input_kafka.conf.jinja') %}
+{%   if 'so/0900_input_redis.conf.jinja' in LOGSTASH_MERGED.defined_pipelines.search %}
+{%     do LOGSTASH_MERGED.defined_pipelines.search.remove('so/0900_input_redis.conf.jinja') %}
+{%   endif %}
+{%   if 'so/0800_input_kafka.conf.jinja' not in LOGSTASH_MERGED.defined_pipelines.search %}
+{%     do LOGSTASH_MERGED.defined_pipelines.search.append('so/0800_input_kafka.conf.jinja') %}
+{%   endif %}
+{%   if 'so/0800_input_kafka.conf.jinja' not in LOGSTASH_MERGED.defined_pipelines.manager %}
+{%     do LOGSTASH_MERGED.defined_pipelines.manager.append('so/0800_input_kafka.conf.jinja') %}
+{%   endif %}
+{%   if 'so/9999_output_redis.conf.jinja' in LOGSTASH_MERGED.defined_pipelines.manager %}
+{%     do LOGSTASH_MERGED.defined_pipelines.manager.remove('so/9999_output_redis.conf.jinja') %}
+{%   endif %}
 {# Disable logstash on manager & receiver nodes unless it has an override configured #}
 {%   if not KAFKA_LOGSTASH %}
 {%     if GLOBALS.role in ['so-manager', 'so-receiver'] and GLOBALS.hostname not in KAFKA_LOGSTASH %}

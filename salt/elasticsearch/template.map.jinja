@@ -14,6 +14,18 @@
 
 {% set ES_INDEX_SETTINGS_ORIG = ELASTICSEARCHDEFAULTS.elasticsearch.index_settings %}
 
+{# start generation of integration default index_settings #}
+{% if salt['file.file_exists']('/opt/so/state/esfleet_package_components.json') %}
+{%   set check_package_components = salt['file.stats']('/opt/so/state/esfleet_package_components.json') %}
+{%   if check_package_components.size > 1 %}
+{%    from 'elasticfleet/integration-defaults.map.jinja' import ADDON_INTEGRATION_DEFAULTS %}
+{%    for index, settings in ADDON_INTEGRATION_DEFAULTS.items() %}
+{%      do ES_INDEX_SETTINGS_ORIG.update({index: settings}) %}
+{%    endfor %}
+{%   endif%}
+{% endif %}
+{# end generation of integration default index_settings #}
+
 {% set ES_INDEX_SETTINGS_GLOBAL_OVERRIDES = {} %}
 {% for index in ES_INDEX_SETTINGS_ORIG.keys() %}
 {%   do ES_INDEX_SETTINGS_GLOBAL_OVERRIDES.update({index: salt['defaults.merge'](ELASTICSEARCHDEFAULTS.elasticsearch.index_settings[index], PILLAR_GLOBAL_OVERRIDES, in_place=False)}) %}

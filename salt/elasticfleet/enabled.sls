@@ -151,6 +151,10 @@ so-elastic-fleet-integration-upgrade:
   cmd.run:
     - name: /usr/sbin/so-elastic-fleet-integration-upgrade
 
+so-elastic-fleet-addon-integrations:
+  cmd.run:
+    - name: /usr/sbin/so-elastic-fleet-optional-integrations-load
+
 {%   if ELASTICFLEETMERGED.config.defend_filters.enable_auto_configuration %}
 so-elastic-defend-manage-filters-file-watch:
   cmd.run:

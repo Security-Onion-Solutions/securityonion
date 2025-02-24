@@ -97,9 +97,18 @@ elastic_fleet_package_install() {
     curl -s -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST -H 'kbn-xsrf: true' -H 'Content-Type: application/json'  -d '{"force":true}' "localhost:5601/api/fleet/epm/packages/$PKG/$VERSION"
 }
 
+elastic_fleet_bulk_package_install() {
+    BULK_PKG_LIST=$1
+    curl -s -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d@$1 "localhost:5601/api/fleet/epm/packages/_bulk"
+}
+
 elastic_fleet_package_is_installed() {
     PACKAGE=$1
     curl -s -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X GET -H 'kbn-xsrf: true' "localhost:5601/api/fleet/epm/packages/$PACKAGE" | jq -r '.item.status'
+}
+
+elastic_fleet_installed_packages() {
+    curl -s -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X GET -H 'kbn-xsrf: true' -H 'Content-Type: application/json' "localhost:5601/api/fleet/epm/packages/installed?perPage=300"
 }
 
 elastic_fleet_agent_policy_ids() {

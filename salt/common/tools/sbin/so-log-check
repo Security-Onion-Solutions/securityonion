@@ -126,6 +126,7 @@ if [[ $EXCLUDE_STARTUP_ERRORS == 'Y' ]]; then
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|Unable to get license information" # Logstash trying to contact ES before it's ready
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|process already finished"     # Telegraf script finished just as the auto kill timeout kicked in
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|No shard available"           # Typical error when making a query before ES has finished loading all indices
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|responded with status-code 503" # telegraf getting 503 from ES during startup
 fi
 
 if [[ $EXCLUDE_FALSE_POSITIVE_ERRORS == 'Y' ]]; then
@@ -152,6 +153,7 @@ if [[ $EXCLUDE_FALSE_POSITIVE_ERRORS == 'Y' ]]; then
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|is not an ip string literal"  # false positive (Open Canary logging out blank IP addresses)
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|syncing rule"                 # false positive (rule sync log line includes rule name which can contain 'error') 
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|request_unauthorized"         # false positive (login failures to Hydra result in an 'error' log) 
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|adding index lifecycle policy" # false positive (elasticsearch policy names contain 'error') 
 fi
 
 if [[ $EXCLUDE_KNOWN_ERRORS == 'Y' ]]; then
@@ -213,6 +215,7 @@ if [[ $EXCLUDE_KNOWN_ERRORS == 'Y' ]]; then
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|syncErrors"                   # Detections: Not an actual error
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|Initialized license manager"  # SOC log: before fields.status was changed to fields.licenseStatus
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|from NIC checksum offloading" # zeek reporter.log
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|marked for removal"           # docker container getting recycled
 fi
 
 RESULT=0

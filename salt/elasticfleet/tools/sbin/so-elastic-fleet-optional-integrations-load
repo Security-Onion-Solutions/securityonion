@@ -1,0 +1,111 @@
+#!/bin/bash
+
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0; you may not use
+# this file except in compliance with the Elastic License 2.0.
+
+. /usr/sbin/so-common
+. /usr/sbin/so-elastic-fleet-common
+
+# Check that /opt/so/state/estemplates.txt exists to signal that Elasticsearch
+#  has completed its first run of core-only integrations/indices/components/ilm
+STATE_FILE_SUCCESS=/opt/so/state/estemplates.txt
+INSTALLED_PACKAGE_LIST=/tmp/esfleet_installed_packages.json
+BULK_INSTALL_PACKAGE_LIST=/tmp/esfleet_bulk_install.json
+BULK_INSTALL_PACKAGE_TMP=/tmp/esfleet_bulk_install_tmp.json
+BULK_INSTALL_OUTPUT=/opt/so/state/esfleet_bulk_install_results.json
+PACKAGE_COMPONENTS=/opt/so/state/esfleet_package_components.json
+
+SKIP_SUBSCRIPTION=true
+PENDING_UPDATE=false
+
+# Integrations which are included in the package registry, but excluded from automatic installation via this script.
+#   Requiring some level of manual Elastic Stack configuration before installation
+EXCLUDED_INTEGRATIONS=('apm')
+
+version_conversion(){
+    version=$1
+    echo "$version" | awk -F '.' '{ printf("%d%03d%03d\n", $1, $2, $3); }'
+}
+
+compare_versions() {
+    version1=$1
+    version2=$2
+
+    # Convert versions to numbers
+    num1=$(version_conversion "$version1")
+    num2=$(version_conversion "$version2")
+
+    # Compare using bc
+    if (( $(echo "$num1 < $num2" | bc -l) )); then
+        echo "less"
+    elif (( $(echo "$num1 > $num2" | bc -l) )); then
+        echo "greater"
+    else
+        echo "equal"
+    fi
+}
+
+if [[ -f $STATE_FILE_SUCCESS  ]]; then
+    if retry 3 1 "curl -s -K /opt/so/conf/elasticsearch/curl.config --output /dev/null --silent --head --fail localhost:5601/api/fleet/epm/packages"; then
+        # Package_list contains all integrations beta / non-beta.
+        latest_package_list=$(/usr/sbin/so-elastic-fleet-package-list)
+        echo '{ "packages" : []}' > $BULK_INSTALL_PACKAGE_LIST
+        rm -f $INSTALLED_PACKAGE_LIST
+        echo $latest_package_list | jq '{packages: [.items[] | {name: .name, latest_version: .version, installed_version: .savedObject.attributes.install_version, subscription: .conditions.elastic.subscription }]}' >> $INSTALLED_PACKAGE_LIST
+
+        while read -r package; do
+            # get package details
+            package_name=$(echo "$package" | jq -r '.name')
+            latest_version=$(echo "$package" | jq -r '.latest_version')
+            installed_version=$(echo "$package" | jq -r '.installed_version')
+            subscription=$(echo "$package" | jq -r '.subscription')
+            bulk_package=$(echo "$package" | jq '{name: .name, version: .latest_version}' )
+
+            if [[ ! "${EXCLUDED_INTEGRATIONS[@]}" =~ "$package_name" ]]; then
+                if $SKIP_SUBSCRIPTION && [[ "$subscription" != "basic" && "$subscription" != "null" && -n "$subscription" ]]; then
+                    # pass over integrations that require non-basic elastic license
+                    echo "$package_name integration requires an Elastic license of $subscription or greater... skipping"
+                    continue
+                else
+                    if [[ "$installed_version" == "null" || -z "$installed_version" ]]; then
+                        echo "$package_name is not installed... Adding to next update."
+                        jq --argjson package "$bulk_package" '.packages += [$package]' $BULK_INSTALL_PACKAGE_LIST > $BULK_INSTALL_PACKAGE_TMP && mv $BULK_INSTALL_PACKAGE_TMP $BULK_INSTALL_PACKAGE_LIST
+
+                        PENDING_UPDATE=true
+                    else
+                        results=$(compare_versions "$latest_version" "$installed_version")
+                        if [ $results == "greater" ]; then
+                            echo "$package_name is at version $installed_version latest version is $latest_version... Adding to next update."
+                            jq --argjson package "$bulk_package" '.packages += [$package]' $BULK_INSTALL_PACKAGE_LIST > $BULK_INSTALL_PACKAGE_TMP && mv $BULK_INSTALL_PACKAGE_TMP $BULK_INSTALL_PACKAGE_LIST
+
+                            PENDING_UPDATE=true
+                        fi
+                    fi
+                fi
+            else
+                echo "Skipping $package_name..."
+            fi
+        done <<< "$(jq -c '.packages[]' "$INSTALLED_PACKAGE_LIST")"
+
+        if [ "$PENDING_UPDATE" = true ]; then
+            # Run bulk install of packages
+            elastic_fleet_bulk_package_install $BULK_INSTALL_PACKAGE_LIST > $BULK_INSTALL_OUTPUT
+        else
+            echo "Elastic integrations don't appear to need installation/updating..."
+        fi
+        # Write out file for generating index/component/ilm templates
+        latest_installed_package_list=$(elastic_fleet_installed_packages)
+        echo $latest_installed_package_list | jq '[.items[] | {name: .name, es_index_patterns: .dataStreams}]' > $PACKAGE_COMPONENTS
+
+    else
+        # This is the installation of add-on integrations and upgrade of existing integrations. Exiting without error, next highstate will attempt to re-run.
+        echo "Elastic Fleet does not appear to be responding... Exiting... "
+        exit 0
+    fi
+else
+    # This message will appear when an update to core integration is made and this script is run at the same time as
+    #  elasticsearch.enabled -> detects change to core index settings -> deletes estemplates.txt
+    echo "Elasticsearch may not be fully configured yet or is currently updating core index settings."
+    exit 0
+fi

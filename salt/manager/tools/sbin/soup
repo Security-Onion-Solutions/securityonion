@@ -406,6 +406,7 @@ preupgrade_changes() {
     [[ "$INSTALLEDVERSION" == 2.4.100 ]] && up_to_2.4.110
     [[ "$INSTALLEDVERSION" == 2.4.110 ]] && up_to_2.4.111
     [[ "$INSTALLEDVERSION" == 2.4.111 ]] && up_to_2.4.120
+    [[ "$INSTALLEDVERSION" == 2.4.120 ]] && up_to_2.4.130
     true
 }
 
@@ -429,6 +430,7 @@ postupgrade_changes() {
     [[ "$POSTVERSION"  == 2.4.100 ]] && post_to_2.4.110
     [[ "$POSTVERSION" == 2.4.110 ]] && post_to_2.4.111
     [[ "$POSTVERSION"  == 2.4.111 ]] && post_to_2.4.120
+    [[ "$POSTVERSION"  == 2.4.120 ]] && post_to_2.4.130
     true
 }
 
@@ -531,10 +533,24 @@ post_to_2.4.120() {
   # Manually rollover suricata alerts index to ensure data_stream.dataset expected mapping is set to 'suricata'
   rollover_index "logs-suricata.alerts-so"
 
+  POSTVERSION=2.4.120
+}
+
+post_to_2.4.130() {
+  # Optional integrations are loaded AFTER initial successful load of core ES templates (/opt/so/state/estemplates.txt)
+  #   Dynamic templates are created in elasticsearch.enabled for every optional integration based on output of so-elastic-fleet-optional-integrations-load script
+  echo "Ensuring Elasticsearch templates are up to date after updating package registry"
+  salt-call state.apply elasticsearch queue=True
+
+  # Update kibana default space
+  salt-call state.apply kibana.config queue=True
+  echo "Updating Kibana default space"
+  /usr/sbin/so-kibana-space-defaults
+
   echo "Regenerating Elastic Agent Installers"
   /sbin/so-elastic-agent-gen-installers
 
-  POSTVERSION=2.4.120
+  POSTVERSION=2.4.130
 }
 
 repo_sync() {
@@ -716,8 +732,8 @@ up_to_2.4.90() {
 }
 
 up_to_2.4.100() {
-  # Elastic Update for this release, so download Elastic Agent files
-  determine_elastic_agent_upgrade
+  echo "Nothing to do for 2.4.100"
+
   INSTALLEDVERSION=2.4.100
 }
 
@@ -740,10 +756,21 @@ up_to_2.4.120() {
   mkdir -p /opt/so/saltstack/local/pillar/versionlock
   touch /opt/so/saltstack/local/pillar/versionlock/adv_versionlock.sls /opt/so/saltstack/local/pillar/versionlock/soc_versionlock.sls
 
-  # New Grid Integration added this release
-  rm -f /opt/so/state/eaintegrations.txt
 
   INSTALLEDVERSION=2.4.120
+}
+
+up_to_2.4.130() {
+  # Remove any old Elastic Defend config files
+  rm -f /opt/so/conf/elastic-fleet/integrations/endpoints-initial/elastic-defend-endpoints.json
+
+  # Elastic Update for this release, so download Elastic Agent files
+  determine_elastic_agent_upgrade
+
+  # Ensure override exists to allow nmcli access to other devices
+  touch /etc/NetworkManager/conf.d/10-globally-managed-devices.conf
+
+  INSTALLEDVERSION=2.4.130
 }
 
 add_hydra_pillars() {

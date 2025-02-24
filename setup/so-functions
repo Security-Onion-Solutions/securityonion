@@ -167,17 +167,14 @@ check_manager_connection() {
 }
 
 check_network_manager_conf() {
-	local gmdconf="/usr/lib/NetworkManager/conf.d/10-globally-managed-devices.conf"
-	local nmconf="/etc/NetworkManager/NetworkManager.conf"
+	local gmdconf="/etc/NetworkManager/conf.d/10-globally-managed-devices.conf"
 	local preupdir="/etc/NetworkManager/dispatcher.d/pre-up.d"
 
-	if test -f "$gmdconf" && ! test -f "${gmdconf}.bak"; then
-		{
-			mv "$gmdconf" "${gmdconf}.bak"
-			touch "$gmdconf"
-			systemctl restart NetworkManager
-		} >> "$setup_log" 2>&1
-	fi
+	{
+		[[ -f $gmdconf ]] && mv "$gmdconf" "${gmdconf}.bak"
+		touch "$gmdconf"
+		systemctl restart NetworkManager
+	} >> "$setup_log" 2>&1
 
 	if [[ ! -d "$preupdir" ]]; then
 		mkdir "$preupdir" >> "$setup_log" 2>&1

@@ -151,7 +151,7 @@ es_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}:
 {%       endfor %}
 {%     endif %}
 
-{% if GLOBALS.role in GLOBALS.manager_roles %}
+{%     if GLOBALS.role in GLOBALS.manager_roles %}
 so-es-cluster-settings:
   cmd.run:
     - name: /usr/sbin/so-elasticsearch-cluster-settings
@@ -160,7 +160,7 @@ so-es-cluster-settings:
     - require:
       - docker_container: so-elasticsearch
       - file: elasticsearch_sbin_jinja
-{% endif %}
+{%     endif %}
 
 so-elasticsearch-ilm-policy-load:
   cmd.run:
