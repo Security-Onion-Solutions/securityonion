@@ -16,25 +16,27 @@
 
 {%- set TEMPLATE = ANNOTATION.hypervisor.hosts.pop('defaultHost') -%}
 
-{%- macro update_description(description, cpu_free, mem_free, disk_free, copper_free, sfp_free, vm_list) -%}
-{{- description }}
+{%- macro update_description(description, cpu_free, mem_free, disk_free, copper_free, sfp_free, vm_list, cpu_total, mem_total, disk_total, copper_total, sfp_total) -%}
+# Hypervisor Configuration: {{ description }}
 
-Resource Summary:
-- CPU: {{ cpu_free }} cores available
-- Memory: {{ mem_free }}GB available
-- Disk Slots: {{ disk_free if disk_free else 'None' }} available
-- Copper Ports: {{ copper_free if copper_free else 'None' }} available
-- SFP Ports: {{ sfp_free if sfp_free else 'None' }} available
+## Resource Summary
+| Resource    | Available | Total     |
+|-------------|-----------|-----------|
+| CPU Cores   | {{ cpu_free }}        | {{ cpu_total }}       |
+| Memory (GB) | {{ mem_free }}        | {{ mem_total }}       |
+| Disk        | {{ disk_free if disk_free else 'None' }}     | {{ disk_total }}   |
+| Copper      | {{ copper_free if copper_free else 'None' }} | {{ copper_total }} |
+| SFP         | {{ sfp_free if sfp_free else 'None' }}       | {{ sfp_total }}    |
 
 {%- if vm_list %}
-Virtual Machines:
+## Virtual Machines
+| Name               | Status             | CPU | RAM(GB)| Disk | Copper | SFP  | Last Updated        |
+|--------------------|--------------------|-----|--------|------|--------|------|---------------------|
 {%- for hostname, vm_data in vm_list.items() %}
-- {{ hostname }}:
-  Status: {{ vm_data.get('status', {}).get('status', 'Unknown') }}
-  Details: {{ vm_data.get('status', {}).get('details', 'No details available') }}
-  Last Updated: {{ vm_data.get('status', {}).get('timestamp', 'Never') }}
+| {{ hostname }}_{{ vm_data.get('config', {}).get('role', 'unknown') }} | {{ vm_data.get('status', {}).get('status', 'Unknown') }} | {{ vm_data.get('config', {}).get('cpu', 'N/A') }} | {{ vm_data.get('config', {}).get('memory', 'N/A') }} | {{ vm_data.get('config', {}).get('disk', '-') if vm_data.get('config', {}).get('disk') else '-' }} | {{ vm_data.get('config', {}).get('copper', '-') if vm_data.get('config', {}).get('copper') else '-' }} | {{ vm_data.get('config', {}).get('sfp', '-') if vm_data.get('config', {}).get('sfp') else '-' }} | {{ vm_data.get('status', {}).get('timestamp', 'Never') | replace('T', ' ') | regex_replace('\\.[0-9]+', '') }} |
 {%- endfor %}
 {%- else %}
+## Virtual Machines
 No Virtual Machines Found
 {%- endif %}
 {%- endmacro -%}
@@ -118,13 +120,18 @@ No Virtual Machines Found
 {%-     do updated_template.update({
         'title': hypervisor,
         'description': update_description(
-          TEMPLATE.description,
+          hypervisor,
           cpu_free,
           mem_free,
           disk_free,
           copper_free,
           sfp_free,
-          vms
+          vms,
+          cpu_total,
+          mem_total,
+          disk_total,
+          copper_total,
+          sfp_total
         )
       }) -%}
 {%-     do ANNOTATION.hypervisor.hosts.update({hypervisor ~ 'VMs': updated_template}) -%}
