@@ -316,7 +316,7 @@ def validate_hardware_request(model_config: dict, requested_hw: dict) -> Tuple[b
     for hw_type in ['disk', 'copper', 'sfp']:
         if hw_type in requested_hw and requested_hw[hw_type]:
             try:
-                indices = [int(x) for x in str(requested_hw[hw_type]).split(',')]
+                indices = [int(x) for x in str(requested_hw[hw_type]).split('\n')]
                 log.debug("Checking if %s indices %s exist in model", hw_type, indices)
                 
                 if hw_type not in model_config['hardware']:
@@ -405,7 +405,7 @@ def check_hardware_availability(hypervisor_path: str, vm_name: str, requested_hw
         # Track unique resources
         for hw_type in ['disk', 'copper', 'sfp']:
             if hw_type in config and config[hw_type]:
-                indices = [int(x) for x in str(config[hw_type]).split(',')]
+                indices = [int(x) for x in str(config[hw_type]).split('\n')]
                 for idx in indices:
                     used_resources[hw_type][idx] = basename.replace('_sensor', '')  # Store VM name without role
                 log.debug("VM %s is using %s indices: %s", basename, hw_type, indices)
@@ -432,7 +432,7 @@ def check_hardware_availability(hypervisor_path: str, vm_name: str, requested_hw
     # Check for hardware conflicts
     for hw_type in ['disk', 'copper', 'sfp']:
         if hw_type in requested_hw and requested_hw[hw_type]:
-            requested_indices = [int(x) for x in str(requested_hw[hw_type]).split(',')]
+            requested_indices = [int(x) for x in str(requested_hw[hw_type]).split('\n')]
             log.debug("Checking for %s conflicts - Requesting indices: %s, Currently in use: %s",
                      hw_type, requested_indices, used_resources[hw_type])
             conflicts = {}  # {index: vm_name}
@@ -636,7 +636,7 @@ def process_vm_creation(hypervisor_path: str, vm_config: dict) -> None:
         # Add PCI devices
         for hw_type in ['disk', 'copper', 'sfp']:
             if hw_type in vm_config and vm_config[hw_type]:
-                indices = [int(x) for x in str(vm_config[hw_type]).split(',')]
+                indices = [int(x) for x in str(vm_config[hw_type]).split('\n')]
                 for idx in indices:
                     hw_config = {int(k): v for k, v in model_config['hardware'][hw_type].items()}
                     pci_id = hw_config[idx]

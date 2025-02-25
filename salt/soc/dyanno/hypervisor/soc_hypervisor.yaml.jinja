@@ -24,16 +24,16 @@
 |-------------|-----------|-----------|
 | CPU Cores   | {{ cpu_free }}        | {{ cpu_total }}       |
 | Memory (GB) | {{ mem_free }}        | {{ mem_total }}       |
-| Disk        | {{ disk_free if disk_free else 'None' }}     | {{ disk_total }}   |
-| Copper      | {{ copper_free if copper_free else 'None' }} | {{ copper_total }} |
-| SFP         | {{ sfp_free if sfp_free else 'None' }}       | {{ sfp_total }}    |
+| Disk        | {{ disk_free | replace('\n', ',') if disk_free else 'None' }}     | {{ disk_total | replace('\n', ',') }}   |
+| Copper      | {{ copper_free | replace('\n', ',') if copper_free else 'None' }} | {{ copper_total | replace('\n', ',') }} |
+| SFP         | {{ sfp_free | replace('\n', ',') if sfp_free else 'None' }}       | {{ sfp_total | replace('\n', ',') }}    |
 
 {%- if vm_list %}
 ## Virtual Machines
-| Name               | Status             | CPU | RAM(GB)| Disk | Copper | SFP  | Last Updated        |
-|--------------------|--------------------|-----|--------|------|--------|------|---------------------|
+| Name               | Status             | CPU Cores | Memory (GB)| Disk | Copper | SFP  | Last Updated        |
+|--------------------|--------------------|-----------|------------|------|--------|------|---------------------|
 {%- for hostname, vm_data in vm_list.items() %}
-| {{ hostname }}_{{ vm_data.get('config', {}).get('role', 'unknown') }} | {{ vm_data.get('status', {}).get('status', 'Unknown') }} | {{ vm_data.get('config', {}).get('cpu', 'N/A') }} | {{ vm_data.get('config', {}).get('memory', 'N/A') }} | {{ vm_data.get('config', {}).get('disk', '-') if vm_data.get('config', {}).get('disk') else '-' }} | {{ vm_data.get('config', {}).get('copper', '-') if vm_data.get('config', {}).get('copper') else '-' }} | {{ vm_data.get('config', {}).get('sfp', '-') if vm_data.get('config', {}).get('sfp') else '-' }} | {{ vm_data.get('status', {}).get('timestamp', 'Never') | replace('T', ' ') | regex_replace('\\.[0-9]+', '') }} |
+| {{ hostname }}_{{ vm_data.get('config', {}).get('role', 'unknown') }} | {{ vm_data.get('status', {}).get('status', 'Unknown') }} | {{ vm_data.get('config', {}).get('cpu', 'N/A') }} | {{ vm_data.get('config', {}).get('memory', 'N/A') }} | {{ vm_data.get('config', {}).get('disk', '-') | replace('\n', ',') if vm_data.get('config', {}).get('disk') else '-' }} | {{ vm_data.get('config', {}).get('copper', '-') | replace('\n', ',') if vm_data.get('config', {}).get('copper') else '-' }} | {{ vm_data.get('config', {}).get('sfp', '-') | replace('\n', ',') if vm_data.get('config', {}).get('sfp') else '-' }} | {{ vm_data.get('status', {}).get('timestamp', 'Never') | replace('T', ' ') | regex_replace('\\.[0-9]+', '') }} |
 {%- endfor %}
 {%- else %}
 ## Virtual Machines
@@ -81,9 +81,9 @@ No Virtual Machines Found
 {%-     set used_sfp = [] -%}
 {%-     for hostname, vm in vms.items() -%}
 {%-       set config = vm.get('config', {}) -%}
-{%-       do used_disk.extend((config.get('disk', '') | string).split(',') | map('trim') | list) -%}
-{%-       do used_copper.extend((config.get('copper', '') | string).split(',') | map('trim') | list) -%}
-{%-       do used_sfp.extend((config.get('sfp', '') | string).split(',') | map('trim') | list) -%}
+{%-       do used_disk.extend((config.get('disk', '') | string).split('\n') | map('trim') | list) -%}
+{%-       do used_copper.extend((config.get('copper', '') | string).split('\n') | map('trim') | list) -%}
+{%-       do used_sfp.extend((config.get('sfp', '') | string).split('\n') | map('trim') | list) -%}
 {%-     endfor -%}
 
 {# Get available PCI indices #}
@@ -94,9 +94,9 @@ No Virtual Machines Found
 {# Get total resources #}
 {%-     set cpu_total = hw_config.cpu -%}
 {%-     set mem_total = hw_config.memory -%}
-{%-     set disk_total = hw_config.disk.keys() | join(',') -%}
-{%-     set copper_total = hw_config.copper.keys() | join(',') -%}
-{%-     set sfp_total = hw_config.sfp.keys() | join(',') -%}
+{%-     set disk_total = hw_config.disk.keys() | join('\n') -%}
+{%-     set copper_total = hw_config.copper.keys() | join('\n') -%}
+{%-     set sfp_total = hw_config.sfp.keys() | join('\n') -%}
 
 {# Update field labels with total and free values #}
 {%-     set updated_template = TEMPLATE.copy() -%}
@@ -108,11 +108,11 @@ No Virtual Machines Found
 {%-       elif field.field == 'memory' -%}
 {%-         do updated_field.update({'label': field.label | replace('FREE', mem_free | string) | replace('TOTAL', mem_total | string)}) -%}
 {%-       elif field.field == 'disk' -%}
-{%-         do updated_field.update({'label': field.label | replace('FREE', disk_free) | replace('TOTAL', disk_total)}) -%}
+{%-         do updated_field.update({'label': field.label | replace('FREE', disk_free) | replace('TOTAL', disk_total | replace('\n', ','))}) -%}
 {%-       elif field.field == 'copper' -%}
-{%-         do updated_field.update({'label': field.label | replace('FREE', copper_free) | replace('TOTAL', copper_total)}) -%}
+{%-         do updated_field.update({'label': field.label | replace('FREE', copper_free) | replace('TOTAL', copper_total | replace('\n', ','))}) -%}
 {%-       elif field.field == 'sfp' -%}
-{%-         do updated_field.update({'label': field.label | replace('FREE', sfp_free) | replace('TOTAL', sfp_total)}) -%}
+{%-         do updated_field.update({'label': field.label | replace('FREE', sfp_free) | replace('TOTAL', sfp_total | replace('\n', ','))}) -%}
 {%-       endif -%}
 {%-       do updated_elements.append(updated_field) -%}
 {%-     endfor -%}
