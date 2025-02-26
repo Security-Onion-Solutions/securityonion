@@ -73,7 +73,7 @@ Notes:
 Description:
    The engine operates in the following phases:
 
-   1. Engine Lock Acquisition
+   1. Lock Acquisition
       - Acquires single engine-wide lock
       - Prevents multiple instances from running
       - Lock remains until clean shutdown or error
@@ -138,7 +138,7 @@ import grp
 import salt.config
 import salt.runner
 from typing import Dict, List, Optional, Tuple, Any
-from datetime import datetime
+from datetime import datetime, timedelta
 from threading import Lock
 
 # Get socore uid/gid
@@ -160,6 +160,8 @@ DEFAULT_BASE_PATH = '/opt/so/saltstack/local/salt/hypervisor/hosts'
 VALID_ROLES = ['sensor', 'searchnode', 'idh', 'receiver', 'heavynode', 'fleet']
 LICENSE_PATH = '/opt/so/saltstack/local/pillar/soc/license.sls'
 DEFAULTS_PATH = '/opt/so/saltstack/default/salt/hypervisor/defaults.yaml'
+# Define the retention period for destroyed VMs (in hours)
+DESTROYED_VM_RETENTION_HOURS = 48
 
 # Single engine-wide lock for virtual node manager
 engine_lock = Lock()
@@ -667,6 +669,50 @@ def process_vm_creation(hypervisor_path: str, vm_config: dict) -> None:
             mark_vm_failed(os.path.join(hypervisor_path, f"{vm_name}_failed"), 4, error_msg)
         raise
 
+def cleanup_destroyed_vm_status_files(hypervisor_path: str) -> None:
+    """
+    Clean up status files for destroyed VMs that are older than the retention period.
+    
+    Args:
+        hypervisor_path: Path to the hypervisor directory
+    """
+    try:
+        log.debug(f"Using destroyed VM retention period of {DESTROYED_VM_RETENTION_HOURS} hours")
+        
+        # Calculate the retention cutoff time
+        cutoff_time = datetime.now() - timedelta(hours=DESTROYED_VM_RETENTION_HOURS)
+        
+        # Find all status files for destroyed VMs
+        status_files = glob.glob(os.path.join(hypervisor_path, '*_*.status'))
+        log.debug(f"Found {len(status_files)} status files to check for expired destroyed VMs")
+        
+        for status_file in status_files:
+            try:
+                # Read the status file
+                status_data = read_json_file(status_file)
+                
+                # Check if this is a destroyed VM
+                if status_data.get('status') == 'Destroyed Instance':
+                    # Parse the timestamp
+                    timestamp_str = status_data.get('timestamp', '')
+                    if timestamp_str:
+                        timestamp = datetime.fromisoformat(timestamp_str)
+                        vm_name = os.path.basename(status_file).replace('.status', '')
+                        age_hours = (datetime.now() - timestamp).total_seconds() / 3600
+                        
+                        # If older than retention period, delete the file
+                        if timestamp < cutoff_time:
+                            log.info(f"Removing expired status file for VM {vm_name} (age: {age_hours:.1f} hours > retention: {DESTROYED_VM_RETENTION_HOURS} hours)")
+                            os.remove(status_file)
+                        else:
+                            log.debug(f"Status file for VM {vm_name} (age: {age_hours:.1f} hours < retention: {DESTROYED_VM_RETENTION_HOURS} hours)")
+            except Exception as e:
+                log.error(f"Error processing status file {status_file}: {e}")
+                
+    except Exception as e:
+        log.error(f"Failed to clean up destroyed VM status files: {e}")
+
+
 def process_vm_deletion(hypervisor_path: str, vm_name: str) -> None:
     """
     Process a single VM deletion request.
@@ -731,6 +777,9 @@ def process_hypervisor(hypervisor_path: str) -> None:
         vms_file = os.path.join(os.path.dirname(hypervisor_path), f"{hypervisor}VMs")
         if not os.path.exists(vms_file):
             log.debug("No VMs file found at %s", vms_file)
+            
+            # Even if no VMs file exists, we should still clean up any expired status files
+            cleanup_destroyed_vm_status_files(hypervisor_path)
             return
             
         nodes_config = read_json_file(vms_file)
@@ -768,6 +817,9 @@ def process_hypervisor(hypervisor_path: str) -> None:
             log.info(f"Initiating deletion process for VM: {vm_name}")
             process_vm_deletion(hypervisor_path, vm_name)
             
+        # Clean up expired status files for destroyed VMs
+        cleanup_destroyed_vm_status_files(hypervisor_path)
+            
     except Exception as e:
         log.error("Failed to process hypervisor %s: %s", hypervisor_path, str(e))
         raise
@@ -797,12 +849,12 @@ def start(interval: int = DEFAULT_INTERVAL,
     if not validate_hvn_license():
         return
         
-    # Attempt to acquire engine lock
+    # Attempt to acquire lock
     if not engine_lock.acquire(blocking=False):
         log.error("Another virtual node manager is already running")
         return
     
-    log.debug("Virtual node manager acquired engine lock")
+    log.debug("Virtual node manager acquired lock")
         
     try:
         # Process each hypervisor directory
@@ -811,7 +863,7 @@ def start(interval: int = DEFAULT_INTERVAL,
                 process_hypervisor(hypervisor_path)
                 
         # Clean shutdown - release lock
-        log.debug("Virtual node manager releasing engine lock")
+        log.debug("Virtual node manager releasing lock")
         engine_lock.release()
         log.info("Virtual node manager completed successfully")
                 

@@ -85,6 +85,60 @@
       {% endif %}
     {% endfor %}
     
+    {# Find and add destroyed VMs from status files #}
+    {% set processed_vms = [] %}
+    {% for vm_name, vm_data in vms.items() %}
+      {% do processed_vms.append(vm_name) %}
+    {% endfor %}
+    
+    {# Find all status files for this hypervisor #}
+    {% set relative_path = 'hypervisor/hosts/' ~ hypervisor %}
+    {% set absolute_path = '/opt/so/saltstack/local/salt/' ~ relative_path %}
+    {% do salt.log.info('salt/hypervisor/map.jinja: Scanning for status files in: ' ~ absolute_path) %}
+    
+    {# Try to find status files using file.find with absolute path #}
+    {% set status_files = salt['file.find'](absolute_path, name='*_*.status', type='f') %}
+    {% do salt.log.info('salt/hypervisor/map.jinja: Found status files: ' ~ status_files | tojson) %}
+    
+    {# Convert absolute paths back to relative paths for processing #}
+    {% set relative_status_files = [] %}
+    {% for status_file in status_files %}
+      {% set relative_file = status_file | replace('/opt/so/saltstack/local/salt/', '') %}
+      {% do relative_status_files.append(relative_file) %}
+    {% endfor %}
+    {% set status_files = relative_status_files %}
+    
+    {% do salt.log.info('salt/hypervisor/map.jinja: Converted to relative paths: ' ~ status_files | tojson) %}
+    
+    {% for status_file in status_files %}
+      {# Extract the VM name from the filename #}
+      {% set basename = status_file.split('/')[-1] %}
+      {% set vm_name = basename.replace('.status', '') %}
+      {% set hostname = vm_name.split('_')[0] %}
+      
+      {# Skip already processed VMs #}
+      {% if hostname in processed_vms %}
+        {% continue %}
+      {% endif %}
+      
+      {# Read the status file #}
+      {% do salt.log.info('salt/hypervisor/map.jinja: Processing potential destroyed VM status file: ' ~ status_file) %}
+      {% import_json status_file as status_data %}
+      
+      {# Only process files with "Destroyed Instance" status #}
+      {% if status_data and status_data.status == 'Destroyed Instance' %}
+        {% do salt.log.info('salt/hypervisor/map.jinja: Found VM with Destroyed Instance status: ' ~ hostname) %}
+        
+        {# Add to vms with minimal config #}
+        {% do vms.update({
+          hostname: {
+            'status': status_data,
+            'config': {}
+          }
+        }) %}
+      {% endif %}
+    {% endfor %}
+    
     {# Merge node config with model capabilities and VM states #}
     {% do HYPERVISORS[role].update({
       hypervisor: {
