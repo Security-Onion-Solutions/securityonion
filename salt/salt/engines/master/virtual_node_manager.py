@@ -36,6 +36,7 @@ Configuration Files:
         - Located at <base_path>/<hypervisorHostname>VMs
         - Contains array of VM configurations
         - Each VM config specifies hardware and network settings
+        - Hardware indices (disk, copper, sfp) must be specified as JSON arrays: "disk":["1","2"]
 
     defaults.yaml: Hardware capabilities configuration
         - Located at /opt/so/saltstack/default/salt/hypervisor/defaults.yaml
@@ -210,7 +211,6 @@ def read_yaml_file(file_path: str) -> dict:
     except Exception as e:
         log.error("Failed to read YAML file %s: %s", file_path, str(e))
         raise
-
 def convert_pci_id(pci_id: str) -> str:
     """
     Convert PCI ID from pci_0000_c7_00_0 format to 0000:c7:00.0 format.
@@ -240,6 +240,35 @@ def convert_pci_id(pci_id: str) -> str:
     except Exception as e:
         log.error("Failed to convert PCI ID %s: %s", pci_id, str(e))
         raise
+
+def parse_hardware_indices(hw_value: Any) -> List[int]:
+    """
+    Parse hardware indices from JSON array format.
+    
+    Args:
+        hw_value: Hardware value which should be a list
+        
+    Returns:
+        List of integer indices
+    """
+    indices = []
+    
+    if hw_value is None:
+        return indices
+        
+    # If it's a list (expected format)
+    if isinstance(hw_value, list):
+        try:
+            indices = [int(x) for x in hw_value]
+            log.debug("Parsed hardware indices from list format: %s", indices)
+        except (ValueError, TypeError) as e:
+            log.error("Failed to parse hardware indices from list format: %s", str(e))
+            raise ValueError(f"Invalid hardware indices format in list: {hw_value}")
+    else:
+        log.warning("Unexpected type for hardware indices: %s", type(hw_value))
+        raise ValueError(f"Hardware indices must be in array format, got: {type(hw_value)}")
+        
+    return indices
 
 def get_hypervisor_model(hypervisor: str) -> str:
     """Get sosmodel from hypervisor grains."""
@@ -318,7 +347,7 @@ def validate_hardware_request(model_config: dict, requested_hw: dict) -> Tuple[b
     for hw_type in ['disk', 'copper', 'sfp']:
         if hw_type in requested_hw and requested_hw[hw_type]:
             try:
-                indices = [int(x) for x in str(requested_hw[hw_type]).split('\n')]
+                indices = parse_hardware_indices(requested_hw[hw_type])
                 log.debug("Checking if %s indices %s exist in model", hw_type, indices)
                 
                 if hw_type not in model_config['hardware']:
@@ -333,8 +362,8 @@ def validate_hardware_request(model_config: dict, requested_hw: dict) -> Tuple[b
                 if invalid_indices:
                     log.error("%s indices %s do not exist in model", hw_type, invalid_indices)
                     errors[hw_type] = f"Invalid {hw_type} indices: {invalid_indices}"
-            except ValueError:
-                log.error("Invalid %s indices format: %s", hw_type, requested_hw[hw_type])
+            except ValueError as e:
+                log.error("Invalid %s indices format: %s", hw_type, str(e))
                 errors[hw_type] = f"Invalid {hw_type} indices format"
             except KeyError:
                 log.error("No %s configuration found in model", hw_type)
@@ -407,10 +436,13 @@ def check_hardware_availability(hypervisor_path: str, vm_name: str, requested_hw
         # Track unique resources
         for hw_type in ['disk', 'copper', 'sfp']:
             if hw_type in config and config[hw_type]:
-                indices = [int(x) for x in str(config[hw_type]).split('\n')]
-                for idx in indices:
-                    used_resources[hw_type][idx] = basename.replace('_sensor', '')  # Store VM name without role
-                log.debug("VM %s is using %s indices: %s", basename, hw_type, indices)
+                try:
+                    indices = parse_hardware_indices(config[hw_type])
+                    for idx in indices:
+                        used_resources[hw_type][idx] = basename.replace('_sensor', '')  # Store VM name without role
+                    log.debug("VM %s is using %s indices: %s", basename, hw_type, indices)
+                except ValueError as e:
+                    log.error("Error parsing %s indices for VM %s: %s", hw_type, basename, str(e))
     
     log.debug("Total hardware currently in use - CPU: %d, Memory: %dGB", total_cpu, total_memory)
     log.debug("Hardware indices currently in use: %s", used_resources)
@@ -434,23 +466,27 @@ def check_hardware_availability(hypervisor_path: str, vm_name: str, requested_hw
     # Check for hardware conflicts
     for hw_type in ['disk', 'copper', 'sfp']:
         if hw_type in requested_hw and requested_hw[hw_type]:
-            requested_indices = [int(x) for x in str(requested_hw[hw_type]).split('\n')]
-            log.debug("Checking for %s conflicts - Requesting indices: %s, Currently in use: %s",
-                     hw_type, requested_indices, used_resources[hw_type])
-            conflicts = {}  # {index: vm_name}
-            for idx in requested_indices:
-                if idx in used_resources[hw_type]:
-                    conflicts[idx] = used_resources[hw_type][idx]
-            
-            if conflicts:
-                # Create one sentence per conflict
-                conflict_details = []
-                hw_name = hw_type.upper() if hw_type == 'sfp' else hw_type.capitalize()
-                for idx, vm in conflicts.items():
-                    conflict_details.append(f"{hw_name} index {idx} in use by {vm}")
+            try:
+                requested_indices = parse_hardware_indices(requested_hw[hw_type])
+                log.debug("Checking for %s conflicts - Requesting indices: %s, Currently in use: %s",
+                         hw_type, requested_indices, used_resources[hw_type])
+                conflicts = {}  # {index: vm_name}
+                for idx in requested_indices:
+                    if idx in used_resources[hw_type]:
+                        conflicts[idx] = used_resources[hw_type][idx]
                 
-                log.debug("Found conflicting %s indices: %s", hw_type, conflict_details)
-                errors[hw_type] = ". ".join(conflict_details) + "."
+                if conflicts:
+                    # Create one sentence per conflict
+                    conflict_details = []
+                    hw_name = hw_type.upper() if hw_type == 'sfp' else hw_type.capitalize()
+                    for idx, vm in conflicts.items():
+                        conflict_details.append(f"{hw_name} index {idx} in use by {vm}")
+                    
+                    log.debug("Found conflicting %s indices: %s", hw_type, conflict_details)
+                    errors[hw_type] = ". ".join(conflict_details) + "."
+            except ValueError as e:
+                log.error("Error parsing %s indices for conflict check: %s", hw_type, str(e))
+                errors[hw_type] = f"Invalid {hw_type} indices format"
     
     if errors:
         log.debug("Hardware validation failed with errors: %s", errors)
@@ -636,12 +672,23 @@ def process_vm_creation(hypervisor_path: str, vm_config: dict) -> None:
         # Add PCI devices
         for hw_type in ['disk', 'copper', 'sfp']:
             if hw_type in vm_config and vm_config[hw_type]:
-                indices = [int(x) for x in str(vm_config[hw_type]).split('\n')]
-                for idx in indices:
-                    hw_config = {int(k): v for k, v in model_config['hardware'][hw_type].items()}
-                    pci_id = hw_config[idx]
-                    converted_pci_id = convert_pci_id(pci_id)
-                    cmd.extend(['-P', converted_pci_id])
+                try:
+                    indices = parse_hardware_indices(vm_config[hw_type])
+                    for idx in indices:
+                        hw_config = {int(k): v for k, v in model_config['hardware'][hw_type].items()}
+                        pci_id = hw_config[idx]
+                        converted_pci_id = convert_pci_id(pci_id)
+                        cmd.extend(['-P', converted_pci_id])
+                except ValueError as e:
+                    error_msg = f"Failed to parse {hw_type} indices: {str(e)}"
+                    log.error(error_msg)
+                    mark_vm_failed(os.path.join(hypervisor_path, vm_name), 3, error_msg)
+                    raise ValueError(error_msg)
+                except KeyError as e:
+                    error_msg = f"Invalid {hw_type} index: {str(e)}"
+                    log.error(error_msg)
+                    mark_vm_failed(os.path.join(hypervisor_path, vm_name), 3, error_msg)
+                    raise KeyError(error_msg)
             
         # Execute command
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)

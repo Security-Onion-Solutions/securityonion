@@ -36,7 +36,7 @@ Status values: {% for step in PROCESS_STEPS %}{{ step }}{% if not loop.last %}, 
 {%- if is_destroyed %}
 | {{ hostname }} | {{ vm_status }} | - | - | - | - | - | {{ vm_data.get('status', {}).get('timestamp', 'Never') | replace('T', ' ') | regex_replace('\\.[0-9]+', '') }} |
 {%- else %}
-| {{ hostname }} | {{ vm_status }} | {{ vm_data.get('config', {}).get('cpu', 'N/A') }} | {{ vm_data.get('config', {}).get('memory', 'N/A') }} | {{ vm_data.get('config', {}).get('disk', '-') | replace('\n', ',') if vm_data.get('config', {}).get('disk') else '-' }} | {{ vm_data.get('config', {}).get('copper', '-') | replace('\n', ',') if vm_data.get('config', {}).get('copper') else '-' }} | {{ vm_data.get('config', {}).get('sfp', '-') | replace('\n', ',') if vm_data.get('config', {}).get('sfp') else '-' }} | {{ vm_data.get('status', {}).get('timestamp', 'Never') | replace('T', ' ') | regex_replace('\\.[0-9]+', '') }} |
+| {{ hostname }} | {{ vm_status }} | {{ vm_data.get('config', {}).get('cpu', 'N/A') }} | {{ vm_data.get('config', {}).get('memory', 'N/A') }} | {{ vm_data.get('config', {}).get('disk', []) | join(',') if vm_data.get('config', {}).get('disk') else '-' }} | {{ vm_data.get('config', {}).get('copper', []) | join(',') if vm_data.get('config', {}).get('copper') else '-' }} | {{ vm_data.get('config', {}).get('sfp', []) | join(',') if vm_data.get('config', {}).get('sfp') else '-' }} | {{ vm_data.get('status', {}).get('timestamp', 'Never') | replace('T', ' ') | regex_replace('\\.[0-9]+', '') }} |
 {%- endif %}
 {%- endfor %}
 {%- else %}
@@ -92,9 +92,9 @@ No Virtual Machines Found
 {%-       set vm_status = vm.get('status', {}).get('status', '') -%}
 {%-       if vm_status != 'Destroyed Instance' -%}
 {%-         set config = vm.get('config', {}) -%}
-{%-         do used_disk.extend((config.get('disk', '') | string).split('\n') | map('trim') | list) -%}
-{%-         do used_copper.extend((config.get('copper', '') | string).split('\n') | map('trim') | list) -%}
-{%-         do used_sfp.extend((config.get('sfp', '') | string).split('\n') | map('trim') | list) -%}
+{%-         do used_disk.extend(config.get('disk', [])) -%}
+{%-         do used_copper.extend(config.get('copper', [])) -%}
+{%-         do used_sfp.extend(config.get('sfp', [])) -%}
 {%-       endif -%}
 {%-     endfor -%}
 
@@ -154,11 +154,23 @@ No Virtual Machines Found
             'regexFailureMessage': 'Enter a value not exceeding ' ~ mem_free | string ~ ' GB'
           }) -%}
 {%-       elif field.field == 'disk' -%}
-{%-         do updated_field.update({'label': field.label | replace('FREE', disk_free) | replace('TOTAL', disk_total | replace('\n', ','))}) -%}
+{%-         set disk_free_list = disk_free.split(',') if disk_free else [] -%}
+{%-         do updated_field.update({
+              'label': field.label | replace('FREE', disk_free) | replace('TOTAL', disk_total | replace('\n', ',')),
+              'options': disk_free_list
+            }) -%}
 {%-       elif field.field == 'copper' -%}
-{%-         do updated_field.update({'label': field.label | replace('FREE', copper_free) | replace('TOTAL', copper_total | replace('\n', ','))}) -%}
+{%-         set copper_free_list = copper_free.split(',') if copper_free else [] -%}
+{%-         do updated_field.update({
+              'label': field.label | replace('FREE', copper_free) | replace('TOTAL', copper_total | replace('\n', ',')),
+              'options': copper_free_list
+            }) -%}
 {%-       elif field.field == 'sfp' -%}
-{%-         do updated_field.update({'label': field.label | replace('FREE', sfp_free) | replace('TOTAL', sfp_total | replace('\n', ','))}) -%}
+{%-         set sfp_free_list = sfp_free.split(',') if sfp_free else [] -%}
+{%-         do updated_field.update({
+              'label': field.label | replace('FREE', sfp_free) | replace('TOTAL', sfp_total | replace('\n', ',')),
+              'options': sfp_free_list
+            }) -%}
 {%-       endif -%}
 {%-       do updated_elements.append(updated_field) -%}
 {%-     endfor -%}
