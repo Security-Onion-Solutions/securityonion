@@ -116,9 +116,43 @@ No Virtual Machines Found
 {%-     for field in updated_template.uiElements -%}
 {%-       set updated_field = field.copy() -%}
 {%-       if field.field == 'cpu' -%}
-{%-         do updated_field.update({'label': field.label | replace('FREE', cpu_free | string) | replace('TOTAL', cpu_total | string)}) -%}
+{%-         if cpu_free < 10 -%}
+{%-           set cpu_regex = '^[1-' ~ cpu_free ~ ']$' -%}
+{%-         elif cpu_free < 100 -%}
+{%-           set tens_digit = cpu_free // 10 -%}
+{%-           set ones_digit = cpu_free % 10 -%}
+{%-           if ones_digit == 0 -%}
+{%-             set cpu_regex = '^([1-9]|[1-' ~ (tens_digit-1) ~ '][0-9]|' ~ tens_digit ~ '0)$' -%}
+{%-           else -%}
+{%-             set cpu_regex = '^([1-9]|[1-' ~ (tens_digit-1) ~ '][0-9]|' ~ tens_digit ~ '[0-' ~ ones_digit ~ '])$' -%}
+{%-           endif -%}
+{%-         else -%}
+{%-           set cpu_regex = '^([1-9]|[1-9][0-9]|100)$' -%}
+{%-         endif -%}
+{%-         do updated_field.update({
+            'label': field.label | replace('FREE', cpu_free | string) | replace('TOTAL', cpu_total | string),
+            'regex': cpu_regex,
+            'regexFailureMessage': 'Enter a value not exceeding ' ~ cpu_free | string ~ ' cores'
+          }) -%}
 {%-       elif field.field == 'memory' -%}
-{%-         do updated_field.update({'label': field.label | replace('FREE', mem_free | string) | replace('TOTAL', mem_total | string)}) -%}
+{%-         if mem_free < 10 -%}
+{%-           set mem_regex = '^[1-' ~ mem_free ~ ']$' -%}
+{%-         elif mem_free < 100 -%}
+{%-           set tens_digit = mem_free // 10 -%}
+{%-           set ones_digit = mem_free % 10 -%}
+{%-           if ones_digit == 0 -%}
+{%-             set mem_regex = '^([1-9]|[1-' ~ (tens_digit-1) ~ '][0-9]|' ~ tens_digit ~ '0)$' -%}
+{%-           else -%}
+{%-             set mem_regex = '^([1-9]|[1-' ~ (tens_digit-1) ~ '][0-9]|' ~ tens_digit ~ '[0-' ~ ones_digit ~ '])$' -%}
+{%-           endif -%}
+{%-         else -%}
+{%-           set mem_regex = '^([1-9]|[1-9][0-9]|[1-9][0-9][0-9])$' -%}
+{%-         endif -%}
+{%-         do updated_field.update({
+            'label': field.label | replace('FREE', mem_free | string) | replace('TOTAL', mem_total | string),
+            'regex': mem_regex,
+            'regexFailureMessage': 'Enter a value not exceeding ' ~ mem_free | string ~ ' GB'
+          }) -%}
 {%-       elif field.field == 'disk' -%}
 {%-         do updated_field.update({'label': field.label | replace('FREE', disk_free) | replace('TOTAL', disk_total | replace('\n', ','))}) -%}
 {%-       elif field.field == 'copper' -%}
