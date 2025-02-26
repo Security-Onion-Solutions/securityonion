@@ -79,7 +79,7 @@
             }
           }) %}
         {% endif %}
-        {% do vms.update({hostname: vm_data}) %}
+        {% do vms.update({hostname ~ '_' ~ role: vm_data}) %}
       {% else %}
         {% do salt.log.info('salt/hypervisor/map.jinja: Config file empty: ' ~ vm_file) %}
       {% endif %}
@@ -87,8 +87,8 @@
     
     {# Find and add destroyed VMs from status files #}
     {% set processed_vms = [] %}
-    {% for vm_name, vm_data in vms.items() %}
-      {% do processed_vms.append(vm_name) %}
+    {% for vm_full_name, vm_data in vms.items() %}
+      {% do processed_vms.append(vm_full_name) %}
     {% endfor %}
     
     {# Find all status files for this hypervisor #}
@@ -117,7 +117,7 @@
       {% set hostname = vm_name.split('_')[0] %}
       
       {# Skip already processed VMs #}
-      {% if hostname in processed_vms %}
+      {% if vm_name in processed_vms %}
         {% continue %}
       {% endif %}
       
@@ -127,11 +127,11 @@
       
       {# Only process files with "Destroyed Instance" status #}
       {% if status_data and status_data.status == 'Destroyed Instance' %}
-        {% do salt.log.info('salt/hypervisor/map.jinja: Found VM with Destroyed Instance status: ' ~ hostname) %}
+        {% do salt.log.info('salt/hypervisor/map.jinja: Found VM with Destroyed Instance status: ' ~ vm_name) %}
         
         {# Add to vms with minimal config #}
         {% do vms.update({
-          hostname: {
+          vm_name: {
             'status': status_data,
             'config': {}
           }

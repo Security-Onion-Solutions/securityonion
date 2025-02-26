@@ -18,55 +18,30 @@
 {%- set TEMPLATE = ANNOTATION.hypervisor.hosts.pop('defaultHost') -%}
 
 {%- macro update_description(description, cpu_free, mem_free, disk_free, copper_free, sfp_free, vm_list, cpu_total, mem_total, disk_total, copper_total, sfp_total) -%}
-# Hypervisor Configuration: {{ description }}
-
-## Resource Summary
+#### Resource Summary
 |           | CPU Cores | Memory (GB) | Disk        | Copper      | SFP         |
 |-----------|-----------|-------------|-------------|-------------|-------------|
 | Available | {{ cpu_free }}      | {{ mem_free }}        | {{ disk_free | replace('\n', ',') if disk_free else 'None' }} | {{ copper_free | replace('\n', ',') if copper_free else 'None' }} | {{ sfp_free | replace('\n', ',') if sfp_free else 'None' }} |
 | Total     | {{ cpu_total }}      | {{ mem_total }}        | {{ disk_total | replace('\n', ',') }} | {{ copper_total | replace('\n', ',') }} | {{ sfp_total | replace('\n', ',') }} |
 
 {%- if vm_list %}
-## Virtual Machines
-VMs can have the following status values: {% for step in PROCESS_STEPS %}{{ step }}{% if not loop.last %}, {% endif %}{% endfor %}. The "Last Updated" timestamp shows when the VM status was last changed. After reaching "Highstate Triggered" status, additional highstate runs will not update the timestamp. Only changing to "Destroyed Instance" status will update the timestamp again.
+#### Virtual Machines
+Status values: {% for step in PROCESS_STEPS %}{{ step }}{% if not loop.last %}, {% endif %}{% endfor %}. "Last Updated" shows when status changed. After "Highstate Triggered", only "Destroyed Instance" updates the timestamp.
 
 | Name               | Status             | CPU Cores | Memory (GB)| Disk | Copper | SFP  | Last Updated        |
 |--------------------|--------------------|-----------|------------|------|--------|------|---------------------|
 {%- for hostname, vm_data in vm_list.items() %}
 {%- set vm_status = vm_data.get('status', {}).get('status', 'Unknown') %}
 {%- set is_destroyed = vm_status == 'Destroyed Instance' %}
-{%- set vm_role = vm_data.get('config', {}).get('role', 'unknown') %}
-{%- set name = hostname ~ (('_' ~ vm_role) if not is_destroyed and vm_role != 'unknown' else '') %}
-| {{ name }} | {{ vm_status }} |
-{%- if is_destroyed -%}
--
-{%- else -%}
-{{ vm_data.get('config', {}).get('cpu', 'N/A') }}
-{%- endif %} |
-{%- if is_destroyed -%}
--
-{%- else -%}
-{{ vm_data.get('config', {}).get('memory', 'N/A') }}
-{%- endif %} |
-{%- if is_destroyed -%}
--
-{%- else -%}
-{{ vm_data.get('config', {}).get('disk', '-') | replace('\n', ',') if vm_data.get('config', {}).get('disk') else '-' }}
-{%- endif %} |
-{%- if is_destroyed -%}
--
-{%- else -%}
-{{ vm_data.get('config', {}).get('copper', '-') | replace('\n', ',') if vm_data.get('config', {}).get('copper') else '-' }}
-{%- endif %} |
-{%- if is_destroyed -%}
--
-{%- else -%}
-{{ vm_data.get('config', {}).get('sfp', '-') | replace('\n', ',') if vm_data.get('config', {}).get('sfp') else '-' }}
-{%- endif %} | {{ vm_data.get('status', {}).get('timestamp', 'Never') | replace('T', ' ') | regex_replace('\\.[0-9]+', '') }} |
+{%- if is_destroyed %}
+| {{ hostname }} | {{ vm_status }} | - | - | - | - | - | {{ vm_data.get('status', {}).get('timestamp', 'Never') | replace('T', ' ') | regex_replace('\\.[0-9]+', '') }} |
+{%- else %}
+| {{ hostname }} | {{ vm_status }} | {{ vm_data.get('config', {}).get('cpu', 'N/A') }} | {{ vm_data.get('config', {}).get('memory', 'N/A') }} | {{ vm_data.get('config', {}).get('disk', '-') | replace('\n', ',') if vm_data.get('config', {}).get('disk') else '-' }} | {{ vm_data.get('config', {}).get('copper', '-') | replace('\n', ',') if vm_data.get('config', {}).get('copper') else '-' }} | {{ vm_data.get('config', {}).get('sfp', '-') | replace('\n', ',') if vm_data.get('config', {}).get('sfp') else '-' }} | {{ vm_data.get('status', {}).get('timestamp', 'Never') | replace('T', ' ') | regex_replace('\\.[0-9]+', '') }} |
+{%- endif %}
 {%- endfor %}
 {%- else %}
-## Virtual Machines
-VMs can have the following status values: {% for step in PROCESS_STEPS %}{{ step }}{% if not loop.last %}, {% endif %}{% endfor %}. The "Last Updated" timestamp shows when the VM status was last changed. After reaching "Highstate Triggered" status, additional highstate runs will not update the timestamp. Only changing to "Destroyed Instance" status will update the timestamp again.
+#### Virtual Machines
+Status values: {% for step in PROCESS_STEPS %}{{ step }}{% if not loop.last %}, {% endif %}{% endfor %}. "Last Updated" shows when status changed. After "Highstate Triggered", only "Destroyed Instance" updates the timestamp.
 
 No Virtual Machines Found
 {%- endif %}

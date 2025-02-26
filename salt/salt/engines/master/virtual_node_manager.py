@@ -390,8 +390,8 @@ def check_hardware_availability(hypervisor_path: str, vm_name: str, requested_hw
             continue
             
         vm_config = read_json_file(vm_file)
-        if 'config' not in vm_config or vm_config.get('status') != 'running':
-            log.debug("Skipping VM %s (not running)", basename)
+        if 'config' not in vm_config:
+            log.debug("Skipping VM %s (no config found)", basename)
             continue
             
         config = vm_config['config']
@@ -469,9 +469,7 @@ def create_vm_tracking_file(hypervisor_path: str, vm_name: str, config: dict) ->
         set_socore_ownership(os.path.dirname(file_path))
         
         data = {
-            'config': config,
-            'status': 'creating',
-            'timestamp': datetime.now().isoformat()
+            'config': config
         }
         # Write file and set ownership
         write_json_file(file_path, data)
@@ -648,11 +646,9 @@ def process_vm_creation(hypervisor_path: str, vm_config: dict) -> None:
         # Execute command
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
         
-        # Update tracking file status with timestamp
+        # Update tracking file if needed
         tracking_file = os.path.join(hypervisor_path, vm_name)
         data = read_json_file(tracking_file)
-        data['status'] = 'running'
-        data['timestamp'] = datetime.now().isoformat()
         write_json_file(tracking_file, data)
         
     except subprocess.CalledProcessError as e:
