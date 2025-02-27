@@ -49,6 +49,13 @@ pillarWatch_engine:
     - source: salt://salt/engines/master/pillarWatch.py
 
 {%   if 'hvn' in salt['pillar.get']('features', []) %}
+hvn_engine_config:
+  file.managed:
+    - name: /etc/salt/master.d/hvn_engine.conf
+    - source: salt://salt/files/hvn_engine.conf
+    - watch_in:
+      - service: salt_master_service
+
 virtual_node_manager_engine:
   file.managed:
     - name: /etc/salt/engines/virtual_node_manager.py
@@ -56,11 +63,12 @@ virtual_node_manager_engine:
     - watch_in:
       - service: salt_master_service
 
-virtual_node_manager_engine_config:
+virtual_power_manager_engine:
   file.managed:
-    - name: /etc/salt/master.d/virtual_node_manager_engine.conf
-    - source: salt://salt/files/virtual_node_manager_engine.conf
-
+    - name: /etc/salt/engines/virtual_power_manager.py
+    - source: salt://salt/engines/master/virtual_power_manager.py
+    - watch_in:
+      - service: salt_master_service
 {% endif %}
 
 engines_config:
@@ -88,7 +96,6 @@ reactor:
   - 'setup/so-minion':
     - /opt/so/saltstack/default/salt/reactor/sominion_setup.sls
   - 'salt/cloud/*/destroyed':
-    - /opt/so/saltstack/default/salt/reactor/virtReleaseHardware.sls
     - /opt/so/saltstack/default/salt/reactor/deleteKey.sls
 #}
 
