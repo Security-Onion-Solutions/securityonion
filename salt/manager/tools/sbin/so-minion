@@ -95,8 +95,14 @@ for i in "$@"; do
 			MAINIP="${i#*=}"
 			shift
 			;;
-		-c=*|--cpu=*)
+		# Usable / Load Balance Cores for Zeek / Suricata
+		-C=*|--lbc=*)
 			CORECOUNT="${i#*=}"
+			shift
+			;;
+		# Total number of CPU Cores
+		-c=*|--cpu=*)
+			CPUCORES="${i#*=}"
 			shift
 			;;
 		-*|--*)
@@ -374,7 +380,7 @@ function add_logstash_to_minion() {
 		"logstash:"\
 		"  enabled: True"\
 		"  config:"\
-		"    pipeline_x_workers: $CORECOUNT"\
+		"    pipeline_x_workers: $CPUCORES"\
 		"  settings:"\
 		"    lsheap: $LSHEAP"\
 		"  " >> $PILLARFILE

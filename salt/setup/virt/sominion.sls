@@ -13,10 +13,13 @@ create_pillar:
         MAINIP: {{ DATA.MAINIP }}
         MNIC: {{ DATA.MNIC }}
         NODE_DESCRIPTION: '{{ DATA.NODE_DESCRIPTION }}'
-        INTERFACE: {{ DATA.INTERFACE }}
         NODETYPE: {{ DATA.NODETYPE }}
+        CPUCORES: {{ DATA.CPUCORES }}
         {% if 'CORECOUNT' in DATA %}
         CORECOUNT: {{ DATA.CORECOUNT }}
+        {% endif %}
+        {% if 'INTERFACE' in DATA %}
+        INTERFACE: {{ DATA.INTERFACE }}
         {% endif %}
         {% if 'ES_HEAP_SIZE' in DATA %}
         ES_HEAP_SIZE: {{ DATA.ES_HEAP_SIZE }}

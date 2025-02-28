@@ -16,13 +16,12 @@ def run():
   hv_name = DATA['HYPERVISOR_HOST']
   logging.debug('sominion_setup_reactor: DATA: %s' % DATA)
 
-
   # Build the base command
-  cmd = "NODETYPE=" + DATA['NODETYPE'] + " /usr/sbin/so-minion -o=addVM -m=" + minionid + " -n=" + DATA['MNIC'] + " -i=" + DATA['MAINIP'] + " -d='" + DATA['NODE_DESCRIPTION'] + "'"
+  cmd = "NODETYPE=" + DATA['NODETYPE'] + " /usr/sbin/so-minion -o=addVM -m=" + minionid + " -n=" + DATA['MNIC'] + " -i=" + DATA['MAINIP'] + " -c=" + str(DATA['CPUCORES']) + " -d='" + DATA['NODE_DESCRIPTION'] + "'"
   
   # Add optional arguments only if they exist in DATA
   if 'CORECOUNT' in DATA:
-    cmd += " -c=" + str(DATA['CORECOUNT'])
+    cmd += " -C=" + str(DATA['CORECOUNT'])
     
   if 'INTERFACE' in DATA:
     cmd += " -a=" + DATA['INTERFACE']
