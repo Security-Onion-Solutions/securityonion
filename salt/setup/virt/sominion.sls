@@ -13,18 +13,17 @@ create_pillar:
         MAINIP: {{ DATA.MAINIP }}
         MNIC: {{ DATA.MNIC }}
         NODE_DESCRIPTION: '{{ DATA.NODE_DESCRIPTION }}'
-        ES_HEAP_SIZE: {{ DATA.ES_HEAP_SIZE }}
-        PATCHSCHEDULENAME: {{ DATA.PATCHSCHEDULENAME }}
         INTERFACE: {{ DATA.INTERFACE }}
         NODETYPE: {{ DATA.NODETYPE }}
+        {% if 'CORECOUNT' in DATA %}
         CORECOUNT: {{ DATA.CORECOUNT }}
+        {% endif %}
+        {% if 'ES_HEAP_SIZE' in DATA %}
+        ES_HEAP_SIZE: {{ DATA.ES_HEAP_SIZE }}
+        {% endif %}
+        {% if 'LSHOSTNAME' in DATA %}
         LSHOSTNAME: {{ DATA.LSHOSTNAME }}
+        {% endif %}
+        {% if 'LSHEAP' in DATA %}
         LS_HEAP_SIZE: {{ DATA.LSHEAP }}
-        CPUCORES: {{ DATA.CPUCORES }}
-        IDH_MGTRESTRICT: {{ DATA.IDH_MGTRESTRICT }}
-        IDH_SERVICES: {{ DATA.IDH_SERVICES }}
-        CPU: {{ DATA.CPU }}
-        MEMORY: {{ DATA.MEMORY }}
-        DISKS: {{ DATA.DISKS }}
-        COPPER: {{ DATA.COPPER }}
-        SFP: {{ DATA.SFP }}
+        {% endif %}

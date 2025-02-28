@@ -10,26 +10,32 @@ from subprocess import call
 import yaml
 
 def run():
+  logging.debug('sominion_setup_reactor: Running')
   minionid = data['id']
   DATA = data['data']
   hv_name = DATA['HYPERVISOR_HOST']
-  logging.error("sominion_setup reactor: %s " % DATA)
+  logging.debug('sominion_setup_reactor: DATA: %s' % DATA)
 
-  vm_out_data = {
-    'cpu': DATA['CPU'],
-    'memory': DATA['MEMORY'],
-    'disks': DATA['DISKS'],
-    'copper': DATA['COPPER'],
-    'sfp': DATA['SFP']
-  }
 
-  logging.error("sominion_setup reactor: vm_out_data: %s " % vm_out_data)
+  # Build the base command
+  cmd = "NODETYPE=" + DATA['NODETYPE'] + " /usr/sbin/so-minion -o=addVM -m=" + minionid + " -n=" + DATA['MNIC'] + " -i=" + DATA['MAINIP'] + " -d='" + DATA['NODE_DESCRIPTION'] + "'"
+  
+  # Add optional arguments only if they exist in DATA
+  if 'CORECOUNT' in DATA:
+    cmd += " -c=" + str(DATA['CORECOUNT'])
+    
+  if 'INTERFACE' in DATA:
+    cmd += " -a=" + DATA['INTERFACE']
+  
+  if 'ES_HEAP_SIZE' in DATA:
+    cmd += " -e=" + DATA['ES_HEAP_SIZE']
+  
+  if 'LS_HEAP_SIZE' in DATA:
+    cmd += " -l=" + DATA['LS_HEAP_SIZE']
+  
+  logging.debug('sominion_setup_reactor: Command: %s' % cmd)
+  rc = call(cmd, shell=True)
 
-  with open("/opt/so/saltstack/local/pillar/hypervisor/" + hv_name + "/" + minionid + ".sls", 'w') as f:
-    yaml.dump(vm_out_data, f, default_flow_style=False)
-
-  rc = call("NODETYPE=" + DATA['NODETYPE'] + " /usr/sbin/so-minion -o=addVM -m=" + minionid + " -n=" + DATA['MNIC'] + " -i=" + DATA['MAINIP'] + " -a=" + DATA['INTERFACE'] + " -c=" + str(DATA['CPU'])  + " -d='" + DATA['NODE_DESCRIPTION'] + "'" + " -e=" + DATA['ES_HEAP_SIZE'] + " -l=" + DATA['LS_HEAP_SIZE'], shell=True)
-
-  logging.error('sominion_setup reactor: rc: %s' % rc)
+  logging.info('sominion_setup_reactor: rc: %s' % rc)
 
   return {}
