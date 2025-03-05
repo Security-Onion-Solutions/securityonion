@@ -91,6 +91,7 @@ make-rule-dir-nginx:
     - recurse:
       - user
       - group
+    - show_changes: False
       
 {%   endif %}
 

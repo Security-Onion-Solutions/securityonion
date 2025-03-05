@@ -83,7 +83,7 @@ soc:
         icon: fa-users-between-lines
         target: ''
         links:
-          - '/#/hunt?q=({:process.entity_id}) | groupby event.dataset | groupby -sankey event.dataset event.action | groupby event.action | groupby process.name | groupby process.command_line | groupby host.name user.name | groupby source.ip source.port destination.ip destination.port | groupby dns.question.name | groupby dns.answers.data | groupby file.path | groupby registry.path | groupby dll.path'
+          - '/#/hunt?q="{:process.entity_id}" | groupby event.dataset | groupby -sankey event.dataset event.action | groupby event.action | groupby process.name | groupby process.command_line | groupby host.name user.name | groupby source.ip source.port destination.ip destination.port | groupby dns.question.name | groupby dns.answers.data | groupby file.path | groupby registry.path | groupby dll.path'
       - name: actionProcessAncestors
         description: actionProcessAncestorsHelp
         icon: fa-people-roof
@@ -1256,7 +1256,7 @@ soc:
         -  soc_timestamp
         -  event.dataset
         -  host.name
-        -  user.name
+        -  user.effective.name
         -  process.executable
         -  event.action
         -  event.outcome
@@ -1900,7 +1900,7 @@ soc:
               query: 'event.module:endpoint | groupby event.dataset | groupby host.name | groupby -sankey host.name user.name | groupby user.name | groupby -sankey user.name process.name | groupby process.name'
             - name: Elastic Agent API Events
               description: API (Application Programming Interface) events from Elastic Agents
-              query: 'event.dataset:endpoint.events.api | groupby host.name | groupby -sankey host.name user.name | groupby user.name | groupby -sankey user.name process.name | groupby process.name | groupby process.Ext.api.name'
+              query: 'event.dataset:endpoint.events.api | groupby host.name | groupby -sankey host.name user.name | groupby user.name | groupby -sankey user.name process.name | groupby process.name | groupby -sankey process.name process.Ext.api.name | groupby process.Ext.api.name'
             - name: Elastic Agent File Events
               description: File events from Elastic Agents
               query: 'event.dataset:endpoint.events.file | groupby host.name | groupby -sankey host.name user.name | groupby user.name | groupby -sankey user.name process.name | groupby process.name | groupby event.action | groupby file.path'
@@ -1918,7 +1918,7 @@ soc:
               query: 'event.dataset:endpoint.events.registry | groupby host.name | groupby -sankey host.name user.name | groupby user.name | groupby -sankey user.name process.name | groupby process.name | groupby event.action | groupby registry.path'
             - name: Elastic Agent Security Events
               description: Security events from Elastic Agents
-              query: 'event.dataset:endpoint.events.security | groupby host.name | groupby -sankey host.name user.name | groupby user.name | groupby -sankey user.name process.executable | groupby process.executable | groupby event.action | groupby event.outcome'
+              query: 'event.dataset:endpoint.events.security | groupby host.name | groupby -sankey host.name user.effective.name | groupby user.effective.name | groupby -sankey user.effective.name process.executable | groupby process.executable | groupby event.action | groupby event.outcome'
             - name: Host Overview
               description: Overview of all host data types
               query: '((event.category:registry OR event.category:host OR event.category:process OR event.category:driver OR event.category:configuration) OR (event.category:file  AND _exists_:process.executable) OR (event.category:network AND _exists_:host.name)) | groupby event.dataset* event.category* event.action* | groupby event.type | groupby -sankey event.type host.name | groupby host.name | groupby user.name | groupby file.name | groupby process.executable'

@@ -85,6 +85,7 @@ influxdb-templates:
     - clean: True
     - defaults:
         INFLUXMERGED: {{ INFLUXMERGED }}
+    - show_changes: False
 
 influxdb_curl_config:
   file.managed:

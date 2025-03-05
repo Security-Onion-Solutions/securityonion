@@ -47,6 +47,7 @@ elasticsearch_sbin:
     - file_mode: 755
     - exclude_pat:
       - so-elasticsearch-pipelines # exclude this because we need to watch it for changes, we sync it in another state
+    - show_changes: False
 
 elasticsearch_sbin_jinja:
   file.recurse:
@@ -60,6 +61,7 @@ elasticsearch_sbin_jinja:
       - so-elasticsearch-ilm-policy-load # exclude this because we need to watch it for changes, we sync it in another state
     - defaults:
         GLOBALS: {{ GLOBALS }}
+    - show_changes: False
 
 so-elasticsearch-ilm-policy-load-script:
   file.managed:
@@ -69,6 +71,7 @@ so-elasticsearch-ilm-policy-load-script:
     - group: 939
     - mode: 754
     - template: jinja
+    - show_changes: False
 
 so-elasticsearch-pipelines-script:
   file.managed:
@@ -77,6 +80,7 @@ so-elasticsearch-pipelines-script:
     - user: 930
     - group: 939
     - mode: 754
+    - show_changes: False
 
 esingestdir:
   file.directory:
@@ -110,6 +114,7 @@ esingestdynamicconf:
     - user: 930
     - group: 939
     - template: jinja
+    - show_changes: False
 
 esingestconf:
   file.recurse:
@@ -117,6 +122,7 @@ esingestconf:
     - source: salt://elasticsearch/files/ingest
     - user: 930
     - group: 939
+    - show_changes: False
 
 # Remove .fleet_final_pipeline-1 because we are using global@custom now
 so-fleet-final-pipeline-remove:
@@ -153,6 +159,7 @@ esyml:
     - defaults:
         ESCONFIG: {{ ELASTICSEARCHMERGED.config }}
     - template: jinja
+    - show_changes: False
 
 esroles:
   file.recurse:
@@ -162,6 +169,7 @@ esroles:
     - template: jinja
     - user: 930
     - group: 939
+    - show_changes: False
 
 nsmesdir:
   file.directory:

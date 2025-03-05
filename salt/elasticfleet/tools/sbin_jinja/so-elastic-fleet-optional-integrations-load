@@ -3,6 +3,7 @@
 # Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
 # or more contributor license agreements. Licensed under the Elastic License 2.0; you may not use
 # this file except in compliance with the Elastic License 2.0.
+{% set SUB = salt['pillar.get']('elasticfleet:config:subscription_integrations', default=false) %}
 
 . /usr/sbin/so-common
 . /usr/sbin/so-elastic-fleet-common
@@ -16,7 +17,6 @@ BULK_INSTALL_PACKAGE_TMP=/tmp/esfleet_bulk_install_tmp.json
 BULK_INSTALL_OUTPUT=/opt/so/state/esfleet_bulk_install_results.json
 PACKAGE_COMPONENTS=/opt/so/state/esfleet_package_components.json
 
-SKIP_SUBSCRIPTION=true
 PENDING_UPDATE=false
 
 # Integrations which are included in the package registry, but excluded from automatic installation via this script.
@@ -63,7 +63,8 @@ if [[ -f $STATE_FILE_SUCCESS  ]]; then
             bulk_package=$(echo "$package" | jq '{name: .name, version: .latest_version}' )
 
             if [[ ! "${EXCLUDED_INTEGRATIONS[@]}" =~ "$package_name" ]]; then
-                if $SKIP_SUBSCRIPTION && [[ "$subscription" != "basic" && "$subscription" != "null" && -n "$subscription" ]]; then
+            {% if not SUB %}
+                if [[ "$subscription" != "basic" && "$subscription" != "null" && -n "$subscription" ]]; then
                     # pass over integrations that require non-basic elastic license
                     echo "$package_name integration requires an Elastic license of $subscription or greater... skipping"
                     continue
@@ -83,6 +84,20 @@ if [[ -f $STATE_FILE_SUCCESS  ]]; then
                         fi
                     fi
                 fi
+            {% else %}
+                if [[ "$installed_version" == "null" || -z "$installed_version" ]]; then
+                    echo "$package_name is not installed... Adding to next update."
+                    jq --argjson package "$bulk_package" '.packages += [$package]' $BULK_INSTALL_PACKAGE_LIST > $BULK_INSTALL_PACKAGE_TMP && mv $BULK_INSTALL_PACKAGE_TMP $BULK_INSTALL_PACKAGE_LIST
+                    PENDING_UPDATE=true
+                else
+                    results=$(compare_versions "$latest_version" "$installed_version")
+                    if [ $results == "greater" ]; then
+                        echo "$package_name is at version $installed_version latest version is $latest_version... Adding to next update."
+                        jq --argjson package "$bulk_package" '.packages += [$package]' $BULK_INSTALL_PACKAGE_LIST > $BULK_INSTALL_PACKAGE_TMP && mv $BULK_INSTALL_PACKAGE_TMP $BULK_INSTALL_PACKAGE_LIST
+                        PENDING_UPDATE=true
+                    fi
+                fi
+            {% endif %}
             else
                 echo "Skipping $package_name..."
             fi

@@ -79,6 +79,7 @@ socmotd:
     - group: 939
     - mode: 600
     - template: jinja
+    - show_changes: False
 
 filedetectionsbackup:
   file.managed:
@@ -249,6 +250,7 @@ socore_own_custom_repos:
     - recurse:
       - user
       - group
+    - show_changes: False
   
 {% else %}
 

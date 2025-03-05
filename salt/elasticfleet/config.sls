@@ -30,6 +30,7 @@ elasticfleet_sbin:
     - user: 947
     - group: 939
     - file_mode: 755
+    - show_changes: False
 
 elasticfleet_sbin_jinja:
   file.recurse:
@@ -41,6 +42,7 @@ elasticfleet_sbin_jinja:
     - template: jinja
     - exclude_pat:
       - so-elastic-fleet-package-upgrade # exclude this because we need to watch it for changes
+    - show_changes: False
 
 eaconfdir:
   file.directory:
@@ -145,6 +147,7 @@ eadynamicintegration:
     - user: 947
     - group: 939
     - template: jinja
+    - show_changes: False
 
 eaintegration:
   file.recurse:
@@ -152,6 +155,7 @@ eaintegration:
     - source: salt://elasticfleet/files/integrations
     - user: 947
     - group: 939
+    - show_changes: False
 
 eaoptionalintegrationsdir:
   file.directory:

@@ -1,0 +1,16 @@
+{
+  "description" : "zeek.ntp",
+  "processors":[
+    {"set":     {"field":"event.dataset",       "value":"ntp",                       "ignore_failure":true}},
+    {"json":    {"field":"message",             "target_field":"message2",           "ignore_failure":true}},
+    {"rename":  {"field":"message2.version",    "target_field":"ntp.version",        "ignore_missing":true}},
+    {"rename":  {"field":"message2.mode",       "target_field":"ntp.mode",           "ignore_missing":true}},
+    {"rename":  {"field":"message2.poll",       "target_field":"ntp.poll",           "ignore_missing":true}},
+    {"rename":  {"field":"message2.precision",  "target_field":"ntp.precision",      "ignore_missing":true}},
+    {"rename":  {"field":"message2.org_time",   "target_field":"ntp.org_time",       "ignore_missing":true}},
+    {"rename":  {"field":"message2.xmt_time",   "target_field":"ntp.xmt_time",       "ignore_missing":true}},
+    {"date":    {"field":"ntp.org_time",        "target_field":"ntp.org_time",  "formats":["UNIX", "UNIX_MS"], "ignore_failure": true, "if":"ctx?.ntp?.org_time != null"}},
+    {"date":    {"field":"ntp.xmt_time",        "target_field":"ntp.xmt_time",  "formats":["UNIX", "UNIX_MS"], "ignore_failure": true, "if":"ctx?.ntp?.xmt_time != null"}},
+    {"pipeline":{"name":"zeek.common"}}
+  ]
+}

@@ -1,6 +1,6 @@
 elasticsearch:
   enabled: false
-  version: 8.17.2
+  version: 8.17.3
   index_clean: true
   config:
     action:
@@ -2659,7 +2659,7 @@ elasticsearch:
               set_priority:
                 priority: 50
             min_age: 30d
-    so-logs-osquery-manager-action_x_responses:
+    so-logs-osquery_manager_x_action_x_responses:
       index_sorting: false
       index_template:
         _meta:
@@ -2667,17 +2667,51 @@ elasticsearch:
           managed_by: security_onion
           package:
             name: elastic_agent
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
         composed_of:
-        - logs-osquery_manager.action.responses
-        ignore_missing_component_templates: []
+        - logs-osquery_manager.action.responses@package
+        - logs-osquery_manager.action.responses@custom
+        - so-fleet_integrations.ip_mappings-1
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        ignore_missing_component_templates:
+        - logs-osquery_manager.action.responses@custom
         index_patterns:
-        - .logs-osquery_manager.action.responses*
+        - logs-osquery_manager.action.responses*
         priority: 501
         template:
           settings:
             index:
+              lifecycle:
+                name: so-logs-osquery_manager.action.responses-logs
               number_of_replicas: 0
-    so-logs-osquery-manager-actions:
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
+    so-logs-osquery_manager_x_result:
       index_sorting: false
       index_template:
         _meta:
@@ -2685,16 +2719,50 @@ elasticsearch:
           managed_by: security_onion
           package:
             name: elastic_agent
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
         composed_of:
-        - logs-osquery_manager.actions
-        ignore_missing_component_templates: []
+        - logs-osquery_manager.result@package
+        - logs-osquery_manager.result@custom
+        - so-fleet_integrations.ip_mappings-1
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        ignore_missing_component_templates:
+        - logs-osquery_manager.result@custom
         index_patterns:
-        - .logs-osquery_manager.actions*
+        - logs-osquery_manager.result*
         priority: 501
         template:
           settings:
             index:
+              lifecycle:
+                name: so-logs-osquery_manager.result-logs
               number_of_replicas: 0
+      policy:
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
     so-logs-soc:
       close: 30
       delete: 365

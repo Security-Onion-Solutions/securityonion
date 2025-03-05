@@ -166,7 +166,7 @@ airgap_update_dockers() {
       docker stop so-dockerregistry
       docker rm so-dockerregistry
       echo "Copying the new dockers over"
-      tar xvf "$AGDOCKER/registry.tar" -C /nsm/docker-registry/docker
+      tar xf "$AGDOCKER/registry.tar" -C /nsm/docker-registry/docker
       echo "Add Registry back"
       docker load -i "$AGDOCKER/registry_image.tar"
     fi
@@ -1002,21 +1002,21 @@ unmount_update() {
 
 update_airgap_rules() {
   # Copy the rules over to update them for airgap.
-  rsync -av $UPDATE_DIR/agrules/suricata/* /nsm/rules/suricata/
-  rsync -av $UPDATE_DIR/agrules/detect-sigma/* /nsm/rules/detect-sigma/
-  rsync -av $UPDATE_DIR/agrules/detect-yara/* /nsm/rules/detect-yara/
+  rsync -a $UPDATE_DIR/agrules/suricata/* /nsm/rules/suricata/
+  rsync -a $UPDATE_DIR/agrules/detect-sigma/* /nsm/rules/detect-sigma/
+  rsync -a $UPDATE_DIR/agrules/detect-yara/* /nsm/rules/detect-yara/
   # Copy the securityonion-resorces repo over for SOC Detection Summaries and checkout the published summaries branch
-  rsync -av --delete --chown=socore:socore $UPDATE_DIR/agrules/securityonion-resources /opt/so/conf/soc/ai_summary_repos
+  rsync -a --delete --chown=socore:socore $UPDATE_DIR/agrules/securityonion-resources /opt/so/conf/soc/ai_summary_repos
   git config --global --add safe.directory /opt/so/conf/soc/ai_summary_repos/securityonion-resources
   git -C /opt/so/conf/soc/ai_summary_repos/securityonion-resources checkout generated-summaries-published
   # Copy the securityonion-resorces repo over to nsm
-  rsync -av $UPDATE_DIR/agrules/securityonion-resources/* /nsm/securityonion-resources/
+  rsync -a $UPDATE_DIR/agrules/securityonion-resources/* /nsm/securityonion-resources/
 }
 
 update_airgap_repo() {
   # Update the files in the repo
   echo "Syncing new updates to /nsm/repo"
-  rsync -av $AGREPO/* /nsm/repo/
+  rsync -a $AGREPO/* /nsm/repo/
   echo "Creating repo"
   dnf -y install yum-utils createrepo_c
   createrepo /nsm/repo

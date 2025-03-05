@@ -116,6 +116,7 @@ escomponenttemplates:
     - clean: True
     - onchanges_in:
       - file: so-elasticsearch-templates-reload
+    - show_changes: False
       
 # Auto-generate templates from defaults file
 {%     for index, settings in ES_INDEX_SETTINGS.items() %}
@@ -127,6 +128,7 @@ es_index_template_{{index}}:
     - defaults:
       TEMPLATE_CONFIG: {{ settings.index_template }}
     - template: jinja
+    - show_changes: False
     - onchanges_in:
       - file: so-elasticsearch-templates-reload
 {%       endif %}
@@ -146,6 +148,7 @@ es_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}:
 {%         endif %}
     - user: 930
     - group: 939
+    - show_changes: False
     - onchanges_in:
       - file: so-elasticsearch-templates-reload
 {%       endfor %}

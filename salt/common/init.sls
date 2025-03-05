@@ -128,6 +128,7 @@ common_sbin:
     - user: 939
     - group: 939
     - file_mode: 755
+    - show_changes: False
 
 common_sbin_jinja:
   file.recurse:
@@ -137,6 +138,7 @@ common_sbin_jinja:
     - group: 939 
     - file_mode: 755
     - template: jinja
+    - show_changes: False
 
 {% if not GLOBALS.is_manager%}
 # prior to 2.4.50 these scripts were in common/tools/sbin on the manager because of soup and distributed to non managers

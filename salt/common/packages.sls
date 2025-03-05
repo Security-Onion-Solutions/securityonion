@@ -27,6 +27,7 @@ commonpkgs:
       - vim
       - tar
       - unzip
+      - bc
       {% if grains.oscodename != 'focal' %}
       - python3-rich
       {% endif %}
@@ -56,6 +57,7 @@ commonpkgs:
     - skip_suggestions: True
     - pkgs:
       - python3-dnf-plugin-versionlock
+      - bc
       - curl
       - device-mapper-persistent-data
       - fuse

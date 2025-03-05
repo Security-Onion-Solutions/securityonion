@@ -41,6 +41,7 @@ analyzerscripts:
     - file_mode: 755
     - template: jinja
     - source: salt://sensoroni/files/analyzers
+    - show_changes: False
 
 sensoroni_sbin:
   file.recurse:
