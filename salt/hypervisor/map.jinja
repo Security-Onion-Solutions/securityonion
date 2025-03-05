@@ -39,7 +39,9 @@
     {% set vm_list = [] %}
     {% set vm_list_file = 'hypervisor/hosts/' ~ hypervisor ~ 'VMs' %}
     {% do salt.log.info('salt/hypervisor/map.jinja: VM list file: ' ~ vm_list_file) %}
-    {% import_json vm_list_file as vm_list %}
+    {% if salt['file.file_exists']('/opt/so/saltstack/local/salt/' ~ vm_list_file) %}
+    {%   import_json vm_list_file as vm_list %}
+    {% endif %}
     {% if vm_list %}
       {% do salt.log.info('salt/hypervisor/map.jinja: VM list content: ' ~ vm_list | tojson) %}
     {% else %}

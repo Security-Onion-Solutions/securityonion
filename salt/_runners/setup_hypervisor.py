@@ -163,6 +163,7 @@ def _validate_image_checksum(path, expected_sha256):
 IMAGE_URL = "https://yum.oracle.com/templates/OracleLinux/OL9/u5/x86_64/OL9U5_x86_64-kvm-b253.qcow2"
 IMAGE_SHA256 = "3b00bbbefc8e78dd28d9f538834fb9e2a03d5ccdc2cadf2ffd0036c0a8f02021"
 IMAGE_PATH = "/nsm/libvirt/boot/OL9U5_x86_64-kvm-b253.qcow2"
+MANAGER_HOSTNAME = socket.gethostname()
 
 def _download_image():
     """
@@ -332,6 +333,135 @@ def _check_vm_exists(vm_name: str) -> bool:
         log.info("MAIN: VM %s already exists", vm_name)
     return exists
 
+def _ensure_hypervisor_host_dir(minion_id: str = None):
+    """
+    Ensure the hypervisor host directory exists.
+    
+    This function creates the directory structure for a hypervisor host if it doesn't exist.
+    The path is: /opt/so/saltstack/local/salt/hypervisor/hosts/<hypervisorHostname>
+    
+    Args:
+        minion_id (str, optional): Salt minion ID of the hypervisor.
+        
+    Returns:
+        bool: True if directory exists or was created successfully, False otherwise
+    """
+    if not minion_id:
+        log.warning("HOSTDIR: No minion_id provided, skipping host directory creation")
+        return True
+        
+    try:
+        # Extract hostname from minion_id by removing role suffix (anything after first underscore)
+        hostname = minion_id.split('_', 1)[0] if '_' in minion_id else minion_id
+            
+        # Define the directory path
+        host_dir = f'/opt/so/saltstack/local/salt/hypervisor/hosts/{hostname}'
+        
+        # Check if directory exists and create it if it doesn't
+        if os.path.exists(host_dir):
+            log.info(f"HOSTDIR: Hypervisor host directory already exists: {host_dir}")
+            # Create the VMs file if it doesn't exist
+            vms_file = f'/opt/so/saltstack/local/salt/hypervisor/hosts/{hostname}VMs'
+            if not os.path.exists(vms_file):
+                with salt.utils.files.fopen(vms_file, 'w') as f:
+                    f.write('[]')
+                log.info(f"HOSTDIR: Created empty VMs file: {vms_file}")
+                
+                # Set proper ownership for the VMs file
+                try:
+                    socore_uid = pwd.getpwnam('socore').pw_uid
+                    socore_gid = pwd.getpwnam('socore').pw_gid
+                    os.chown(vms_file, socore_uid, socore_gid)
+                    log.info(f"HOSTDIR: Set ownership to socore:socore for {vms_file}")
+                except (KeyError, Exception) as e:
+                    log.warning(f"HOSTDIR: Failed to set ownership for VMs file: {str(e)}")
+            return True
+            
+        # Create all necessary parent directories
+        os.makedirs(host_dir, exist_ok=True)
+        log.info(f"HOSTDIR: Created hypervisor host directory: {host_dir}")
+        
+        # Create the VMs file with an empty JSON array
+        vms_file = f'/opt/so/saltstack/local/salt/hypervisor/hosts/{hostname}VMs'
+        with salt.utils.files.fopen(vms_file, 'w') as f:
+            f.write('[]')
+        log.info(f"HOSTDIR: Created empty VMs file: {vms_file}")
+        
+        # Set proper ownership (socore:socore)
+        try:
+            socore_uid = pwd.getpwnam('socore').pw_uid
+            socore_gid = pwd.getpwnam('socore').pw_gid
+            os.chown(host_dir, socore_uid, socore_gid)
+            os.chown(vms_file, socore_uid, socore_gid)
+            
+            # Also set ownership for parent directories if they were just created
+            parent_dir = os.path.dirname(host_dir)  # /opt/so/saltstack/local/salt/hypervisor/hosts
+            if os.path.exists(parent_dir):
+                os.chown(parent_dir, socore_uid, socore_gid)
+                
+            parent_dir = os.path.dirname(parent_dir)  # /opt/so/saltstack/local/salt/hypervisor
+            if os.path.exists(parent_dir):
+                os.chown(parent_dir, socore_uid, socore_gid)
+                
+            log.info(f"HOSTDIR: Set ownership to socore:socore for {host_dir} and {vms_file}")
+        except KeyError:
+            log.warning("HOSTDIR: socore user not found, skipping ownership change")
+        except Exception as e:
+            log.warning(f"HOSTDIR: Failed to set ownership: {str(e)}")
+            
+        return True
+    except Exception as e:
+        log.error(f"HOSTDIR: Error creating hypervisor host directory: {str(e)}")
+        return False
+
+def _apply_dyanno_hypervisor_state():
+    """
+    Apply the soc.dyanno.hypervisor state on the salt master.
+    
+    This function applies the soc.dyanno.hypervisor state on the salt master
+    to update the hypervisor annotation and ensure all hypervisor host directories exist.
+    
+    Returns:
+        bool: True if state was applied successfully, False otherwise
+    """
+    try:
+        log.info("DYANNO: Applying soc.dyanno.hypervisor state on salt master")
+        
+        # Initialize the LocalClient
+        local = salt.client.LocalClient()
+        
+        # Target the salt master (localhost) to apply the soc.dyanno.hypervisor state
+        target = MANAGER_HOSTNAME + '_*'
+        state_result = local.cmd(target, 'state.apply', ['soc.dyanno.hypervisor'], tgt_type='glob', concurrent=True)
+        log.debug(f"DYANNO: state_result: {state_result}")
+        # Check if state was applied successfully
+        if state_result:
+            success = True
+            for minion, states in state_result.items():
+                if not isinstance(states, dict):
+                    log.error(f"DYANNO: Unexpected result format from {minion}: {states}")
+                    success = False
+                    continue
+                    
+                for state_id, state_data in states.items():
+                    if not state_data.get('result', False):
+                        log.error(f"DYANNO: State {state_id} failed on {minion}: {state_data.get('comment', 'No comment')}")
+                        success = False
+            
+            if success:
+                log.info("DYANNO: Successfully applied soc.dyanno.hypervisor state")
+                return True
+            else:
+                log.error("DYANNO: Failed to apply soc.dyanno.hypervisor state")
+                return False
+        else:
+            log.error("DYANNO: No response from salt master when applying soc.dyanno.hypervisor state")
+            return False
+            
+    except Exception as e:
+        log.error(f"DYANNO: Error applying soc.dyanno.hypervisor state: {str(e)}")
+        return False
+
 def setup_environment(vm_name: str = 'sool9', disk_size: str = '220G', minion_id: str = None):
     """
     Main entry point to set up the hypervisor environment.
@@ -379,6 +509,43 @@ def setup_environment(vm_name: str = 'sool9', disk_size: str = '220G', minion_id
             'error': 'Invalid license or missing hvn feature',
             'vm_result': None
         }
+
+    # Ensure hypervisor host directory exists
+    if not _ensure_hypervisor_host_dir(minion_id):
+        return {
+            'success': False,
+            'error': 'Failed to create hypervisor host directory',
+            'vm_result': None
+        }
+
+    # Initialize the LocalClient
+    local = salt.client.LocalClient()
+    
+    # Add retry logic for mine.update
+    max_retries = 10
+    retry_delay = 3
+    mine_update_success = False
+    
+    for attempt in range(1, max_retries + 1):
+        mine_update_result = local.cmd(minion_id, 'mine.update')
+        log.debug(f"DYANNO: mine_update_result: {mine_update_result}")
+        
+        # Check if mine.update was successful
+        if mine_update_result and all(mine_update_result.values()):
+            log.info(f"DYANNO: mine.update successful on attempt {attempt}")
+            mine_update_success = True
+            break
+        else:
+            log.warning(f"DYANNO: mine.update failed on attempt {attempt}/{max_retries}, retrying in {retry_delay} seconds...")
+            time.sleep(retry_delay)
+    
+    if not mine_update_success:
+        log.error(f"DYANNO: mine.update failed after {max_retries} attempts")
+
+    # Apply the soc.dyanno.hypervisor state on the salt master
+    if not _apply_dyanno_hypervisor_state():
+        log.warning("MAIN: Failed to apply soc.dyanno.hypervisor state, continuing with setup")
+        # We don't return an error here as we want to continue with the setup process
 
     log.info("MAIN: Starting setup_environment in setup_hypervisor runner")
     
@@ -548,9 +715,6 @@ def create_vm(vm_name: str, disk_size: str = '220G'):
             log.error("CREATEVM: Failed to read SSH public key: %s", str(e))
             return {'success': False, 'error': 'Failed to read SSH public key'}
 
-        # Get hostname for repo configuration
-        manager_hostname = socket.gethostname()
-
         # Read and encode GPG keys
         keys_dir = '/opt/so/saltstack/default/salt/repo/client/files/oracle/keys'
         oracle_key = _read_and_encode_key(os.path.join(keys_dir, 'RPM-GPG-KEY-oracle'))
@@ -607,7 +771,7 @@ write_files:
     content: |
       [securityonion]
       name=Security Onion Repo
-      baseurl=https://{manager_hostname}/repo
+      baseurl=https://{MANAGER_HOSTNAME}/repo
       enabled=1
       gpgcheck=1
       sslverify=0

@@ -95,6 +95,16 @@ write_vm_status:
           status: {{ status }}
         event_tag: {{ tag }}
 
+{# Check if the base domain exists / is ready for VMs #}
+{#% set file_exists = False %}
+{% set ret = salt.saltutil.runner('salt.execute', [hypervisor ~ '_*','file.file_exists', ['/nsm/libvirt/images/sool9/sool9.qcow2'], 'glob']) %}
+{% do salt.log.debug('dyanno_hypervisor_orch: File /nsm/libvirt/images/sool9/sool9.qcow2 exists: ' ~ ret) %}
+{% for minion, file_exists in ret.items() %}
+{%   if minion.startswith(hypervisor ~ '_') %}
+{%     do salt.log.info('dyanno_hypervisor_orch: File /nsm/libvirt/images/sool9/sool9.qcow2 exists: ' ~ file_exists) %}
+{%   endif %}
+{% endfor %#}
+
 # Update hypervisor status
 update_hypervisor_annotation:
   salt.state:
