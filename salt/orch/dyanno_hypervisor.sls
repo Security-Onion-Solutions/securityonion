@@ -11,6 +11,16 @@
 
 {% if 'hvn' in salt['pillar.get']('features', []) %}
 
+{% do salt.log.info('dyanno_hypervisor_orch: Running') %}
+{% set vm_name = None %}
+{% set hypervisor = None %}
+{% set status = None %}
+{% set data = pillar.get('data', {}) %}
+{% set tag = pillar.get('tag', '') %}
+{% set timestamp = data.get('_stamp') %}
+{% do salt.log.debug('dyanno_hypervisor_orch: tag: ' ~ tag) %}
+{% do salt.log.debug('dyanno_hypervisor_orch: Received data: ' ~ data|json|string) %}
+
 {# Macro to find hypervisor name from VM status file #}
 {% macro find_hypervisor_from_status(vm_name) -%}
   {%- set path = salt['file.find']('/opt/so/saltstack/local/salt/hypervisor/hosts/',type='f', name=vm_name ~ '.status') -%}
@@ -28,22 +38,17 @@
   {%- endif -%}
 {%- endmacro %}
 
-{% do salt.log.info('dyanno_hypervisor_orch: Running') %}
-
-{% set data = pillar.get('data', {}) %}
-{% set tag = pillar.get('tag', '') %}
-{% set timestamp = data.get('_stamp') %}
-{% do salt.log.debug('dyanno_hypervisor_orch: tag: ' ~ tag) %}
-{% do salt.log.debug('dyanno_hypervisor_orch: Received data: ' ~ data|json|string) %}
-
 {# Our custom tag #}
 {% if tag.startswith('soc/dyanno/hypervisor') %}
 {%   set status_data = data.get('data')%}
 {%   do salt.log.debug('dyanno_hypervisor_orch: Received data: ' ~ status_data|json|string) %}
-{%   do salt.log.debug('dyanno_hypervisor_orch: Setting vm_name, hypervisor and status') %}
-{%   set vm_name = status_data.get('vm_name') %}
-{%   set hypervisor = status_data.get('hypervisor') %}
+{%   if not tag.endswith('/baseDomain') %}
+{%     do salt.log.debug('dyanno_hypervisor_orch: Setting vm_name, hypervisor and status') %}
+{%     set vm_name = status_data.get('vm_name') %}
+{%     set hypervisor = status_data.get('hypervisor') %}
+{%   endif %}
 {%   set status = status_data.get('status') %}
+{%   set hypervisor = data.get('id') %}
 {% endif %}
 
 {# setup/so-minion tag #}
@@ -80,6 +85,7 @@
 
 {% do salt.log.info('dyanno_hypervisor_orch: vm_name: ' ~ vm_name ~ ' hypervisor: ' ~ hypervisor ~ ' status: ' ~ status) %}
 
+{% if vm_name and hypervisor and timestamp and status and tag %}
 write_vm_status:
   salt.state:
     - tgt: 'G@role:so-manager or G@role:so-managersearch or G@role:so-standalone or G@role:so-eval'
@@ -94,6 +100,7 @@ write_vm_status:
           timestamp: {{ timestamp }}
           status: {{ status }}
         event_tag: {{ tag }}
+{% endif %}
 
 {# Check if the base domain exists / is ready for VMs #}
 {#% set file_exists = False %}
@@ -113,6 +120,11 @@ update_hypervisor_annotation:
     - sls:
       - soc.dyanno.hypervisor
     - concurrent: True
+{% if tag == ('soc/dyanno/hypervisor/baseDomain') %}
+    - pillar:
+        baseDomain:
+          status: {{ status }}
+{% endif %}
 
 {% do salt.log.info('dyanno_hypervisor_orch: Completed') %}
 

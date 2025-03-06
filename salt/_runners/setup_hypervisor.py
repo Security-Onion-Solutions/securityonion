@@ -430,9 +430,9 @@ def _apply_dyanno_hypervisor_state():
         # Initialize the LocalClient
         local = salt.client.LocalClient()
         
-        # Target the salt master (localhost) to apply the soc.dyanno.hypervisor state
+        # Target the salt master to apply the soc.dyanno.hypervisor state
         target = MANAGER_HOSTNAME + '_*'
-        state_result = local.cmd(target, 'state.apply', ['soc.dyanno.hypervisor'], tgt_type='glob', concurrent=True)
+        state_result = local.cmd(target, 'state.apply', ['soc.dyanno.hypervisor', "pillar={'baseDomain': {'status': 'PreInit'}}", 'concurrent=True'], tgt_type='glob')
         log.debug(f"DYANNO: state_result: {state_result}")
         # Check if state was applied successfully
         if state_result:

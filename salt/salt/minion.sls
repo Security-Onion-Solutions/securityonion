@@ -83,11 +83,6 @@ enable_startup_states:
     - regex: '^startup_states: highstate$'
     - unless: pgrep so-setup
 
-# manager with hypervisors with need this beacon added to the minion config
-#beacons:
-#  add_virtual_node_beacon:
-#    - base_path: /opt/so/saltstack/local/salt/hypervisor/hosts/*/add_*
-
 # prior to 2.4.30 this managed file would restart the salt-minion service when updated
 # since this file is currently only adding a sleep timer on service start
 # it is not required to restart the service

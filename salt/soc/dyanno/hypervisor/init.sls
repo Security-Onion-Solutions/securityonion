@@ -22,7 +22,7 @@ hypervisor_annotation:
     - group: socore
     - defaults:
         HYPERVISORS: {{ HYPERVISORS }}
-        base_domain_ready: {{ salt['pillar.get']('base_domain_ready', False) }}
+        baseDomainStatus: {{ salt['pillar.get']('baseDomain:status', 'Initialized') }}
 
 {%   for role in HYPERVISORS %}
 {%     for hypervisor in HYPERVISORS[role].keys() %}

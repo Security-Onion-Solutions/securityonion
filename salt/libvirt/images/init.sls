@@ -157,6 +157,17 @@ configure_network_predictable_sool9:
     - onchanges:
       - cmd: create_vm_sool9
 
+# Fire event here that causes soc.dyanno.hypervisor state to be applied
+base_domain_ready:
+  event.send:
+    - name: soc/dyanno/hypervisor/baseDomain
+    - data:
+        status: 'Initialized'
+    - require:
+      - cmd: configure_network_predictable_sool9
+    - onchanges:
+      - cmd: create_vm_sool9
+
 {%   else %}
 {{sls}}_no_license_detected:
   test.fail_without_changes:
