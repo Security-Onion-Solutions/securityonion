@@ -16,6 +16,12 @@
 include:
   - libvirt.packages
 
+# Remove hash file if image isn't present. This will allow for the image to redownload and initialize.
+remove_sha256_sool9:
+  file.absent:
+    - name: /nsm/libvirt/images/sool9/sool9.sha256
+    - unless: test -f /nsm/libvirt/images/sool9/sool9.qcow2
+
 # Manage SHA256 hash file
 manage_sha256_sool9:
   file.managed:
