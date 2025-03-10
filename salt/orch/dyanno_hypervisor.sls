@@ -46,9 +46,10 @@
 {%     do salt.log.debug('dyanno_hypervisor_orch: Setting vm_name, hypervisor and status') %}
 {%     set vm_name = status_data.get('vm_name') %}
 {%     set hypervisor = status_data.get('hypervisor') %}
+{%   else %}
+{%     set hypervisor = data.get('id') %}
 {%   endif %}
 {%   set status = status_data.get('status') %}
-{%   set hypervisor = data.get('id') %}
 {% endif %}
 
 {# setup/so-minion tag #}
