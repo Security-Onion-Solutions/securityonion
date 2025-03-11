@@ -60,9 +60,34 @@ soc:
       - warn
       - error
     actions:
-      description: A list of actions a user can take from the SOC UI against a hunt, alert, and other records. The action must be defined in JSON object format, and contain a "name" key and "links" key. The links is a list of URLs, where the most suitable URL in the list will be the selected URL when the user clicks the action.
+      description: A list of actions a user can take from the SOC UI against a hunt, alert, and other records. The links is a list of URLs, where the most suitable URL in the list will be the selected URL when the user clicks the action.
       global: True
       forcedType: "[]{}"
+      syntax: json
+      uiElements:
+      - field: name
+        label: Name
+        required: True
+      - field: description
+        label: Description
+      - field: icon
+        label: "Icon (Example: fa-shuttle-space)"
+      - field: links
+        label: Links
+        required: True
+        forcedType: "[]string"
+        multiline: True
+      - field: target
+        label: Target
+      - field: jscall
+        label: JavaScript Call
+      - field: category
+        label: Category
+        options:
+        - hunt
+        - alerts
+        - dashboards
+        forcedType: "[]string"
     eventFields:
       default: &eventFields
         description: Event fields mappings are defined by the format ":event.module:event.dataset". For example, to customize which fields show for 'syslog' events originating from 'zeek', find the eventField item in the left panel that looks like ':zeek:syslog'. The 'default' entry is used for all events that do not match an existing mapping defined in the list to the left.
@@ -492,9 +517,22 @@ soc:
             description: Number of items to show in the most recently used queries list. Larger values cause default queries to be located further down the list.
             global: True
           queries:
-            description: List of default queries to show in the query list. Each query is represented in JSON object notation, and must include the "name" key and "query" key.
+            description: List of default queries to show in the query list.
             global: True
             forcedType: "[]{}"
+            syntax: json
+            uiElements:
+            - field: name
+              label: Name
+              required: True
+            - field: description
+              label: Description
+            - field: query
+              label: Query
+              required: True
+            - field: showSubtitle
+              label: Show Query in Dropdown. 
+              forcedType: bool
           queryToggleFilters:
             description: Customize togglable query filters that apply to all queries. Exclusive toggles will invert the filter if toggled off rather than omitting the filter from the query.
             global: True

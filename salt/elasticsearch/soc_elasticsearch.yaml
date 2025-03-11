@@ -133,7 +133,7 @@ elasticsearch:
                   helpLink: elasticsearch.html
           cold:
             min_age:
-              description: Minimum age of index. ex. 60d - This determines when the index should be moved to the cold tier.  While still searchable, this tier is typically optimized for lower storage costs rather than search speed.
+              description: Minimum age of index. ex. 60d - This determines when the index should be moved to the cold tier. While still searchable, this tier is typically optimized for lower storage costs rather than search speed. It’s important to note that this is calculated relative to the rollover date (NOT the original creation date of the index). For example, if you have an index that is set to rollover after 30 days and cold min_age set to 60 then there will be 30 days from index creation to rollover and then an additional 60 days before moving to cold tier.
               regex: ^[0-9]{1,5}d$
               forcedType: string
               global: True
@@ -146,10 +146,11 @@ elasticsearch:
                   helpLink: elasticsearch.html
           warm:
             min_age: 
-              description: Minimum age of index. ex. 30d - This determines when the index should be moved to the warm tier. Nodes in the warm tier generally don’t need to be as fast as those in the hot tier.
+              description: Minimum age of index. ex. 30d - This determines when the index should be moved to the warm tier. Nodes in the warm tier generally don’t need to be as fast as those in the hot tier. It’s important to note that this is calculated relative to the rollover date (NOT the original creation date of the index). For example, if you have an index that is set to rollover after 30 days and warm min_age set to 30 then there will be 30 days from index creation to rollover and then an additional 30 days before moving to warm tier.
               regex: ^[0-9]{1,5}d$
               forcedType: string
               global: True
+              helpLink: elasticsearch.html
             actions:
               set_priority:
                 priority:
@@ -159,7 +160,7 @@ elasticsearch:
                   helpLink: elasticsearch.html
           delete:
             min_age:
-              description: Minimum age of index. ex. 90d - This determines when the index should be deleted.
+              description: Minimum age of index. ex. 90d - This determines when the index should be deleted. It’s important to note that this is calculated relative to the rollover date (NOT the original creation date of the index). For example, if you have an index that is set to rollover after 30 days and delete min_age set to 90 then there will be 30 days from index creation to rollover and then an additional 90 days before deletion.
               regex: ^[0-9]{1,5}d$
               forcedType: string
               global: True
@@ -288,7 +289,7 @@ elasticsearch:
                   helpLink: elasticsearch.html
           warm:
             min_age:
-              description: Minimum age of index. ex. 30d - This determines when the index should be moved to the warm tier. Nodes in the warm tier generally don’t need to be as fast as those in the hot tier.
+              description: Minimum age of index. ex. 30d - This determines when the index should be moved to the warm tier. Nodes in the warm tier generally don’t need to be as fast as those in the hot tier. It’s important to note that this is calculated relative to the rollover date (NOT the original creation date of the index). For example, if you have an index that is set to rollover after 30 days and warm min_age set to 30 then there will be 30 days from index creation to rollover and then an additional 30 days before moving to warm tier.
               regex: ^[0-9]{1,5}d$
               forcedType: string
               global: True
@@ -315,7 +316,7 @@ elasticsearch:
                   helpLink: elasticsearch.html
           cold:
             min_age:
-              description: Minimum age of index. ex. 60d - This determines when the index should be moved to the cold tier.  While still searchable, this tier is typically optimized for lower storage costs rather than search speed.
+              description: Minimum age of index. ex. 60d - This determines when the index should be moved to the cold tier.  While still searchable, this tier is typically optimized for lower storage costs rather than search speed. It’s important to note that this is calculated relative to the rollover date (NOT the original creation date of the index). For example, if you have an index that is set to rollover after 30 days and cold min_age set to 60 then there will be 30 days from index creation to rollover and then an additional 60 days before moving to cold tier.
               regex: ^[0-9]{1,5}d$
               forcedType: string
               global: True
@@ -331,7 +332,7 @@ elasticsearch:
                   helpLink: elasticsearch.html
           delete:
             min_age:
-              description: Minimum age of index. This determines when the index should be deleted.
+              description: Minimum age of index. ex. 90d - This determines when the index should be deleted. It’s important to note that this is calculated relative to the rollover date (NOT the original creation date of the index). For example, if you have an index that is set to rollover after 30 days and delete min_age set to 90 then there will be 30 days from index creation to rollover and then an additional 90 days before deletion.
               regex: ^[0-9]{1,5}d$
               forcedType: string
               global: True
@@ -368,8 +369,10 @@ elasticsearch:
     so-logs-detections_x_alerts: *indexSettings
     so-logs-http_endpoint_x_generic: *indexSettings
     so-logs-httpjson_x_generic: *indexSettings
-    so-logs-osquery_manager_x_action_x_responses: *indexSettings
-    so-logs-osquery_manager_x_result: *indexSettings
+    so-logs-osquery-manager-actions: *indexSettings
+    so-logs-osquery-manager-action_x_responses: *indexSettings
+    so-logs-osquery-manager_x_action_x_responses: *indexSettings
+    so-logs-osquery-manager_x_result: *indexSettings
     so-logs-elastic_agent_x_apm_server: *indexSettings
     so-logs-elastic_agent_x_auditbeat: *indexSettings
     so-logs-elastic_agent_x_cloudbeat: *indexSettings
