@@ -1,7 +1,7 @@
 {% set node_types = {} %}
 {% for minionid, ip in salt.saltutil.runner(
     'mine.get',
-    tgt='G@role:so-hypervisor',
+    tgt='G@role:so-hypervisor or G@role:so-managerhype',
     fun='network.ip_addrs',
     tgt_type='compound') | dictsort()
 %}

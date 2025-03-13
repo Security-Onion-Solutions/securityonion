@@ -42,7 +42,7 @@ libvirt_python_module:
     - onchanges:
       - file: libvirt_python_wheel
 
-{%     if 'hyper' in grains.id.split('_') | last %}
+{%     if 'hype' in grains.id.split('_') | last %}
 
 # provides virsh
 install_libvirt-client:

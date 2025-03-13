@@ -21,7 +21,9 @@ qemu_ssh_client_config:
     - name: /root/.ssh/config
     - source: salt://libvirt/ssh/files/config
 
-{%     else %}
+{%     endif %}
+
+{%     if GLOBALS.role in ['so-hypervisor', 'so-managerhype'] %}
 
 # used for qemu+ssh connection between manager and hypervisors
 create_soqemussh_user:

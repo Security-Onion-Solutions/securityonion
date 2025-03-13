@@ -86,19 +86,6 @@ salt_master_service:
       - file: engines_config
     - order: last
 
-{#
-# we need to managed adding the following to salt-master config if there are hypervisors
-reactor:
-  - 'salt/key':
-    - salt://reactor/check_hypervisor.sls
-  - 'salt/cloud/*/deploying':
-    - /opt/so/saltstack/default/salt/reactor/createEmptyPillar.sls
-  - 'setup/so-minion':
-    - /opt/so/saltstack/default/salt/reactor/sominion_setup.sls
-  - 'salt/cloud/*/destroyed':
-    - /opt/so/saltstack/default/salt/reactor/deleteKey.sls
-#}
-
 {% else %}
 
 {{sls}}_state_not_allowed:
