@@ -512,7 +512,7 @@ configure_minion() {
 		'workstation')
 			echo "master: '$MSRV'" >> "$minion_config"
 			;;
-		'manager' | 'eval' | 'managersearch' | 'standalone' | 'import')
+		'manager'* | 'eval' | 'standalone' | 'import')
 			cp -f ../salt/ca/files/signing_policies.conf /etc/salt/minion.d/signing_policies.conf
 			printf '%s\n'\
 				"master: '$HOSTNAME'"\
@@ -608,6 +608,10 @@ check_requirements() {
 	elif [[ $is_receiver ]]; then
 		req_mem=8
 		req_cores=2
+		req_nics=1
+	elif [[ $is_managerhype || $is_hypervisor ]]; then
+		req_mem=64
+		req_cores=32
 		req_nics=1
 	fi
 
@@ -1574,6 +1578,10 @@ process_installtype() {
 		is_receiver=true
 	elif [ "$install_type" = 'DESKTOP' ]; then
 		is_desktop=true
+	elif [ "$install_type" = 'HYPERVISOR' ]; then
+		is_hypervisor=true
+	elif [ "$install_type" = 'MANAGERHYPE' ]; then
+		is_managerhype=true
 	fi
 
 }

@@ -85,7 +85,7 @@ base:
     - utility
     - elasticfleet
 
-  '*_manager and G@saltversion:{{saltversion}}':
+  '*_manager or *_managerhype and G@saltversion:{{saltversion}}':
     - match: compound
     - salt.master
     - ca
@@ -276,17 +276,19 @@ base:
     - elasticfleet.install_agent_grid
     - schedule
 
-  '*_hypervisor and G@saltversion:{{saltversion}}':
+  '*_hypervisor or *_managerhype and I@features:hvn and G@saltversion:{{saltversion}}':
     - match: compound
     - ssl
     - sensoroni
     - telegraf
     - firewall
-    - elasticfleet.install_agent_grid
     - libvirt
     - libvirt.images
     - hypervisor
     - stig
+  
+  '*_hypervisor and I@features:hvn and G@saltversion:{{saltversion}}':
+    - elasticfleet.install_agent_grid
 
   '*_desktop and G@saltversion:{{saltversion}}':
     - ssl
