@@ -1138,7 +1138,7 @@ generate_ca() {
 generate_ssl() {
 	# if the install type is a manager then we need to wait for the minion to be ready before trying
 	# to run the ssl state since we need the minion to sign the certs
-	if [[ "$install_type" =~ ^(EVAL|MANAGER|MANAGERSEARCH|STANDALONE|IMPORT|HELIXSENSOR)$ ]]; then
+	if [[ $waitforstate ]]; then
 		(wait_for_salt_minion "$MINION_ID" "5" '/dev/stdout' || fail_setup) 2>&1 | tee -a "$setup_log"
 	fi
 	info "Applying SSL state"
