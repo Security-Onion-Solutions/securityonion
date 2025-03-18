@@ -116,6 +116,10 @@ base:
     - stig
     - kafka
 
+  '*_managerhype and I@features:hvn and G@saltversion:{{saltversion}}':
+    - match: compound
+    - manager.hypervisor
+
   '*_standalone and G@saltversion:{{saltversion}}':
     - match: compound
     - salt.master
@@ -276,7 +280,7 @@ base:
     - elasticfleet.install_agent_grid
     - schedule
 
-  '*_hypervisor or *_managerhype and I@features:hvn and G@saltversion:{{saltversion}}':
+  '*_hypervisor and I@features:hvn and G@saltversion:{{saltversion}}':
     - match: compound
     - ssl
     - sensoroni
@@ -285,11 +289,9 @@ base:
     - libvirt
     - libvirt.images
     - hypervisor
+    - elasticfleet.install_agent_grid
     - stig
   
-  '*_hypervisor and I@features:hvn and G@saltversion:{{saltversion}}':
-    - elasticfleet.install_agent_grid
-
   '*_desktop and G@saltversion:{{saltversion}}':
     - ssl
     - sensoroni
