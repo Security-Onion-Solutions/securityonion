@@ -95,7 +95,7 @@ analyze_system() {
 
 desktop_salt_local() {
 
-	SALTVERSION=$(egrep 'version: [0-9]{4}' ../salt/salt/master.defaults.yaml | sed 's/^.*version: //')
+	SALTVERSION=$(grep "version:" ../salt/salt/master.defaults.yaml | grep -o "[0-9]\+\.[0-9]\+")
 	# Install everything using local salt
 	# Set the repo
 	securityonion_repo
@@ -1860,7 +1860,7 @@ securityonion_repo() {
 }
 
 repo_sync_local() {
-	SALTVERSION=$(egrep 'version: [0-9]{4}' ../salt/salt/master.defaults.yaml | sed 's/^.*version: //')
+	SALTVERSION=$(grep "version:" ../salt/salt/master.defaults.yaml | grep -o "[0-9]\+\.[0-9]\+")
 	info "Repo Sync"
 	if [[ $is_supported ]]; then
 		# Sync the repo from the the SO repo locally.
@@ -1921,7 +1921,7 @@ repo_sync_local() {
 
 saltify() {
 	info "Installing Salt"
-	SALTVERSION=$(egrep 'version: [0-9]{4}' ../salt/salt/master.defaults.yaml | sed 's/^.*version: //')
+	SALTVERSION=$(grep "version:" ../salt/salt/master.defaults.yaml | grep -o "[0-9]\+\.[0-9]\+")
 	if [[ $is_deb ]]; then
 
 		DEBIAN_FRONTEND=noninteractive retry 150 20 "apt-get -y -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" upgrade" >> "$setup_log" 2>&1 || fail_setup
@@ -2003,11 +2003,8 @@ salt_install_module_deps() {
 }
 
 salt_patch_x509_v2() {
-	# this can be removed when https://github.com/saltstack/salt/issues/64195 is resolved
-	if [ $SALTVERSION == "3006.1" ]; then
-		info "Salt version 3006.1 found. Patching /opt/saltstack/salt/lib/python3.10/site-packages/salt/states/x509_v2.py"
-		\cp -v ./files/patch/states/x509_v2.py /opt/saltstack/salt/lib/python3.10/site-packages/salt/states/x509_v2.py
-	fi
+	# this can be removed when https://github.com/saltstack/salt/issues/66929 is resolved
+	logCmd "salt-call state.apply salt.patch.x509_v2 --local --file-root=../salt/"
 }
 
 # Create an secrets pillar so that passwords survive re-install

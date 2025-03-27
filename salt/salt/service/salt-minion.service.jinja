@@ -8,8 +8,9 @@ KillMode=process
 Type=notify
 NotifyAccess=all
 LimitNOFILE=8192
+ExecStartPre=/bin/bash -c 'until /sbin/ip -4 addr show dev {{ salt["pillar.get"]("host:mainint") }} | grep -q "inet "; do sleep 1; done'
 ExecStart=/usr/bin/salt-minion
-ExecStartPre=/bin/sleep {{ salt['pillar.get']('salt:minion:service_start_delay', service_start_delay) }}
+TimeoutStartSec=120
 
 [Install]
 WantedBy=multi-user.target

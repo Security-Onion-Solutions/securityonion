@@ -89,7 +89,7 @@ function manage_user() {
       add)
         email=$(echo "$request" | jq -r .email)
         password=$(echo "$request" | jq -r .password)
-        perm=$(echo "$request" | jq -r .role)
+        role=$(echo "$request" | jq -r .role)
         firstName=$(echo "$request" | jq -r .firstName)
         lastName=$(echo "$request" | jq -r .lastName)
         note=$(echo "$request" | jq -r .note)
@@ -283,7 +283,7 @@ function send_file() {
 
   log "encrypting..."
   password=$(lookup_pillar_secret import_pass)
-  response=$(gpg --passphrase "$password" --batch --symmetric --cipher-algo AES256 "$from")
+  response=$(gpg --passphrase "$password" --batch --yes --symmetric --cipher-algo AES256 "$from")
   log Response:$'\n'"$response"
 
   fromgpg="$from.gpg"
@@ -329,12 +329,11 @@ function import_file() {
 
   log "decrypting..."
   password=$(lookup_pillar_secret import_pass)
-  decrypt_cmd="gpg --passphrase $password -o $file.tmp --batch --decrypt $filegpg"
+  decrypt_cmd="gpg --passphrase $password -o $file --batch --yes --decrypt $filegpg"
   salt "$node" cmd.run "\"$decrypt_cmd\""
   decrypt_code=$?
 
   if [[ $decrypt_code -eq 0 ]]; then
-    mv "$file.tmp" "$file"
     log "importing..."
     case $importer in
       pcap)
@@ -357,7 +356,7 @@ function import_file() {
     exit_code=$decrypt_code
   fi
 
-  rm -f "$file" "$filegpg"
+  salt "$node" cmd.run "rm -f \"$file\" \"$filegpg\""
 
   log Response:$'\n'"$response"
   log "Exit Code: $exit_code"
