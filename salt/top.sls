@@ -21,17 +21,31 @@ base:
     - schedule
     - logrotate
 
-  'I@node_data:False and ( *_manager* or *_eval or *_import or *_standalone )':
+  # manager node on proper salt version with empty node_data pillar
+  '( *_manager* or *_eval or *_import or *_standalone ) and G@saltversion:{{saltversion}} and I@node_data:False':
     - match: compound
     - salt.minion
     - salt.master.mine_update_highstate
 
-  'not G@saltversion:{{saltversion}} and not I@node_data:False':
+  'not G@saltversion:{{saltversion}}':
     - match: compound
     - salt.minion-state-apply-test
     - salt.minion
 
-  '* and G@saltversion:{{saltversion}} and not I@node_data:False':
+  # all non managers on the proper salt version
+  'not ( *_manager* or *_eval or *_import or *_standalone ) and G@saltversion:{{saltversion}}':
+    - match: compound
+    - salt.minion
+    - patch.os.schedule
+    - motd
+    - salt.minion-check
+    - salt.lasthighstate
+    - common
+    - docker
+    - docker_clean
+
+  # all managers on proper salt version node_data pillar not empty
+  '( *_manager* or *_eval or *_import or *_standalone ) and G@saltversion:{{saltversion}} and not I@node_data:False':
     - match: compound
     - salt.minion
     - patch.os.schedule
