@@ -26,3 +26,9 @@ mine_functions:
           x509.get_pem_entries:
             - glob_path: '/etc/pki/ca.crt'
         {% endif -%}
+
+mine_update_mine_functions:
+  module.run:
+    - mine.update: []
+    - onchanges:
+      - file: mine_functions

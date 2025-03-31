@@ -18,6 +18,7 @@ include:
   - libvirt.64962
   - libvirt.packages
   - libvirt.ssh.users
+  - salt.mine_functions
 
 install_libvirt:
   pkg.installed:
@@ -99,6 +100,8 @@ down_original_mgmt_interface:
     - unless:
       - nmcli -f GENERAL.CONNECTION dev show {{ pillar.host.mainint }} | grep bridge-slave-{{ pillar.host.mainint }}
     - order: last
+    - onchanges_in:
+      - file: mine_functions
 
 # virtlogd service may not restart following reboot without this
 #semanage permissive -a virtlogd_t
