@@ -8,7 +8,7 @@
 # this state is included in the salt.minion state
 
 {% set role = salt['grains.get']('role', '') %}
-{% if role in ['so-hypervisor','so-managerhype'] and salt['network.ip_addrs']('br0')|length > 0 -%}
+{% if role in ['so-hypervisor','so-managerhype'] and salt['network.ip_addrs']('br0')|length > 0 %}
 {%   set interface = 'br0' %}
 {% else %}
 {%   set interface = pillar.host.mainint %}
@@ -22,10 +22,10 @@ mine_functions:
         mine_functions:
           network.ip_addrs:
             - interface: {{ interface }}
-        {%- if role in ['so-eval','so-import','so-manager','so-managerhype','so-managersearch','so-standalone'] %}
+        {% if role in ['so-eval','so-import','so-manager','so-managerhype','so-managersearch','so-standalone'] %}
           x509.get_pem_entries:
             - glob_path: '/etc/pki/ca.crt'
-        {% endif -%}
+        {% endif %}
 
 mine_update_mine_functions:
   module.run:
