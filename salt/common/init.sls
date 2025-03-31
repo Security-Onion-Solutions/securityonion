@@ -129,6 +129,10 @@ common_sbin:
     - group: 939
     - file_mode: 755
     - show_changes: False
+{% if GLOBALS.role == 'so-heavynode' %}
+    - exclude_pat:
+      - so-pcap-import
+{% endif %}
 
 common_sbin_jinja:
   file.recurse:
@@ -139,6 +143,20 @@ common_sbin_jinja:
     - file_mode: 755
     - template: jinja
     - show_changes: False
+{% if GLOBALS.role == 'so-heavynode' %}
+    - exclude_pat:
+      - so-import-pcap
+{% endif %}
+
+{% if GLOBALS.role == 'so-heavynode' %}
+remove_so-pcap-import_heavynode:
+  file.absent:
+    - name: /usr/sbin/so-pcap-import
+
+remove_so-import-pcap_heavynode:
+  file.absent:
+    - name: /usr/sbin/so-import-pcap
+{% endif %}
 
 {% if not GLOBALS.is_manager%}
 # prior to 2.4.50 these scripts were in common/tools/sbin on the manager because of soup and distributed to non managers
