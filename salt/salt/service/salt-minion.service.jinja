@@ -1,3 +1,5 @@
+{% from 'salt/map.jinja' import interface -%}
+
 [Unit]
 Description=The Salt Minion
 Documentation=man:salt-minion(1) file:///usr/share/doc/salt/html/contents.html https://docs.saltproject.io/en/latest/contents.html
@@ -8,7 +10,7 @@ KillMode=process
 Type=notify
 NotifyAccess=all
 LimitNOFILE=8192
-ExecStartPre=/bin/bash -c 'until /sbin/ip -4 addr show dev {{ salt["pillar.get"]("host:mainint") }} | grep -q "inet "; do sleep 1; done'
+ExecStartPre=/bin/bash -c 'until /sbin/ip -4 addr show dev {{ interface }} | grep -q "inet "; do sleep 1; done'
 ExecStart=/usr/bin/salt-minion
 TimeoutStartSec=120
 

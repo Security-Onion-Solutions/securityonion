@@ -7,12 +7,8 @@
 # GLOBALS are imported in the salt.minion state and that is not available at that point in setup
 # this state is included in the salt.minion state
 
-{% set role = salt['grains.get']('role', '') %}
-{% if role in ['so-hypervisor','so-managerhype'] and salt['network.ip_addrs']('br0')|length > 0 %}
-{%   set interface = 'br0' %}
-{% else %}
-{%   set interface = pillar.host.mainint %}
-{% endif %}
+{% from 'salt/map.jinja' import interface %}
+{% from 'salt/map.jinja' import role %}
 
 mine_functions:
   file.managed:
