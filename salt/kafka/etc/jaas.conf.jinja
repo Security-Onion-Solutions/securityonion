@@ -1,0 +1,7 @@
+{% set KAFKA_EXTERNAL_USERS = salt['pillar.get']('kafka:config:external_access:remote_users') %}
+KafkaServer {
+    org.apache.kafka.common.security.plain.PlainLoginModule required
+    {% for item, user in KAFKA_EXTERNAL_USERS.items() -%}
+    user_{{ user.username }}="{{ user.password }}"{{ ";" if loop.last else " \\" }}
+    {% endfor %}
+};
