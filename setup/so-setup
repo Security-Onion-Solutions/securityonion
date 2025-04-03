@@ -753,8 +753,14 @@ if ! [[ -f $install_opt_file ]]; then
 		logCmd "salt-call state.show_top"
 		sleep 2 # Debug RSA Key format errors
 		logCmd "salt-key -ya $MINION_ID"
-		logCmd "salt-call saltutil.sync_all"
-
+		# we need to sync the runner and generate the soqemussh user keys so that first highstate after license created
+		# doesnt have a state failure for soqemussh_pub_key source for id_ed25519.pub missing
+		if [[ $is_manager || $is_managerhype ]]; then
+			logCmd "salt-run saltutil.sync_all"
+			logCmd "salt-run setup_hypervisor.regenerate_ssh_keys"
+		else
+			logCmd "salt-call saltutil.sync_all"
+		fi
 		logCmd "salt-call state.apply common.packages"
 		logCmd "salt-call state.apply common"
 		# this will apply the salt.minion state first since salt.master includes salt.minion
