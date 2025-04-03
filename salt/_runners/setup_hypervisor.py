@@ -121,8 +121,8 @@ def _check_license():
             log.error("LICENSE: No license_id found in license file")
             return False
             
-        if 'hvn' not in features:
-            log.error("LICENSE: 'hvn' feature not found in license")
+        if 'vrt' not in features:
+            log.error("LICENSE: 'vrt' feature not found in license")
             return False
             
         log.info("LICENSE: License validation successful")
@@ -506,7 +506,7 @@ def setup_environment(vm_name: str = 'sool9', disk_size: str = '220G', minion_id
     if not _check_license():
         return {
             'success': False,
-            'error': 'Invalid license or missing hvn feature',
+            'error': 'Invalid license or missing vrt feature',
             'vm_result': None
         }
 
@@ -670,7 +670,7 @@ def create_vm(vm_name: str, disk_size: str = '220G'):
     if not _check_license():
         return {
             'success': False,
-            'error': 'Invalid license or missing hvn feature',
+            'error': 'Invalid license or missing vrt feature',
         }
 
     try:
@@ -958,11 +958,6 @@ def regenerate_ssh_keys():
         else:
             print("Failed to regenerate SSH keys")
     """
-    # Check license before proceeding
-    if not _check_license():
-        log.error("MAIN: Invalid license or missing hvn feature")
-        return False
-
     log.info("MAIN: Starting SSH key regeneration")
     try:
         # Verify current state

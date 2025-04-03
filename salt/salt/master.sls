@@ -14,7 +14,7 @@
 
 include:
   - salt.minion
-{%   if 'hvn' in salt['pillar.get']('features', []) %}
+{%   if 'vrt' in salt['pillar.get']('features', []) %}
   - salt.cloud
   - salt.cloud.reactor_config_hypervisor
 
@@ -48,11 +48,11 @@ pillarWatch_engine:
     - name: /etc/salt/engines/pillarWatch.py
     - source: salt://salt/engines/master/pillarWatch.py
 
-{%   if 'hvn' in salt['pillar.get']('features', []) %}
-hvn_engine_config:
+{%   if 'vrt' in salt['pillar.get']('features', []) %}
+vrt_engine_config:
   file.managed:
-    - name: /etc/salt/master.d/hvn_engine.conf
-    - source: salt://salt/files/hvn_engine.conf
+    - name: /etc/salt/master.d/vrt_engine.conf
+    - source: salt://salt/files/vrt_engine.conf
     - watch_in:
       - service: salt_master_service
 

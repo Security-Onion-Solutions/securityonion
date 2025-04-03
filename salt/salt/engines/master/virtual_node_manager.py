@@ -63,7 +63,7 @@ State Files:
         - <vm_name>.error: Error state with detailed message
 
 Notes:
-    - Requires 'hvn' feature license
+    - Requires 'vrt' feature license
     - Uses hypervisor's sosmodel grain for hardware capabilities
     - Hardware allocation based on model-specific configurations
     - All created files maintain socore ownership
@@ -80,7 +80,7 @@ Description:
       - Lock remains until clean shutdown or error
 
    2. License Validation
-      - Verifies 'hvn' feature is licensed
+      - Verifies 'vrt' feature is licensed
       - Prevents operation if license is invalid
 
    3. Configuration Processing
@@ -567,7 +567,7 @@ def mark_invalid_hardware(hypervisor_path: str, vm_name: str, config: dict, erro
         log.error("Failed to create invalid hardware file: %s", str(e))
         raise
 
-def validate_hvn_license() -> bool:
+def validate_vrt_license() -> bool:
     """Check if the license file exists and contains required values."""
     if not os.path.exists(LICENSE_PATH):
         log.error("License file not found at %s", LICENSE_PATH)
@@ -588,7 +588,7 @@ def validate_hvn_license() -> bool:
             log.error("No license_id found in license file")
             return False
             
-        if 'hvn' not in features:
+        if 'vrt' not in features:
             log.error("Hypervisor nodes are a feature supported only for customers with a valid license.\n"
                      "Contact Security Onion Solutions, LLC via our website at https://securityonionsolutions.com\n"
                      "for more information about purchasing a license to enable this feature.")
@@ -889,7 +889,7 @@ def start(interval: int = DEFAULT_INTERVAL,
     """
     log.info("Starting virtual node manager engine")
     
-    if not validate_hvn_license():
+    if not validate_vrt_license():
         return
         
     # Attempt to acquire lock

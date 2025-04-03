@@ -11,7 +11,7 @@
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states or sls in allowed_states %}
-{%   if 'hvn' in salt['pillar.get']('features', []) %}
+{%   if 'vrt' in salt['pillar.get']('features', []) %}
 
 # allows for creating vm images
 # any node manipulating images needs this

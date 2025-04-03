@@ -9,7 +9,7 @@
 #    in the software, and you may not remove or obscure any functionality in the
 #    software that is protected by the license key."
 
-{% if 'hvn' in salt['pillar.get']('features', []) %}
+{% if 'vrt' in salt['pillar.get']('features', []) %}
 
 # Send highstate trigger event for VM deployment status tracking
 # so-salt-emit-vm-deployment-status sets event_tag = f'soc/dyanno/hypervisor/{status.lower()}'

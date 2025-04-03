@@ -155,7 +155,7 @@ base:
     - stig
     - kafka
 
-  '*_managerhype and I@features:hvn and G@saltversion:{{saltversion}}':
+  '*_managerhype and I@features:vrt and G@saltversion:{{saltversion}}':
     - match: compound
     - manager.hypervisor
 
@@ -299,7 +299,7 @@ base:
     - elasticfleet.install_agent_grid
     - schedule
 
-  '*_hypervisor and I@features:hvn and G@saltversion:{{saltversion}}':
+  '*_hypervisor and I@features:vrt and G@saltversion:{{saltversion}}':
     - match: compound
     - ssl
     - sensoroni

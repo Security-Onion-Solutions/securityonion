@@ -11,7 +11,7 @@
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
-{%   if 'hvn' in salt['pillar.get']('features', []) %}
+{%   if 'vrt' in salt['pillar.get']('features', []) %}
 
 hypervisor_log_dir:
   file.directory:

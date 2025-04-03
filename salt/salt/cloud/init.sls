@@ -11,7 +11,7 @@
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
-{%   if 'hvn' in salt['pillar.get']('features', []) %}
+{%   if 'vrt' in salt['pillar.get']('features', []) %}
 {%     from 'salt/map.jinja' import SALTVERSION %}
 {%     set HYPERVISORS = salt['pillar.get']('hypervisor:nodes', {} ) %}
 

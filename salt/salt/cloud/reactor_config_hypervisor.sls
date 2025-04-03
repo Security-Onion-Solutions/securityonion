@@ -11,7 +11,7 @@
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[:2]|join('.') in allowed_states %}
-{%   if 'hvn' in salt['pillar.get']('features', []) %}
+{%   if 'vrt' in salt['pillar.get']('features', []) %}
 reactor_config_hypervisor:
   file.managed:
     - name: /etc/salt/master.d/reactor_hypervisor.conf

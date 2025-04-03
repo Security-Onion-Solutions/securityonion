@@ -9,7 +9,7 @@
 #    in the software, and you may not remove or obscure any functionality in the
 #    software that is protected by the license key."
 
-{% if 'hvn' in salt['pillar.get']('features', []) %}
+{% if 'vrt' in salt['pillar.get']('features', []) %}
 
 {%   do salt.log.debug('vm_pillar_clean_orch: Running') %}
 {%   set vm_name = pillar.get('vm_name') %}
