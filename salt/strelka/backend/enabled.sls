@@ -44,6 +44,10 @@ strelka_backend:
     - restart_policy: on-failure
     - watch:
       - file: strelkasensorcompiledrules
+      - file: backend_backend_config
+      - file: backend_logging_config
+      - file: backend_passwords
+      - file: backend_taste
 
 delete_so-strelka-backend_so-status.disabled:
   file.uncomment:
