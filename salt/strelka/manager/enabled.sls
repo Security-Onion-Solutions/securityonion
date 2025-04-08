@@ -40,6 +40,8 @@ strelka_manager:
       - {{ XTRAENV }}
       {% endfor %}
     {% endif %}
+    - watch:
+      - file: manager_config
 
 delete_so-strelka-manager_so-status.disabled:
   file.uncomment:

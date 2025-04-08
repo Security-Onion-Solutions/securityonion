@@ -79,13 +79,6 @@ pcaptmpdir:
     - group: 941
     - makedirs: True
 
-pcapoutdir:
-  file.directory:
-    - name: /nsm/pcapout
-    - user: 939
-    - group: 939
-    - makedirs: True
-
 pcapindexdir:
   file.directory:
     - name: /nsm/pcapindex

@@ -1,5 +1,11 @@
+{# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+   or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+   https://securityonion.net/license; you may not use this file except in compliance with the
+   Elastic License 2.0. #}
+
 {% import_yaml 'salt/minion.defaults.yaml' as saltminion %}
-{% set SALTVERSION = saltminion.salt.minion.version %}
+{% set SALTVERSION = saltminion.salt.minion.version | string %}
+{% set INSTALLEDSALTVERSION = grains.saltversion | string %}
 
 {% if grains.os_family == 'Debian' %}
   {% set SPLITCHAR = '+' %}
@@ -11,9 +17,7 @@
   {% set SYSTEMD_UNIT_FILE = '/usr/lib/systemd/system/salt-minion.service' %}
 {% endif %}
 
-{% set INSTALLEDSALTVERSION = grains.saltversion %}
-
-{% if grains.saltversion|string != SALTVERSION|string %}
+{% if INSTALLEDSALTVERSION != SALTVERSION %}
   {% if grains.os_family|lower == 'redhat' %}
       {% set UPGRADECOMMAND = 'yum clean all ; /usr/sbin/bootstrap-salt.sh -s 120 -r -F stable ' ~ SALTVERSION %}
   {% elif grains.os_family|lower == 'debian' %}

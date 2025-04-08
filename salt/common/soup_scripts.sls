@@ -64,6 +64,12 @@ copy_so-repo-sync_manager_tools_sbin:
     - source: {{UPDATE_DIR}}/salt/manager/tools/sbin/so-repo-sync
     - preserve: True
 
+copy_bootstrap-salt_manager_tools_sbin:
+  file.copy:
+    - name: /opt/so/saltstack/default/salt/salt/scripts/bootstrap-salt.sh
+    - source: {{UPDATE_DIR}}/salt/salt/scripts/bootstrap-salt.sh
+    - preserve: True
+
 # This section is used to put the new script in place so that it can be called during soup.
 # It is faster than calling the states that normally manage them to put them in place.
 copy_so-common_sbin:
@@ -105,6 +111,13 @@ copy_so-repo-sync_sbin:
   file.copy:
     - name: /usr/sbin/so-repo-sync
     - source: {{UPDATE_DIR}}/salt/manager/tools/sbin/so-repo-sync
+    - force: True
+    - preserve: True
+
+copy_bootstrap-salt_sbin:
+  file.copy:
+    - name: /usr/sbin/bootstrap-salt.sh
+    - source: {{UPDATE_DIR}}/salt/salt/scripts/bootstrap-salt.sh
     - force: True
     - preserve: True
 

@@ -407,6 +407,9 @@ preupgrade_changes() {
     [[ "$INSTALLEDVERSION" == 2.4.110 ]] && up_to_2.4.111
     [[ "$INSTALLEDVERSION" == 2.4.111 ]] && up_to_2.4.120
     [[ "$INSTALLEDVERSION" == 2.4.120 ]] && up_to_2.4.130
+    [[ "$INSTALLEDVERSION" == 2.4.130 ]] && up_to_2.4.140
+    [[ "$INSTALLEDVERSION" == 2.4.140 ]] && up_to_2.4.141
+    [[ "$INSTALLEDVERSION" == 2.4.141 ]] && up_to_2.4.150
     true
 }
 
@@ -431,6 +434,9 @@ postupgrade_changes() {
     [[ "$POSTVERSION" == 2.4.110 ]] && post_to_2.4.111
     [[ "$POSTVERSION"  == 2.4.111 ]] && post_to_2.4.120
     [[ "$POSTVERSION"  == 2.4.120 ]] && post_to_2.4.130
+    [[ "$POSTVERSION"  == 2.4.130 ]] && post_to_2.4.140
+    [[ "$POSTVERSION"  == 2.4.140 ]] && post_to_2.4.141
+    [[ "$POSTVERSION"  == 2.4.141 ]] && post_to_2.4.150
     true
 }
 
@@ -551,6 +557,21 @@ post_to_2.4.130() {
   /sbin/so-elastic-agent-gen-installers
 
   POSTVERSION=2.4.130
+}
+
+post_to_2.4.140() {
+  echo "Nothing to apply"
+  POSTVERSION=2.4.140
+}
+
+post_to_2.4.141() {
+  echo "Nothing to apply"
+  POSTVERSION=2.4.141
+}
+
+post_to_2.4.150() {
+  echo "Nothing to apply"
+  POSTVERSION=2.4.150
 }
 
 repo_sync() {
@@ -771,6 +792,24 @@ up_to_2.4.130() {
   touch /etc/NetworkManager/conf.d/10-globally-managed-devices.conf
 
   INSTALLEDVERSION=2.4.130
+}
+
+up_to_2.4.140() {
+  echo "Nothing to do for 2.4.140"
+
+  INSTALLEDVERSION=2.4.140
+}
+
+up_to_2.4.141() {
+  echo "Nothing to do for 2.4.141"
+
+  INSTALLEDVERSION=2.4.141
+}
+
+up_to_2.4.150() {
+  echo "Nothing to do for 2.4.150"
+
+  INSTALLEDVERSION=2.4.150
 }
 
 add_hydra_pillars() {
@@ -1085,7 +1124,7 @@ upgrade_check() {
 }
 
 upgrade_check_salt() {
-  NEWSALTVERSION=$(grep version: $UPDATE_DIR/salt/salt/master.defaults.yaml | awk '{print $2}')
+  NEWSALTVERSION=$(grep "version:" $UPDATE_DIR/salt/salt/master.defaults.yaml | grep -o "[0-9]\+\.[0-9]\+")
   if [ "$INSTALLEDSALTVERSION" == "$NEWSALTVERSION" ]; then
     echo "You are already running the correct version of Salt for Security Onion."
   else
@@ -1230,26 +1269,6 @@ failed_soup_restore_items() {
   enable_highstate
   masterunlock
 }
-
-#upgrade salt to 3004.1
-#2_3_10_hotfix_1() {
-#    systemctl_func "stop" "$cron_service_name"
-#    # update mine items prior to stopping salt-minion and salt-master
-#    update_salt_mine
-#    stop_salt_minion
-#    stop_salt_master
-#    update_repo
-#    # Does salt need upgraded. If so update it.
-#    if [[ $UPGRADESALT -eq 1 ]]; then
-#      echo "Upgrading Salt"
-#      # Update the repo files so it can actually upgrade
-#      upgrade_salt
-#    fi
-#    systemctl_func "start" "salt-master"
-#    systemctl_func "start" "salt-minion"
-#    systemctl_func "start" "$cron_service_name"
-
-#}
 
 main() {
   trap 'check_err $?' EXIT
@@ -1445,6 +1464,9 @@ main() {
 
     # Stop long-running scripts to allow potentially updated scripts to load on the next execution.
     killall salt-relay.sh
+
+    # ensure the mine is updated and populated before highstates run, following the salt-master restart
+    update_salt_mine
 
     highstate
     postupgrade_changes

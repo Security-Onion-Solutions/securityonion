@@ -24,6 +24,7 @@
 {%   endif %}
 {% endfor %}
 
+{% if node_types %}
 node_data:
 {% for node_type, host_values in node_types.items() %}
 {%   for hostname, details in host_values.items() %}
@@ -33,3 +34,6 @@ node_data:
     role: {{node_type}}
 {%   endfor %}
 {% endfor %}
+{% else %}
+node_data: False
+{% endif %}

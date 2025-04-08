@@ -46,6 +46,8 @@ strelka_frontend:
       - {{ XTRAENV }}
       {% endfor %}
     {% endif %}
+    - watch:
+      - file: frontend_config
 
 delete_so-strelka-frontend_so-status.disabled:
   file.uncomment:

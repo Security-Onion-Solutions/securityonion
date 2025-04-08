@@ -24,10 +24,10 @@ base:
     - firewall.adv_firewall
     - nginx.soc_nginx
     - nginx.adv_nginx
-    - node_data.ips
 
   '*_manager or *_managersearch':
     - match: compound
+    - node_data.ips
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
     - elasticsearch.auth
     {% endif %}
@@ -90,6 +90,7 @@ base:
     - soc.license
 
   '*_eval':
+    - node_data.ips
     - secrets
     - healthcheck.eval
     - elasticsearch.index_templates
@@ -138,6 +139,7 @@ base:
     - minions.adv_{{ grains.id }}
 
   '*_standalone':
+    - node_data.ips
     - logstash.nodes
     - logstash.soc_logstash
     - logstash.adv_logstash
@@ -260,6 +262,7 @@ base:
     - soc.license
 
   '*_import':
+    - node_data.ips
     - secrets
     - elasticsearch.index_templates
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
@@ -305,6 +308,7 @@ base:
     - minions.adv_{{ grains.id }}
 
   '*_fleet':
+    - node_data.ips
     - backup.soc_backup
     - backup.adv_backup
     - logstash.nodes

@@ -5,10 +5,10 @@
 {% from 'salt/map.jinja' import SALTPACKAGES %}
 {% from 'salt/map.jinja' import SYSTEMD_UNIT_FILE %}
 {% import_yaml 'salt/minion.defaults.yaml' as SALTMINION %}
-{% set service_start_delay = SALTMINION.salt.minion.service_start_delay %}
 
 include:
   - salt.python_modules
+  - salt.patch.x509_v2
   - salt
   - systemd.reload
   - repo.client
@@ -89,8 +89,6 @@ salt_minion_service_unit_file:
     - name: {{ SYSTEMD_UNIT_FILE }}
     - source: salt://salt/service/salt-minion.service.jinja
     - template: jinja
-    - defaults:
-        service_start_delay: {{ service_start_delay }}
     - onchanges_in:
       - module: systemd_reload
 
