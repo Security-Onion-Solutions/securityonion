@@ -24,11 +24,13 @@ function update_logstash_outputs() {
 function update_kafka_outputs() {
   # Make sure SSL configuration is included in policy updates for Kafka output. SSL is configured in so-elastic-fleet-setup
   SSL_CONFIG=$(curl -K /opt/so/conf/elasticsearch/curl.config -L "http://localhost:5601/api/fleet/outputs/so-manager_kafka" | jq -r '.item.ssl')
+  SECRET_CONFIG=$(curl -K /opt/so/conf/elasticsearch/curl.config -L "http://localhost:5601/api/fleet/outputs/so-manager_kafka" | jq -r '.item.secrets')
 
   JSON_STRING=$(jq -n \
     --arg UPDATEDLIST "$NEW_LIST_JSON" \
     --argjson SSL_CONFIG "$SSL_CONFIG" \
-    '{"name": "grid-kafka","type": "kafka","hosts": $UPDATEDLIST,"is_default": true,"is_default_monitoring": true,"config_yaml": "","ssl": $SSL_CONFIG}')
+    --argjson SECRET_CONFIG "$SECRET_CONFIG" \
+    '{"name": "grid-kafka","type": "kafka","hosts": $UPDATEDLIST,"is_default": true,"is_default_monitoring": true,"config_yaml": "","ssl": $SSL_CONFIG,"secrets":$SECRET_CONFIG'})
   # Update Kafka outputs
   curl -K /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fleet/outputs/so-manager_kafka" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING" | jq
 }
