@@ -89,7 +89,7 @@
 {% if vm_name and hypervisor and timestamp and status and tag %}
 write_vm_status:
   salt.state:
-    - tgt: 'G@role:so-manager or G@role:so-managersearch or G@role:so-standalone or G@role:so-eval'
+    - tgt: 'G@role:so-manager or G@role:so-managerhype or G@role:so-managersearch or G@role:so-standalone or G@role:so-eval'
     - tgt_type: compound
     - sls:
       - soc.dyanno.hypervisor.write_status
@@ -106,7 +106,7 @@ write_vm_status:
 # Update hypervisor status
 update_hypervisor_annotation:
   salt.state:
-    - tgt: 'G@role:so-manager or G@role:so-managersearch or G@role:so-standalone or G@role:so-eval'
+    - tgt: 'G@role:so-manager or G@role:so-managerhype or G@role:so-managersearch or G@role:so-standalone or G@role:so-eval'
     - tgt_type: compound
     - sls:
       - soc.dyanno.hypervisor

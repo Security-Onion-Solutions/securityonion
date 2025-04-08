@@ -28,9 +28,9 @@
 {% if ssh_user_exists and ssh_keys_exist and base_image_exists and vm_files_exist and hypervisor_host_dir_exists %}
 # Hypervisor environment is already set up, include the necessary states
 include:
+  - hypervisor
   - libvirt
   - libvirt.images
-  - hypervisor
 
 hypervisor_setup_verified:
   test.succeed_without_changes:
