@@ -54,9 +54,8 @@ so-kafka:
       - /opt/so/conf/kafka/kafka-truststore.jks:/etc/pki/kafka-truststore.jks:ro
       - /nsm/kafka/data/:/nsm/kafka/data/:rw
       - /opt/so/log/kafka:/opt/kafka/logs/:rw
-      - /opt/so/conf/kafka/server.properties:/opt/kafka/config/server.properties:ro
-      - /opt/so/conf/kafka/client.properties:/opt/kafka/config/client.properties:ro
-      - /opt/so/conf/kafka/log4j2.yaml:/opt/kafka/config/log4j2.yaml:ro
+      - /opt/so/conf/kafka/server.properties:/opt/kafka/config/kraft/server.properties:ro
+      - /opt/so/conf/kafka/client.properties:/opt/kafka/config/kraft/client.properties:ro
       {% if KAFKA_EXTERNAL_ACCESS %}
       - /opt/so/conf/kafka/kafka_server_jaas.conf:/opt/kafka/config/kafka_server_jaas.conf:ro
       {% endif %}
