@@ -16,7 +16,7 @@
 {# Check for Kafka nodes with controller in process_x_roles #}
 {% for node in KAFKA_NODES_PILLAR %}
 {%   if 'controller' in KAFKA_NODES_PILLAR[node].role %}
-{%     do controllers.append(KAFKA_NODES_PILLAR[node].nodeid ~ "@" ~ node ~ ":9093") %}
+{%     do controllers.append(KAFKA_NODES_PILLAR[node].nodeid ~ "@" ~ KAFKA_NODES_PILLAR[node].ip ~ ":9093") %}
 {%   endif %}
 {% endfor %}
 
@@ -51,6 +51,7 @@
 {% endif %}
 
 {% if node_type == 'controller' %}
+{%   do KAFKAMERGED.config.controller.update({'advertised_x_listeners': 'CONTROLLER://' + GLOBALS.node_ip + ':9093'}) %}
 {%   do KAFKAMERGED.config.controller.update({'controller_x_quorum_x_voters': kafka_controller_quorum_voters }) %}
 {%   do KAFKAMERGED.config.controller.update({'node_x_id': salt['pillar.get']('kafka:nodes:'+ GLOBALS.hostname +':nodeid') }) %}
 {%   do KAFKAMERGED.config.controller.update({'ssl_x_keystore_x_password': KAFKA_PASSWORD }) %}
