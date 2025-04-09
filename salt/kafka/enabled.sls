@@ -63,7 +63,9 @@ so-kafka:
       {% for sc in ['server', 'client'] %}
       - file: kafka_kraft_{{sc}}_properties
       {% endfor %}
+      {% if KAFKA_EXTERNAL_ACCESS %}
       - file: kafka_server_jaas_properties
+      {% endif %}
       - file: kafkacertz
     - require:
       - file: kafkacertz
