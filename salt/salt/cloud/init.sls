@@ -40,6 +40,8 @@ cloud_profiles:
     - source: salt://salt/cloud/cloud.profiles.d/socloud.conf.jinja
     - defaults:
         HYPERVISORS: {{HYPERVISORS}}
+        MANAGERHOSTNAME: {{ grains.host }}
+        MANAGERIP: {{ pillar.host.mainip }}
     - template: jinja
 
 {%       for role, hosts in HYPERVISORS.items() %}
