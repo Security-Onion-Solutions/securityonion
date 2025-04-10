@@ -100,8 +100,39 @@ down_original_mgmt_interface:
     - unless:
       - nmcli -f GENERAL.CONNECTION dev show {{ pillar.host.mainint }} | grep bridge-slave-{{ pillar.host.mainint }}
     - order: last
-    - onchanges_in:
-      - file: mine_functions
+
+update_mine_functions_interface:
+  file.replace:
+    - name: /etc/salt/minion.d/mine_functions.conf
+    - pattern: "    - interface: ([a-zA-Z0-9]+)"
+    - repl: "    - interface: br0"
+    - onchanges:
+      - cmd: down_original_mgmt_interface
+
+wait_for_br0_ip:
+  cmd.run:
+    - name: |
+        counter=0
+        until ip addr show br0 | grep -q "inet "; do
+          sleep 1
+          counter=$((counter+1))
+          if [ $counter -ge 90 ]; then
+            echo "Timeout waiting for br0 to get an IP address"
+            exit 1
+          fi
+        done
+        echo "br0 has IP address: $(ip addr show br0 | grep 'inet ' | awk '{print $2}')"
+    - timeout: 95
+    - onchanges:
+      - file: update_mine_functions_interface
+
+mine_update_mine_interface:
+  module.run:
+    - mine.send:
+      - network.ip_addrs
+      - interface: br0
+    - onchanges:
+      - cmd: wait_for_br0_ip
 
 # virtlogd service may not restart following reboot without this
 #semanage permissive -a virtlogd_t
