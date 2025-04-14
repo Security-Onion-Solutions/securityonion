@@ -8,6 +8,7 @@
 {% set KAFKA_NODES_PILLAR = salt['pillar.get']('kafka:nodes') %}
 {% set KAFKA_PASSWORD = salt['pillar.get']('kafka:config:password') %}
 {% set KAFKA_TRUSTPASS = salt['pillar.get']('kafka:config:trustpass') %}
+{% set KAFKA_EXTERNAL_ACCESS = salt['pillar.get']('kafka:config:external_access:enabled', default=False) %}
 
 {# Create list of KRaft controllers #}
 {% set controllers = [] %}
@@ -15,7 +16,7 @@
 {# Check for Kafka nodes with controller in process_x_roles #}
 {% for node in KAFKA_NODES_PILLAR %}
 {%   if 'controller' in KAFKA_NODES_PILLAR[node].role %}
-{%     do controllers.append(KAFKA_NODES_PILLAR[node].nodeid ~ "@" ~ node ~ ":9093") %}
+{%     do controllers.append(KAFKA_NODES_PILLAR[node].nodeid ~ "@" ~ KAFKA_NODES_PILLAR[node].ip ~ ":9093") %}
 {%   endif %}
 {% endfor %}
 
@@ -28,7 +29,15 @@
 {# Generate server.properties for 'broker' , 'controller', 'broker,controller' node types
     anything above this line is a configuration needed for ALL Kafka nodes #}
 {% if node_type == 'broker' %}
-{%   do KAFKAMERGED.config.broker.update({'advertised_x_listeners': 'BROKER://'+ GLOBALS.node_ip +':9092' }) %}
+{%   if KAFKA_EXTERNAL_ACCESS %}
+{%     do KAFKAMERGED.config.broker.update({'advertised_x_listeners': 'BROKER://'+ GLOBALS.node_ip +':9092' + ',' + 'EXTERNAL_ACCESS://' + GLOBALS.node_ip + ':29092' }) %}
+{%     do KAFKAMERGED.config.broker.update({'listeners': KAFKAMERGED.config.broker.listeners + ',' + KAFKAMERGED.config.external_access.listeners }) %}
+{%     do KAFKAMERGED.config.broker.update({'listener_x_security_x_protocol_x_map': KAFKAMERGED.config.broker.listener_x_security_x_protocol_x_map + ',' + KAFKAMERGED.config.external_access.listener_x_security_x_protocol_x_map }) %}
+{%     do KAFKAMERGED.config.broker.update({'sasl_x_enabled_x_mechanisms': KAFKAMERGED.config.external_access.sasl_x_enabled_x_mechanisms }) %}
+{%     do KAFKAMERGED.config.broker.update({'sasl_x_mechanism_x_broker_x_protocol': KAFKAMERGED.config.external_access.sasl_x_mechanism_x_broker_x_protocol }) %}
+{%   else %}
+{%     do KAFKAMERGED.config.broker.update({'advertised_x_listeners': 'BROKER://'+ GLOBALS.node_ip +':9092' }) %}
+{%   endif %}
 {%   do KAFKAMERGED.config.broker.update({'controller_x_quorum_x_voters': kafka_controller_quorum_voters }) %}
 {%   do KAFKAMERGED.config.broker.update({'node_x_id': salt['pillar.get']('kafka:nodes:'+ GLOBALS.hostname +':nodeid') }) %}
 {%   do KAFKAMERGED.config.broker.update({'ssl_x_keystore_x_password': KAFKA_PASSWORD }) %}
@@ -42,6 +51,7 @@
 {% endif %}
 
 {% if node_type == 'controller' %}
+{%   do KAFKAMERGED.config.controller.update({'advertised_x_listeners': 'CONTROLLER://' + GLOBALS.node_ip + ':9093'}) %}
 {%   do KAFKAMERGED.config.controller.update({'controller_x_quorum_x_voters': kafka_controller_quorum_voters }) %}
 {%   do KAFKAMERGED.config.controller.update({'node_x_id': salt['pillar.get']('kafka:nodes:'+ GLOBALS.hostname +':nodeid') }) %}
 {%   do KAFKAMERGED.config.controller.update({'ssl_x_keystore_x_password': KAFKA_PASSWORD }) %}
@@ -50,7 +60,15 @@
 
 {# Kafka nodes of this type are not recommended for use outside of development / testing. #}
 {% if node_type == 'broker,controller' %}
-{%   do KAFKAMERGED.config.broker.update({'advertised_x_listeners': 'BROKER://'+ GLOBALS.node_ip +':9092' }) %}
+{%   if KAFKA_EXTERNAL_ACCESS %}
+{%     do KAFKAMERGED.config.broker.update({'advertised_x_listeners': 'BROKER://'+ GLOBALS.node_ip +':9092' + ',' + 'CONTROLLER://'+ GLOBALS.node_ip +':9093' + ',' + 'EXTERNAL_ACCESS://' + GLOBALS.node_ip + ':29092' }) %}
+{%     do KAFKAMERGED.config.broker.update({'listeners': KAFKAMERGED.config.broker.listeners + ',' + KAFKAMERGED.config.external_access.listeners }) %}
+{%     do KAFKAMERGED.config.broker.update({'listener_x_security_x_protocol_x_map': KAFKAMERGED.config.broker.listener_x_security_x_protocol_x_map + ',' + KAFKAMERGED.config.external_access.listener_x_security_x_protocol_x_map }) %}
+{%     do KAFKAMERGED.config.broker.update({'sasl_x_enabled_x_mechanisms': KAFKAMERGED.config.external_access.sasl_x_enabled_x_mechanisms }) %}
+{%     do KAFKAMERGED.config.broker.update({'sasl_x_mechanism_x_broker_x_protocol': KAFKAMERGED.config.external_access.sasl_x_mechanism_x_broker_x_protocol }) %}
+{%   else %}
+{%     do KAFKAMERGED.config.broker.update({'advertised_x_listeners': 'BROKER://'+ GLOBALS.node_ip +':9092' + ',' + 'CONTROLLER://'+ GLOBALS.node_ip +':9093' }) %}
+{%   endif %}
 {%   do KAFKAMERGED.config.broker.update({'controller_x_listener_x_names': KAFKAMERGED.config.controller.controller_x_listener_x_names }) %}
 {%   do KAFKAMERGED.config.broker.update({'controller_x_quorum_x_voters': kafka_controller_quorum_voters }) %}
 {%   do KAFKAMERGED.config.broker.update({'node_x_id': salt['pillar.get']('kafka:nodes:'+ GLOBALS.hostname +':nodeid') }) %}

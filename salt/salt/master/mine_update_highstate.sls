@@ -19,8 +19,11 @@ salt.master.mine_update_highstate.update_mine_all_minions:
 
 # Run highstate on the original minion
 # we can use concurrent on this highstate because no other highstate would be running when this is called
+# this state will run onlyif there is not an instance of it already running
 salt.master.mine_update_highstate.run_highstate_on_{{ MINION_ID }}:
   salt.state:
     - tgt: {{ MINION_ID }}
     - highstate: True
     - concurrent: True
+    - onlyif:
+      - 'ps -ef | grep -v grep | grep "/usr/bin/salt-minion.*ProcessPayload.*jid=.*Minion._thread_return" | wc -l | grep -q "^0$"'

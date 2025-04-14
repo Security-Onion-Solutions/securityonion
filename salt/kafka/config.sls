@@ -6,6 +6,8 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
+{%   set KAFKA_EXTERNAL_ACCESS = salt['pillar.get']('kafka:config:external_access:enabled', default=False) %}
+{%   set KAFKA_EXTERNAL_USERS = salt['pillar.get']('kafka:config:external_access:remote_users', default=None) %}
 
 kafka_group:
   group.present:
@@ -68,6 +70,21 @@ kafka_kraft_{{sc}}_properties:
     - makedirs: True
     - show_changes: False
 {%   endfor %}
+
+{%   if KAFKA_EXTERNAL_ACCESS and KAFKA_EXTERNAL_USERS != None %}
+kafka_server_jaas_properties:
+  file.managed:
+    - source: salt://kafka/etc/jaas.conf.jinja
+    - name: /opt/so/conf/kafka/kafka_server_jaas.conf
+    - template: jinja
+    - user: 960
+    - group: 960
+    - show_changes: False
+{%   else %}
+remove_kafka_server_jaas_properties:
+  file.absent:
+    - name: /opt/so/conf/kafka/kafka_server_jaas.conf
+{%   endif %}
 
 reset_quorum_on_changes:
   cmd.run:

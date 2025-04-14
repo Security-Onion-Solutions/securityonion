@@ -14,6 +14,7 @@
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 {%   from 'docker/docker.map.jinja' import DOCKER %}
 {%   set KAFKANODES = salt['pillar.get']('kafka:nodes') %}
+{%   set KAFKA_EXTERNAL_ACCESS = salt['pillar.get']('kafka:config:external_access:enabled', default=False) %}
 {%   if 'gmd' in salt['pillar.get']('features', []) %}
 
 include:
@@ -34,7 +35,7 @@ so-kafka:
     - user: kafka
     - environment:
         KAFKA_HEAP_OPTS: -Xmx2G -Xms1G
-        KAFKA_OPTS: -javaagent:/opt/jolokia/agents/jolokia-agent-jvm-javaagent.jar=port=8778,host={{ DOCKER.containers['so-kafka'].ip }},policyLocation=file:/opt/jolokia/jolokia.xml
+        KAFKA_OPTS: "-javaagent:/opt/jolokia/agents/jolokia-agent-jvm-javaagent.jar=port=8778,host={{ DOCKER.containers['so-kafka'].ip }},policyLocation=file:/opt/jolokia/jolokia.xml {%- if KAFKA_EXTERNAL_ACCESS %} -Djava.security.auth.login.config=/opt/kafka/config/kafka_server_jaas.conf {% endif -%}"
     - extra_hosts:
       {% for node in KAFKANODES %}
       - {{ node }}:{{ KAFKANODES[node].ip }}
@@ -54,11 +55,17 @@ so-kafka:
       - /nsm/kafka/data/:/nsm/kafka/data/:rw
       - /opt/so/log/kafka:/opt/kafka/logs/:rw
       - /opt/so/conf/kafka/server.properties:/opt/kafka/config/kraft/server.properties:ro
-      - /opt/so/conf/kafka/client.properties:/opt/kafka/config/kraft/client.properties
+      - /opt/so/conf/kafka/client.properties:/opt/kafka/config/kraft/client.properties:ro
+      {% if KAFKA_EXTERNAL_ACCESS %}
+      - /opt/so/conf/kafka/kafka_server_jaas.conf:/opt/kafka/config/kafka_server_jaas.conf:ro
+      {% endif %}
     - watch:
       {% for sc in ['server', 'client'] %}
       - file: kafka_kraft_{{sc}}_properties
       {% endfor %}
+      {% if KAFKA_EXTERNAL_ACCESS %}
+      - file: kafka_server_jaas_properties
+      {% endif %}
       - file: kafkacertz
     - require:
       - file: kafkacertz
