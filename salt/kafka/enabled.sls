@@ -56,6 +56,7 @@ so-kafka:
       - /opt/so/log/kafka:/opt/kafka/logs/:rw
       - /opt/so/conf/kafka/server.properties:/opt/kafka/config/kraft/server.properties:ro
       - /opt/so/conf/kafka/client.properties:/opt/kafka/config/kraft/client.properties:ro
+      - /opt/so/conf/kafka/log4j.properties:/opt/kafka/config/log4j.properties:ro
       {% if KAFKA_EXTERNAL_ACCESS %}
       - /opt/so/conf/kafka/kafka_server_jaas.conf:/opt/kafka/config/kafka_server_jaas.conf:ro
       {% endif %}

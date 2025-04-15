@@ -86,6 +86,14 @@ remove_kafka_server_jaas_properties:
     - name: /opt/so/conf/kafka/kafka_server_jaas.conf
 {%   endif %}
 
+kafka_log4j_properties:
+  file.managed:
+    - source: salt://kafka/etc/log4j.properties
+    - name: /opt/so/conf/kafka/log4j.properties
+    - user: 960
+    - group: 960
+    - show_changes: False
+
 reset_quorum_on_changes:
   cmd.run:
     - name: rm -f /nsm/kafka/data/__cluster_metadata-0/quorum-state
