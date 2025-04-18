@@ -29,6 +29,17 @@ manage_sha256_sool9:
     - source: salt://libvirt/images/sool9/sool9.sha256
     - makedirs: True
 
+# Manage cloud-init files
+manage_metadata_sool9:
+  file.managed:
+    - name: /nsm/libvirt/images/sool9/meta-data
+    - source: salt://libvirt/images/sool9/meta-data
+
+manage_userdata_sool9:
+  file.managed:
+    - name: /nsm/libvirt/images/sool9/user-data
+    - source: salt://libvirt/images/sool9/user-data
+
 # Manage qcow2 image
 manage_qcow2_sool9:
   file.managed:
@@ -36,27 +47,14 @@ manage_qcow2_sool9:
     - source: salt://libvirt/images/sool9/sool9.qcow2
     - onchanges:
       - file: manage_sha256_sool9
-
-# Manage cloud-init files
-manage_metadata_sool9:
-  file.managed:
-    - name: /nsm/libvirt/images/sool9/meta-data
-    - source: salt://libvirt/images/sool9/meta-data
-    - require:
-      - file: manage_qcow2_sool9
-
-manage_userdata_sool9:
-  file.managed:
-    - name: /nsm/libvirt/images/sool9/user-data
-    - source: salt://libvirt/images/sool9/user-data
-    - require:
-      - file: manage_qcow2_sool9
+      - file: manage_metadata_sool9
+      - file: manage_userdata_sool9
 
 manage_cidata_sool9:
   file.managed:
     - name: /nsm/libvirt/images/sool9/sool9-cidata.iso
     - source: salt://libvirt/images/sool9/sool9-cidata.iso
-    - require:
+    - onchanges:
       - file: manage_qcow2_sool9
 
 # Define the storage pool
