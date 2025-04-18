@@ -10,8 +10,6 @@
 #    software that is protected by the license key."
 
 """
-TODO: Remove passwd hash prior to release. used for development
-
 This runner performs the initial setup required for hypervisor hosts in the Security Onion environment.
 It handles downloading the Oracle Linux KVM image, setting up SSH keys for secure communication,
 and creating virtual machines with cloud-init configuration.
@@ -715,6 +713,24 @@ def create_vm(vm_name: str, disk_size: str = '220G'):
             log.error("CREATEVM: Failed to read SSH public key: %s", str(e))
             return {'success': False, 'error': 'Failed to read SSH public key'}
 
+        # Read pillar data for soqemussh password hash
+        pillar_path = '/opt/so/saltstack/local/pillar/vm/soc_vm.sls'
+        password_hash = None
+        passwd_line = ""  # Default to empty if no hash found
+        try:
+            if os.path.exists(pillar_path):
+                with salt.utils.files.fopen(pillar_path, 'r') as f:
+                    pillar_data = yaml.safe_load(f)
+                    if pillar_data:
+                        password_hash = pillar_data.get('vm', {}).get('user', {}).get('soqemussh', {}).get('passwordHash')
+            if password_hash:
+                passwd_line = f"      passwd: {password_hash}\n"
+                log.info("CREATEVM: Found soqemussh password hash in pillar.")
+            else:
+                log.info("CREATEVM: No soqemussh password hash found in pillar, omitting passwd line.")
+        except Exception as e:
+            log.warning(f"CREATEVM: Error reading or parsing pillar file {pillar_path}: {str(e)}. Omitting passwd line.")
+
         # Read and encode GPG keys
         keys_dir = '/opt/so/saltstack/default/salt/repo/client/files/oracle/keys'
         oracle_key = _read_and_encode_key(os.path.join(keys_dir, 'RPM-GPG-KEY-oracle'))
@@ -752,8 +768,7 @@ users:
       shell: /bin/bash
       sudo: ALL=(ALL) NOPASSWD:ALL
       lock_passwd: false
-      passwd: $6$THWuTZMZhIVMGaaw$w9kozn7z7i0Y9LRVGZwN6mcZag4vMpE3hW6eCtKNHlFpL1XLcOdiIr29JyDxx3MLBXNedIqnqcj4psqCjv58d.
-      ssh_authorized_keys:
+{passwd_line}      ssh_authorized_keys:
         - {ssh_pub_key}
 
 # Configure where output will go
@@ -796,6 +811,10 @@ write_files:
     content: |
       {securityonion_key}
 
+# Run on every boot - this will only run *after* the first boot and successful cloud-init run
+bootcmd:
+  - if [ -f /var/lib/cloud/instance/boot-finished ]; then touch /etc/cloud/cloud-init.disabled; fi
+
 runcmd:
   # Import GPG keys and remove repo files except securityonion.repo
   - rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-oracle
@@ -811,7 +830,6 @@ runcmd:
   - pvresize /dev/vda2
   - lvextend -l +100%FREE /dev/vg_main/lv_root
   - xfs_growfs /dev/vg_main/lv_root
-  - touch /etc/cloud/cloud-init.disabled
   - rm -f /etc/sysconfig/network-scripts/ifcfg-eth0
 
 power_state:
@@ -819,6 +837,7 @@ power_state:
   mode: poweroff
   timeout: 30
   condition: True
+  message: Cloud-init completed, powering off
 """
         user_data_path = os.path.join(vm_dir, 'user-data')
         with salt.utils.files.fopen(user_data_path, 'w') as f:

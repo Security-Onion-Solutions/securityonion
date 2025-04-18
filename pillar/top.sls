@@ -26,6 +26,11 @@ base:
     - nginx.soc_nginx
     - nginx.adv_nginx
 
+  'salt-cloud:driver:libvirt':
+    - match: grain
+    - vm.soc_vm
+    - vm.adv_vm
+
   '*_manager or *_managersearch or *_managerhype':
     - match: compound
     - node_data.ips

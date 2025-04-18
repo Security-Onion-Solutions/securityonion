@@ -11,7 +11,8 @@ base:
   'salt-cloud:driver:libvirt':
     - match: grain
     - storage
-    - vm_status
+    - vm.status
+    - vm.user
 
   '*':
     - cron.running
