@@ -22,7 +22,15 @@ logstashgroup:
     - name: logstash
     - gid: 931
 
-# Add the logstash user for the jog4j settings
+logstashhome:
+  file.directory:
+    - name: /opt/so/conf/logstash
+    - user: 931
+    - group: 931
+    - mode: 700
+    - makedirs: True
+
+# Add the logstash user for the log4j settings
 logstash:
   user.present:
     - uid: 931

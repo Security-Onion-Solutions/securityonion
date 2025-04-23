@@ -138,6 +138,43 @@ soc:
         title: Require TOTP
         description: Require all users to enable Time-based One Time Passwords (MFA) upon login to SOC.
         global: True
+      subgrids:
+        title: Subordinate Grids
+        description: |
+          Optional list of *subgrids* that this grid has access to manage. This is also known as a 'Manager of Managers' configuration. The values entered must originate from the remote subordinate grid. The API Client must be granted most permissions in order to perform required functions.
+
+          *Requires a valid Security Onion license key with subgrid allocations.*
+        global: True
+        syntax: json
+        forcedType: "[]{}"
+        uiElements:
+        - field: id
+          label: Unique Subgrid ID
+          regex: "^((?!_)).+$"
+          regexFailureMessage: Subgrid ID cannot start with an underscore
+          required: true
+        - field: managerUrl
+          label: Subgrid Manager URL
+          required: true
+        - field: clientId
+          label: Subgrid API Client ID
+          required: true
+          regex: "^socl_[a-z0-9_]+$"
+          regexFailureMessage: Client ID must be a valid socl_* API Client ID
+        - field: clientSecret
+          label: Subgrid API Client Secret
+          required: true
+        - field: tlsSkipVerify
+          label: Skip Subgrid TLS Certification Validation
+          forcedType: bool
+          default: false
+        - field: caCertificate
+          label: Subgrid CA Certificate
+          multiline: True
+        - field: enabled
+          label: Subgrid Enabled
+          forcedType: bool
+          default: false
       modules:
         elastalertengine:
           aiRepoUrl:

@@ -127,14 +127,27 @@ so_fleetagent_status:
     - month: '*'
     - dayweek: '*'
 
-socore_own_saltstack:
+socore_own_saltstack_default:
   file.directory:
-    - name: /opt/so/saltstack
+    - name: /opt/so/saltstack/default
     - user: socore
     - group: socore
     - recurse:
       - user
       - group
+
+socore_own_saltstack_local:
+  file.directory:
+    - name: /opt/so/saltstack/local
+    - user: socore
+    - group: socore
+    - dir_mode: 750
+    - file_mode: 640
+    - replace: False
+    - recurse:
+      - user
+      - group
+      - mode
 
 rules_dir:
   file.directory:

@@ -3,7 +3,10 @@
 # Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
 # or more contributor license agreements. Licensed under the Elastic License 2.0; you may not use
 # this file except in compliance with the Elastic License 2.0.
+{%- import_yaml 'elasticfleet/defaults.yaml' as ELASTICFLEETDEFAULTS %}
 {% set SUB = salt['pillar.get']('elasticfleet:config:subscription_integrations', default=false) %}
+{% set AUTO_UPGRADE_INTEGRATIONS = salt['pillar.get']('elasticfleet:config:auto_upgrade_integrations', default=false) %}
+{%- set SUPPORTED_PACKAGES = salt['pillar.get']('elasticfleet:packages', default=ELASTICFLEETDEFAULTS.elasticfleet.packages, merge=True) %}
 
 . /usr/sbin/so-common
 . /usr/sbin/so-elastic-fleet-common
@@ -46,6 +49,28 @@ compare_versions() {
     fi
 }
 
+IFS=$'\n'
+agent_policies=$(elastic_fleet_agent_policy_ids)
+if [ $? -ne 0 ]; then
+    echo "Error: Failed to retrieve agent policies."
+    exit 1
+fi
+
+default_packages=({% for pkg in SUPPORTED_PACKAGES %}"{{ pkg }}"{% if not loop.last %} {% endif %}{% endfor %})
+
+in_use_integrations=()
+
+for AGENT_POLICY in $agent_policies; do
+    integrations=$(elastic_fleet_integration_policy_names "$AGENT_POLICY")
+    for INTEGRATION in $integrations; do
+        PACKAGE_NAME=$(elastic_fleet_integration_policy_package_name "$AGENT_POLICY" "$INTEGRATION")
+        # non-default integrations that are in-use in any policy
+        if ! [[ " ${default_packages[@]} " =~ " $PACKAGE_NAME " ]]; then
+            in_use_integrations+=("$PACKAGE_NAME")
+        fi
+    done
+done
+
 if [[ -f $STATE_FILE_SUCCESS  ]]; then
     if retry 3 1 "curl -s -K /opt/so/conf/elasticsearch/curl.config --output /dev/null --silent --head --fail localhost:5601/api/fleet/epm/packages"; then
         # Package_list contains all integrations beta / non-beta.
@@ -77,10 +102,19 @@ if [[ -f $STATE_FILE_SUCCESS  ]]; then
                     else
                         results=$(compare_versions "$latest_version" "$installed_version")
                         if [ $results == "greater" ]; then
-                            echo "$package_name is at version $installed_version latest version is $latest_version... Adding to next update."
-                            jq --argjson package "$bulk_package" '.packages += [$package]' $BULK_INSTALL_PACKAGE_LIST > $BULK_INSTALL_PACKAGE_TMP && mv $BULK_INSTALL_PACKAGE_TMP $BULK_INSTALL_PACKAGE_LIST
+                            {#- When auto_upgrade_integrations is false, skip upgrading in_use_integrations  #}
+                            {%- if not AUTO_UPGRADE_INTEGRATIONS %}
+                            if ! [[ " ${in_use_integrations[@]} " =~ " $package_name " ]]; then
+                            {%- endif %}
+                                echo "$package_name is at version $installed_version latest version is $latest_version... Adding to next update."
+                                jq --argjson package "$bulk_package" '.packages += [$package]' $BULK_INSTALL_PACKAGE_LIST > $BULK_INSTALL_PACKAGE_TMP && mv $BULK_INSTALL_PACKAGE_TMP $BULK_INSTALL_PACKAGE_LIST
 
-                            PENDING_UPDATE=true
+                                PENDING_UPDATE=true
+                            {%- if not AUTO_UPGRADE_INTEGRATIONS %}
+                            else
+                                echo "skipping available upgrade for in use integration - $package_name."
+                            fi
+                            {%- endif %}
                         fi
                     fi
                 fi
@@ -92,9 +126,18 @@ if [[ -f $STATE_FILE_SUCCESS  ]]; then
                 else
                     results=$(compare_versions "$latest_version" "$installed_version")
                     if [ $results == "greater" ]; then
-                        echo "$package_name is at version $installed_version latest version is $latest_version... Adding to next update."
-                        jq --argjson package "$bulk_package" '.packages += [$package]' $BULK_INSTALL_PACKAGE_LIST > $BULK_INSTALL_PACKAGE_TMP && mv $BULK_INSTALL_PACKAGE_TMP $BULK_INSTALL_PACKAGE_LIST
-                        PENDING_UPDATE=true
+                        {#- When auto_upgrade_integrations is false, skip upgrading in_use_integrations  #}
+                        {%- if not AUTO_UPGRADE_INTEGRATIONS %}
+                        if ! [[ " ${in_use_integrations[@]} " =~ " $package_name " ]]; then
+                        {%- endif %}
+                            echo "$package_name is at version $installed_version latest version is $latest_version... Adding to next update."
+                            jq --argjson package "$bulk_package" '.packages += [$package]' $BULK_INSTALL_PACKAGE_LIST > $BULK_INSTALL_PACKAGE_TMP && mv $BULK_INSTALL_PACKAGE_TMP $BULK_INSTALL_PACKAGE_LIST
+                            PENDING_UPDATE=true
+                        {%- if not AUTO_UPGRADE_INTEGRATIONS %}
+                        else
+                            echo "skipping available upgrade for in use integration - $package_name."
+                        fi
+                        {%- endif %}
                     fi
                 fi
             {% endif %}

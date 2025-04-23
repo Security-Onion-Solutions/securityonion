@@ -10,7 +10,7 @@
 write_kafka_pillar_yaml:
   file.managed:
     - name: /opt/so/saltstack/local/pillar/kafka/nodes.sls
-    - mode: 644
+    - mode: 640
     - user: socore
     - source: salt://kafka/files/managed_node_pillar.jinja
     - template: jinja

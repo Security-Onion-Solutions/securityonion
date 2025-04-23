@@ -204,12 +204,17 @@ so-elasticsearch-roles-load:
       - docker_container: so-elasticsearch
       - file: elasticsearch_sbin_jinja
 
-{%     if GLOBALS.role in ['so-eval', 'so-standalone', 'so-managersearch', 'so-heavynode', 'so-manager', 'so-managerhype'] %}
+{%     if grains.role in ['so-managersearch', 'so-heavynode', 'so-manager', 'so-managerhype'] %}
+{%       set ap = "absent" %}
+{%     endif %}
+{%     if grains.role in ['so-eval', 'so-standalone'] %}
 {%       if ELASTICSEARCHMERGED.index_clean %}
 {%         set ap = "present" %}
 {%       else %}
 {%         set ap = "absent" %}
 {%       endif %}
+{%     endif %}  
+{%     if grains.role in ['so-eval', 'so-standalone', 'so-managersearch', 'so-heavynode', 'so-manager'] %}
 so-elasticsearch-indices-delete:
   cron.{{ap}}:
     - name: /usr/sbin/so-elasticsearch-indices-delete > /opt/so/log/elasticsearch/cron-elasticsearch-indices-delete.log 2>&1
