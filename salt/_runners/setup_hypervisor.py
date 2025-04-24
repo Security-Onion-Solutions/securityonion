@@ -516,29 +516,30 @@ def setup_environment(vm_name: str = 'sool9', disk_size: str = '220G', minion_id
             'vm_result': None
         }
 
-    # Initialize the LocalClient
-    local = salt.client.LocalClient()
-    
-    # Add retry logic for mine.update
-    max_retries = 10
-    retry_delay = 3
-    mine_update_success = False
-    
-    for attempt in range(1, max_retries + 1):
-        mine_update_result = local.cmd(minion_id, 'mine.update')
-        log.debug(f"DYANNO: mine_update_result: {mine_update_result}")
+    if minion_id:
+        # Initialize the LocalClient
+        local = salt.client.LocalClient()
         
-        # Check if mine.update was successful
-        if mine_update_result and all(mine_update_result.values()):
-            log.info(f"DYANNO: mine.update successful on attempt {attempt}")
-            mine_update_success = True
-            break
-        else:
-            log.warning(f"DYANNO: mine.update failed on attempt {attempt}/{max_retries}, retrying in {retry_delay} seconds...")
-            time.sleep(retry_delay)
-    
-    if not mine_update_success:
-        log.error(f"DYANNO: mine.update failed after {max_retries} attempts")
+        # Add retry logic for mine.update
+        max_retries = 10
+        retry_delay = 3
+        mine_update_success = False
+        
+        for attempt in range(1, max_retries + 1):
+            mine_update_result = local.cmd(minion_id, 'mine.update')
+            log.debug(f"DYANNO: mine_update_result: {mine_update_result}")
+            
+            # Check if mine.update was successful
+            if mine_update_result and all(mine_update_result.values()):
+                log.info(f"DYANNO: mine.update successful on attempt {attempt}")
+                mine_update_success = True
+                break
+            else:
+                log.warning(f"DYANNO: mine.update failed on attempt {attempt}/{max_retries}, retrying in {retry_delay} seconds...")
+                time.sleep(retry_delay)
+        
+        if not mine_update_success:
+            log.error(f"DYANNO: mine.update failed after {max_retries} attempts")
 
     # Apply the soc.dyanno.hypervisor state on the salt master
     if not _apply_dyanno_hypervisor_state():
