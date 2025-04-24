@@ -16,6 +16,15 @@
 include:
   - libvirt.packages
 
+nsm_libvirt_images:
+  file.directory:
+    - name: /nsm/libvirt/images/sool9
+    - dir_mode: 775
+    - file_mode: 640
+    - recurse:
+      - mode
+    - makedirs: True
+
 # Remove hash file if image isn't present. This will allow for the image to redownload and initialize.
 remove_sha256_sool9:
   file.absent:
@@ -27,7 +36,6 @@ manage_sha256_sool9:
   file.managed:
     - name: /nsm/libvirt/images/sool9/sool9.sha256
     - source: salt://libvirt/images/sool9/sool9.sha256
-    - makedirs: True
 
 # Manage cloud-init files
 manage_metadata_sool9:
