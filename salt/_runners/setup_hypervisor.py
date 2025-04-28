@@ -86,6 +86,19 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 stream_handler.setFormatter(formatter)
 log.addHandler(stream_handler)
 
+def _set_ownership_and_perms(path: str, mode: int):
+    """Set ownership to socore:socore and apply file mode."""
+    try:
+        socore_uid = pwd.getpwnam('socore').pw_uid
+        socore_gid = pwd.getpwnam('socore').pw_gid
+        os.chown(path, socore_uid, socore_gid)
+        os.chmod(path, mode)
+        log.debug(f"PERMS: Set ownership socore:socore and mode {oct(mode)} for {path}")
+    except KeyError:
+        log.warning(f"PERMS: socore user not found, skipping ownership/permission change for {path}")
+    except Exception as e:
+        log.warning(f"PERMS: Failed to set ownership/permissions for {path}: {str(e)}")
+
 def _read_and_encode_key(key_path: str) -> str:
     """Read a key file and return its base64 encoded content."""
     try:
@@ -704,6 +717,8 @@ def create_vm(vm_name: str, disk_size: str = '220G'):
         base_dir = '/opt/so/saltstack/local/salt/libvirt/images'
         vm_dir = f'{base_dir}/{vm_name}'
         os.makedirs(vm_dir, exist_ok=True)
+        # Set ownership and permissions for the VM directory
+        _set_ownership_and_perms(vm_dir, mode=0o750)
 
         # Read the SSH public key
         pub_key_path = '/opt/so/saltstack/local/salt/libvirt/ssh/keys/id_ed25519.pub'
@@ -745,15 +760,23 @@ def create_vm(vm_name: str, disk_size: str = '220G'):
 local-hostname: {vm_name}
 """
         meta_data_path = os.path.join(vm_dir, 'meta-data')
+        # Create empty file, set perms, then write
+        open(meta_data_path, 'a').close()
+        _set_ownership_and_perms(meta_data_path, mode=0o640)
         with salt.utils.files.fopen(meta_data_path, 'w') as f:
             f.write(meta_data)
+        log.info("CREATEVM: Created meta-data")
 
         # Create network-data
         network_data = """network:
   config: disabled"""
         network_data_path = os.path.join(vm_dir, 'network-data')
+        # Create empty file, set perms, then write
+        open(network_data_path, 'a').close()
+        _set_ownership_and_perms(network_data_path, mode=0o640)
         with salt.utils.files.fopen(network_data_path, 'w') as f:
             f.write(network_data)
+        log.info("CREATEVM: Created network-data")
 
         # Create user-data
         user_data = f"""#cloud-config
@@ -841,8 +864,12 @@ power_state:
   message: Cloud-init completed, powering off
 """
         user_data_path = os.path.join(vm_dir, 'user-data')
+        # Create empty file, set perms, then write
+        open(user_data_path, 'a').close()
+        _set_ownership_and_perms(user_data_path, mode=0o640)
         with salt.utils.files.fopen(user_data_path, 'w') as f:
             f.write(user_data)
+        log.info("CREATEVM: Created user-data")
 
         # Copy and resize base image
         base_image = IMAGE_PATH
@@ -852,8 +879,10 @@ power_state:
         import shutil
         log.info("CREATEVM: Copying base image to %s", vm_image)
         shutil.copy2(base_image, vm_image)
+        # Set ownership and permissions for the copied image
+        _set_ownership_and_perms(vm_image, mode=0o640)
         log.info("CREATEVM: Base image copy complete")
-        
+
         # Get current image size
         import subprocess
         try:
@@ -908,6 +937,8 @@ power_state:
         # Check if compression completed successfully
         if process.returncode == 0:
             os.replace(temp_image, vm_image)
+            # Set ownership and permissions for the compressed image
+            _set_ownership_and_perms(vm_image, mode=0o640)
             log.info("CREATEVM: Image compression complete")
         else:
             error = process.stderr.read().decode('utf-8')
@@ -921,6 +952,9 @@ power_state:
         subprocess.run(['mkisofs', '-output', cidata_iso, '-volid', 'CIDATA', '-rock',
                        user_data_path, meta_data_path, network_data_path],
                       check=True, capture_output=True)
+        # Set ownership and permissions for the created ISO
+        _set_ownership_and_perms(cidata_iso, mode=0o640)
+        log.info("CREATEVM: Created cidata ISO")
 
         # Generate SHA256 hash of the qcow2 image
         sha256_hash = hashlib.sha256()
@@ -932,7 +966,9 @@ power_state:
         hash_file = os.path.join(vm_dir, f'{vm_name}.sha256')
         with salt.utils.files.fopen(hash_file, 'w') as f:
             f.write(sha256_hash.hexdigest())
-        
+        # Set ownership and permissions for the hash file
+        _set_ownership_and_perms(hash_file, mode=0o640)
+
         log.info("CREATEVM: Generated SHA256 hash for %s", vm_image)
 
         return {
