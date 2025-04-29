@@ -63,7 +63,7 @@ managerssl_crt:
     - signing_policy: managerssl
     - private_key: /etc/pki/managerssl.key
     - CN: {{ GLOBALS.hostname }}
-    - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
+    - subjectAltName: "DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}, DNS:{{ GLOBALS.url_base }}" 
     - days_remaining: 0
     - days_valid: 820
     - backup: True
