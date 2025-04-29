@@ -29,7 +29,7 @@ def run():
         # Set ownership to socore:socore
         os.chown(full_path, socore_uid, socore_gid)
         # Set mode to 644 (rw-r--r--)
-        os.chmod(full_path, 0o644)
+        os.chmod(full_path, 0o640)
         logging.error("createEmptyPillar reactor: created %s with socore:socore ownership and mode 644" % f)
 
   except (KeyError, OSError) as e:

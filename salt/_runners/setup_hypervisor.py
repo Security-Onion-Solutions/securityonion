@@ -300,7 +300,7 @@ def _setup_ssh_keys():
 
         # Set proper permissions
         os.chmod(key_path, 0o600)
-        os.chmod(pub_key_path, 0o644)
+        os.chmod(pub_key_path, 0o640)
 
         log.info("SETUP_KEYS: SSH keys generated successfully")
 
