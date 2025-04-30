@@ -289,7 +289,7 @@ def _setup_ssh_keys():
             encoding=serialization.Encoding.OpenSSH,
             format=serialization.PublicFormat.OpenSSH
         )
-        public_bytes = public_bytes + b' soqemussh@salt-master\n'
+        public_bytes = public_bytes + f' soqemussh@{MANAGER_HOSTNAME}\n'.encode('utf-8')
 
         # Write the keys to files
         with salt.utils.files.fopen(key_path, 'wb') as f:
