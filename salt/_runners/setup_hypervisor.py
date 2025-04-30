@@ -79,12 +79,6 @@ from cryptography.hazmat.primitives.asymmetric import ed25519
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
 
-# Ensure we have a stream handler
-stream_handler = logging.StreamHandler(sys.stdout)
-stream_handler.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-stream_handler.setFormatter(formatter)
-log.addHandler(stream_handler)
 
 def _set_ownership_and_perms(path: str, mode: int):
     """Set ownership to socore:socore and apply file mode."""
