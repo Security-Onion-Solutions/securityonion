@@ -504,16 +504,26 @@ def run_qcow2_modify_network_config(profile, vm_name, mode, ip=None, gateway=Non
     interface = 'enp1s0'
 
     try:
-        result = local.cmd(target, 'qcow2.modify_network_config', [
+        # Base arguments that are always included
+        args = [
             'image=' + image,
             'interface=' + interface,
             'mode=' + mode,
-            'vm_name=' + vm_name,
-            'ip4=' + ip if ip else '',
-            'gw4=' + gateway if gateway else '',
-            'dns4=' + dns if dns else '',
-            'search4=' + search_domain if search_domain else ''
-        ])
+            'vm_name=' + vm_name
+        ]
+        
+        # Only include IP-related arguments if not using DHCP
+        if mode != "dhcp4":
+            if ip:
+                args.append('ip4=' + ip)
+            if gateway:
+                args.append('gw4=' + gateway)
+            if dns:
+                args.append('dns4=' + dns)
+            if search_domain:
+                args.append('search4=' + search_domain)
+                
+        result = local.cmd(target, 'qcow2.modify_network_config', args)
         format_qcow2_output('Network configuration', result)
     except Exception as e:
         logger.error(f"An error occurred while running qcow2.modify_network_config: {e}")
