@@ -68,6 +68,49 @@ Base domain has not been initialized.
 {{- available | join(',') -}}
 {%- endmacro -%}
 
+{%- macro update_resource_field(field, free_value, total_value, unit_label) -%}
+{%-   set resource_regex = '' -%}
+{%-   if free_value < 10 -%}
+{%-     set resource_regex = '^[1-' ~ free_value ~ ']$' -%}
+{%-   elif free_value < 100 -%}
+{%-     set tens_digit = free_value // 10 -%}
+{%-     set ones_digit = free_value % 10 -%}
+{%-     if ones_digit == 0 -%}
+{%-       set resource_regex = '^([1-9]|[1-' ~ (tens_digit-1) ~ '][0-9]|' ~ tens_digit ~ '0)$' -%}
+{%-     else -%}
+{%-       set resource_regex = '^([1-9]|[1-' ~ (tens_digit-1) ~ '][0-9]|' ~ tens_digit ~ '[0-' ~ ones_digit ~ '])$' -%}
+{%-     endif -%}
+{%-   elif free_value < 1000 -%}
+{%-     set hundreds_digit = free_value // 100 -%}
+{%-     set tens_digit = (free_value % 100) // 10 -%}
+{%-     set ones_digit = free_value % 10 -%}
+{%-     if hundreds_digit == 1 -%}
+{%-       if tens_digit == 0 and ones_digit == 0 -%}
+{%-         set resource_regex = '^([1-9]|[1-9][0-9]|100)$' -%}
+{%-       elif tens_digit == 0 -%}
+{%-         set resource_regex = '^([1-9]|[1-9][0-9]|10[0-' ~ ones_digit ~ '])$' -%}
+{%-       elif ones_digit == 0 -%}
+{%-         set resource_regex = '^([1-9]|[1-9][0-9]|10[0-9]|1[1-' ~ tens_digit ~ ']0)$' -%}
+{%-       else -%}
+{%-         set resource_regex = '^([1-9]|[1-9][0-9]|10[0-9]|1[1-' ~ (tens_digit-1) ~ '][0-9]|1' ~ tens_digit ~ '[0-' ~ ones_digit ~ '])$' -%}
+{%-       endif -%}
+{%-     else -%}
+{%-       if tens_digit == 0 and ones_digit == 0 -%}
+{%-         set resource_regex = '^([1-9]|[1-9][0-9]|[1-9][0-9][0-9]|[1-' ~ (hundreds_digit-1) ~ '][0-9][0-9]|' ~ hundreds_digit ~ '00)$' -%}
+{%-       elif ones_digit == 0 -%}
+{%-         set resource_regex = '^([1-9]|[1-9][0-9]|[1-9][0-9][0-9]|[1-' ~ (hundreds_digit-1) ~ '][0-9][0-9]|' ~ hundreds_digit ~ '[0-' ~ tens_digit ~ ']0)$' -%}
+{%-       else -%}
+{%-         set resource_regex = '^([1-9]|[1-9][0-9]|[1-9][0-9][0-9]|[1-' ~ (hundreds_digit-1) ~ '][0-9][0-9]|' ~ hundreds_digit ~ '[0-' ~ (tens_digit-1) ~ '][0-9]|' ~ hundreds_digit ~ tens_digit ~ '[0-' ~ ones_digit ~ '])$' -%}
+{%-       endif -%}
+{%-     endif -%}
+{%-   endif -%}
+{%-   do field.update({
+        'label': field.label | replace('FREE', free_value | string) | replace('TOTAL', total_value | string),
+        'regex': resource_regex,
+        'regexFailureMessage': 'Enter a value not exceeding ' ~ free_value | string ~ ' ' ~ unit_label
+      }) -%}
+{%- endmacro -%}
+
 {%- for role in HYPERVISORS -%}
 {%-   for hypervisor in HYPERVISORS[role].keys() -%}
 {%-     set hw_config = HYPERVISORS[role][hypervisor].hardware -%}
@@ -122,43 +165,9 @@ Base domain has not been initialized.
 {%-     for field in updated_template.uiElements -%}
 {%-       set updated_field = field.copy() -%}
 {%-       if field.field == 'cpu' -%}
-{%-         if cpu_free < 10 -%}
-{%-           set cpu_regex = '^[1-' ~ cpu_free ~ ']$' -%}
-{%-         elif cpu_free < 100 -%}
-{%-           set tens_digit = cpu_free // 10 -%}
-{%-           set ones_digit = cpu_free % 10 -%}
-{%-           if ones_digit == 0 -%}
-{%-             set cpu_regex = '^([1-9]|[1-' ~ (tens_digit-1) ~ '][0-9]|' ~ tens_digit ~ '0)$' -%}
-{%-           else -%}
-{%-             set cpu_regex = '^([1-9]|[1-' ~ (tens_digit-1) ~ '][0-9]|' ~ tens_digit ~ '[0-' ~ ones_digit ~ '])$' -%}
-{%-           endif -%}
-{%-         else -%}
-{%-           set cpu_regex = '^([1-9]|[1-9][0-9]|100)$' -%}
-{%-         endif -%}
-{%-         do updated_field.update({
-            'label': field.label | replace('FREE', cpu_free | string) | replace('TOTAL', cpu_total | string),
-            'regex': cpu_regex,
-            'regexFailureMessage': 'Enter a value not exceeding ' ~ cpu_free | string ~ ' cores'
-          }) -%}
+{%-         do update_resource_field(updated_field, cpu_free, cpu_total, 'cores') -%}
 {%-       elif field.field == 'memory' -%}
-{%-         if mem_free < 10 -%}
-{%-           set mem_regex = '^[1-' ~ mem_free ~ ']$' -%}
-{%-         elif mem_free < 100 -%}
-{%-           set tens_digit = mem_free // 10 -%}
-{%-           set ones_digit = mem_free % 10 -%}
-{%-           if ones_digit == 0 -%}
-{%-             set mem_regex = '^([1-9]|[1-' ~ (tens_digit-1) ~ '][0-9]|' ~ tens_digit ~ '0)$' -%}
-{%-           else -%}
-{%-             set mem_regex = '^([1-9]|[1-' ~ (tens_digit-1) ~ '][0-9]|' ~ tens_digit ~ '[0-' ~ ones_digit ~ '])$' -%}
-{%-           endif -%}
-{%-         else -%}
-{%-           set mem_regex = '^([1-9]|[1-9][0-9]|[1-9][0-9][0-9])$' -%}
-{%-         endif -%}
-{%-         do updated_field.update({
-            'label': field.label | replace('FREE', mem_free | string) | replace('TOTAL', mem_total | string),
-            'regex': mem_regex,
-            'regexFailureMessage': 'Enter a value not exceeding ' ~ mem_free | string ~ ' GB'
-          }) -%}
+{%-         do update_resource_field(updated_field, mem_free, mem_total, 'GB') -%}
 {%-       elif field.field == 'disk' -%}
 {%-         set disk_free_list = disk_free.split(',') if disk_free else [] -%}
 {%-         do updated_field.update({
