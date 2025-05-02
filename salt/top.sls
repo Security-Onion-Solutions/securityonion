@@ -306,9 +306,9 @@ base:
     - sensoroni
     - telegraf
     - firewall
+    - hypervisor
     - libvirt
     - libvirt.images
-    - hypervisor
     - elasticfleet.install_agent_grid
     - stig
   

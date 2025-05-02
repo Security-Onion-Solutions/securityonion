@@ -14,6 +14,7 @@
 {%   if 'vrt' in salt['pillar.get']('features', []) %}
 
 include:
+  - hypervisor
   - libvirt.packages
 
 nsm_libvirt_images:
