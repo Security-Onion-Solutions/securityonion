@@ -594,7 +594,7 @@ def validate_vrt_license() -> bool:
                      "for more information about purchasing a license to enable this feature.")
             return False
             
-        log.info("License validation successful")
+        log.debug("License validation successful")
         return True
             
     except Exception as e:
@@ -887,7 +887,7 @@ def start(interval: int = DEFAULT_INTERVAL,
         - Admin must restart service to clear lock
         - Error-level logging used for lock issues
     """
-    log.info("Starting virtual node manager engine")
+    log.debug("Starting virtual node manager engine")
     
     if not validate_vrt_license():
         return
@@ -908,7 +908,7 @@ def start(interval: int = DEFAULT_INTERVAL,
         # Clean shutdown - release lock
         log.debug("Virtual node manager releasing lock")
         engine_lock.release()
-        log.info("Virtual node manager completed successfully")
+        log.debug("Virtual node manager completed successfully")
                 
     except Exception as e:
         log.error("Error in virtual node manager - lock will remain until cleared: %s", str(e))
