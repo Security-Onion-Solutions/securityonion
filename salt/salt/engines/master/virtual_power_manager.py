@@ -316,7 +316,7 @@ def start(interval: int = DEFAULT_INTERVAL,
         interval: Time in seconds between engine runs (managed by salt-master)
         base_path: Base path containing hypervisor configurations
     """
-    log.info("Starting virtual power manager engine")
+    log.debug("Starting virtual power manager engine")
     
     try:
         # Process each hypervisor directory
@@ -324,7 +324,7 @@ def start(interval: int = DEFAULT_INTERVAL,
             if os.path.isdir(hypervisor_path):
                 process_hypervisor_power_requests(hypervisor_path)
                 
-        log.info("Virtual power manager completed successfully")
+        log.debug("Virtual power manager completed successfully")
                 
     except Exception as e:
         log.error("Error in virtual power manager: %s", str(e))
