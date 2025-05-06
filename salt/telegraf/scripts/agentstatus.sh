@@ -24,7 +24,7 @@ if [[ ! "`pidof -x $(basename $0) -o %PPID`" ]]; then
         EVENTS=$(cat $LOGFILE | grep -wF events | awk '{print $2}' | tr -d ',')
         TOTAL=$(cat $LOGFILE | grep -wF total | awk '{print $2}' | tr -d ',')
         ALL=$(cat $LOGFILE | grep -wF all | awk '{print $2}' | tr -d ',')
-        ACTIVE=$(cat $LOGFILE | grep -wF active | awk '{print $2}')
+        ACTIVE=$(cat $LOGFILE | grep -wF active | awk '{print $2}' | tr -d ',')
 
         echo "agentstatus online=$ONLINE,error=$ERROR,inactive=$INACTIVE,offline=$OFFLINE,updating=$UPDATING,unenrolled=$UNENROLLED,other=$OTHER,events=$EVENTS,total=$TOTAL,all=$ALL,active=$ACTIVE"
     fi

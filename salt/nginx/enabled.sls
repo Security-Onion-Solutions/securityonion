@@ -121,7 +121,7 @@ so-nginx:
       - /opt/so/log/nginx/:/var/log/nginx:rw
       - /opt/so/tmp/nginx/:/var/lib/nginx:rw
       - /opt/so/tmp/nginx/:/run:rw
-      - /opt/so/saltstack/local/salt/elasticfleet/files/so_agent-installers/:/opt/socore/html/packages
+      - /nsm/elastic-fleet/so_agent-installers/:/opt/socore/html/packages
       - /nsm/elastic-fleet/artifacts/:/opt/socore/html/artifacts 
       {% if GLOBALS.is_manager %}
       - /etc/pki/managerssl.crt:/etc/pki/nginx/server.crt:ro

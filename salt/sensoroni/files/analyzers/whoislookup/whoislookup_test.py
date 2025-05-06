@@ -36,7 +36,7 @@ class TestWhoisLookupMethods(unittest.TestCase):
 
     def test_sendReqNotFound(self):
         mock = MagicMock()
-        mock.side_effect = whoisit.errors.ResourceDoesNotExist()
+        mock.side_effect = whoisit.errors.ResourceDoesNotExist("foo")
         with patch('whoisit.domain', new=mock):
             response = whoislookup.sendReq("abcd1234.com")
             mock.assert_called_once_with("abcd1234.com", raw=True)

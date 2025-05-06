@@ -243,6 +243,13 @@ check_pillar_items() {
   fi
 }
 
+check_saltmaster_status() {
+  set +e
+  echo "Waiting on the Salt Master service to be ready."
+  check_salt_master_status || fail  "Can't access salt master or it is not ready. Check $SOUP_LOG for details."
+  set -e
+}
+
 check_sudoers() {
   if grep -q "so-setup" /etc/sudoers; then
     echo "There is an entry for so-setup in the sudoers file, this can be safely deleted using \"visudo\"."
@@ -1423,10 +1430,7 @@ main() {
     systemctl_func "start" "salt-master"
 
     # Testing that salt-master is up by checking that is it connected to itself
-    set +e
-    echo "Waiting on the Salt Master service to be ready."
-    check_salt_master_status || fail  "Can't access salt master or it is not ready. Check $SOUP_LOG for details."
-    set -e
+    check_saltmaster_status
 
     # update the salt-minion configs here and start the minion
     # since highstate are disabled above, minion start should not trigger a highstate
@@ -1453,10 +1457,7 @@ main() {
 
     systemctl_func "start" "salt-master"
 
-    set +e
-    echo "Waiting on the Salt Master service to be ready."
-    check_salt_master_status || fail  "Can't access salt master or it is not ready. Check $SOUP_LOG for details."
-    set -e
+    check_saltmaster_status
 
     echo "Running a highstate to complete the Security Onion upgrade on this manager. This could take several minutes."
     (wait_for_salt_minion "$MINIONID" "5" '/dev/stdout' || fail "Salt minion was not running or ready.") 2>&1 | tee -a "$SOUP_LOG"
@@ -1468,6 +1469,7 @@ main() {
     update_salt_mine
 
     highstate
+    check_saltmaster_status
     postupgrade_changes
     [[ $is_airgap -eq 0 ]] && unmount_update
 
