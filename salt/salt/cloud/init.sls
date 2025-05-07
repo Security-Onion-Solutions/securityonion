@@ -43,16 +43,6 @@ cloud_profiles:
         MANAGERHOSTNAME: {{ grains.host }}
         MANAGERIP: {{ pillar.host.mainip }}
     - template: jinja
-
-{%       for role, hosts in HYPERVISORS.items() %}
-{%         for host in hosts.keys() %}
-
-hypervisor_{{host}}_{{role}}_pillar_dir:
-  file.directory:
-    - name: /opt/so/saltstack/local/pillar/hypervisor/{{host}}_{{role}}
-
-{%         endfor %}
-{%       endfor %}
 {%     endif %}
 
 {%   else %}
