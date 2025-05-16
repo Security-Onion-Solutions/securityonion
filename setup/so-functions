@@ -1186,6 +1186,15 @@ get_minion_type() {
 	echo "$minion_type"
 }
 
+hypervisor_local_states() {
+	# these states need to run before the first highstate so that we dont deal with the salt-minion restarting
+	# and we need these setup prior to the highstate
+	if [ $is_hypervisor ] || [ $is_managerhype ]; then
+        salt-call state.apply libvirt.64962 --local --file-root=../salt/ -l info
+        salt-call state.apply libvirt.bridge --local --file-root=../salt/ -l info pillar='{"host": {"mainint": "enp1s0"}}'
+	fi
+}
+
 install_cleanup() {
 	if [ -f "$temp_install_dir" ]; then
 		info "Installer removing the following files:"
