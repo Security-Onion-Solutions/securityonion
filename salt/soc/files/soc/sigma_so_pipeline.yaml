@@ -1,6 +1,45 @@
 name: Security Onion Baseline Pipeline
 priority: 90
 transformations:
+vars:
+  document_id:
+   - '{soc_id}'
+  hostname:
+   - '{event_data.host.name}'
+  ProcessGuid:
+   - '{event_data.process.entity_id}'
+  User:
+   - '{user.name}'
+  private_ip:
+   - '{network.private.ip}' 
+  public_ip:
+   - '{network.public.ip}'   
+  related_ip:
+   - '{event_data.related.ip}'
+  related.hosts:
+   - '{event_data.related.hosts'
+  CurrentDirectory:
+   - '{event_data.process.working_directory}'
+  ParentProcessGuid:
+   - '{ParentProcessGuid}'
+  Image:
+   - '{process.executable}'
+  community_id:
+   - '{network.community_id}'
+transformations:
+    - type: value_placeholders
+      include:
+        - 'community_id'
+        - 'document_id'
+        - 'ProcessGuid'      
+        - 'hostname'
+        - 'User'
+        - 'CurrentDirectory'
+        - 'ParentProcessGuid'
+        - 'Image'
+        - 'related_ip'
+        - 'private_ip'
+        - 'public_ip'
     - id: baseline_field_name_mapping
       type: field_name_mapping
       mapping:
@@ -12,12 +51,27 @@ transformations:
         sid: rule.uuid
         answer: answers
         query: dns.query.name
-        src_ip: source.ip.keyword
+        src_ip: source.ip
         src_port: source.port
-        dst_ip: destination.ip.keyword
+        dst_ip: destination.ip
         dst_port: destination.port
         winlog.event_data.User: user.name
         logtype: event.code # OpenCanary
+      ## Start Temp Linux Mappings ##
+        ProcessGuid: process.entity_id
+        ProcessId: process.pid
+        Image: process.executable
+        CommandLine: process.command_line
+        CurrentDirectory: process.working_directory
+        ParentProcessGuid: process.parent.entity_id
+        ParentProcessId: process.parent.pid"
+        ParentImage: process.parent.executable
+        ParentCommandLine: process.parent.command_line
+     ## End Temp Linux Mappings ##
+        rule.type: event.module
+        related_ip: related.ip
+        community_id: network.community_id
+        event_dataset: event.dataset
     # Maps "opencanary" product to SO IDH logs
     - id: opencanary_idh_add-fields
       type: add_condition
@@ -127,3 +181,40 @@ transformations:
       rule_conditions:
       - type: logsource
         category: file_event
+        category: file_event
+    # Maps network_connection rules to endpoint network creation logs
+    # This is an OS-agnostic mapping, to account for logs that don't specify source OS
+    - id: endpoint_network_connection_add-fields
+      type: add_condition
+      conditions:
+        event.category: 'network'
+        event.type: 'start'
+      rule_conditions:
+      - type: logsource
+        category: network_connection
+    # Maps "alert" category to SO Alert events
+    - id: alert_so_add-fields
+      type: add_condition
+      conditions:
+        tags: 'alert'
+      rule_conditions:
+      - type: logsource
+        category: alert
+    # Maps "network + connection" to SO connection logs
+    - id: network_connection_so_add-fields
+      type: add_condition
+      conditions:
+        tags: 'conn'
+      rule_conditions:
+      - type: logsource
+        category: network
+        service: connection
+    # Maps "network + dns" to SO DNS logs
+    - id: network_dns_so_add-fields
+      type: add_condition
+      conditions:
+        tags: 'dns'
+      rule_conditions:
+      - type: logsource
+        category: network
+        service: dns

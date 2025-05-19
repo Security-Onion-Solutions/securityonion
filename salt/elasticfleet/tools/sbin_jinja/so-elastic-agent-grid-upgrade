@@ -14,7 +14,7 @@ if ! is_manager_node; then
 fi
 
 # Get current list of Grid Node Agents that need to be upgraded
-RAW_JSON=$(curl -K /opt/so/conf/elasticsearch/curl.config -L "http://localhost:5601/api/fleet/agents?perPage=20&page=1&kuery=policy_id%20%3A%20so-grid-nodes_%2A&showInactive=false&showUpgradeable=true&getStatusSummary=true")
+RAW_JSON=$(curl -K /opt/so/conf/elasticsearch/curl.config -L "http://localhost:5601/api/fleet/agents?perPage=20&page=1&kuery=NOT%20agent.version%20:%20%22{{ELASTICSEARCHDEFAULTS.elasticsearch.version}}%22%20and%20policy_id%20:%20%22so-grid-nodes_general%22&showInactive=false&getStatusSummary=true")
 
 # Check to make sure that the server responded with good data - else, bail from script
 CHECKSUM=$(jq -r '.page' <<< "$RAW_JSON")

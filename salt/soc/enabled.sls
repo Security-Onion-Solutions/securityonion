@@ -35,6 +35,7 @@ so-soc:
       - /opt/so/conf/soc/soc.json:/opt/sensoroni/sensoroni.json:ro
       - /opt/so/conf/soc/ai_summary_repos:/opt/sensoroni/ai_summary_repos:rw
       - /opt/so/conf/navigator/layers/:/opt/sensoroni/navigator/:rw
+      - /opt/so/conf/soc/playbooks/:/opt/sensoroni/playbooks/:rw
 {% if SOCMERGED.telemetryEnabled and not GLOBALS.airgap %}
       - /opt/so/conf/soc/analytics.js:/opt/sensoroni/html/js/analytics.js:ro
 {% endif %}
