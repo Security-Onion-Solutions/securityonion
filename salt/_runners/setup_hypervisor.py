@@ -467,6 +467,51 @@ def _apply_dyanno_hypervisor_state():
         log.error(f"DYANNO: Error applying soc.dyanno.hypervisor state: {str(e)}")
         return False
 
+def _apply_cloud_config_state():
+    """
+    Apply the salt.cloud.config state on the salt master.
+    
+    Returns:
+        bool: True if state was applied successfully, False otherwise
+    """
+    try:
+        log.info("CLOUDCONFIG: Applying salt.cloud.config state on salt master")
+        
+        # Initialize the LocalClient
+        local = salt.client.LocalClient()
+        
+        # Target the salt master to apply the soc.dyanno.hypervisor state
+        target = MANAGER_HOSTNAME + '_*'
+        state_result = local.cmd(target, 'state.apply', ['salt.cloud.config', 'concurrent=True'], tgt_type='glob')
+        log.debug(f"CLOUDCONFIG: state_result: {state_result}")
+        # Check if state was applied successfully
+        if state_result:
+            success = True
+            for minion, states in state_result.items():
+                if not isinstance(states, dict):
+                    log.error(f"CLOUDCONFIG: Unexpected result format from {minion}: {states}")
+                    success = False
+                    continue
+                    
+                for state_id, state_data in states.items():
+                    if not state_data.get('result', False):
+                        log.error(f"CLOUDCONFIG: State {state_id} failed on {minion}: {state_data.get('comment', 'No comment')}")
+                        success = False
+            
+            if success:
+                log.info("CLOUDCONFIG: Successfully applied salt.cloud.config state")
+                return True
+            else:
+                log.error("CLOUDCONFIG: Failed to apply salt.cloud.config state")
+                return False
+        else:
+            log.error("CLOUDCONFIG: No response from salt master when applying salt.cloud.config state")
+            return False
+            
+    except Exception as e:
+        log.error(f"CLOUDCONFIG: Error applying salt.cloud.config state: {str(e)}")
+        return False
+
 def setup_environment(vm_name: str = 'sool9', disk_size: str = '220G', minion_id: str = None):
     """
     Main entry point to set up the hypervisor environment.
@@ -547,6 +592,11 @@ def setup_environment(vm_name: str = 'sool9', disk_size: str = '220G', minion_id
         
         if not mine_update_success:
             log.error(f"DYANNO: mine.update failed after {max_retries} attempts")
+
+    # Apply the soc.dyanno.hypervisor state on the salt master
+    if not _apply_cloud_config_state():
+        log.warning("MAIN: Failed to apply salt.cloud.config state, continuing with setup")
+        # We don't return an error here as we want to continue with the setup process
 
     # Apply the soc.dyanno.hypervisor state on the salt master
     if not _apply_dyanno_hypervisor_state():

@@ -12,17 +12,29 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 {%   if 'vrt' in salt['pillar.get']('features', []) %}
-{%     from 'salt/map.jinja' import SALTVERSION %}
+{%     set HYPERVISORS = salt['pillar.get']('hypervisor:nodes', {} ) %}
 
-include:
-  - libvirt.packages
-  - libvirt.64962
-  - libvirt.ssh.users
+{%     if HYPERVISORS %}
+cloud_providers:
+  file.managed:
+    - name: /etc/salt/cloud.providers.d/libvirt.conf
+    - source: salt://salt/cloud/cloud.providers.d/libvirt.conf.jinja
+    - defaults:
+        HYPERVISORS: {{HYPERVISORS}}
+    - template: jinja
+    - makedirs: True
 
-install_salt_cloud:
-  pkg.installed:
-    - name: salt-cloud
-    - version: {{SALTVERSION}}
+cloud_profiles:
+  file.managed:
+    - name: /etc/salt/cloud.profiles.d/socloud.conf
+    - source: salt://salt/cloud/cloud.profiles.d/socloud.conf.jinja
+    - defaults:
+        HYPERVISORS: {{HYPERVISORS}}
+        MANAGERHOSTNAME: {{ grains.host }}
+        MANAGERIP: {{ pillar.host.mainip }}
+    - template: jinja
+    - makedirs: True
+{%     endif %}
 
 {%   else %}
 {{sls}}_no_license_detected:
