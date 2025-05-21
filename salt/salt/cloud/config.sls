@@ -10,7 +10,7 @@
 #    software that is protected by the license key."
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
-{% if sls in allowed_states %}
+{% if '.'.join(sls.split('.')[:2]) in allowed_states %}
 {%   if 'vrt' in salt['pillar.get']('features', []) %}
 {%     set HYPERVISORS = salt['pillar.get']('hypervisor:nodes', {} ) %}
 
