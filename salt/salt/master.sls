@@ -76,6 +76,13 @@ engines_config:
     - name: /etc/salt/master.d/engines.conf
     - source: salt://salt/files/engines.conf
 
+# update the bootstrap script when used for salt-cloud
+salt_bootstrap_cloud:
+  file.managed:
+    - name: /opt/saltstack/salt/lib/python3.10/site-packages/salt/cloud/deploy/bootstrap-salt.sh
+    - source: salt://salt/scripts/bootstrap-salt.sh
+    - show_changes: False
+
 salt_master_service:
   service.running:
     - name: salt-master
