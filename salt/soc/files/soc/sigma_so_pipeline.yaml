@@ -1,45 +1,6 @@
 name: Security Onion Baseline Pipeline
 priority: 90
 transformations:
-vars:
-  document_id:
-   - '{soc_id}'
-  hostname:
-   - '{event_data.host.name}'
-  ProcessGuid:
-   - '{event_data.process.entity_id}'
-  User:
-   - '{user.name}'
-  private_ip:
-   - '{network.private.ip}' 
-  public_ip:
-   - '{network.public.ip}'   
-  related_ip:
-   - '{event_data.related.ip}'
-  related.hosts:
-   - '{event_data.related.hosts'
-  CurrentDirectory:
-   - '{event_data.process.working_directory}'
-  ParentProcessGuid:
-   - '{ParentProcessGuid}'
-  Image:
-   - '{process.executable}'
-  community_id:
-   - '{network.community_id}'
-transformations:
-    - type: value_placeholders
-      include:
-        - 'community_id'
-        - 'document_id'
-        - 'ProcessGuid'      
-        - 'hostname'
-        - 'User'
-        - 'CurrentDirectory'
-        - 'ParentProcessGuid'
-        - 'Image'
-        - 'related_ip'
-        - 'private_ip'
-        - 'public_ip'
     - id: baseline_field_name_mapping
       type: field_name_mapping
       mapping:
@@ -64,14 +25,17 @@ transformations:
         CommandLine: process.command_line
         CurrentDirectory: process.working_directory
         ParentProcessGuid: process.parent.entity_id
-        ParentProcessId: process.parent.pid"
+        ParentProcessId: process.parent.pid
         ParentImage: process.parent.executable
         ParentCommandLine: process.parent.command_line
+        User: user.name
      ## End Temp Linux Mappings ##
+        document_id: _id
         rule.type: event.module
         related_ip: related.ip
         community_id: network.community_id
         event_dataset: event.dataset
+        hostname: host.name
     # Maps "opencanary" product to SO IDH logs
     - id: opencanary_idh_add-fields
       type: add_condition
@@ -181,7 +145,15 @@ transformations:
       rule_conditions:
       - type: logsource
         category: file_event
-        category: file_event
+    # Maps network rules to all network logs
+    # This targets all network logs, all services, generated from endpoints and network
+    - id: network_add-fields
+      type: add_condition
+      conditions:
+        event.category: 'network'
+      rule_conditions:
+      - type: logsource
+        category: network
     # Maps network_connection rules to endpoint network creation logs
     # This is an OS-agnostic mapping, to account for logs that don't specify source OS
     - id: endpoint_network_connection_add-fields
@@ -218,3 +190,41 @@ transformations:
       - type: logsource
         category: network
         service: dns
+    # Maps "network + file" to SO file logs
+    - id: network_file_so_add-fields
+      type: add_condition
+      conditions:
+        event.category: 'network'
+        tags: 'file'
+      rule_conditions:
+      - type: logsource
+        category: network
+        service: file
+    # Maps "network + x509" to SO x509 logs
+    - id: network_x509_so_add-fields
+      type: add_condition
+      conditions:
+        event.category: 'network'
+        tags: 'x509'
+      rule_conditions:
+      - type: logsource
+        category: network
+        service: x509
+    # Maps "network + ssl" to SO ssl logs
+    - id: network_ssl_so_add-fields
+      type: add_condition
+      conditions:
+        event.category: 'network'
+        tags: 'ssl'
+      rule_conditions:
+      - type: logsource
+        category: network
+        service: ssl
+    # Maps file to host or network file events
+    - id: file_so_add-fields
+      type: add_condition
+      conditions:
+        tags: '*file'
+      rule_conditions:
+      - type: logsource
+        category: file

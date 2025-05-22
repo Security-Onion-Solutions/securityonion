@@ -18,6 +18,13 @@
     { "set":    { "field": "event.ingested",            "value": "{{@timestamp}}"                                       } },
     { "date": { "field": "message2.timestamp", "target_field": "@timestamp", "formats": ["ISO8601", "UNIX"], "timezone": "UTC", "ignore_failure": true } },
     { "remove":{ "field": "agent",                                                              "ignore_failure": true  } },
+    {"append":{"field":"related.ip","value":["{{source.ip}}","{{destination.ip}}"],"allow_duplicates":false,"ignore_failure":true}},
+    {
+      "script": {
+        "source": "boolean isPrivate(def ip) { if (ip == null) return false; int dot1 = ip.indexOf('.'); if (dot1 == -1) return false; int dot2 = ip.indexOf('.', dot1 + 1); if (dot2 == -1) return false; int first = Integer.parseInt(ip.substring(0, dot1)); if (first == 10) return true; if (first == 192 && ip.startsWith('168.', dot1 + 1)) return true; if (first == 172) { int second = Integer.parseInt(ip.substring(dot1 + 1, dot2)); return second >= 16 && second <= 31; } return false; } String[] fields = new String[] {\"source\", \"destination\"}; for (int i = 0; i < fields.length; i++) { def field = fields[i]; def ip = ctx[field]?.ip; if (ip != null) { if (ctx.network == null) ctx.network = new HashMap(); if (isPrivate(ip)) { if (ctx.network.private_ip == null) ctx.network.private_ip = new ArrayList(); if (!ctx.network.private_ip.contains(ip)) ctx.network.private_ip.add(ip); } else { if (ctx.network.public_ip == null) ctx.network.public_ip = new ArrayList(); if (!ctx.network.public_ip.contains(ip)) ctx.network.public_ip.add(ip); } } }",
+        "ignore_failure": false
+      }
+    },
     { "pipeline": { "if": "ctx?.event?.dataset != null", "name": "suricata.{{event.dataset}}" } }
   ]
 }

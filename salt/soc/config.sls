@@ -52,6 +52,13 @@ socsaltdir:
     - mode: 770
     - makedirs: True
 
+socplaybooksdir:
+  file.directory:
+    - name: /opt/so/conf/soc/playbooks
+    - user: 939
+    - group: 939
+    - makedirs: True
+
 socanalytics:
   file.managed:
     - name: /opt/so/conf/soc/analytics.js
