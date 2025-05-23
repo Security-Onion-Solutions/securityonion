@@ -664,7 +664,7 @@ def setup_environment(vm_name: str = 'sool9', disk_size: str = '220G', minion_id
             # Run highstate on the hypervisor
             highstate_result = local.cmd(minion_id, 'state.highstate', [], timeout=1800)
             if highstate_result and minion_id in highstate_result:
-                log.info("MAIN: Highstate triggered on %s", minion_id)
+                log.info("MAIN: Highstate initiated on %s", minion_id)
             else:
                 log.error("MAIN: Highstate failed or timed out on %s", minion_id)
                 return {
