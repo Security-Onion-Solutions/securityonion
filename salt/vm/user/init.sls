@@ -20,9 +20,7 @@ vm_user_soqemussh:
     - name: soqemussh
     - shell: /bin/bash
     - home: /home/soqemussh
-{%     if VMMERGED.user.soqemussh.passwordHash %}
     - password: '{{ VMMERGED.user.soqemussh.passwordHash }}'
-{%     endif %}
 
 vm_user_soqemussh_home_directory:
   file.directory:
