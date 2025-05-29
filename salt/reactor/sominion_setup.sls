@@ -9,12 +9,14 @@ import logging
 from subprocess import call
 import yaml
 
+log = logging.getLogger(__name__)
+
 def run():
-  logging.debug('sominion_setup_reactor: Running')
+  log.info('sominion_setup_reactor: Running')
   minionid = data['id']
   DATA = data['data']
   hv_name = DATA['HYPERVISOR_HOST']
-  logging.debug('sominion_setup_reactor: DATA: %s' % DATA)
+  log.info('sominion_setup_reactor: DATA: %s' % DATA)
 
   # Build the base command
   cmd = "NODETYPE=" + DATA['NODETYPE'] + " /usr/sbin/so-minion -o=addVM -m=" + minionid + " -n=" + DATA['MNIC'] + " -i=" + DATA['MAINIP'] + " -c=" + str(DATA['CPUCORES']) + " -d='" + DATA['NODE_DESCRIPTION'] + "'"
@@ -31,10 +33,13 @@ def run():
   
   if 'LS_HEAP_SIZE' in DATA:
     cmd += " -l=" + DATA['LS_HEAP_SIZE']
+
+  if 'LSHOSTNAME' in DATA:
+    cmd += " -L=" + DATA['LSHOSTNAME']
   
-  logging.debug('sominion_setup_reactor: Command: %s' % cmd)
+  log.info('sominion_setup_reactor: Command: %s' % cmd)
   rc = call(cmd, shell=True)
 
-  logging.info('sominion_setup_reactor: rc: %s' % rc)
+  log.info('sominion_setup_reactor: rc: %s' % rc)
 
   return {}
