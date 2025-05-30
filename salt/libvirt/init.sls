@@ -34,7 +34,7 @@ libvirt_conf_dir:
 libvirt_config:
   file.managed:
     - name: /opt/so/conf/libvirt/libvirtd.conf
-    - source: salt://libvirt/configstockstock
+    - source: salt://libvirt/etc/libvirtd.conf
 #    - source: salt://libvirt/etc/libvirtd.conf.jinja
 #    - template: jinja
 #    - defaults:

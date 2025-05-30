@@ -1,12 +1,38 @@
 #!/bin/bash
 
-#raid3.sh is a refinement of raid2.sh. raid2.sh was used to create the raid in testing
-#More detailed logging
-#More thorough RAID array cleanup
-#Better organized cleanup procedures
-#Simplified device wiping using more modern tools (sgdisk instead of dd)
-#More robust handling of existing MD arrays
-#The core RAID creation and mounting functionality remains the same between both scripts, but the second version has improved error handling and cleanup procedures.
+#################################################################
+# RAID-1 Setup Script for NVMe Drives
+#################################################################
+# 
+# DESCRIPTION:
+# This script automatically sets up a RAID-1 (mirrored) array using two NVMe drives
+# (/dev/nvme0n1 and /dev/nvme1n1) and mounts it at /nsm with XFS filesystem.
+#
+# FUNCTIONALITY:
+# - Detects and reports existing RAID configurations
+# - Thoroughly cleans target drives of any existing data/configurations
+# - Creates GPT partition tables with RAID-type partitions
+# - Establishes RAID-1 array (/dev/md0) for data redundancy
+# - Formats the array with XFS filesystem for performance
+# - Automatically mounts at /nsm and configures for boot persistence
+# - Provides monitoring information for resync operations
+#
+# SAFETY FEATURES:
+# - Requires root privileges
+# - Exits gracefully if RAID already exists and is mounted
+# - Performs comprehensive cleanup to avoid conflicts
+# - Forces partition table updates and waits for system recognition
+#
+# PREREQUISITES:
+# - Two NVMe drives: /dev/nvme0n1 and /dev/nvme1n1
+# - Root access
+# - mdadm, sgdisk, and standard Linux utilities
+#
+# WARNING: This script will DESTROY all data on the target drives!
+#
+# USAGE: sudo ./raid_setup.sh
+#
+#################################################################
 
 # Exit on any error
 set -e
@@ -24,60 +50,8 @@ check_root() {
     fi
 }
 
-# Function to perform thorough device cleanup
-ensure_devices_free() {
-    local device=$1
-    
-    log "Performing thorough cleanup of device $device"
-    
-    # Kill any processes using the device
-    fuser -k "${device}"* 2>/dev/null || true
-    
-    # Force unmount any partitions
-    for part in "${device}"*; do
-        if mount | grep -q "$part"; then
-            umount -f "$part" 2>/dev/null || true
-        fi
-    done
-    
-    # Stop any MD arrays using this device
-    for md in $(ls /dev/md* 2>/dev/null || true); do
-        if mdadm --detail "$md" 2>/dev/null | grep -q "$device"; then
-            log "Stopping MD array $md"
-            mdadm --stop "$md" 2>/dev/null || true
-        fi
-    done
-    
-    # Thorough RAID cleanup
-    log "Cleaning RAID metadata from $device"
-    mdadm --zero-superblock "$device" 2>/dev/null || true
-    if [ -e "${device}p1" ]; then
-        mdadm --zero-superblock "${device}p1" 2>/dev/null || true
-    fi
-    
-    # Remove LVM PV if exists
-    pvremove -ff -y "$device" 2>/dev/null || true
-    
-    # Clear all signatures
-    log "Wiping all signatures from $device"
-    wipefs -a "$device" 2>/dev/null || true
-    
-    # Clear partition table
-    log "Clearing partition table on $device"
-    sgdisk -Z "$device" 2>/dev/null || true
-    
-    # Force kernel to reread
-    log "Forcing kernel to reread partition table"
-    partprobe "$device" 2>/dev/null || true
-    sleep 2
-}
-
 # Function to check if RAID is already set up
 check_existing_raid() {
-    # Clear existing mdadm configuration first
-    log "Initializing clean mdadm configuration"
-    echo "DEVICE partitions" > /etc/mdadm.conf
-    
     if [ -e "/dev/md0" ]; then
         if mdadm --detail /dev/md0 &>/dev/null; then
             local raid_state=$(mdadm --detail /dev/md0 | grep "State" | awk '{print $3}')
@@ -108,25 +82,64 @@ check_existing_raid() {
         fi
     fi
     
-    # Check if any MD arrays exist and try to clean them up
-    if [ -f /proc/mdstat ]; then
-        log "Checking for existing MD arrays"
-        if grep -q "md" /proc/mdstat; then
-            log "Found existing MD arrays, attempting cleanup"
-            for md in $(awk '/md/{print $1}' /proc/mdstat); do
-                log "Stopping array $md"
-                mdadm --stop "/dev/$md" 2>/dev/null || true
-            done
-        fi
-    fi
-    
     # Check if any of the target devices are in use
     for device in "/dev/nvme0n1" "/dev/nvme1n1"; do
         if lsblk -o NAME,MOUNTPOINT "$device" | grep -q "nsm"; then
             log "Error: $device is already mounted at /nsm"
             exit 1
         fi
+        
+        if mdadm --examine "$device" &>/dev/null || mdadm --examine "${device}p1" &>/dev/null; then
+            log "Error: $device appears to be part of an existing RAID array"
+            log "To reuse this device, you must first:"
+            log "1. Unmount any filesystems"
+            log "2. Stop the RAID array: mdadm --stop /dev/md0"
+            log "3. Zero the superblock: mdadm --zero-superblock ${device}p1"
+            exit 1
+        fi
     done
+}
+
+# Function to ensure devices are not in use
+ensure_devices_free() {
+    local device=$1
+    
+    log "Cleaning up device $device"
+    
+    # Kill any processes using the device
+    fuser -k "${device}"* 2>/dev/null || true
+    
+    # Force unmount any partitions
+    for part in "${device}"*; do
+        if mount | grep -q "$part"; then
+            umount -f "$part" 2>/dev/null || true
+        fi
+    done
+    
+    # Stop any MD arrays using this device
+    for md in $(ls /dev/md* 2>/dev/null || true); do
+        if mdadm --detail "$md" 2>/dev/null | grep -q "$device"; then
+            mdadm --stop "$md" 2>/dev/null || true
+        fi
+    done
+    
+    # Clear MD superblock
+    mdadm --zero-superblock "${device}"* 2>/dev/null || true
+    
+    # Remove LVM PV if exists
+    pvremove -ff -y "$device" 2>/dev/null || true
+    
+    # Clear all signatures
+    wipefs -af "$device" 2>/dev/null || true
+    
+    # Delete partition table
+    dd if=/dev/zero of="$device" bs=512 count=2048 2>/dev/null || true
+    dd if=/dev/zero of="$device" bs=512 seek=$(( $(blockdev --getsz "$device") - 2048 )) count=2048 2>/dev/null || true
+    
+    # Force kernel to reread
+    blockdev --rereadpt "$device" 2>/dev/null || true
+    partprobe -s "$device" 2>/dev/null || true
+    sleep 2
 }
 
 # Main script
@@ -138,6 +151,14 @@ main() {
     
     # Check for existing RAID setup
     check_existing_raid
+    
+    # Clean up any existing MD arrays
+    log "Cleaning up existing MD arrays"
+    mdadm --stop --scan 2>/dev/null || true
+    
+    # Clear mdadm configuration
+    log "Clearing mdadm configuration"
+    echo "DEVICE partitions" > /etc/mdadm.conf
     
     # Clean and prepare devices
     for device in "/dev/nvme0n1" "/dev/nvme1n1"; do
