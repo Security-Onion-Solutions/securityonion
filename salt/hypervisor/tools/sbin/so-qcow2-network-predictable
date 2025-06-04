@@ -171,19 +171,21 @@ def modify_bls_entry(g):
         for i, line in enumerate(lines):
             if line.startswith('options '):
                 logger.info(f"Found options line: {line}")
-                # Check if net.ifnames parameter exists
-                if 'net.ifnames=' in line:
-                    # Replace existing parameter
-                    new_line = re.sub(r'net\.ifnames=[01]', 'net.ifnames=1', line)
-                    if new_line != line:
-                        lines[i] = new_line
-                        modified = True
-                        logger.info(f"Updated existing net.ifnames parameter to 1. New line: {new_line}")
-                else:
-                    # Add parameter
-                    lines[i] = f"{line} net.ifnames=1"
+                
+                # First remove any existing net.ifnames parameters (both =0 and =1)
+                new_line = re.sub(r'\s*net\.ifnames=[01]\s*', ' ', line)
+                # Also remove any quoted versions
+                new_line = re.sub(r'\s*"net\.ifnames=[01]"\s*', ' ', new_line)
+                # Clean up multiple spaces
+                new_line = re.sub(r'\s+', ' ', new_line).strip()
+                
+                # Now add net.ifnames=1 at the end
+                new_line = f"{new_line} net.ifnames=1"
+                
+                if new_line != line:
+                    lines[i] = new_line
                     modified = True
-                    logger.info(f"Added net.ifnames=1 parameter. New line: {lines[i]}")
+                    logger.info(f"Updated options line. New line: {new_line}")
                 break
 
         if modified:
@@ -238,10 +240,54 @@ def update_grub_config(g):
         RuntimeError: If GRUB update fails
     """
     try:
+        # First, read the current grubenv to get the existing kernelopts
+        logger.info("Reading current grubenv...")
+        grubenv_content = g.read_file('/boot/grub2/grubenv').decode('utf-8')
+        logger.info("Current grubenv content:")
+        logger.info(grubenv_content)
+        
+        # Extract current kernelopts
+        kernelopts_match = re.search(r'^kernelopts="([^"]+)"', grubenv_content, re.MULTILINE)
+        if kernelopts_match:
+            current_kernelopts = kernelopts_match.group(1)
+            logger.info(f"Current kernelopts: {current_kernelopts}")
+            
+            # Remove any existing net.ifnames parameters
+            new_kernelopts = re.sub(r'\s*net\.ifnames=[01]\s*', ' ', current_kernelopts)
+            # Clean up multiple spaces
+            new_kernelopts = re.sub(r'\s+', ' ', new_kernelopts).strip()
+            # Add net.ifnames=1
+            new_kernelopts = f"{new_kernelopts} net.ifnames=1"
+            
+            logger.info(f"New kernelopts: {new_kernelopts}")
+            
+            # Update grubenv with the new kernelopts
+            logger.info("Setting kernelopts with net.ifnames=1...")
+            output_editenv = g.command(['grub2-editenv', '-', 'set', f'kernelopts={new_kernelopts}'])
+            logger.info("grub2-editenv output:")
+            logger.info(output_editenv)
+        else:
+            # If we can't find existing kernelopts, use the default
+            logger.warning("Could not find existing kernelopts, using default")
+            output_editenv = g.command(['grub2-editenv', '-', 'set', 'kernelopts=console=tty0 no_timer_check biosdevname=0 resume=/dev/mapper/vg_main-lv_swap rd.lvm.lv=vg_main/lv_root rd.lvm.lv=vg_main/lv_swap net.ifnames=1 crashkernel=1G-64G:448M,64G-:512M'])
+            logger.info("grub2-editenv output:")
+            logger.info(output_editenv)
+
+        logger.info("Updating grubby with net.ifnames=1...")
+        # First remove any existing net.ifnames arguments
+        output_grubby_remove = g.command(['grubby', '--update-kernel=ALL', '--remove-args=net.ifnames=0 net.ifnames=1'])
+        logger.info("grubby remove output:")
+        logger.info(output_grubby_remove)
+        
+        # Then add net.ifnames=1
+        output_grubby_add = g.command(['grubby', '--update-kernel=ALL', '--args=net.ifnames=1'])
+        logger.info("grubby add output:")
+        logger.info(output_grubby_add)
+
         logger.info("Updating GRUB configuration...")
-        output = g.command(['grub2-mkconfig', '-o', '/boot/grub2/grub.cfg'])
+        output_mkconfig = g.command(['grub2-mkconfig', '-o', '/boot/grub2/grub.cfg'])
         logger.info("GRUB update output:")
-        logger.info(output)
+        logger.info(output_mkconfig)
         logger.info("Successfully updated GRUB configuration")
     except Exception as e:
         logger.error(f"Failed to update GRUB configuration: {e}")
