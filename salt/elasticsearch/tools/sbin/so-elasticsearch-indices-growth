@@ -1,0 +1,113 @@
+#!/bin/bash
+
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+INFLUX_URL="https://localhost:8086/api/v2"
+
+. /usr/sbin/so-common
+
+request() {
+    curl -skK /opt/so/conf/influxdb/curl.config "$INFLUX_URL/$@"
+}
+
+lookup_org_id() {
+  response=$(request orgs?org=Security+Onion)
+  echo "$response" | jq -r ".orgs[] | select(.name == \"Security Onion\").id"
+}
+
+ORG_ID=$(lookup_org_id)
+
+run_flux_query() {
+    local query=$1
+    request "query?org=$ORG_ID" -H 'Accept:application/csv' -H 'Content-type:application/vnd.flux' -d "$query" -XPOST 2>/dev/null
+}
+
+read_csv_result() {
+    local result="$1"
+    echo "$result" | grep '^,_result,' | head -1 | awk -F',' '{print $NF}' | tr -d '\r\n\t '
+}
+
+bytes_to_gb() {
+    local bytes="${1:-0}"
+    if [[ "$bytes" =~ ^-?[0-9]+$ ]]; then
+        echo "$bytes" | awk '{printf "%.2f", $1 / 1024 / 1024 / 1024}'
+    else
+        echo "0.00"
+    fi
+}
+
+indexes_query='from(bucket: "telegraf/so_long_term")
+|> range(start: -7d)
+|> filter(fn: (r) => r._measurement == "elasticsearch_index_size")
+|> distinct(column: "_field")
+|> keep(columns: ["_field"])'
+
+indexes_result=$(run_flux_query "$indexes_query")
+indexes=$(echo "$indexes_result" | tail -n +2 | cut -d',' -f4 | grep -v '^$' | grep -v '^_field$' | sed 's/\r$//' | sort -u)
+
+printf "%-50s %15s %15s %15s\n" "Index Name" "Last 24hr (GB)" "Last 7d (GB)" "Last 30d (GB)"
+printf "%-50s %15s %15s %15s\n" "$(printf '%.0s-' {1..50})" "$(printf '%.0s-' {1..15})" "$(printf '%.0s-' {1..15})" "$(printf '%.0s-' {1..15})"
+
+for index in $indexes; do
+  [[ -z "$index" ]] && continue
+  current_query="from(bucket: \"telegraf/so_long_term\")
+    |> range(start: -4h)
+    |> filter(fn: (r) => r._measurement == \"elasticsearch_index_size\" and r._field == \"$index\")
+    |> last()
+    |> keep(columns: [\"_value\"])"
+  current_result=$(run_flux_query "$current_query")
+  current_size=$(read_csv_result "$current_result")
+  current_size=${current_size:-0}
+
+  size_24h_query="from(bucket: \"telegraf/so_long_term\")
+    |> range(start: -25h, stop: -23h)
+    |> filter(fn: (r) => r._measurement == \"elasticsearch_index_size\" and r._field == \"$index\")
+    |> last()
+    |> keep(columns: [\"_value\"])"
+  size_24h_result=$(run_flux_query "$size_24h_query")
+  size_24h_ago=$(read_csv_result "$size_24h_result")
+  size_24h_ago=${size_24h_ago:-$current_size}
+
+  size_7d_query="from(bucket: \"telegraf/so_long_term\")
+    |> range(start: -7d8h, stop: -7d)
+    |> filter(fn: (r) => r._measurement == \"elasticsearch_index_size\" and r._field == \"$index\")
+    |> last()
+    |> keep(columns: [\"_value\"])"
+  size_7d_result=$(run_flux_query "$size_7d_query")
+  size_7d_ago=$(read_csv_result "$size_7d_result")
+  size_7d_ago=${size_7d_ago:-$current_size}
+
+  size_30d_query="from(bucket: \"telegraf/so_long_term\")
+    |> range(start: -30d8h, stop: -30d)
+    |> filter(fn: (r) => r._measurement == \"elasticsearch_index_size\" and r._field == \"$index\")
+    |> last()
+    |> keep(columns: [\"_value\"])"
+  size_30d_result=$(run_flux_query "$size_30d_query")
+  size_30d_ago=$(read_csv_result "$size_30d_result")
+  size_30d_ago=${size_30d_ago:-$current_size}
+
+  # if an index was recently cleaned up by ilm it will result in a negative number for 'index growth'.
+  growth_24h=$(( current_size > size_24h_ago ? current_size - size_24h_ago : 0 ))
+
+  growth_7d=$(( current_size > size_7d_ago ? current_size - size_7d_ago : 0 ))
+
+  growth_30d=$(( current_size > size_30d_ago ? current_size - size_30d_ago : 0 ))
+
+  growth_24h_gb=$(bytes_to_gb "$growth_24h")
+  growth_7d_gb=$(bytes_to_gb "$growth_7d")
+  growth_30d_gb=$(bytes_to_gb "$growth_30d")
+
+  # Only results for indices with atleast 1 metric above 0.00
+  if [[ "$growth_24h_gb" != "0.00" ]] || [[ "$growth_7d_gb" != "0.00" ]] || [[ "$growth_30d_gb" != "0.00" ]]; then
+    printf "%020.2f|%-50s %15s %15s %15s\n" \
+      "$growth_24h" \
+      "$index" \
+      "$growth_24h_gb" \
+      "$growth_7d_gb" \
+      "$growth_30d_gb"
+  fi
+done | sort -t'|' -k1,1nr | cut -d'|' -f2-
+

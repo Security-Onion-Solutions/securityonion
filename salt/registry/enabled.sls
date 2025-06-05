@@ -14,7 +14,7 @@ include:
 # Install the registry container
 so-dockerregistry:
   docker_container.running:
-    - image: ghcr.io/security-onion-solutions/registry:2.8.3
+    - image: ghcr.io/security-onion-solutions/registry:3.0.0
     - hostname: so-registry
     - networks:
       - sobridge:
@@ -25,7 +25,7 @@ so-dockerregistry:
       - {{ BINDING }}
       {% endfor %}
     - binds:
-      - /opt/so/conf/docker-registry/etc/config.yml:/etc/docker/registry/config.yml:ro
+      - /opt/so/conf/docker-registry/etc/config.yml:/etc/distribution/config.yml:ro
       - /opt/so/conf/docker-registry:/var/lib/registry:rw
       - /nsm/docker-registry/docker:/var/lib/registry/docker:rw
       - /etc/pki/registry.crt:/etc/pki/registry.crt:ro
