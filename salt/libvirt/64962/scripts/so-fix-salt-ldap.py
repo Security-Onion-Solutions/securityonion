@@ -21,7 +21,9 @@ uname = 'salt'
 gname = 'salt'
 
 lib = lief.parse(str(src_lib))
-sym = next(i for i in lib.imported_symbols if i.name == 'EVP_md2')
+
+sym = next((i for i in lib.imported_symbols if i.name == 'EVP_md2'), None)
+
 if sym:
     # Get the Salt services from DBus.
     sysbus = dbus.SystemBus()
@@ -71,5 +73,7 @@ if sym:
     if svcs:
         for sn in svcs:
             mgr.RestartUnit(sn, 'replace')
+else:
+    print('No EVP_md2 symbol found in the library. No modifications needed.')
 
 print('Done.')
