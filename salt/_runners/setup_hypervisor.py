@@ -87,11 +87,11 @@ def _set_ownership_and_perms(path: str, mode: int):
         socore_gid = pwd.getpwnam('socore').pw_gid
         os.chown(path, socore_uid, socore_gid)
         os.chmod(path, mode)
-        log.debug(f"PERMS: Set ownership socore:socore and mode {oct(mode)} for {path}")
+        log.debug(f"Set ownership socore:socore and mode {oct(mode)} for {path}")
     except KeyError:
-        log.warning(f"PERMS: socore user not found, skipping ownership/permission change for {path}")
+        log.warning(f"socore user not found, skipping ownership/permission change for {path}")
     except Exception as e:
-        log.warning(f"PERMS: Failed to set ownership/permissions for {path}: {str(e)}")
+        log.warning(f"Failed to set ownership/permissions for {path}: {str(e)}")
 
 def _read_and_encode_key(key_path: str) -> str:
     """Read a key file and return its base64 encoded content."""
@@ -108,7 +108,7 @@ def _check_license():
     license_path = '/opt/so/saltstack/local/pillar/soc/license.sls'
     
     if not os.path.exists(license_path):
-        log.error("LICENSE: License file not found at %s", license_path)
+        log.error("License file not found at %s", license_path)
         return False
         
     try:
@@ -116,25 +116,25 @@ def _check_license():
             license_data = yaml.safe_load(f)
             
         if not license_data:
-            log.error("LICENSE: Empty or invalid license file")
+            log.error("Empty or invalid license file")
             return False
             
         license_id = license_data.get('license_id')
         features = license_data.get('features', [])
         
         if not license_id:
-            log.error("LICENSE: No license_id found in license file")
+            log.error("No license_id found in license file")
             return False
             
         if 'vrt' not in features:
-            log.error("LICENSE: 'vrt' feature not found in license")
+            log.error("vrt feature not found in license")
             return False
             
-        log.info("LICENSE: License validation successful")
+        log.info("License validation successful")
         return True
             
     except Exception as e:
-        log.error("LICENSE: Error reading license file: %s", str(e))
+        log.error("Error reading license file: %s", str(e))
         return False
 
 def _check_file_exists(path):
@@ -157,11 +157,11 @@ def _validate_image_checksum(path, expected_sha256):
     
     downloaded_sha256 = sha256_hash.hexdigest()
     if downloaded_sha256 != expected_sha256:
-        log.error("VALIDATE: Checksum validation failed for %s - expected: %s, got: %s",
+        log.error("Checksum validation failed for %s - expected: %s, got: %s",
                  path, expected_sha256, downloaded_sha256)
         return False
     
-    log.info("VALIDATE: Checksum validation successful for %s", path)
+    log.info("Checksum validation successful for %s", path)
     return True
 
 # Constants
@@ -181,14 +181,14 @@ def _download_image():
         if _validate_image_checksum(IMAGE_PATH, IMAGE_SHA256):
             return True
         else:
-            log.warning("DOWNLOAD: Existing image has invalid checksum, will re-download")
+            log.warning("Existing image has invalid checksum, will re-download")
             os.unlink(IMAGE_PATH)
     
-    log.info("DOWNLOAD: Starting image download process")
+    log.info("Starting image download process")
 
     try:
         # Download file
-        log.info("DOWNLOAD: Downloading Oracle Linux KVM image from %s to %s", IMAGE_URL, IMAGE_PATH)
+        log.info("Downloading Oracle Linux KVM image from %s to %s", IMAGE_URL, IMAGE_PATH)
         response = requests.get(IMAGE_URL, stream=True)
         response.raise_for_status()
 
@@ -207,7 +207,7 @@ def _download_image():
                 current_time = time.time()
                 if current_time - last_log_time >= 1:
                     progress = (downloaded_size / total_size) * 100 if total_size > 0 else 0
-                    log.info("DOWNLOAD: Progress - %.1f%% (%d/%d bytes)", 
+                    log.info("Progress - %.1f%% (%d/%d bytes)", 
                             progress, downloaded_size, total_size)
                     last_log_time = current_time
 
@@ -216,11 +216,11 @@ def _download_image():
             os.unlink(IMAGE_PATH)
             return False
 
-        log.info("DOWNLOAD: Successfully downloaded and validated Oracle Linux KVM image")
+        log.info("Successfully downloaded and validated Oracle Linux KVM image")
         return True
 
     except Exception as e:
-        log.error("DOWNLOAD: Error downloading hypervisor image: %s", str(e))
+        log.error("Error downloading hypervisor image: %s", str(e))
         if os.path.exists(IMAGE_PATH):
             os.unlink(IMAGE_PATH)
         return False
@@ -238,7 +238,7 @@ def _check_ssh_keys_exist():
     dest_path = os.path.join(dest_dir, os.path.basename(pub_key_path))
 
     if os.path.exists(key_path) and os.path.exists(pub_key_path) and os.path.exists(dest_path):
-        log.info("SETUP_KEYS: SSH keys already exist")
+        log.info("SSH keys already exist")
         return True
     return False
 
@@ -258,7 +258,7 @@ def _setup_ssh_keys():
             return True
 
         # Create key directories if they don't exist and set permissions
-        log.info("SETUP_KEYS: Setting up SSH directory and keys")
+        log.info("Setting up SSH directory and keys")
         parent_dir = os.path.dirname(key_dir)  # /etc/ssh/auth_keys
         os.makedirs(parent_dir, exist_ok=True)
         os.chmod(parent_dir, 0o700)
@@ -267,7 +267,7 @@ def _setup_ssh_keys():
         os.chmod(key_dir, 0o700)
 
         # Generate new ed25519 key pair
-        log.info("SETUP_KEYS: Generating new SSH keys")
+        log.info("Generating new SSH keys")
         private_key = ed25519.Ed25519PrivateKey.generate()
         public_key = private_key.public_key()
 
@@ -296,7 +296,7 @@ def _setup_ssh_keys():
         os.chmod(key_path, 0o600)
         os.chmod(pub_key_path, 0o640)
 
-        log.info("SETUP_KEYS: SSH keys generated successfully")
+        log.info("SSH keys generated successfully")
 
         # Copy public key to saltstack directory
         dest_dir = '/opt/so/saltstack/local/salt/libvirt/ssh/keys'
@@ -307,11 +307,11 @@ def _setup_ssh_keys():
             with salt.utils.files.fopen(dest_path, 'wb') as dst:
                 dst.write(src.read())
         
-        log.info("SETUP_KEYS: Public key copied to %s", dest_dir)
+        log.info("Public key copied to %s", dest_dir)
         return True
 
     except Exception as e:
-        log.error("SETUP_KEYS: Error setting up SSH keys: %s", str(e))
+        log.error("Error setting up SSH keys: %s", str(e))
         return False
 
 def _check_vm_exists(vm_name: str) -> bool:
@@ -335,7 +335,7 @@ def _check_vm_exists(vm_name: str) -> bool:
     
     exists = all(os.path.exists(f) for f in required_files)
     if exists:
-        log.info("MAIN: VM %s already exists", vm_name)
+        log.info("VM %s already exists", vm_name)
     return exists
 
 def _ensure_hypervisor_host_dir(minion_id: str = None):
@@ -352,7 +352,7 @@ def _ensure_hypervisor_host_dir(minion_id: str = None):
         bool: True if directory exists or was created successfully, False otherwise
     """
     if not minion_id:
-        log.warning("HOSTDIR: No minion_id provided, skipping host directory creation")
+        log.warning("No minion_id provided, skipping host directory creation")
         return True
         
     try:
@@ -364,33 +364,33 @@ def _ensure_hypervisor_host_dir(minion_id: str = None):
         
         # Check if directory exists and create it if it doesn't
         if os.path.exists(host_dir):
-            log.info(f"HOSTDIR: Hypervisor host directory already exists: {host_dir}")
+            log.info(f"Hypervisor host directory already exists: {host_dir}")
             # Create the VMs file if it doesn't exist
             vms_file = f'/opt/so/saltstack/local/salt/hypervisor/hosts/{hostname}VMs'
             if not os.path.exists(vms_file):
                 with salt.utils.files.fopen(vms_file, 'w') as f:
                     f.write('[]')
-                log.info(f"HOSTDIR: Created empty VMs file: {vms_file}")
+                log.info(f"Created empty VMs file: {vms_file}")
                 
                 # Set proper ownership for the VMs file
                 try:
                     socore_uid = pwd.getpwnam('socore').pw_uid
                     socore_gid = pwd.getpwnam('socore').pw_gid
                     os.chown(vms_file, socore_uid, socore_gid)
-                    log.info(f"HOSTDIR: Set ownership to socore:socore for {vms_file}")
+                    log.info(f"Set ownership to socore:socore for {vms_file}")
                 except (KeyError, Exception) as e:
-                    log.warning(f"HOSTDIR: Failed to set ownership for VMs file: {str(e)}")
+                    log.warning(f"Failed to set ownership for VMs file: {str(e)}")
             return True
             
         # Create all necessary parent directories
         os.makedirs(host_dir, exist_ok=True)
-        log.info(f"HOSTDIR: Created hypervisor host directory: {host_dir}")
+        log.info(f"Created hypervisor host directory: {host_dir}")
         
         # Create the VMs file with an empty JSON array
         vms_file = f'/opt/so/saltstack/local/salt/hypervisor/hosts/{hostname}VMs'
         with salt.utils.files.fopen(vms_file, 'w') as f:
             f.write('[]')
-        log.info(f"HOSTDIR: Created empty VMs file: {vms_file}")
+        log.info(f"Created empty VMs file: {vms_file}")
         
         # Set proper ownership (socore:socore)
         try:
@@ -408,15 +408,15 @@ def _ensure_hypervisor_host_dir(minion_id: str = None):
             if os.path.exists(parent_dir):
                 os.chown(parent_dir, socore_uid, socore_gid)
                 
-            log.info(f"HOSTDIR: Set ownership to socore:socore for {host_dir} and {vms_file}")
+            log.info(f"Set ownership to socore:socore for {host_dir} and {vms_file}")
         except KeyError:
-            log.warning("HOSTDIR: socore user not found, skipping ownership change")
+            log.warning("socore user not found, skipping ownership change")
         except Exception as e:
-            log.warning(f"HOSTDIR: Failed to set ownership: {str(e)}")
+            log.warning(f"Failed to set ownership: {str(e)}")
             
         return True
     except Exception as e:
-        log.error(f"HOSTDIR: Error creating hypervisor host directory: {str(e)}")
+        log.error(f"Error creating hypervisor host directory: {str(e)}")
         return False
 
 def _apply_dyanno_hypervisor_state():
@@ -430,7 +430,7 @@ def _apply_dyanno_hypervisor_state():
         bool: True if state was applied successfully, False otherwise
     """
     try:
-        log.info("DYANNO: Applying soc.dyanno.hypervisor state on salt master")
+        log.info("Applying soc.dyanno.hypervisor state on salt master")
         
         # Initialize the LocalClient
         local = salt.client.LocalClient()
@@ -438,33 +438,33 @@ def _apply_dyanno_hypervisor_state():
         # Target the salt master to apply the soc.dyanno.hypervisor state
         target = MANAGER_HOSTNAME + '_*'
         state_result = local.cmd(target, 'state.apply', ['soc.dyanno.hypervisor', "pillar={'baseDomain': {'status': 'PreInit'}}", 'concurrent=True'], tgt_type='glob')
-        log.debug(f"DYANNO: state_result: {state_result}")
+        log.debug(f"state_result: {state_result}")
         # Check if state was applied successfully
         if state_result:
             success = True
             for minion, states in state_result.items():
                 if not isinstance(states, dict):
-                    log.error(f"DYANNO: Unexpected result format from {minion}: {states}")
+                    log.error(f"Unexpected result format from {minion}: {states}")
                     success = False
                     continue
                     
                 for state_id, state_data in states.items():
                     if not state_data.get('result', False):
-                        log.error(f"DYANNO: State {state_id} failed on {minion}: {state_data.get('comment', 'No comment')}")
+                        log.error(f"State {state_id} failed on {minion}: {state_data.get('comment', 'No comment')}")
                         success = False
             
             if success:
-                log.info("DYANNO: Successfully applied soc.dyanno.hypervisor state")
+                log.info("Successfully applied soc.dyanno.hypervisor state")
                 return True
             else:
-                log.error("DYANNO: Failed to apply soc.dyanno.hypervisor state")
+                log.error("Failed to apply soc.dyanno.hypervisor state")
                 return False
         else:
-            log.error("DYANNO: No response from salt master when applying soc.dyanno.hypervisor state")
+            log.error("No response from salt master when applying soc.dyanno.hypervisor state")
             return False
             
     except Exception as e:
-        log.error(f"DYANNO: Error applying soc.dyanno.hypervisor state: {str(e)}")
+        log.error(f"Error applying soc.dyanno.hypervisor state: {str(e)}")
         return False
 
 def _apply_cloud_config_state():
@@ -475,7 +475,7 @@ def _apply_cloud_config_state():
         bool: True if state was applied successfully, False otherwise
     """
     try:
-        log.info("CLOUDCONFIG: Applying salt.cloud.config state on salt master")
+        log.info("Applying salt.cloud.config state on salt master")
         
         # Initialize the LocalClient
         local = salt.client.LocalClient()
@@ -483,33 +483,33 @@ def _apply_cloud_config_state():
         # Target the salt master to apply the soc.dyanno.hypervisor state
         target = MANAGER_HOSTNAME + '_*'
         state_result = local.cmd(target, 'state.apply', ['salt.cloud.config', 'concurrent=True'], tgt_type='glob')
-        log.debug(f"CLOUDCONFIG: state_result: {state_result}")
+        log.debug(f"state_result: {state_result}")
         # Check if state was applied successfully
         if state_result:
             success = True
             for minion, states in state_result.items():
                 if not isinstance(states, dict):
-                    log.error(f"CLOUDCONFIG: Unexpected result format from {minion}: {states}")
+                    log.error(f"Unexpected result format from {minion}: {states}")
                     success = False
                     continue
                     
                 for state_id, state_data in states.items():
                     if not state_data.get('result', False):
-                        log.error(f"CLOUDCONFIG: State {state_id} failed on {minion}: {state_data.get('comment', 'No comment')}")
+                        log.error(f"State {state_id} failed on {minion}: {state_data.get('comment', 'No comment')}")
                         success = False
             
             if success:
-                log.info("CLOUDCONFIG: Successfully applied salt.cloud.config state")
+                log.info("Successfully applied salt.cloud.config state")
                 return True
             else:
-                log.error("CLOUDCONFIG: Failed to apply salt.cloud.config state")
+                log.error("Failed to apply salt.cloud.config state")
                 return False
         else:
-            log.error("CLOUDCONFIG: No response from salt master when applying salt.cloud.config state")
+            log.error("No response from salt master when applying salt.cloud.config state")
             return False
             
     except Exception as e:
-        log.error(f"CLOUDCONFIG: Error applying salt.cloud.config state: {str(e)}")
+        log.error(f"Error applying salt.cloud.config state: {str(e)}")
         return False
 
 def setup_environment(vm_name: str = 'sool9', disk_size: str = '220G', minion_id: str = None):
@@ -579,31 +579,31 @@ def setup_environment(vm_name: str = 'sool9', disk_size: str = '220G', minion_id
         
         for attempt in range(1, max_retries + 1):
             mine_update_result = local.cmd(minion_id, 'mine.update')
-            log.debug(f"DYANNO: mine_update_result: {mine_update_result}")
+            log.debug(f"mine_update_result: {mine_update_result}")
             
             # Check if mine.update was successful
             if mine_update_result and all(mine_update_result.values()):
-                log.info(f"DYANNO: mine.update successful on attempt {attempt}")
+                log.info(f"mine.update successful on attempt {attempt}")
                 mine_update_success = True
                 break
             else:
-                log.warning(f"DYANNO: mine.update failed on attempt {attempt}/{max_retries}, retrying in {retry_delay} seconds...")
+                log.warning(f"mine.update failed on attempt {attempt}/{max_retries}, retrying in {retry_delay} seconds...")
                 time.sleep(retry_delay)
         
         if not mine_update_success:
-            log.error(f"DYANNO: mine.update failed after {max_retries} attempts")
+            log.error(f"mine.update failed after {max_retries} attempts")
 
     # Apply the soc.dyanno.hypervisor state on the salt master
     if not _apply_cloud_config_state():
-        log.warning("MAIN: Failed to apply salt.cloud.config state, continuing with setup")
+        log.warning("Failed to apply salt.cloud.config state, continuing with setup")
         # We don't return an error here as we want to continue with the setup process
 
     # Apply the soc.dyanno.hypervisor state on the salt master
     if not _apply_dyanno_hypervisor_state():
-        log.warning("MAIN: Failed to apply soc.dyanno.hypervisor state, continuing with setup")
+        log.warning("Failed to apply soc.dyanno.hypervisor state, continuing with setup")
         # We don't return an error here as we want to continue with the setup process
 
-    log.info("MAIN: Starting setup_environment in setup_hypervisor runner")
+    log.info("Starting setup_environment in setup_hypervisor runner")
     
     # Check if environment is already set up
     image_exists = _check_file_exists(IMAGE_PATH)
@@ -616,9 +616,9 @@ def setup_environment(vm_name: str = 'sool9', disk_size: str = '220G', minion_id
     
     # Handle image setup if needed
     if not image_valid:
-        log.info("MAIN: Starting image download/validation process")
+        log.info("Starting image download/validation process")
         if not _download_image():
-            log.error("MAIN: Image download failed")
+            log.error("Image download failed")
             return {
                 'success': False,
                 'error': 'Image download failed',
@@ -628,9 +628,9 @@ def setup_environment(vm_name: str = 'sool9', disk_size: str = '220G', minion_id
     
     # Handle SSH key setup if needed
     if not keys_exist:
-        log.info("MAIN: Setting up SSH keys")
+        log.info("Setting up SSH keys")
         if not _setup_ssh_keys():
-            log.error("MAIN: SSH key setup failed")
+            log.error("SSH key setup failed")
             return {
                 'success': False,
                 'error': 'SSH key setup failed',
@@ -641,39 +641,39 @@ def setup_environment(vm_name: str = 'sool9', disk_size: str = '220G', minion_id
     # Create/recreate VM if needed
     if create_vm_needed or not vm_exists:
         if vm_exists:
-            log.info("MAIN: Environment changes detected, recreating VM %s", vm_name)
+            log.info("Environment changes detected, recreating VM %s", vm_name)
         else:
-            log.info("MAIN: Creating new VM %s", vm_name)
+            log.info("Creating new VM %s", vm_name)
         vm_result = create_vm(vm_name, disk_size)
     else:
-        log.info("MAIN: No changes detected, using existing VM %s", vm_name)
+        log.info("No changes detected, using existing VM %s", vm_name)
         vm_result = {
             'success': True,
             'vm_dir': f'/opt/so/saltstack/local/salt/libvirt/images/{vm_name}'
         }
     
     success = vm_result.get('success', False)
-    log.info("MAIN: Setup environment completed with status: %s", "SUCCESS" if success else "FAILED")
+    log.info("Setup environment completed with status: %s", "SUCCESS" if success else "FAILED")
     
     # If setup was successful and we have a minion_id, run highstate
     if success and minion_id:
-        log.info("MAIN: Running highstate on hypervisor %s", minion_id)
+        log.info("Running highstate on hypervisor %s", minion_id)
         try:
             # Initialize the LocalClient
             local = salt.client.LocalClient()
             # Run highstate on the hypervisor
             highstate_result = local.cmd(minion_id, 'state.highstate', [], timeout=1800)
             if highstate_result and minion_id in highstate_result:
-                log.info("MAIN: Highstate initiated on %s", minion_id)
+                log.info("Highstate initiated on %s", minion_id)
             else:
-                log.error("MAIN: Highstate failed or timed out on %s", minion_id)
+                log.error("Highstate failed or timed out on %s", minion_id)
                 return {
                     'success': False,
                     'error': 'Highstate failed or timed out',
                     'vm_result': None
                 }
         except Exception as e:
-            log.error("MAIN: Error running highstate on %s: %s", minion_id, str(e))
+            log.error("Error running highstate on %s: %s", minion_id, str(e))
             return {
                 'success': False,
                 'error': f'Error running highstate: {str(e)}',
@@ -732,16 +732,16 @@ def create_vm(vm_name: str, disk_size: str = '220G'):
     try:
         # Input validation
         if not isinstance(vm_name, str) or not vm_name:
-            log.error("CREATEVM: Invalid VM name")
+            log.error("Invalid VM name")
             return {'success': False, 'error': 'Invalid VM name'}
         
         if not vm_name.isalnum() and not all(c in '-_' for c in vm_name if not c.isalnum()):
-            log.error("CREATEVM: VM name must contain only alphanumeric characters, hyphens, or underscores")
+            log.error("VM name must contain only alphanumeric characters, hyphens, or underscores")
             return {'success': False, 'error': 'Invalid VM name format'}
 
         # Validate disk size format
         if not isinstance(disk_size, str) or not disk_size.endswith(('G', 'M')):
-            log.error("CREATEVM: Invalid disk size format. Must end with G or M")
+            log.error("Invalid disk size format. Must end with G or M")
             return {'success': False, 'error': 'Invalid disk size format'}
             
         try:
@@ -749,12 +749,12 @@ def create_vm(vm_name: str, disk_size: str = '220G'):
             if size_num <= 0:
                 raise ValueError
         except ValueError:
-            log.error("CREATEVM: Invalid disk size number")
+            log.error("Invalid disk size number")
             return {'success': False, 'error': 'Invalid disk size number'}
 
         # Ensure base image exists
         if not os.path.exists(IMAGE_PATH):
-            log.error("CREATEVM: Base image not found at %s", IMAGE_PATH)
+            log.error("Base image not found at %s", IMAGE_PATH)
             return {'success': False, 'error': 'Base image not found'}
 
         # Set up directory structure
@@ -770,7 +770,7 @@ def create_vm(vm_name: str, disk_size: str = '220G'):
             with salt.utils.files.fopen(pub_key_path, 'r') as f:
                 ssh_pub_key = f.read().strip()
         except Exception as e:
-            log.error("CREATEVM: Failed to read SSH public key: %s", str(e))
+            log.error("Failed to read SSH public key: %s", str(e))
             return {'success': False, 'error': 'Failed to read SSH public key'}
 
         # Read pillar data for soqemussh password hash
@@ -785,11 +785,11 @@ def create_vm(vm_name: str, disk_size: str = '220G'):
                         password_hash = pillar_data.get('vm', {}).get('user', {}).get('soqemussh', {}).get('passwordHash')
             if password_hash:
                 passwd_line = f"      passwd: {password_hash}\n"
-                log.info("CREATEVM: Found soqemussh password hash in pillar.")
+                log.info("Found soqemussh password hash in pillar.")
             else:
-                log.info("CREATEVM: No soqemussh password hash found in pillar, omitting passwd line.")
+                log.info("No soqemussh password hash found in pillar, omitting passwd line.")
         except Exception as e:
-            log.warning(f"CREATEVM: Error reading or parsing pillar file {pillar_path}: {str(e)}. Omitting passwd line.")
+            log.warning(f"Error reading or parsing pillar file {pillar_path}: {str(e)}. Omitting passwd line.")
 
         # Read and encode GPG keys
         keys_dir = '/opt/so/saltstack/default/salt/repo/client/files/oracle/keys'
@@ -809,7 +809,7 @@ local-hostname: {vm_name}
         _set_ownership_and_perms(meta_data_path, mode=0o640)
         with salt.utils.files.fopen(meta_data_path, 'w') as f:
             f.write(meta_data)
-        log.info("CREATEVM: Created meta-data")
+        log.info("Created meta-data")
 
         # Create network-data
         network_data = """network:
@@ -820,7 +820,7 @@ local-hostname: {vm_name}
         _set_ownership_and_perms(network_data_path, mode=0o640)
         with salt.utils.files.fopen(network_data_path, 'w') as f:
             f.write(network_data)
-        log.info("CREATEVM: Created network-data")
+        log.info("Created network-data")
 
         # Create user-data
         user_data = f"""#cloud-config
@@ -913,7 +913,7 @@ power_state:
         _set_ownership_and_perms(user_data_path, mode=0o640)
         with salt.utils.files.fopen(user_data_path, 'w') as f:
             f.write(user_data)
-        log.info("CREATEVM: Created user-data")
+        log.info("Created user-data")
 
         # Copy and resize base image
         base_image = IMAGE_PATH
@@ -921,11 +921,11 @@ power_state:
         
         # Copy base image with progress logging
         import shutil
-        log.info("CREATEVM: Copying base image to %s", vm_image)
+        log.info("Copying base image to %s", vm_image)
         shutil.copy2(base_image, vm_image)
         # Set ownership and permissions for the copied image
         _set_ownership_and_perms(vm_image, mode=0o640)
-        log.info("CREATEVM: Base image copy complete")
+        log.info("Base image copy complete")
 
         # Get current image size
         import subprocess
@@ -939,26 +939,26 @@ power_state:
             
             # Only resize if requested size is larger
             if requested_size > current_size:
-                log.info("CREATEVM: Resizing image to %s", disk_size)
+                log.info("Resizing image to %s", disk_size)
                 try:
                     result = subprocess.run(['qemu-img', 'resize', '-f', 'qcow2', vm_image, disk_size], 
                                           check=True, capture_output=True, text=True)
-                    log.info("CREATEVM: Image resize complete")
+                    log.info("Image resize complete")
                 except subprocess.CalledProcessError as e:
-                    log.error("CREATEVM: Failed to resize image: %s", e.stderr)
+                    log.error("Failed to resize image: %s", e.stderr)
                     raise
             else:
-                log.info("CREATEVM: Image already at or larger than requested size")
+                log.info("Image already at or larger than requested size")
         except subprocess.CalledProcessError as e:
-            log.error("CREATEVM: Failed to get image info: %s", e.stderr)
+            log.error("Failed to get image info: %s", e.stderr)
             raise
         except json.JSONDecodeError as e:
-            log.error("CREATEVM: Failed to parse image info: %s", str(e))
+            log.error("Failed to parse image info: %s", str(e))
             raise
         
         # Compress image
         temp_image = f"{vm_image}.temp"
-        log.info("CREATEVM: Compressing image")
+        log.info("Compressing image")
         
         # Start compression in a subprocess
         process = subprocess.Popen(['qemu-img', 'convert', '-O', 'qcow2', '-c', vm_image, temp_image],
@@ -974,7 +974,7 @@ power_state:
                 if os.path.exists(temp_image):
                     compressed_size = os.path.getsize(temp_image)
                     progress = (compressed_size / source_size) * 100
-                    log.info("CREATEVM: Compression progress - %.1f%% (%d/%d bytes)",
+                    log.info("Compression progress - %.1f%% (%d/%d bytes)",
                             progress, compressed_size, source_size)
                 last_log_time = current_time
         
@@ -983,10 +983,10 @@ power_state:
             os.replace(temp_image, vm_image)
             # Set ownership and permissions for the compressed image
             _set_ownership_and_perms(vm_image, mode=0o640)
-            log.info("CREATEVM: Image compression complete")
+            log.info("Image compression complete")
         else:
             error = process.stderr.read().decode('utf-8')
-            log.error("CREATEVM: Failed to compress image: %s", error)
+            log.error("Failed to compress image: %s", error)
             if os.path.exists(temp_image):
                 os.unlink(temp_image)
             raise subprocess.CalledProcessError(process.returncode, 'qemu-img convert', stderr=error)
@@ -998,7 +998,7 @@ power_state:
                       check=True, capture_output=True)
         # Set ownership and permissions for the created ISO
         _set_ownership_and_perms(cidata_iso, mode=0o640)
-        log.info("CREATEVM: Created cidata ISO")
+        log.info("Created cidata ISO")
 
         # Generate SHA256 hash of the qcow2 image
         sha256_hash = hashlib.sha256()
@@ -1013,7 +1013,7 @@ power_state:
         # Set ownership and permissions for the hash file
         _set_ownership_and_perms(hash_file, mode=0o640)
 
-        log.info("CREATEVM: Generated SHA256 hash for %s", vm_image)
+        log.info("Generated SHA256 hash for %s", vm_image)
 
         return {
             'success': True,
@@ -1021,7 +1021,7 @@ power_state:
         }
 
     except Exception as e:
-        log.error("CREATEVM: Error creating VM: %s", str(e))
+        log.error("Error creating VM: %s", str(e))
         return {'success': False, 'error': str(e)}
 
 def regenerate_ssh_keys():
@@ -1058,11 +1058,11 @@ def regenerate_ssh_keys():
         else:
             print("Failed to regenerate SSH keys")
     """
-    log.info("MAIN: Starting SSH key regeneration")
+    log.info("Starting SSH key regeneration")
     try:
         # Verify current state
         if not _check_ssh_keys_exist():
-            log.warning("MAIN: No existing SSH keys found to regenerate")
+            log.warning("No existing SSH keys found to regenerate")
             return _setup_ssh_keys()
 
         # Remove existing keys
@@ -1075,18 +1075,18 @@ def regenerate_ssh_keys():
         for path in [key_path, pub_key_path, dest_path]:
             try:
                 os.unlink(path)
-                log.info("MAIN: Removed existing key: %s", path)
+                log.info("Removed existing key: %s", path)
             except FileNotFoundError:
-                log.warning("MAIN: Key file not found: %s", path)
+                log.warning("Key file not found: %s", path)
 
         # Generate new keys
         if _setup_ssh_keys():
-            log.info("MAIN: SSH keys regenerated successfully")
+            log.info("SSH keys regenerated successfully")
             return True
         
-        log.error("MAIN: Failed to regenerate SSH keys")
+        log.error("Failed to regenerate SSH keys")
         return False
 
     except Exception as e:
-        log.error("MAIN: Error regenerating SSH keys: %s", str(e))
+        log.error("Error regenerating SSH keys: %s", str(e))
         return False
