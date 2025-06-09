@@ -19,12 +19,12 @@
 
 {# Build enhanced HYPERVISORS structure #}
 {% set HYPERVISORS = {} %}
-{% do salt.log.info('salt/hypervisor/map.jinja: NODES content: ' ~ NODES | tojson) %}
+{% do salt.log.debug('salt/hypervisor/map.jinja: NODES content: ' ~ NODES | tojson) %}
 {% for role, hypervisors in NODES.items() %}
-  {% do salt.log.info('salt/hypervisor/map.jinja: Processing role: ' ~ role) %}
+  {% do salt.log.debug('salt/hypervisor/map.jinja: Processing role: ' ~ role) %}
   {% do HYPERVISORS.update({role: {}}) %}
   {% for hypervisor, config in hypervisors.items() %}
-    {% do salt.log.info('salt/hypervisor/map.jinja: Processing hypervisor: ' ~ hypervisor ~ ' with config: ' ~ config | tojson) %}
+    {% do salt.log.debug('salt/hypervisor/map.jinja: Processing hypervisor: ' ~ hypervisor ~ ' with config: ' ~ config | tojson) %}
     {# Get model from cached grains using Salt runner #}
     {% set grains = salt.saltutil.runner('cache.grains', tgt=hypervisor ~ '_*', tgt_type='glob') %}
     {% set model = '' %}
@@ -38,15 +38,15 @@
     {% set vms = {} %}
     {% set vm_list = [] %}
     {% set vm_list_file = 'hypervisor/hosts/' ~ hypervisor ~ 'VMs' %}
-    {% do salt.log.info('salt/hypervisor/map.jinja: VM list file: ' ~ vm_list_file) %}
+    {% do salt.log.debug('salt/hypervisor/map.jinja: VM list file: ' ~ vm_list_file) %}
     {% if salt['file.file_exists']('/opt/so/saltstack/local/salt/' ~ vm_list_file) %}
     {%   import_json vm_list_file as vm_list %}
     {% endif %}
     {% if vm_list %}
-      {% do salt.log.info('salt/hypervisor/map.jinja: VM list content: ' ~ vm_list | tojson) %}
+      {% do salt.log.debug('salt/hypervisor/map.jinja: VM list content: ' ~ vm_list | tojson) %}
     {% else %}
       {# we won't get here if the vm_list_file doesn't exist because we will get TemplateNotFound on the import_json #}
-      {% do salt.log.info('salt/hypervisor/map.jinja: VM list empty: ' ~ vm_list_file) %}
+      {% do salt.log.debug('salt/hypervisor/map.jinja: VM list empty: ' ~ vm_list_file) %}
     {% endif %}
     
     {# Load status and configuration for each VM #}
@@ -54,25 +54,25 @@
       {# Get VM details from list entry #}
       {% set hostname = vm.get('hostname', '') %}
       {% set role = vm.get('role', '') %}
-      {% do salt.log.info('salt/hypervisor/map.jinja: Processing VM - hostname: ' ~ hostname ~ ', role: ' ~ role) %}
+      {% do salt.log.debug('salt/hypervisor/map.jinja: Processing VM - hostname: ' ~ hostname ~ ', role: ' ~ role) %}
       
       {# Load VM configuration from config file #}
       {% set vm_file = 'hypervisor/hosts/' ~ hypervisor ~ '/' ~ hostname ~ '_' ~ role %}
-      {% do salt.log.info('salt/hypervisor/map.jinja: VM config file: ' ~ vm_file) %}
+      {% do salt.log.debug('salt/hypervisor/map.jinja: VM config file: ' ~ vm_file) %}
       {% import_json vm_file as vm_state %}
       {% if vm_state %}
-        {% do salt.log.info('salt/hypervisor/map.jinja: VM config content: ' ~ vm_state | tojson) %}
+        {% do salt.log.debug('salt/hypervisor/map.jinja: VM config content: ' ~ vm_state | tojson) %}
         {% set vm_data = {'config': vm_state.config} %}
         
         {# Load VM status from status file #}
         {% set status_file = vm_file ~ '.status' %}
-        {% do salt.log.info('salt/hypervisor/map.jinja: VM status file: ' ~ status_file) %}
+        {% do salt.log.debug('salt/hypervisor/map.jinja: VM status file: ' ~ status_file) %}
         {% import_json status_file as status_data %}
         {% if status_data %}
-          {% do salt.log.info('salt/hypervisor/map.jinja: VM status content: ' ~ status_data | tojson) %}
+          {% do salt.log.debug('salt/hypervisor/map.jinja: VM status content: ' ~ status_data | tojson) %}
           {% do vm_data.update({'status': status_data}) %}
         {% else %}
-          {% do salt.log.info('salt/hypervisor/map.jinja: Status file empty: ' ~ status_file) %}
+          {% do salt.log.debug('salt/hypervisor/map.jinja: Status file empty: ' ~ status_file) %}
           {% do vm_data.update({
             'status': {
               'status': '',
@@ -83,7 +83,7 @@
         {% endif %}
         {% do vms.update({hostname ~ '_' ~ role: vm_data}) %}
       {% else %}
-        {% do salt.log.info('salt/hypervisor/map.jinja: Config file empty: ' ~ vm_file) %}
+        {% do salt.log.debug('salt/hypervisor/map.jinja: Config file empty: ' ~ vm_file) %}
       {% endif %}
     {% endfor %}
     
@@ -96,11 +96,11 @@
     {# Find all status files for this hypervisor #}
     {% set relative_path = 'hypervisor/hosts/' ~ hypervisor %}
     {% set absolute_path = '/opt/so/saltstack/local/salt/' ~ relative_path %}
-    {% do salt.log.info('salt/hypervisor/map.jinja: Scanning for status files in: ' ~ absolute_path) %}
+    {% do salt.log.debug('salt/hypervisor/map.jinja: Scanning for status files in: ' ~ absolute_path) %}
     
     {# Try to find status files using file.find with absolute path #}
     {% set status_files = salt['file.find'](absolute_path, name='*_*.status', type='f') %}
-    {% do salt.log.info('salt/hypervisor/map.jinja: Found status files: ' ~ status_files | tojson) %}
+    {% do salt.log.debug('salt/hypervisor/map.jinja: Found status files: ' ~ status_files | tojson) %}
     
     {# Convert absolute paths back to relative paths for processing #}
     {% set relative_status_files = [] %}
@@ -110,7 +110,7 @@
     {% endfor %}
     {% set status_files = relative_status_files %}
     
-    {% do salt.log.info('salt/hypervisor/map.jinja: Converted to relative paths: ' ~ status_files | tojson) %}
+    {% do salt.log.debug('salt/hypervisor/map.jinja: Converted to relative paths: ' ~ status_files | tojson) %}
     
     {% for status_file in status_files %}
       {# Extract the VM name from the filename #}
@@ -124,12 +124,12 @@
       {% endif %}
       
       {# Read the status file #}
-      {% do salt.log.info('salt/hypervisor/map.jinja: Processing potential destroyed VM status file: ' ~ status_file) %}
+      {% do salt.log.debug('salt/hypervisor/map.jinja: Processing potential destroyed VM status file: ' ~ status_file) %}
       {% import_json status_file as status_data %}
       
       {# Only process files with "Destroyed Instance" status #}
       {% if status_data and status_data.status == 'Destroyed Instance' %}
-        {% do salt.log.info('salt/hypervisor/map.jinja: Found VM with Destroyed Instance status: ' ~ vm_name) %}
+        {% do salt.log.debug('salt/hypervisor/map.jinja: Found VM with Destroyed Instance status: ' ~ vm_name) %}
         
         {# Add to vms with minimal config #}
         {% do vms.update({
