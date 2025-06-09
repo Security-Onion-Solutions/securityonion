@@ -135,7 +135,7 @@ create_vm_sool9:
   cmd.run:
     - name: |
         virt-install --name sool9 \
-          --memory 12288 --vcpus 8 --cpu host \
+          --memory 12288 --vcpus 8 --cpu host-model \
           --disk /nsm/libvirt/images/sool9/sool9.qcow2,format=qcow2,bus=virtio \
           --disk /nsm/libvirt/images/sool9/sool9-cidata.iso,device=cdrom \
           --network bridge=br0,model=virtio \
