@@ -156,6 +156,13 @@ rules_dir:
     - group: socore
     - makedirs: True
 
+nsm_playbooks_dir:
+  file.directory:
+    - name: /nsm/airgap-resources/playbooks
+    - user: socore
+    - group: socore
+    - makedirs: True
+
 git_config_set_safe_dirs:
   git.config_set:
     - name: safe.directory
@@ -166,6 +173,8 @@ git_config_set_safe_dirs:
       - /nsm/rules/custom-local-repos/local-yara
       - /nsm/securityonion-resources
       - /opt/so/conf/soc/ai_summary_repos/securityonion-resources
+      - /nsm/airgap-resources/playbooks
+      - /opt/so/conf/soc/playbooks
 {% else %}
 
 {{sls}}_state_not_allowed:

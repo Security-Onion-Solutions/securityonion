@@ -31,6 +31,7 @@ so-soc:
       - /opt/so/conf/soc/fingerprints:/opt/sensoroni/fingerprints:rw
       - /nsm/soc/jobs:/opt/sensoroni/jobs:rw
       - /nsm/soc/uploads:/nsm/soc/uploads:rw
+      - /nsm/airgap-resources:/nsm/airgap-resources:rw
       - /opt/so/log/soc/:/opt/sensoroni/logs/:rw
       - /opt/so/conf/soc/soc.json:/opt/sensoroni/sensoroni.json:ro
       - /opt/so/conf/soc/ai_summary_repos:/opt/sensoroni/ai_summary_repos:rw

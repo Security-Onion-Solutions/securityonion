@@ -1069,6 +1069,13 @@ update_airgap_rules() {
   rsync -a $UPDATE_DIR/agrules/securityonion-resources/* /nsm/securityonion-resources/
 }
 
+update_airgap_playbooks() {
+  # Copy the playbooks over to update them for airgap.
+  mkdir -p /nsm/airgap-resources/playbooks
+  chown -R socore:socore /nsm/airgap-resources/playbooks
+  rsync -a --delete --chown=socore:socore $UPDATE_DIR/airgap-resources/playbooks/ /nsm/airgap-resources/playbooks/
+}
+
 update_airgap_repo() {
   # Update the files in the repo
   echo "Syncing new updates to /nsm/repo"
@@ -1418,6 +1425,8 @@ main() {
     if [[ $is_airgap -eq 0 ]]; then
       echo "Updating Rule Files to the Latest."
       update_airgap_rules
+      echo "Updating Playbooks to the Latest."
+      update_airgap_playbooks
     fi
 
     # since we don't run the backup.config_backup state on import we wont snapshot previous version states and pillars
