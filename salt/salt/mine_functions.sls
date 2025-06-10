@@ -18,7 +18,7 @@ mine_functions:
         mine_functions:
           network.ip_addrs:
             - interface: {{ interface }}
-        {% if role in ['so-eval','so-import','so-manager','so-managerhype','so-managersearch','so-standalone'] %}
+        {%- if role in ['so-eval','so-import','so-manager','so-managerhype','so-managersearch','so-standalone'] %}
           x509.get_pem_entries:
             - glob_path: '/etc/pki/ca.crt'
         {% endif %}
@@ -28,3 +28,8 @@ mine_update_mine_functions:
     - mine.update: []
     - onchanges:
       - file: mine_functions
+    - onlyif:
+      - systemctl is-active --quiet salt-minion
+    {%- if role in ['so-eval','so-import','so-manager','so-managerhype','so-managersearch','so-standalone'] %}
+      - systemctl is-active --quiet salt-master
+    {% endif %}
