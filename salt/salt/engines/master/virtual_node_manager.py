@@ -807,7 +807,7 @@ def process_vm_deletion(hypervisor_path: str, vm_name: str) -> None:
     except subprocess.CalledProcessError as e:
         error_msg = f"so-salt-cloud deletion failed (code {e.returncode}): {e.stderr}"
         log.error("%s", error_msg)
-        log.error("Esnure all hypervisors are online. salt-cloud will fail to destroy VMs if any hypervisors are offline.")
+        log.error("Ensure all hypervisors are online. salt-cloud will fail to destroy VMs if any hypervisors are offline.")
         
         # Attempt to restore VM configuration to VMs file if we have the config
         if vm_config:
