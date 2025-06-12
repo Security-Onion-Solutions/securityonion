@@ -763,13 +763,31 @@ def process_vm_deletion(hypervisor_path: str, vm_name: str) -> None:
     This function handles the deletion of an existing VM. All operations are protected
     by the engine-wide lock that is acquired at engine start.
     
+    If so-salt-cloud fails during VM deletion, the function will restore the VM
+    configuration back to the VMs file to maintain consistency.
+    
     Args:
         hypervisor_path: Path to the hypervisor directory
         vm_name: Name of the VM to delete
     """
+    vm_config = None
+    hypervisor = os.path.basename(hypervisor_path)
+    
     try:
-        # Get the actual hypervisor name (last directory in path)
-        hypervisor = os.path.basename(hypervisor_path)
+        # Read VM configuration from tracking file before attempting deletion
+        vm_file = os.path.join(hypervisor_path, vm_name)
+        if os.path.exists(vm_file):
+            try:
+                vm_data = read_json_file(vm_file)
+                vm_config = vm_data.get('config') if isinstance(vm_data, dict) else None
+                if vm_config:
+                    log.debug("Read VM config for %s before deletion", vm_name)
+                else:
+                    log.warning("No config found in tracking file for %s", vm_name)
+            except Exception as e:
+                log.warning("Failed to read VM config from tracking file %s: %s", vm_file, str(e))
+        
+        # Attempt VM deletion with so-salt-cloud
         cmd = ['so-salt-cloud', '-p', f'sool9-{hypervisor}', vm_name, '-yd']
         
         log.info("Executing: %s", ' '.join(cmd))
@@ -781,18 +799,71 @@ def process_vm_deletion(hypervisor_path: str, vm_name: str) -> None:
         if result.stderr:
             log.warning("Command stderr: %s", result.stderr)
             
-        # Remove VM tracking file
-        vm_file = os.path.join(hypervisor_path, vm_name)
+        # Remove VM tracking file on successful deletion
         if os.path.exists(vm_file):
             os.remove(vm_file)
-            log.info("Successfully removed VM tracking file")
+            log.info("Successfully removed VM tracking file for %s", vm_name)
             
     except subprocess.CalledProcessError as e:
         error_msg = f"so-salt-cloud deletion failed (code {e.returncode}): {e.stderr}"
-        log.error(error_msg)
+        log.error("%s", error_msg)
+        log.error("Esnure all hypervisors are online. salt-cloud will fail to destroy VMs if any hypervisors are offline.")
+        
+        # Attempt to restore VM configuration to VMs file if we have the config
+        if vm_config:
+            try:
+                _restore_vm_to_vms_file(hypervisor_path, hypervisor, vm_config)
+            except Exception as restore_error:
+                log.error("Failed to restore VM config after deletion failure: %s", str(restore_error))
+        
         raise
     except Exception as e:
         log.error("Error processing VM deletion: %s", str(e))
+        raise
+
+
+def _restore_vm_to_vms_file(hypervisor_path: str, hypervisor: str, vm_config: dict) -> None:
+    """
+    Restore VM configuration to the VMs file after failed deletion.
+    
+    Args:
+        hypervisor_path: Path to the hypervisor directory
+        hypervisor: Name of the hypervisor
+        vm_config: VM configuration to restore
+    """
+    try:
+        # Construct VMs file path
+        vms_file = os.path.join(os.path.dirname(hypervisor_path), f"{hypervisor}VMs")
+        
+        # Read current VMs file
+        current_vms = []
+        if os.path.exists(vms_file):
+            try:
+                current_vms = read_json_file(vms_file)
+                if not isinstance(current_vms, list):
+                    log.warning("VMs file contains non-array data, initializing as empty array")
+                    current_vms = []
+            except Exception as e:
+                log.warning("Failed to read VMs file %s, initializing as empty: %s", vms_file, str(e))
+                current_vms = []
+        
+        # Check if VM already exists in VMs file (prevent duplicates)
+        vm_hostname = vm_config.get('hostname')
+        if vm_hostname:
+            for existing_vm in current_vms:
+                if isinstance(existing_vm, dict) and existing_vm.get('hostname') == vm_hostname:
+                    log.info("VM with hostname %s already exists in VMs file, skipping restoration", vm_hostname)
+                    return
+        
+        # Add VM configuration back to VMs file
+        current_vms.append(vm_config)
+        
+        # Write updated VMs file
+        write_json_file(vms_file, current_vms)
+        log.info("Successfully restored VM config for %s to VMs file %s", vm_hostname or 'unknown', vms_file)
+        
+    except Exception as e:
+        log.error("Failed to restore VM configuration: %s", str(e))
         raise
 
 def process_hypervisor(hypervisor_path: str) -> None:
@@ -876,7 +947,6 @@ def start(interval: int = DEFAULT_INTERVAL,
     instance of the virtual node manager runs at a time. The lock is:
     - Acquired at start
     - Released after processing completes
-    - Maintained if error occurs
     
     Args:
         interval: Time in seconds between engine runs (managed by salt-master)
@@ -911,6 +981,5 @@ def start(interval: int = DEFAULT_INTERVAL,
         log.debug("Virtual node manager completed successfully")
                 
     except Exception as e:
-        log.error("Error in virtual node manager - lock will remain until cleared: %s", str(e))
-        # Don't release lock on error - requires admin intervention
+        log.error("Error in virtual node manager: %s", str(e))
         return
