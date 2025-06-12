@@ -336,20 +336,39 @@ def delete_vm(profile, vm_name, assume_yes=False):
             text=True
         )
         
+        # Pattern to detect when no machines were found to be destroyed
+        no_machines_string = 'No machines were found to be destroyed'
+        no_machines_pattern = re.compile(re.escape(no_machines_string))
+        machines_destroyed = False
+        
         # Monitor output
         for line in iter(process.stdout.readline, ''):
             if line:
                 logger.info(line.rstrip('\n'))
                 
+                # Check if no machines were found to be destroyed
+                if no_machines_pattern.search(line):
+                    machines_destroyed = False
+                    break
+                # If we see destruction messages, mark as successful
+                elif 'destroyed' in line.lower() and vm_name in line:
+                    machines_destroyed = True
+                
         process.stdout.close()
         process.wait()
         
-        if process.returncode == 0:
-            # Start cleanup tasks
+        # Check success criteria: returncode == 0 AND machines were actually destroyed
+        if process.returncode == 0 and machines_destroyed:
+            # Start cleanup tasks only when actual deletion occurred
             cleanup_deleted_vm(ip, role)
             logger.info(f"Successfully deleted VM {vm_name}")
+        elif process.returncode == 0 and not machines_destroyed:
+            # Command succeeded but no machines were destroyed
+            logger.error(f"VM {vm_name} was not found to be destroyed")
+            sys.exit(1)
         else:
             logger.error(f"Failed to delete VM {vm_name}")
+            sys.exit(1)
             
     except Exception as e:
         logger.error(f"Failed to delete VM {vm_name}: {e}")
