@@ -20,7 +20,17 @@ vm_highstate_trigger:
         status: Highstate Initiated
         vm_name: {{ grains.id }}
         hypervisor: {{ salt['grains.get']('salt-cloud:profile', '').split('-')[1] }}
-    - order: 1  # Ensure this runs early in the highstate process
+    - unless: test -f /opt/so/state/highstate_trigger.txt
+    - order: 1 # Ensure this runs early in the highstate process
+
+# Check if the trigger has already run
+vm_highstate_trigger_file:
+  file.managed:
+    - name: /opt/so/state/highstate_trigger.txt
+    - contents: |
+        VM Highstate Trigger executed at: {{ salt['cmd.run']('date') }}
+    - onchanges:
+      - event: vm_highstate_trigger
 
 {% else %}
 
