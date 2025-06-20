@@ -35,6 +35,7 @@ bond0_interface:
           connection.autoconnect yes
         nmcli con mod bond0 ethernet.mtu 9000
         nmcli con up bond0
+    - unless: nmcli con show bond0
 {% if non_enp1s0_interfaces|length > 0 %}
     - require_in:
 {% for iface in non_enp1s0_interfaces %}
@@ -55,7 +56,7 @@ bond0_interface:
           slave-type bond \
           ethernet.mtu 9000
         nmcli con up bond0-slave-{{ iface }}
-
+    - unless: nmcli con show bond0-slave-{{ iface }}
 {% endfor %}
 {% endif %}
 
