@@ -99,6 +99,17 @@ add_interface_bond0() {
 	fi
 }
 
+airgap_playbooks() {
+	SRC_DIR=$1
+	# Copy playbooks if using airgap
+	mkdir -p /nsm/airgap-resources
+	# Purge old airgap playbooks to ensure SO only uses the latest released playbooks
+	rm -fr /nsm/airgap-resources/playbooks
+	tar xf $SRC_DIR/airgap-resources/playbooks.tgz -C /nsm/airgap-resources/
+	chown -R socore:socore /nsm/airgap-resources/playbooks
+	git config --global --add safe.directory /nsm/airgap-resources/playbooks
+}
+
 check_container() {
 	docker ps | grep "$1:" > /dev/null 2>&1
 	return $?
