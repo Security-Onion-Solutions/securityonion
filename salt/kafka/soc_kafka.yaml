@@ -1,0 +1,273 @@
+kafka:
+  enabled:
+    description: Set to True to enable Kafka. To avoid grid problems, do not enable Kafka until the related configuration is in place. Requires a valid Security Onion license key.
+    helpLink: kafka.html
+  cluster_id:
+    description: The ID of the Kafka cluster.
+    readonly: True
+    advanced: True
+    sensitive: True
+    helpLink: kafka.html
+  controllers:
+    description: A comma-separated list of hostnames that will act as Kafka controllers. These hosts will be responsible for managing the Kafka cluster. Note that only manager and receiver nodes are eligible to run Kafka. This configuration needs to be set before enabling Kafka. Failure to do so may result in Kafka topics becoming unavailable requiring manual intervention to restore functionality or reset Kafka, either of which can result in data loss.
+    forcedType: string
+    helpLink: kafka.html
+  reset:
+    description: Disable and reset the Kafka cluster. This will remove all Kafka data including logs that may have not yet been ingested into Elasticsearch and reverts the grid to using REDIS as the global pipeline. This is useful when testing different Kafka configurations such as rearranging Kafka brokers / controllers allowing you to reset the cluster rather than manually fixing any issues arising from attempting to reassign a Kafka broker into a controller. Enter 'YES_RESET_KAFKA' and submit to disable and reset Kafka. Make any configuration changes required and re-enable Kafka when ready. This action CANNOT be reversed.
+    advanced: True
+    helpLink: kafka.html
+  logstash:
+    description: By default logstash is disabled when Kafka is enabled. This option allows you to specify any hosts you would like to re-enable logstash on alongside Kafka.
+    forcedType: "[]string"
+    multiline: True
+    advanced: True
+    helpLink: kafka.html
+  config:
+    password:
+      description: The password used for the Kafka certificates.
+      readonly: True
+      sensitive: True
+      helpLink: kafka.html
+    trustpass:
+      description: The password used for the Kafka truststore.
+      readonly: True
+      sensitive: True
+      helpLink: kafka.html
+    broker:
+      auto_x_create_x_topics_x_enable:
+        description: Enable the auto creation of topics.
+        title: auto.create.topics.enable
+        forcedType: bool
+        helpLink: kafka.html
+      default_x_replication_x_factor:
+        description: The default replication factor for automatically created topics. This value must be less than the amount of brokers in the cluster. Hosts specified in controllers should not be counted towards total broker count.
+        title: default.replication.factor
+        forcedType: int
+        helpLink: kafka.html
+      inter_x_broker_x_listener_x_name:
+        description: The name of the listener used for inter-broker communication.
+        title: inter.broker.listener.name
+        helpLink: kafka.html
+      listeners:
+        description: Set of URIs that is listened on and the listener names in a comma-seperated list.
+        helpLink: kafka.html
+      listener_x_security_x_protocol_x_map:
+        description: Comma-seperated mapping of listener name and security protocols.
+        title: listener.security.protocol.map
+        helpLink: kafka.html
+      log_x_dirs:
+        description: Where Kafka logs are stored within the Docker container.
+        title: log.dirs
+        helpLink: kafka.html
+      log_x_retention_x_check_x_interval_x_ms:
+        description: Frequency at which log files are checked if they are qualified for deletion.
+        title: log.retention.check.interval.ms
+        helpLink: kafka.html
+      log_x_retention_x_hours:
+        description: How long, in hours, a log file is kept.
+        title: log.retention.hours
+        forcedType: int
+        helpLink: kafka.html
+      log_x_segment_x_bytes:
+        description: The maximum allowable size for a log file.
+        title: log.segment.bytes
+        forcedType: int
+        helpLink: kafka.html
+      num_x_io_x_threads:
+        description: The number of threads used by Kafka.
+        title: num.io.threads
+        forcedType: int
+        helpLink: kafka.html
+      num_x_network_x_threads:
+        description: The number of threads used for network communication.
+        title: num.network.threads
+        forcedType: int
+        helpLink: kafka.html
+      num_x_partitions:
+        description: The number of log partitions assigned per topic.
+        title: num.partitions
+        forcedType: int
+        helpLink: kafka.html
+      num_x_recovery_x_threads_x_per_x_data_x_dir:
+        description: The number of threads used for log recuperation at startup and purging at shutdown. This ammount of threads is used per data directory.
+        title: num.recovery.threads.per.data.dir
+        forcedType: int
+        helpLink: kafka.html
+      offsets_x_topic_x_replication_x_factor:
+        description: The offsets topic replication factor.
+        title: offsets.topic.replication.factor
+        forcedType: int
+        helpLink: kafka.html
+      process_x_roles:
+        description: The role performed by Kafka brokers.
+        title: process.roles
+        readonly: True
+        helpLink: kafka.html
+      socket_x_receive_x_buffer_x_bytes:
+        description: Size, in bytes of the SO_RCVBUF buffer. A value of -1 will use the OS default.
+        title: socket.receive.buffer.bytes
+        #forcedType: int - soc needs to allow -1 as an int before we can use this
+        helpLink: kafka.html
+      socket_x_request_x_max_x_bytes:
+        description: The maximum bytes allowed for a request to the socket.
+        title: socket.request.max.bytes
+        forcedType: int
+        helpLink: kafka.html
+      socket_x_send_x_buffer_x_bytes:
+        description: Size, in bytes of the SO_SNDBUF buffer. A value of -1 will use the OS default.
+        title: socket.send.buffer.byte
+        #forcedType: int - soc needs to allow -1 as an int before we can use this
+        helpLink: kafka.html
+      ssl_x_keystore_x_location:
+        description: The key store file location within the Docker container.
+        title: ssl.keystore.location
+        helpLink: kafka.html
+      ssl_x_keystore_x_password:
+        description: The key store file password. Invalid for PEM format.
+        title: ssl.keystore.password
+        sensitive: True
+        helpLink: kafka.html
+      ssl_x_keystore_x_type: 
+        description: The key store file format.
+        title: ssl.keystore.type
+        regex: ^(JKS|PKCS12|PEM)$
+        helpLink: kafka.html
+      ssl_x_truststore_x_location:
+        description: The trust store file location within the Docker container.
+        title: ssl.truststore.location
+        helpLink: kafka.html
+      ssl_x_truststore_x_type:
+        description: The trust store file format.
+        title: ssl.truststore.type
+        helpLink: kafka.html
+      ssl_x_truststore_x_password:
+        description: The trust store file password. If null, the trust store file is still use, but integrity checking is disabled. Invalid for PEM format.
+        title: ssl.truststore.password
+        sensitive: True
+        helpLink: kafka.html
+      transaction_x_state_x_log_x_min_x_isr:
+        description: Overrides min.insync.replicas for the transaction topic. When a producer configures acks to "all" (or "-1"), this setting determines the minimum number of replicas required to acknowledge a write as successful. Failure to meet this minimum triggers an exception (either NotEnoughReplicas or NotEnoughReplicasAfterAppend). When used in conjunction, min.insync.replicas and acks enable stronger durability guarantees. For instance, creating a topic with a replication factor of 3, setting min.insync.replicas to 2, and using acks of "all" ensures that the producer raises an exception if a majority of replicas fail to receive a write.
+        title: transaction.state.log.min.isr
+        forcedType: int
+        helpLink: kafka.html
+      transaction_x_state_x_log_x_replication_x_factor:
+        description: Set the replication factor higher for the transaction topic to ensure availability. Internal topic creation will not proceed until the cluster size satisfies this replication factor prerequisite.
+        title: transaction.state.log.replication.factor
+        forcedType: int
+        helpLink: kafka.html
+    client:
+      security_x_protocol:
+        description: 'Broker communication protocol. Options are: SASL_SSL, PLAINTEXT, SSL, SASL_PLAINTEXT'
+        title: security.protocol
+        regex: ^(SASL_SSL|PLAINTEXT|SSL|SASL_PLAINTEXT)
+        helpLink: kafka.html
+      ssl_x_keystore_x_location:
+        description: The key store file location within the Docker container.
+        title: ssl.keystore.location
+        helpLink: kafka.html
+      ssl_x_keystore_x_password:
+        description: The key store file password. Invalid for PEM format.
+        title: ssl.keystore.password
+        sensitive: True
+        helpLink: kafka.html
+      ssl_x_keystore_x_type:
+        description: The key store file format.
+        title: ssl.keystore.type
+        regex: ^(JKS|PKCS12|PEM)$
+        helpLink: kafka.html
+      ssl_x_truststore_x_location:
+        description: The trust store file location within the Docker container.
+        title: ssl.truststore.location
+        helpLink: kafka.html
+      ssl_x_truststore_x_type:
+        description: The trust store file format.
+        title: ssl.truststore.type
+        helpLink: kafka.html
+      ssl_x_truststore_x_password:
+        description: The trust store file password. If null, the trust store file is still use, but integrity checking is disabled. Invalid for PEM format.
+        title: ssl.truststore.password
+        sensitive: True
+        helpLink: kafka.html
+    controller:
+      controller_x_listener_x_names:
+        description: Set listeners used by the controller in a comma-seperated list.
+        title: controller.listener.names
+        helpLink: kafka.html
+      listeners:
+        description: Set of URIs that is listened on and the listener names in a comma-seperated list.
+        helpLink: kafka.html
+      listener_x_security_x_protocol_x_map:
+        description: Comma-seperated mapping of listener name and security protocols.
+        title: listener.security.protocol.map
+        helpLink: kafka.html
+      log_x_dirs:
+        description: Where Kafka logs are stored within the Docker container.
+        title: log.dirs
+        helpLink: kafka.html
+      log_x_retention_x_check_x_interval_x_ms:
+        description: Frequency at which log files are checked if they are qualified for deletion.
+        title: log.retention.check.interval.ms
+        helpLink: kafka.html
+      log_x_retention_x_hours:
+        description: How long, in hours, a log file is kept.
+        title: log.retention.hours
+        forcedType: int
+        helpLink: kafka.html
+      log_x_segment_x_bytes:
+        description: The maximum allowable size for a log file.
+        title: log.segment.bytes
+        forcedType: int
+        helpLink: kafka.html
+      process_x_roles:
+        description: The role performed by controller node.
+        title: process.roles
+        readonly: True
+        helpLink: kafka.html
+    external_access:
+      enabled:
+        description: Enables or disables access to Kafka topics using user/password authentication. Used for producing / consuming messages via an external client.
+        forcedType: bool
+        helpLink: kafka.html
+      listeners:
+        description: Set of URIs that is listened on and the listener names in a comma-seperated list.
+        title: listeners
+        readonly: True
+        advanced: True
+        helpLink: kafka.html
+      listener_x_security_x_protocol_x_map:
+        description: External listener name and mapped security protocol.
+        title: listener.security.protocol.map
+        readonly: True
+        advanced: True
+        helpLink: kafka.html
+      sasl_x_enabled_x_mechanisms:
+        description: SASL/PLAIN is a simple username/password authentication mechanism, used with TLS to implement secure authentication.
+        title: sasl.enabled.mechanisms
+        readonly: True
+        advanced: True
+        helpLink: kafka.html
+      sasl_x_mechanism_x_inter_x_broker_x_protocol:
+        description: SASL mechanism used for inter-broker communication
+        title: sasl.mechanism.inter.broker.protocol
+        readonly: True
+        advanced: True
+        helpLink: kafka.html
+      remote_users:
+        user01: &remote_user
+          username:
+            description: Username to be used for custom account
+            forcedType: string
+            global: True
+          password:
+            description: Password to be used for custom account
+            forcedType: string
+            global: True
+            sensitive: True
+        user02: *remote_user
+        user03: *remote_user
+        user04: *remote_user
+        user05: *remote_user
+        user06: *remote_user
+        user07: *remote_user
+        user08: *remote_user
+        user09: *remote_user

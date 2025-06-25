@@ -447,6 +447,7 @@ if ! [[ -f $install_opt_file ]]; then
 		get_redirect
 		# Does the user want to allow access to the UI?
 		collect_so_allow
+		[[ ! $is_airgap ]] && whiptail_accept_telemetry
 		whiptail_end_settings
 	elif [[ $is_standalone ]]; then
 		waitforstate=true
@@ -468,6 +469,7 @@ if ! [[ -f $install_opt_file ]]; then
 		collect_webuser_inputs
 		get_redirect
 		collect_so_allow
+		[[ ! $is_airgap ]] && whiptail_accept_telemetry
 		whiptail_end_settings
 	elif [[ $is_manager ]]; then
 		info "Setting up as node type manager"
@@ -488,6 +490,7 @@ if ! [[ -f $install_opt_file ]]; then
 		collect_webuser_inputs
 		get_redirect
 		collect_so_allow
+		[[ ! $is_airgap ]] && whiptail_accept_telemetry
 		whiptail_end_settings
 	elif [[ $is_managersearch ]]; then
 		info "Setting up as node type managersearch"
@@ -508,6 +511,7 @@ if ! [[ -f $install_opt_file ]]; then
 		collect_webuser_inputs
 		get_redirect
 		collect_so_allow
+		[[ ! $is_airgap ]] && whiptail_accept_telemetry
 		whiptail_end_settings
 	elif [[ $is_sensor ]]; then
 		info "Setting up as node type sensor"
@@ -597,6 +601,7 @@ if ! [[ -f $install_opt_file ]]; then
 		collect_webuser_inputs
 		get_redirect
 		collect_so_allow
+		[[ ! $is_airgap ]] && whiptail_accept_telemetry
 		whiptail_end_settings
 
 	elif [[ $is_receiver ]]; then
@@ -617,6 +622,40 @@ if ! [[ -f $install_opt_file ]]; then
 		add_mngr_ip_to_hosts
 		check_manager_connection
 		set_minion_info
+		whiptail_end_settings
+
+	elif [[ $is_hypervisor ]]; then
+		info "Setting up as node type hypervisor"
+		check_requirements
+		networking_needful
+		configure_hyper_bridge
+		collect_mngr_hostname
+		add_mngr_ip_to_hosts
+		check_manager_connection
+		set_minion_info
+		whiptail_end_settings
+
+	elif [[ $is_managerhype ]]; then
+		info "Setting up as node type managerhype"
+		check_elastic_license
+		waitforstate=true
+		[[ $is_iso ]] && whiptail_airgap
+		check_requirements
+		networking_needful
+		configure_hyper_bridge
+		[[ ! $is_airgap ]] && collect_net_method
+		collect_dockernet
+		[[ ! $is_airgap ]] && detect_cloud
+		set_minion_info
+		set_default_log_size >> $setup_log 2>&1
+		info "Verifying all network devices are managed by Network Manager that should be"
+		check_network_manager_conf
+		set_network_dev_status_list
+		calculate_useable_cores
+		collect_webuser_inputs
+		get_redirect
+		collect_so_allow
+		[[ ! $is_airgap ]] && whiptail_accept_telemetry
 		whiptail_end_settings
 
 	fi
@@ -661,7 +700,7 @@ if ! [[ -f $install_opt_file ]]; then
 		# Add the socore user
 		add_socore_user_manager
 		
-		create_local_directories
+		create_local_directories ${SCRIPTDIR::-5}
 		setup_salt_master_dirs
 		create_manager_pillars
 
@@ -715,7 +754,12 @@ if ! [[ -f $install_opt_file ]]; then
 		sleep 2 # Debug RSA Key format errors
 		logCmd "salt-key -ya $MINION_ID"
 		logCmd "salt-call saltutil.sync_all"
-
+		# we need to sync the runner and generate the soqemussh user keys so that first highstate after license created
+		# doesnt have a state failure for soqemussh_pub_key source for id_ed25519.pub missing
+		if [[ $is_manager || $is_managerhype ]]; then
+			logCmd "salt-run saltutil.sync_all"
+			logCmd "salt-run setup_hypervisor.regenerate_ssh_keys"
+		fi
 		logCmd "salt-call state.apply common.packages"
 		logCmd "salt-call state.apply common"
 		# this will apply the salt.minion state first since salt.master includes salt.minion
@@ -755,16 +799,18 @@ if ! [[ -f $install_opt_file ]]; then
 		if [[ ! $is_airgap ]]; then
 			title "Downloading IDS Rules"
 			logCmd "so-rule-update"
-			title "Downloading YARA rules"
-			logCmd "su socore -c '/usr/sbin/so-yara-download'"
 			if [[ $monints || $is_import ]]; then
-				title "Restarting Suricata to pick up the new rules"
-				logCmd "so-suricata-restart"
+				title "Applying the Suricata state to load the new rules"
+				logCmd "salt-call state.apply suricata -l info"
 			fi
-			if [[ $monints ]]; then
-				title "Restarting Strelka to use new rules"
-				logCmd "so-strelka-restart"
-			fi
+		fi
+		if [[ $is_airgap ]]; then
+			title "Syncing AI-Generated Detection Summaries"
+			airgap_detection_summaries
+		fi
+		if [[ $is_airgap ]]; then
+			title "Syncing Playbooks"
+			logCmd "airgap_playbooks /root/SecurityOnion"
 		fi
 		title "Setting up Kibana Default Space"
 		logCmd "so-kibana-space-defaults"
@@ -777,13 +823,10 @@ if ! [[ -f $install_opt_file ]]; then
 			error "Failed to run so-elastic-fleet-setup"
 			fail_setup
 		fi
-		if [[ ! $is_import ]]; then
-			title "Setting up Playbook"
-			logCmd "so-playbook-reset"
-		fi
 		checkin_at_boot
 		set_initial_firewall_access
 		logCmd "salt-call schedule.enable -linfo --local"
+		hypervisor_local_states
 		verify_setup
 	else
 		touch /root/accept_changes
@@ -809,8 +852,7 @@ if ! [[ -f $install_opt_file ]]; then
 		configure_minion "$minion_type"
 		check_sos_appliance
 		drop_install_options
-		checkin_at_boot
-		logCmd "salt-call state.apply setup.highstate_cron --local --file-root=../salt/"
+		hypervisor_local_states
 		verify_setup
 	fi
 

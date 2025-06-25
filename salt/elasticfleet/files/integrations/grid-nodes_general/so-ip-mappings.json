@@ -1,0 +1,35 @@
+{
+  "package": {
+    "name": "log",
+    "version": ""
+  },
+  "name": "so-ip-mappings",
+  "namespace": "so",
+  "description": "IP Description mappings",
+  "policy_id": "so-grid-nodes_general",
+  "vars": {},
+  "inputs": {
+    "logs-logfile": {
+      "enabled": true,
+      "streams": {
+        "log.logs": {
+          "enabled": true,
+          "vars": {
+            "paths": [
+              "/nsm/custom-mappings/ip-descriptions.csv"
+            ],
+            "data_stream.dataset": "hostnamemappings",
+            "tags": [
+              "so-ip-mappings"
+            ],
+            "processors": "- decode_csv_fields:\n    fields:\n      message: decoded.csv\n    separator: \",\"\n    ignore_missing: false\n    overwrite_keys: true\n    trim_leading_space: true\n    fail_on_error: true\n\n- extract_array:\n    field: decoded.csv\n    mappings:\n      so.ip_address: '0'\n      so.description: '1'\n\n- script:\n    lang: javascript\n    source: >\n      function process(event) {\n          var ip = event.Get('so.ip_address');\n          var validIpRegex = /^((25[0-5]|2[0-4]\\d|1\\d{2}|[1-9]?\\d)\\.){3}(25[0-5]|2[0-4]\\d|1\\d{2}|[1-9]?\\d)$/\n          if (!validIpRegex.test(ip)) {\n              event.Cancel();\n          }\n      }\n- fingerprint:\n    fields: [\"so.ip_address\"]\n    target_field: \"@metadata._id\"\n",
+            "custom": ""
+          }
+        }
+      }
+    }
+  },
+  "force": true
+}
+
+

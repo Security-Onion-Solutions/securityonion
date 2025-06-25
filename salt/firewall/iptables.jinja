@@ -91,6 +91,10 @@ COMMIT
 -A INPUT -m conntrack --ctstate INVALID -j DROP
 -A INPUT -p icmp -j ACCEPT
 -A INPUT -j LOGGING
+{% if GLOBALS.role in ['so-hypervisor', 'so-managerhyper'] -%}
+-A FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
+-A FORWARD -i br0 -o br0 -j ACCEPT
+{%- endif %}
 -A FORWARD -j DOCKER-USER
 -A FORWARD -j DOCKER-ISOLATION-STAGE-1
 -A FORWARD -o sobridge -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT

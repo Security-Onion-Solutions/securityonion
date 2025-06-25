@@ -7,6 +7,7 @@
 {% from 'suricata/map.jinja' import SURICATAMERGED %}
 
 include:
+  - suricata.pcap
 {% if SURICATAMERGED.enabled and GLOBALS.role != 'so-import' %}
   - suricata.enabled
 {% elif GLOBALS.role == 'so-import' %}

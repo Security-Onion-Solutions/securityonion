@@ -8,17 +8,17 @@
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 {%   from 'docker/docker.map.jinja' import DOCKER %}
 {%   from 'logstash/map.jinja' import LOGSTASH_MERGED %}
-{%   from 'logstash/map.jinja' import REDIS_NODES %}
-{#   we append the manager here so that it is added to extra_hosts so the heavynode can resolve it #}
-{#   we cannont append in the logstash/map.jinja because then it would be added to the 0900_input_redis.conf #}
-{%   if GLOBALS.role == 'so-heavynode' %}
-{%     do REDIS_NODES.append({GLOBALS.manager:GLOBALS.manager_ip}) %}
-{%   endif %}
+{%   from 'logstash/map.jinja' import LOGSTASH_NODES %}
 {%   set lsheap = LOGSTASH_MERGED.settings.lsheap %}
 
 include:
 {%   if GLOBALS.role not in ['so-receiver','so-fleet'] %}
   - elasticsearch.ca
+{%   endif %}
+{# Kafka ca runs on nodes that can run logstash for Kafka input / output. Only when Kafka is global pipeline #}
+{%   if GLOBALS.role in ['so-searchnode', 'so-manager', 'so-managerhype', 'so-managersearch', 'so-receiver', 'so-standalone'] and GLOBALS.pipeline == 'KAFKA' %}
+  - kafka.ca
+  - kafka.ssl
 {%   endif %}
   - logstash.config
   - logstash.sostatus
@@ -33,18 +33,23 @@ so-logstash:
       - sobridge:
         - ipv4_address: {{ DOCKER.containers['so-logstash'].ip }}
     - user: logstash
-    - extra_hosts: {{ REDIS_NODES }}
+    - extra_hosts:
+    {% for node in LOGSTASH_NODES %}
+    {%   for hostname, ip in node.items() %}
+      - {{hostname}}:{{ip}}
+    {%   endfor %}
+    {% endfor %}
     {% if DOCKER.containers['so-logstash'].extra_hosts %}
-      {% for XTRAHOST in DOCKER.containers['so-logstash'].extra_hosts %}
+    {%   for XTRAHOST in DOCKER.containers['so-logstash'].extra_hosts %}
       - {{ XTRAHOST }}
-      {% endfor %}
+    {%   endfor %}
     {% endif %}
     - environment:
       - LS_JAVA_OPTS=-Xms{{ lsheap }} -Xmx{{ lsheap }}
     {% if DOCKER.containers['so-logstash'].extra_env %}
-      {% for XTRAENV in DOCKER.containers['so-logstash'].extra_env %}
+    {%   for XTRAENV in DOCKER.containers['so-logstash'].extra_env %}
       - {{ XTRAENV }}
-      {% endfor %}
+    {%   endfor %}
     {% endif %}
     - port_bindings:
       {% for BINDING in DOCKER.containers['so-logstash'].port_bindings %}
@@ -60,24 +65,28 @@ so-logstash:
       - /opt/so/log/logstash:/var/log/logstash:rw
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
       - /opt/so/conf/logstash/etc/certs:/usr/share/logstash/certs:ro
-      {% if GLOBALS.role in ['so-manager', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-receiver'] %}
+      {% if GLOBALS.role in ['so-manager', 'so-managerhype', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-receiver'] %}
       - /etc/pki/filebeat.crt:/usr/share/logstash/filebeat.crt:ro
       - /etc/pki/filebeat.p8:/usr/share/logstash/filebeat.key:ro
       {% endif %}
-      {% if GLOBALS.role in ['so-manager', 'so-managersearch', 'so-standalone', 'so-import', 'so-eval','so-fleet', 'so-heavynode', 'so-receiver'] %}
+      {% if GLOBALS.is_manager or GLOBALS.role in ['so-fleet', 'so-heavynode', 'so-receiver'] %}
       - /etc/pki/elasticfleet-logstash.crt:/usr/share/logstash/elasticfleet-logstash.crt:ro
       - /etc/pki/elasticfleet-logstash.key:/usr/share/logstash/elasticfleet-logstash.key:ro
       - /etc/pki/elasticfleet-lumberjack.crt:/usr/share/logstash/elasticfleet-lumberjack.crt:ro
       - /etc/pki/elasticfleet-lumberjack.key:/usr/share/logstash/elasticfleet-lumberjack.key:ro
       {% endif %}
-      {% if GLOBALS.role in ['so-manager', 'so-managersearch', 'so-standalone', 'so-import'] %}
+      {% if GLOBALS.role in ['so-manager', 'so-managerhype', 'so-managersearch', 'so-standalone', 'so-import'] %}
       - /etc/pki/ca.crt:/usr/share/filebeat/ca.crt:ro
       {% else %}
       - /etc/pki/tls/certs/intca.crt:/usr/share/filebeat/ca.crt:ro
       {% endif %}
-      {% if GLOBALS.role in ['so-manager', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-searchnode'] %}
+      {% if GLOBALS.role in ['so-manager', 'so-managerhype', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-searchnode' ] %}
       - /opt/so/conf/ca/cacerts:/etc/pki/ca-trust/extracted/java/cacerts:ro
       - /opt/so/conf/ca/tls-ca-bundle.pem:/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:ro
+      {% endif %}
+      {% if GLOBALS.pipeline == "KAFKA" and GLOBALS.role in ['so-manager', 'so-managerhype', 'so-managersearch', 'so-standalone', 'so-searchnode'] %}
+      - /etc/pki/kafka-logstash.p12:/usr/share/logstash/kafka-logstash.p12:ro
+      - /opt/so/conf/kafka/kafka-truststore.jks:/etc/pki/kafka-truststore.jks:ro
       {% endif %}
       {% if GLOBALS.role == 'so-eval' %}
       - /nsm/zeek:/nsm/zeek:ro
@@ -91,7 +100,7 @@ so-logstash:
         {% endfor %}
       {% endif %}
     - watch:
-      {% if grains['role'] in ['so-manager', 'so-eval', 'so-managersearch', 'so-standalone', 'so-import', 'so-fleet', 'so-receiver'] %}
+      {% if GLOBALS.is_manager or GLOBALS.role in ['so-fleet', 'so-receiver'] %}
       - x509: etc_elasticfleet_logstash_key
       - x509: etc_elasticfleet_logstash_crt
       {% endif %}
@@ -102,18 +111,24 @@ so-logstash:
       - file: ls_pipeline_{{assigned_pipeline}}_{{CONFIGFILE.split('.')[0] | replace("/","_") }}
         {% endfor %}
       {% endfor %}
+      {% if GLOBALS.pipeline == 'KAFKA' and GLOBALS.role in ['so-manager', 'so-managerhype', 'so-managersearch', 'so-standalone', 'so-searchnode'] %}
+      - file: kafkacertz
+      {% endif %}
     - require:
-      {% if grains['role'] in ['so-manager', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-receiver'] %}
+      {% if grains['role'] in ['so-manager', 'so-managerhype', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-receiver'] %}
       - x509: etc_filebeat_crt
       {% endif %}
-      {% if grains['role'] in ['so-manager', 'so-managersearch', 'so-standalone', 'so-import'] %}
+      {% if grains['role'] in ['so-manager', 'so-managerhype', 'so-managersearch', 'so-standalone', 'so-import'] %}
       - x509: pki_public_ca_crt
       {% else %}
       - x509: trusttheca
       {% endif %}
-      {% if grains.role in ['so-manager', 'so-managersearch', 'so-standalone', 'so-import'] %}
+      {% if grains.role in ['so-manager', 'so-managerhype', 'so-managersearch', 'so-standalone', 'so-import'] %}
       - file: cacertz
       - file: capemz
+      {% endif %}
+      {% if GLOBALS.pipeline == 'KAFKA' and GLOBALS.role in ['so-manager', 'so-managerhype', 'so-managersearch', 'so-standalone', 'so-searchnode'] %}
+      - file: kafkacertz
       {% endif %}
 
 delete_so-logstash_so-status.disabled:

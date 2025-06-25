@@ -43,6 +43,29 @@ idhconfdir:
     - group: 939
     - makedirs: True
 
+idhhttpskinsdir:
+  file.directory:
+    - name: /opt/so/conf/idh/http-skins
+    - user: 939
+    - group: 939
+    - makedirs: True
+
+# Copy over default http skins
+idhhttpskins:
+  file.recurse:
+    - name: /opt/so/conf/idh/http-skins
+    - user: 939
+    - group: 939
+    - source: salt://idh/skins/http/opencanary
+
+# Copy over custom http skins
+idhcustomhttpskins:
+  file.recurse:
+    - name: /opt/so/conf/idh/http-skins
+    - user: 939
+    - group: 939
+    - source: salt://idh/skins/http/custom
+
 # Create a log directory
 idhlogdir:
   file.directory:

@@ -5,7 +5,6 @@
 # Elastic License 2.0.
 {%- import_yaml 'elasticfleet/defaults.yaml' as ELASTICFLEETDEFAULTS %}
 {%  from 'vars/globals.map.jinja' import GLOBALS %}
-{%- set SUPPORTED_PACKAGES = salt['pillar.get']('elasticfleet:packages', default=ELASTICFLEETDEFAULTS.elasticfleet.packages, merge=True) %}
 
 STATE_FILE_INITIAL=/opt/so/state/estemplates_initial_load_attempt.txt
 STATE_FILE_SUCCESS=/opt/so/state/estemplates.txt
@@ -24,6 +23,9 @@ else
   echo "This is the initial template load"
 fi
 
+# If soup is running, ignore errors
+pgrep soup > /dev/null && should_exit_on_failure=0
+
 load_failures=0
 
 load_template() {
@@ -31,7 +33,7 @@ load_template() {
   file=$2
 
   echo "Loading template file $i" 
-  if ! retry 3 5 "so-elasticsearch-query $uri -d@$file -XPUT" "{\"acknowledged\":true}"; then
+  if ! retry 3 1 "so-elasticsearch-query $uri -d@$file -XPUT" "{\"acknowledged\":true}"; then
     if [[ $should_exit_on_failure -eq 1 ]]; then
       fail "Could not load template file: $file"
     else
@@ -68,9 +70,9 @@ if [ ! -f $STATE_FILE_SUCCESS ]; then
     echo -n "Waiting for ElasticSearch..."
     retry 240 1 "so-elasticsearch-query / -k --output /dev/null --silent --head --fail" || fail "Connection attempt timed out.  Unable to connect to ElasticSearch.  \nPlease try: \n  -checking log(s) in /var/log/elasticsearch/\n  -running 'sudo docker ps' \n  -running 'sudo so-elastic-restart'"
     {% if GLOBALS.role != 'so-heavynode' %}
-    SESSIONCOOKIE=$(curl -s -K /opt/so/conf/elasticsearch/curl.config -c - -X GET http://localhost:5601/ | grep sid | awk '{print $7}')
-    INSTALLED=$(elastic_fleet_package_is_installed {{ SUPPORTED_PACKAGES[0] }} )
-    if [ "$INSTALLED" != "installed" ]; then
+    TEMPLATE="logs-endpoint.alerts@package"
+    INSTALLED=$(so-elasticsearch-query _component_template/$TEMPLATE | jq -r .component_templates[0].name)
+    if [ "$INSTALLED" != "$TEMPLATE" ]; then
       echo
       echo "Packages not yet installed."
       echo
@@ -133,8 +135,8 @@ if [ ! -f $STATE_FILE_SUCCESS ]; then
     for i in $pattern; do
       TEMPLATE=${i::-14}
       COMPONENT_PATTERN=${TEMPLATE:3}
-      MATCH=$(echo "$TEMPLATE" | grep -E "^so-logs-|^so-metrics" | grep -v osquery)
-      if [[ -n "$MATCH" && ! "$COMPONENT_LIST" =~ "$COMPONENT_PATTERN" ]]; then
+      MATCH=$(echo "$TEMPLATE" | grep -E "^so-logs-|^so-metrics" | grep -vE "detections|osquery")
+      if [[ -n "$MATCH" && ! "$COMPONENT_LIST" =~ "$COMPONENT_PATTERN" && ! "$COMPONENT_PATTERN" =~ logs-http_endpoint\.generic|logs-winlog\.winlog ]]; then
         load_failures=$((load_failures+1))
         echo "Component template does not exist for $COMPONENT_PATTERN. The index template will not be loaded. Load failures: $load_failures"
       else
@@ -153,7 +155,7 @@ if [ ! -f $STATE_FILE_SUCCESS ]; then
   cd - >/dev/null
 
   if [[ $load_failures -eq 0 ]]; then
-    echo "All template loaded successfully"
+    echo "All templates loaded successfully"
     touch $STATE_FILE_SUCCESS
   else
     echo "Encountered $load_failures templates that were unable to load, likely due to missing dependencies that will be available later; will retry on next highstate"

@@ -5,8 +5,10 @@ saltpymodules:
       - python3-docker
 {% endif %}
 
+# distribute to minions for salt upgrades
 salt_bootstrap:
   file.managed:
     - name: /usr/sbin/bootstrap-salt.sh
     - source: salt://salt/scripts/bootstrap-salt.sh
     - mode: 755
+    - show_changes: False

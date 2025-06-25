@@ -9,9 +9,23 @@
 include:
   - manager.sync_es_users
 
+sigmarepodir:
+  file.directory:
+    - name: /opt/so/conf/sigma/repos
+    - user: 939
+    - group: 939
+    - makedirs: True
+
+socdirelastaertrules:
+  file.directory:
+    - name: /opt/so/rules/elastalert/rules
+    - user: 939
+    - group: 939
+    - makedirs: True
+
 socdir:
   file.directory:
-    - name: /opt/so/conf/soc
+    - name: /opt/so/conf/soc/fingerprints
     - user: 939
     - group: 939
     - makedirs: True
@@ -38,6 +52,22 @@ socsaltdir:
     - mode: 770
     - makedirs: True
 
+socplaybooksdir:
+  file.directory:
+    - name: /opt/so/conf/soc/playbooks
+    - user: 939
+    - group: 939
+    - makedirs: True
+
+socanalytics:
+  file.managed:
+    - name: /opt/so/conf/soc/analytics.js
+    - source: salt://soc/files/soc/analytics.js
+    - user: 939
+    - group: 939
+    - mode: 600
+    - show_changes: False
+
 socconfig:
   file.managed:
     - name: /opt/so/conf/soc/soc.json
@@ -56,6 +86,53 @@ socmotd:
     - group: 939
     - mode: 600
     - template: jinja
+    - show_changes: False
+
+filedetectionsbackup:
+  file.managed:
+    - name: /opt/so/conf/soc/so-detections-backup.py
+    - source: salt://soc/files/soc/so-detections-backup.py
+    - user: 939
+    - group: 939
+    - mode: 600
+
+crondetectionsruntime:
+  cron.present:
+    - name: /usr/sbin/so-detections-runtime-status cron
+    - identifier: detections-runtime-status
+    - user: root
+    - minute: '*/10'
+    - hour: '*'
+    - daymonth: '*'
+    - month: '*'
+    - dayweek: '*'
+
+crondetectionsbackup:
+  cron.present:
+    - name: python3 /opt/so/conf/soc/so-detections-backup.py &>> /opt/so/log/soc/detections-backup.log
+    - identifier: detections-backup
+    - user: root
+    - minute: '0'
+    - hour: '0'
+    - daymonth: '*'
+    - month: '*'
+    - dayweek: '*'
+
+socsigmafinalpipeline:
+  file.managed:
+    - name: /opt/so/conf/soc/sigma_final_pipeline.yaml
+    - source: salt://soc/files/soc/sigma_final_pipeline.yaml
+    - user: 939
+    - group: 939
+    - mode: 600
+
+socsigmasopipeline:
+  file.managed:
+    - name: /opt/so/conf/soc/sigma_so_pipeline.yaml
+    - source: salt://soc/files/soc/sigma_so_pipeline.yaml
+    - user: 939
+    - group: 939
+    - mode: 600
 
 socbanner:
   file.managed:
@@ -107,6 +184,15 @@ socusersroles:
     - require:
       - sls: manager.sync_es_users
 
+socclientsroles:
+  file.managed:
+    - name: /opt/so/conf/soc/soc_clients_roles
+    - user: 939
+    - group: 939
+    - mode: 600
+    - allow_empty: true
+    - create: true
+
 socuploaddir:
   file.directory:
     - name: /nsm/soc/uploads
@@ -114,6 +200,65 @@ socuploaddir:
     - group: 939
     - makedirs: True
 
+socsigmarepo:
+  file.directory:
+    - name: /opt/so/rules
+    - user: 939
+    - group: 939
+    - mode: 775
+
+socsensoronirepos:
+  file.directory:
+    - name: /opt/so/conf/soc/ai_summary_repos
+    - user: 939
+    - group: 939
+    - mode: 775
+    - makedirs: True
+
+
+create_custom_local_yara_repo_template:
+  git.present:
+    - name: /nsm/rules/custom-local-repos/local-yara
+    - bare: False
+    - force: True
+
+add_readme_custom_local_yara_repo_template:
+  file.managed:
+    - name: /nsm/rules/custom-local-repos/local-yara/README
+    - source: salt://soc/files/soc/detections_custom_repo_template_readme.jinja
+    - user: 939
+    - group: 939
+    - template: jinja
+    - context:
+        repo_type: "yara"
+
+
+create_custom_local_sigma_repo_template:
+  git.present:
+    - name: /nsm/rules/custom-local-repos/local-sigma
+    - bare: False
+    - force: True
+
+add_readme_custom_local_sigma_repo_template:
+  file.managed:
+    - name: /nsm/rules/custom-local-repos/local-sigma/README
+    - source: salt://soc/files/soc/detections_custom_repo_template_readme.jinja
+    - user: 939
+    - group: 939
+    - template: jinja
+    - context:
+        repo_type: "sigma"
+
+socore_own_custom_repos:
+  file.directory:
+    - name: /nsm/rules/custom-local-repos/
+    - user: socore
+    - group: socore
+    - recurse:
+      - user
+      - group
+    - show_changes: False
+  
 {% else %}
 
 {{sls}}_state_not_allowed:

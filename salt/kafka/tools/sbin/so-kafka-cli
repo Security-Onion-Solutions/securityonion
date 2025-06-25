@@ -1,0 +1,47 @@
+#! /bin/bash
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+if [ -z "$NOROOT" ]; then
+	# Check for prerequisites
+	if [ "$(id -u)" -ne 0 ]; then
+		echo "This script must be run using sudo!"
+		exit 1
+	fi
+fi
+
+function usage() {
+  echo -e "\nUsage: $0 <script> [options]"
+  echo ""
+  echo "Available scripts:"
+  show_available_kafka_cli_tools
+}
+
+function show_available_kafka_cli_tools(){
+  docker exec so-kafka ls /opt/kafka/bin | grep kafka
+}
+
+if [ -z $1 ]; then
+  usage
+  exit 1
+fi
+
+available_tools=$(show_available_kafka_cli_tools)
+script_exists=false
+
+for script in $available_tools; do
+  if [ "$script" == "$1" ]; then
+    script_exists=true
+    break
+  fi
+done
+
+if [ "$script_exists" == true ]; then
+  docker exec so-kafka /opt/kafka/bin/$1 "${@:2}"
+else
+  echo -e  "\nInvalid script: $1"
+  usage
+  exit 1
+fi

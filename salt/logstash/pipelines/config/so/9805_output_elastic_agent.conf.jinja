@@ -1,42 +1,57 @@
 output {
-  if "elastic-agent" in [tags] {
-    if [metadata][pipeline] {
-      if [metadata][_id] {
-        elasticsearch {
-          hosts => "{{ GLOBALS.manager }}"
-          ecs_compatibility => v8
-          data_stream => true
-          user => "{{ ES_USER }}"
-          password => "{{ ES_PASS }}"
-          document_id => "%{[metadata][_id]}"
-          pipeline => "%{[metadata][pipeline]}"
-          silence_errors_in_log => ["version_conflict_engine_exception"]
-          ssl => true
-          ssl_certificate_verification => false
+  if "elastic-agent" in [tags] and "so-ip-mappings" in [tags] {
+    elasticsearch {
+      hosts => "{{ GLOBALS.hostname }}"
+      data_stream => false
+      user => "{{ ES_USER }}"
+      password => "{{ ES_PASS }}"
+      document_id => "%{[metadata][_id]}"
+      index => "so-ip-mappings"
+      silence_errors_in_log => ["version_conflict_engine_exception"]
+      ssl => true
+      ssl_certificate_verification => false
+    }
+  }
+  else {
+    if "elastic-agent" in [tags] {
+      if [metadata][pipeline] {
+        if [metadata][_id] {
+          elasticsearch {
+            hosts => "{{ GLOBALS.hostname }}"
+            ecs_compatibility => v8
+            data_stream => true
+            user => "{{ ES_USER }}"
+            password => "{{ ES_PASS }}"
+            document_id => "%{[metadata][_id]}"
+            pipeline => "%{[metadata][pipeline]}"
+            silence_errors_in_log => ["version_conflict_engine_exception"]
+            ssl => true
+            ssl_certificate_verification => false
+          }
+        }
+        else {
+          elasticsearch {
+            hosts => "{{ GLOBALS.hostname }}"
+            ecs_compatibility => v8
+            data_stream => true
+            user => "{{ ES_USER }}"
+            password => "{{ ES_PASS }}"
+            pipeline => "%{[metadata][pipeline]}"
+            ssl => true
+            ssl_certificate_verification => false
+          }
         }
       }
       else {
         elasticsearch {
-          hosts => "{{ GLOBALS.manager }}"
+          hosts => "{{ GLOBALS.hostname }}"
           ecs_compatibility => v8
           data_stream => true
           user => "{{ ES_USER }}"
           password => "{{ ES_PASS }}"
-          pipeline => "%{[metadata][pipeline]}"
           ssl => true
           ssl_certificate_verification => false
         }
-      }
-    }
-    else {
-      elasticsearch {
-        hosts => "{{ GLOBALS.manager }}"
-        ecs_compatibility => v8
-        data_stream => true
-        user => "{{ ES_USER }}"
-        password => "{{ ES_PASS }}"
-        ssl => true
-        ssl_certificate_verification => false
       }
     }
   }

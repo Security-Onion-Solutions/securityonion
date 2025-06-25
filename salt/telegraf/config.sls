@@ -41,7 +41,27 @@ tgraf_sync_script_{{script}}:
     - mode: 770
     - template: jinja
     - source: salt://telegraf/scripts/{{script}}
+    - defaults:
+        GLOBALS: {{ GLOBALS }}
 {% endfor %}
+
+{% if GLOBALS.is_manager or GLOBALS.role == 'so-heavynode' %}
+tgraf_sync_script_esindexsize.sh:
+  file.managed:
+    - name: /opt/so/conf/telegraf/scripts/esindexsize.sh
+    - user: root
+    - group: 939
+    - mode: 770
+    - source: salt://telegraf/scripts/esindexsize.sh
+{# Copy conf/elasticsearch/curl.config for telegraf to use with esindexsize.sh #}
+tgraf_sync_escurl_conf:
+  file.managed:
+    - name: /opt/so/conf/telegraf/etc/escurl.config
+    - user: 939
+    - group: 939
+    - mode: 400
+    - source: salt://elasticsearch/curl.config
+{% endif %}
 
 telegraf_sbin:
   file.recurse:

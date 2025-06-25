@@ -1,16 +1,15 @@
 {% set node_types = {} %}
-{% set cached_grains = salt.saltutil.runner('cache.grains', tgt='*') %}
 {% for minionid, ip in salt.saltutil.runner(
     'mine.get',
-    tgt='G@role:so-manager or G@role:so-managersearch or G@role:so-standalone or G@role:so-searchnode or G@role:so-heavynode or G@role:so-receiver or G@role:so-fleet ',
+    tgt='logstash:enabled:true',
     fun='network.ip_addrs',
-    tgt_type='compound') | dictsort()
+    tgt_type='pillar') | dictsort()
 %}
 
 # only add a node to the pillar if it returned an ip from the mine
 {%   if ip | length > 0%}
-{%     set hostname = cached_grains[minionid]['host'] %}
-{%     set node_type = minionid.split('_')[1] %}
+{%     set hostname = minionid.split('_') | first %}
+{%     set node_type = minionid.split('_') | last %}
 {%     if node_type not in node_types.keys() %}
 {%       do node_types.update({node_type: {hostname: ip[0]}}) %}
 {%     else %}

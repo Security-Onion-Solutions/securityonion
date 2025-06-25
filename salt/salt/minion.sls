@@ -2,29 +2,40 @@
 {% from 'salt/map.jinja' import UPGRADECOMMAND with context %}
 {% from 'salt/map.jinja' import SALTVERSION %}
 {% from 'salt/map.jinja' import INSTALLEDSALTVERSION %}
-{% from 'salt/map.jinja' import SALTNOTHELD %}
 {% from 'salt/map.jinja' import SALTPACKAGES %}
 {% from 'salt/map.jinja' import SYSTEMD_UNIT_FILE %}
 {% import_yaml 'salt/minion.defaults.yaml' as SALTMINION %}
-{% set service_start_delay = SALTMINION.salt.minion.service_start_delay %}
 
 include:
+  - salt.python_modules
+  - salt.patch.x509_v2
   - salt
   - systemd.reload
   - repo.client
   - salt.mine_functions
+{% if GLOBALS.role in GLOBALS.manager_roles %}
+  - ca
+{% endif %}
 
 {% if INSTALLEDSALTVERSION|string != SALTVERSION|string %}
 
-{% if SALTNOTHELD | int == 0 %}
+{# this is added in 2.4.120 to remove salt repo files pointing to saltproject.io to accomodate the move to broadcom and new bootstrap-salt script #}
+{%   if salt['pkg.version_cmp'](GLOBALS.so_version, '2.4.120') == -1 %}
+{%     set saltrepofile = '/etc/yum.repos.d/salt.repo' %}
+{%     if grains.os_family == 'Debian' %}
+{%       set saltrepofile = '/etc/apt/sources.list.d/salt.list' %}
+{%     endif %}
+remove_saltproject_io_repo_minion:
+  file.absent:
+    - name: {{ saltrepofile }}
+{%   endif %}
+
 unhold_salt_packages:
-  module.run:
-    - pkg.unhold:
-      - pkgs:
+  pkg.unheld:
+    - pkgs:
 {% for package in SALTPACKAGES %}
-        - {{ package }}
+      - {{ package }}
 {% endfor %}
-{% endif %}
 
 install_salt_minion:
   cmd.run:
@@ -37,16 +48,15 @@ install_salt_minion:
 {% endif %}
 
 {% if INSTALLEDSALTVERSION|string == SALTVERSION|string %}
-
-{% if SALTNOTHELD | int == 1 %}
+# only hold the package if it is already installed
 hold_salt_packages:
-  module.run:
-    - pkg.hold:
-      - pkgs:
-{% for package in SALTPACKAGES %}
-        - {{ package }}
-{% endfor %}
-{% endif %}
+  pkg.held:
+    - pkgs:
+{%   for package in SALTPACKAGES %}
+{%     if salt['pkg.version'](package) %}
+      - {{ package }}: {{SALTVERSION}}-0.*
+{%     endif %}
+{%   endfor %}
 
 remove_error_log_level_logfile:
   file.line:
@@ -67,6 +77,12 @@ set_log_levels:
       - "log_level: info"
       - "log_level_logfile: info"
 
+enable_startup_states:
+  file.uncomment:
+    - name: /etc/salt/minion
+    - regex: '^startup_states: highstate$'
+    - unless: pgrep so-setup
+
 # prior to 2.4.30 this managed file would restart the salt-minion service when updated
 # since this file is currently only adding a sleep timer on service start
 # it is not required to restart the service
@@ -75,8 +91,6 @@ salt_minion_service_unit_file:
     - name: {{ SYSTEMD_UNIT_FILE }}
     - source: salt://salt/service/salt-minion.service.jinja
     - template: jinja
-    - defaults:
-        service_start_delay: {{ service_start_delay }}
     - onchanges_in:
       - module: systemd_reload
 
@@ -92,5 +106,8 @@ salt_minion_service:
       - file: mine_functions
 {% if INSTALLEDSALTVERSION|string == SALTVERSION|string %}
       - file: set_log_levels
+{% endif %}
+{% if GLOBALS.role in GLOBALS.manager_roles %}
+      - file: /etc/salt/minion.d/signing_policies.conf
 {% endif %}
     - order: last

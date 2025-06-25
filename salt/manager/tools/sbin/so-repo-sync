@@ -7,12 +7,8 @@
 NOROOT=1
 . /usr/sbin/so-common
 
-set_version
-set_os
-salt_minion_count
-
 set -e
 
-curl --retry 5 --retry-delay 60 -A "reposync/$VERSION/$OS/$(uname -r)/$MINIONCOUNT" https://sigs.securityonion.net/checkup --output /tmp/checkup
+curl --retry 5 --retry-delay 60 -A "reposync/$(sync_options)" https://sigs.securityonion.net/checkup --output /tmp/checkup
 dnf reposync --norepopath -g --delete -m -c /opt/so/conf/reposync/repodownload.conf --repoid=securityonionsync --download-metadata -p /nsm/repo/
 createrepo /nsm/repo

@@ -72,25 +72,11 @@ stenoca:
     - user: 941
     - group: 939
 
-pcapdir:
-  file.directory:
-    - name: /nsm/pcap
-    - user: 941
-    - group: 941
-    - makedirs: True
-
 pcaptmpdir:
   file.directory:
     - name: /nsm/pcaptmp
     - user: 941
     - group: 941
-    - makedirs: True
-
-pcapoutdir:
-  file.directory:
-    - name: /nsm/pcapout
-    - user: 939
-    - group: 939
     - makedirs: True
 
 pcapindexdir:

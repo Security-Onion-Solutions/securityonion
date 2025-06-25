@@ -1,0 +1,68 @@
+#!/bin/bash
+
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+# Usage: so-tcpreplay "/opt/samples/*"
+
+. /usr/sbin/so-common
+. /usr/sbin/so-image-common
+
+REPLAYIFACE=${REPLAYIFACE:-"{{salt['pillar.get']('sensor:interface', '')}}"}
+REPLAYSPEED=${REPLAYSPEED:-10}
+
+mkdir -p /opt/so/samples
+
+if [[ $# -lt 1 ]]; then
+	echo "Replays one or more PCAP sample files to the Security Onion monitoring interface."
+	echo
+	echo "Usage: $0 <pcap-sample(s)>"
+	echo 
+	echo "All PCAPs must be placed in the /opt/so/samples directory unless replaying"
+	echo "a sample pcap that is included in the so-tcpreplay image. Those PCAP samples"
+	echo "are located in the /opt/samples directory inside of the image."
+	echo 
+	echo "Customer provided PCAP example:"
+	echo "  $0 /opt/so/samples/some_event.pcap"
+	echo
+	echo "Security Onion-provided PCAP example:"
+	echo "  $0 /opt/samples/4in6.pcap"
+
+	exit 1
+fi
+
+if ! docker ps | grep -q so-tcpreplay; then
+  echo "Replay functionality not enabled; attempting to enable now (may require Internet access)..."
+  echo
+
+  if is_manager_node; then
+  	set_version
+  	if ! docker images | grep so-tcpreplay | grep ":5000" | grep -q $VERSION ; then
+  		echo "Pulling so-tcpreplay image"
+		  TRUSTED_CONTAINERS=("so-tcpreplay")
+		  mkdir -p /opt/so/log/tcpreplay
+		  update_docker_containers "tcpreplay" "" "" "/opt/so/log/tcpreplay/init.log"
+		else
+			echo "so-tcpreplay image exists."
+		fi
+	fi
+	if is_sensor_node; then
+		if ! is_manager_node; then
+			echo "Attempting to start replay container. If this fails then you may need to run this command on the manager first."
+		fi
+  	so-tcpreplay-start || fail "Unable to initialize tcpreplay"
+  fi
+fi
+
+if is_sensor_node; then
+	echo "Replaying PCAP(s) at ${REPLAYSPEED} Mbps on interface ${REPLAYIFACE}..."
+	docker exec so-tcpreplay /usr/bin/bash -c "/usr/local/bin/tcpreplay -i ${REPLAYIFACE} -M${REPLAYSPEED} $@"
+
+	echo "Replay completed. Warnings shown above are typically expected."
+elif is_manager_node; then
+	echo "The sensor nodes in this grid can now replay traffic."
+else
+	echo "Unable to replay traffic since this node is not a sensor node."
+fi

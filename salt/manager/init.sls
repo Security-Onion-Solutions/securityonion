@@ -1,15 +1,12 @@
 # Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
-# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
-{%   from 'strelka/map.jinja' import STRELKAMERGED %}
-{%   import_yaml 'manager/defaults.yaml' as MANAGERDEFAULTS %}
-{%   set MANAGERMERGED = salt['pillar.get']('manager', MANAGERDEFAULTS.manager, merge=true) %}
-{%   from 'strelka/map.jinja' import STRELKAMERGED %}
+{%   from 'manager/map.jinja' import MANAGERMERGED %}
 
 include:
   - salt.minion
@@ -17,12 +14,22 @@ include:
   - manager.sync_es_users
   - manager.elasticsearch
   - manager.kibana
+  - manager.managed_soc_annotations
 
 repo_log_dir:
   file.directory:
     - name: /opt/so/log/reposync
     - user: socore
     - group: socore
+    - recurse:
+      - user
+      - group
+
+agents_log_dir:
+  file.directory:
+    - name: /opt/so/log/agents
+    - user: root
+    - group: root
     - recurse:
       - user
       - group
@@ -35,6 +42,12 @@ yara_log_dir:
     - recurse:
       - user
       - group
+
+{% if GLOBALS.os_family == 'RedHat' %}
+install_createrepo:
+  pkg.installed:
+    - name: createrepo_c
+{% endif %}
 
 repo_conf_dir:
   file.directory:
@@ -53,6 +66,7 @@ repo_dir:
     - recurse:
       - user
       - group
+    - show_changes: False
 
 manager_sbin:
   file.recurse:
@@ -61,10 +75,11 @@ manager_sbin:
     - user: 939
     - group: 939
     - file_mode: 755
-    - exclude_pat: 
+    - exclude_pat:
       - "*_test.py"
+    - show_changes: False
 
-yara_update_scripts:
+manager_sbin_jinja:
   file.recurse:
     - name: /usr/sbin/
     - source: salt://manager/tools/sbin_jinja/
@@ -72,8 +87,22 @@ yara_update_scripts:
     - group: socore
     - file_mode: 755
     - template: jinja
-    - defaults:
-        EXCLUDEDRULES: {{ STRELKAMERGED.rules.excluded }}
+    - show_changes: False
+
+so-repo-file:
+  file.managed:
+    - name: /opt/so/conf/reposync/repodownload.conf
+    - source: salt://manager/files/repodownload.conf
+    - user: socore
+    - group: socore
+    - show_changes: False
+
+so-repo-mirrorlist:
+  file.managed:
+    - name: /opt/so/conf/reposync/mirror.txt
+    - source: salt://manager/files/mirror.txt
+    - user: socore
+    - group: socore
 
 so-repo-sync:
   {%     if MANAGERMERGED.reposync.enabled %}
@@ -87,14 +116,38 @@ so-repo-sync:
     - hour: '{{ MANAGERMERGED.reposync.hour }}'
     - minute: '{{ MANAGERMERGED.reposync.minute }}'
 
-socore_own_saltstack:
+so_fleetagent_status:
+  cron.present:
+    - name: /usr/sbin/so-elasticagent-status > /opt/so/log/agents/agentstatus.log 2>&1
+    - identifier: so_fleetagent_status
+    - user: root
+    - minute: '*/5'
+    - hour: '*'
+    - daymonth: '*'
+    - month: '*'
+    - dayweek: '*'
+
+socore_own_saltstack_default:
   file.directory:
-    - name: /opt/so/saltstack
+    - name: /opt/so/saltstack/default
     - user: socore
     - group: socore
     - recurse:
       - user
       - group
+
+socore_own_saltstack_local:
+  file.directory:
+    - name: /opt/so/saltstack/local
+    - user: socore
+    - group: socore
+    - dir_mode: 750
+    - file_mode: 640
+    - replace: False
+    - recurse:
+      - user
+      - group
+      - mode
 
 rules_dir:
   file.directory:
@@ -103,55 +156,25 @@ rules_dir:
     - group: socore
     - makedirs: True
 
-{%    if STRELKAMERGED.rules.enabled %}
-
-strelkarepos:
-  file.managed:
-    - name: /opt/so/conf/strelka/repos.txt
-    - source: salt://strelka/rules/repos.txt.jinja
-    - template: jinja
-    - defaults:
-        STRELKAREPOS: {{ STRELKAMERGED.rules.repos }}
+nsm_playbooks_dir:
+  file.directory:
+    - name: /nsm/airgap-resources/playbooks
+    - user: socore
+    - group: socore
     - makedirs: True
 
-strelka-yara-update:
-  {%       if MANAGERMERGED.reposync.enabled and not GLOBALS.airgap %} 
-  cron.present:
-  {%       else %}
-  cron.absent:
-  {%       endif %}
+git_config_set_safe_dirs:
+  git.config_set:
+    - name: safe.directory
+    - global: True
     - user: socore
-    - name: '/usr/sbin/so-yara-update >> /opt/so/log/yarasync/yara-update.log 2>&1'
-    - identifier: strelka-yara-update
-    - hour: '7'
-    - minute: '1'
-
-strelka-yara-download:
-  {%       if MANAGERMERGED.reposync.enabled and not GLOBALS.airgap %}
-  cron.present:
-  {%       else %}
-  cron.absent:
-  {%       endif %}
-    - user: socore
-    - name: '/usr/sbin/so-yara-download >> /opt/so/log/yarasync/yara-download.log 2>&1'
-    - identifier: strelka-yara-download
-    - hour: '7'
-    - minute: '1'
-
-{%      if not GLOBALS.airgap %}
-update_yara_rules:
-  cmd.run:
-    - name: /usr/sbin/so-yara-update
-    - onchanges:
-      - file: yara_update_scripts
-
-download_yara_rules:
-  cmd.run:
-    - name: /usr/sbin/so-yara-download
-    - onchanges:
-      - file: yara_update_scripts
-{%      endif %}
-{%     endif %}
+    - multivar:
+      - /nsm/rules/custom-local-repos/local-sigma
+      - /nsm/rules/custom-local-repos/local-yara
+      - /nsm/securityonion-resources
+      - /opt/so/conf/soc/ai_summary_repos/securityonion-resources
+      - /nsm/airgap-resources/playbooks
+      - /opt/so/conf/soc/playbooks
 {% else %}
 
 {{sls}}_state_not_allowed:

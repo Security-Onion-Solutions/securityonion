@@ -1,0 +1,38 @@
+{# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+   or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+   https://securityonion.net/license; you may not use this file except in compliance with the
+   Elastic License 2.0. #}
+
+{% import_yaml 'versionlock/defaults.yaml' as VERSIONLOCKDEFAULTS %}
+{% set VERSIONLOCKMERGED = salt['pillar.get']('versionlock', VERSIONLOCKDEFAULTS.versionlock, merge=True) %}
+
+{% if grains.os_family == 'RedHat' %}
+{%   set HELD = salt['pkg.list_holds']() %}
+{% else %}
+{%   set HELD = salt['pkg.get_selections'](state='hold')['hold'] %}
+{% endif %}
+
+{# these are packages held / versionlock in other states #}
+{% set PACKAGES_HELD_IN_OTHER_STATES = [
+   'salt',
+   'salt-master',
+   'salt-minion',
+   'containerd.io',
+   'docker-ce',
+   'docker-ce-cli',
+   'docker-ce-rootless-extras'
+] %}
+
+{# remove packages held in other states from hold list #}
+{% do VERSIONLOCKMERGED.update({'hold': VERSIONLOCKMERGED['hold'] | unique | reject('in', PACKAGES_HELD_IN_OTHER_STATES) | list }) %}
+
+{# initiate VERSIONLOCKMERGED.UNHOLD #}
+{% do VERSIONLOCKMERGED.update({'UNHOLD': []}) %}
+
+{# if a package is currently held but not set to be held, unhold it #}
+{% for item in HELD %}
+    {% set base_name = item.rsplit('-', 2)[0] %}
+    {% if base_name not in VERSIONLOCKMERGED['hold'] and base_name not in PACKAGES_HELD_IN_OTHER_STATES and base_name not in VERSIONLOCKMERGED['UNHOLD'] %}
+        {% do VERSIONLOCKMERGED['UNHOLD'].append(base_name) %}
+    {% endif %}
+{% endfor %}

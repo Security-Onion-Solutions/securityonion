@@ -22,7 +22,7 @@ kibana_pillar_directory:
 kibana_secrets_pillar:
   file.managed:
     - name: /opt/so/saltstack/local/pillar/kibana/secrets.sls
-    - mode: 600
+    - mode: 640
     - reload_pillar: True
     - contents: |
         kibana:

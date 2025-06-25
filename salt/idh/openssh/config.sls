@@ -11,6 +11,8 @@ idh_sshd_selinux:
     - sel_type: ssh_port_t
     - prereq:
       - file: openssh_config
+    - require:
+      - pkg: python_selinux_mgmt_tools
 {% endif %}
 
 openssh_config:

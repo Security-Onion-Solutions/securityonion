@@ -1,0 +1,13 @@
+#!/bin/bash
+#
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+{% set TRUSTPASS = salt['pillar.get']('kafka:config:trustpass') %}
+
+if [ ! -f /opt/so/saltstack/local/salt/kafka/files/kafka-truststore ]; then
+    docker run -v /etc/pki/ca.crt:/etc/pki/ca.crt --name so-kafkatrust --user root --entrypoint /opt/java/openjdk/bin/keytool {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-kafka:{{ GLOBALS.so_version }} -import -file /etc/pki/ca.crt -alias SOS -keystore /etc/pki/kafka-truststore -storepass {{ TRUSTPASS }} -storetype jks -noprompt
+    docker cp so-kafkatrust:/etc/pki/kafka-truststore /opt/so/saltstack/local/salt/kafka/files/kafka-truststore
+    docker rm so-kafkatrust
+fi

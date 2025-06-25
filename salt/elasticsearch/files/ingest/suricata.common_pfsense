@@ -1,0 +1,23 @@
+{
+  "description" : "suricata.common",
+  "processors" : [
+    { "json":   { "field": "message",                   "target_field": "message2",             "ignore_failure": true  } },
+    { "rename": { "field": "message2.pkt_src",          "target_field": "network.packet_source","ignore_failure": true  } },
+    { "rename": { "field": "message2.proto",            "target_field": "network.transport",    "ignore_failure": true  } },
+    { "rename": { "field": "message2.in_iface",         "target_field": "observer.ingress.interface.name",    "ignore_failure": true  } },
+    { "rename": { "field": "message2.flow_id",          "target_field": "log.id.uid",           "ignore_failure": true  } },
+    { "rename": { "field": "message2.src_ip",           "target_field": "source.ip",            "ignore_failure": true  } },
+    { "rename": { "field": "message2.src_port",         "target_field": "source.port",          "ignore_failure": true  } },
+    { "rename": { "field": "message2.dest_ip",          "target_field": "destination.ip",       "ignore_failure": true  } },
+    { "rename": { "field": "message2.dest_port",        "target_field": "destination.port",     "ignore_failure": true  } },
+    { "rename": { "field": "message2.vlan",             "target_field": "network.vlan.id",      "ignore_failure": true  } },
+    { "rename": { "field": "message2.community_id",     "target_field": "network.community_id", "ignore_missing": true  } },
+    { "rename": { "field": "message2.xff",              "target_field": "xff.ip",               "ignore_missing": true  } },
+    { "set":    { "field": "event.dataset",             "value": "{{ message2.event_type }}"                            } },
+    { "set":    { "field": "observer.name",             "value": "{{agent.name}}"                                       } },
+    { "set":    { "field": "event.ingested",            "value": "{{@timestamp}}"                                       } },
+    { "date": { "field": "message2.timestamp", "target_field": "@timestamp", "formats": ["ISO8601", "UNIX"], "timezone": "UTC", "ignore_failure": true } },
+    { "remove":{ "field": "agent",                                                              "ignore_failure": true  } },
+    { "pipeline": { "if": "ctx?.event?.dataset != null", "name": "suricata.{{event.dataset}}_pfsense" } }
+  ]
+}

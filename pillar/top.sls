@@ -16,16 +16,24 @@ base:
     - sensoroni.adv_sensoroni
     - telegraf.soc_telegraf
     - telegraf.adv_telegraf
+    - versionlock.soc_versionlock
+    - versionlock.adv_versionlock
+    - soc.license
 
   '* and not *_desktop':
     - firewall.soc_firewall
     - firewall.adv_firewall
     - nginx.soc_nginx
     - nginx.adv_nginx
-    - node_data.ips
 
-  '*_manager or *_managersearch':
+  'salt-cloud:driver:libvirt':
+    - match: grain
+    - vm.soc_vm
+    - vm.adv_vm
+
+  '*_manager or *_managersearch or *_managerhype':
     - match: compound
+    - node_data.ips
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
     - elasticsearch.auth
     {% endif %}
@@ -42,17 +50,18 @@ base:
     - logstash.adv_logstash
     - soc.soc_soc
     - soc.adv_soc
-    - soc.license
-    - soctopus.soc_soctopus
-    - soctopus.adv_soctopus
     - kibana.soc_kibana
     - kibana.adv_kibana
     - kratos.soc_kratos
     - kratos.adv_kratos
+    - hydra.soc_hydra
+    - hydra.adv_hydra
+    - redis.nodes
     - redis.soc_redis
     - redis.adv_redis
     - influxdb.soc_influxdb
     - influxdb.adv_influxdb
+    - elasticsearch.nodes
     - elasticsearch.soc_elasticsearch
     - elasticsearch.adv_elasticsearch
     - elasticfleet.soc_elasticfleet
@@ -61,12 +70,15 @@ base:
     - elastalert.adv_elastalert
     - backup.soc_backup
     - backup.adv_backup
-    - curator.soc_curator
-    - curator.adv_curator
-    - soctopus.soc_soctopus
-    - soctopus.adv_soctopus
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
+    - kafka.nodes
+    - kafka.soc_kafka
+    - kafka.adv_kafka
+    - hypervisor.nodes
+    - hypervisor.soc_hypervisor
+    - hypervisor.adv_hypervisor
+    - stig.soc_stig
 
   '*_sensor':
     - healthcheck.sensor
@@ -82,8 +94,10 @@ base:
     - suricata.adv_suricata
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
+    - stig.soc_stig
 
   '*_eval':
+    - node_data.ips
     - secrets
     - healthcheck.eval
     - elasticsearch.index_templates
@@ -94,6 +108,7 @@ base:
     - kibana.secrets
     {% endif %}
     - kratos.soc_kratos
+    - kratos.adv_kratos
     - elasticsearch.soc_elasticsearch
     - elasticsearch.adv_elasticsearch
     - elasticfleet.soc_elasticfleet
@@ -106,17 +121,12 @@ base:
     - idstools.adv_idstools
     - soc.soc_soc
     - soc.adv_soc
-    - soc.license
-    - soctopus.soc_soctopus
-    - soctopus.adv_soctopus
     - kibana.soc_kibana
     - kibana.adv_kibana
     - strelka.soc_strelka
     - strelka.adv_strelka
-    - curator.soc_curator
-    - curator.adv_curator
-    - kratos.soc_kratos
-    - kratos.adv_kratos
+    - hydra.soc_hydra
+    - hydra.adv_hydra
     - redis.soc_redis
     - redis.adv_redis
     - influxdb.soc_influxdb
@@ -135,6 +145,7 @@ base:
     - minions.adv_{{ grains.id }}
 
   '*_standalone':
+    - node_data.ips
     - logstash.nodes
     - logstash.soc_logstash
     - logstash.adv_logstash
@@ -151,10 +162,14 @@ base:
     - idstools.adv_idstools
     - kratos.soc_kratos
     - kratos.adv_kratos
+    - hydra.soc_hydra
+    - hydra.adv_hydra
+    - redis.nodes
     - redis.soc_redis
     - redis.adv_redis
     - influxdb.soc_influxdb
     - influxdb.adv_influxdb
+    - elasticsearch.nodes
     - elasticsearch.soc_elasticsearch
     - elasticsearch.adv_elasticsearch
     - elasticfleet.soc_elasticfleet
@@ -165,15 +180,10 @@ base:
     - manager.adv_manager
     - soc.soc_soc
     - soc.adv_soc
-    - soc.license
-    - soctopus.soc_soctopus
-    - soctopus.adv_soctopus
     - kibana.soc_kibana
     - kibana.adv_kibana
     - strelka.soc_strelka
     - strelka.adv_strelka
-    - curator.soc_curator
-    - curator.adv_curator
     - backup.soc_backup
     - backup.adv_backup
     - zeek.soc_zeek
@@ -186,6 +196,10 @@ base:
     - suricata.adv_suricata
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
+    - stig.soc_stig
+    - kafka.nodes
+    - kafka.soc_kafka
+    - kafka.adv_kafka
 
   '*_heavynode':
     - elasticsearch.auth
@@ -194,8 +208,6 @@ base:
     - logstash.adv_logstash
     - elasticsearch.soc_elasticsearch
     - elasticsearch.adv_elasticsearch
-    - curator.soc_curator
-    - curator.adv_curator
     - redis.soc_redis
     - redis.adv_redis
     - zeek.soc_zeek
@@ -221,15 +233,21 @@ base:
     - logstash.nodes
     - logstash.soc_logstash
     - logstash.adv_logstash
+    - elasticsearch.nodes
     - elasticsearch.soc_elasticsearch
     - elasticsearch.adv_elasticsearch
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
     - elasticsearch.auth
     {% endif %}
+    - redis.nodes
     - redis.soc_redis
     - redis.adv_redis
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
+    - stig.soc_stig
+    - kafka.nodes
+    - kafka.soc_kafka
+    - kafka.adv_kafka
 
   '*_receiver':
     - logstash.nodes
@@ -242,8 +260,11 @@ base:
     - redis.adv_redis
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
+    - kafka.nodes
+    - kafka.soc_kafka
 
   '*_import':
+    - node_data.ips
     - secrets
     - elasticsearch.index_templates
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
@@ -253,6 +274,7 @@ base:
     - kibana.secrets
     {% endif %}
     - kratos.soc_kratos
+    - kratos.adv_kratos
     - elasticsearch.soc_elasticsearch
     - elasticsearch.adv_elasticsearch
     - elasticfleet.soc_elasticfleet
@@ -263,17 +285,12 @@ base:
     - manager.adv_manager
     - soc.soc_soc
     - soc.adv_soc
-    - soc.license
-    - soctopus.soc_soctopus
-    - soctopus.adv_soctopus
     - kibana.soc_kibana
     - kibana.adv_kibana
-    - curator.soc_curator
-    - curator.adv_curator
     - backup.soc_backup
     - backup.adv_backup
-    - kratos.soc_kratos
-    - kratos.adv_kratos
+    - hydra.soc_hydra
+    - hydra.adv_hydra
     - redis.soc_redis
     - redis.adv_redis
     - influxdb.soc_influxdb
@@ -292,6 +309,7 @@ base:
     - minions.adv_{{ grains.id }}
 
   '*_fleet':
+    - node_data.ips
     - backup.soc_backup
     - backup.adv_backup
     - logstash.nodes
@@ -302,6 +320,12 @@ base:
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
 
+  '*_hypervisor':
+    - minions.{{ grains.id }}
+    - minions.adv_{{ grains.id }}
+
   '*_desktop':
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
+    - stig.soc_stig
+

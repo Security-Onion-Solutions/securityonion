@@ -82,6 +82,36 @@ elastasomodulesync:
     - group: 933
     - makedirs: True
 
+elastacustomdir:
+  file.directory:
+    - name: /opt/so/conf/elastalert/custom
+    - user: 933
+    - group: 933
+    - makedirs: True
+
+elastacustomsync:
+  file.recurse:
+    - name: /opt/so/conf/elastalert/custom
+    - source: salt://elastalert/files/custom
+    - user: 933
+    - group: 933
+    - makedirs: True
+    - file_mode: 660
+    - show_changes: False
+
+elastapredefinedsync:
+  file.recurse:
+    - name: /opt/so/conf/elastalert/predefined
+    - source: salt://elastalert/files/predefined
+    - user: 933
+    - group: 933
+    - makedirs: True
+    - template: jinja
+    - file_mode: 660
+    - context:
+        elastalert: {{ ELASTALERTMERGED }}
+    - show_changes: False
+
 elastaconf:
   file.managed:
     - name: /opt/so/conf/elastalert/elastalert_config.yaml

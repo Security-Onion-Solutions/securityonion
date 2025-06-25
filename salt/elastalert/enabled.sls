@@ -30,6 +30,8 @@ so-elastalert:
       - /opt/so/rules/elastalert:/opt/elastalert/rules/:ro
       - /opt/so/log/elastalert:/var/log/elastalert:rw
       - /opt/so/conf/elastalert/modules/:/opt/elastalert/modules/:ro
+      - /opt/so/conf/elastalert/predefined/:/opt/elastalert/predefined/:ro
+      - /opt/so/conf/elastalert/custom/:/opt/elastalert/custom/:ro
       - /opt/so/conf/elastalert/elastalert_config.yaml:/opt/elastalert/config.yaml:ro
       {% if DOCKER.containers['so-elastalert'].custom_bind_mounts %}
         {% for BIND in DOCKER.containers['so-elastalert'].custom_bind_mounts %}

@@ -20,6 +20,7 @@ so-idh:
     - network_mode: host
     - binds:
       - /nsm/idh:/var/tmp:rw
+      - /opt/so/conf/idh/http-skins:/usr/local/lib/python3.12/site-packages/opencanary/modules/data/http/skin:ro
       - /opt/so/conf/idh/opencanary.conf:/etc/opencanaryd/opencanary.conf:ro
       {% if DOCKER.containers['so-idh'].custom_bind_mounts %}
         {% for BIND in DOCKER.containers['so-idh'].custom_bind_mounts %}

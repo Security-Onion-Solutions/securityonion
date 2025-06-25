@@ -13,13 +13,21 @@ kratosgroup:
     - name: kratos
     - gid: 928
 
+kratoshome:
+  file.directory:
+    - name: /opt/so/conf/kratos
+    - user: 928
+    - group: 928
+    - mode: 700
+    - makedirs: True
+
 # Add Kratos user
 kratos:
   user.present:
     - uid: 928
     - gid: 928
     - home: /opt/so/conf/kratos
-    
+
 kratosdir:
   file.directory:
     - name: /nsm/kratos

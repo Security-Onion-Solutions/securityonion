@@ -1,5 +1,5 @@
 # Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
-# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
@@ -8,20 +8,33 @@
 {% set INSTALLEDSALTVERSION = grains.saltversion %}
 
 base:
+  'salt-cloud:driver:libvirt':
+    - match: grain
+    - storage
+    - vm.status
+    - vm.user
 
   '*':
     - cron.running
     - repo.client
+    - versionlock
     - ntp
     - schedule
     - logrotate
+
+  # manager node on proper salt version with empty node_data pillar
+  '( *_manager* or *_eval or *_import or *_standalone ) and G@saltversion:{{saltversion}} and I@node_data:False':
+    - match: compound
+    - salt.minion
+    - salt.master.mine_update_highstate
 
   'not G@saltversion:{{saltversion}}':
     - match: compound
     - salt.minion-state-apply-test
     - salt.minion
 
-  '* and G@saltversion:{{saltversion}}':
+  # all non managers on the proper salt version
+  'not ( *_manager* or *_eval or *_import or *_standalone ) and G@saltversion:{{saltversion}}':
     - match: compound
     - salt.minion
     - patch.os.schedule
@@ -31,6 +44,193 @@ base:
     - common
     - docker
     - docker_clean
+
+  # all managers on proper salt version node_data pillar not empty
+  '( *_manager* or *_eval or *_import or *_standalone ) and G@saltversion:{{saltversion}} and not I@node_data:False':
+    - match: compound
+    - salt.minion
+    - patch.os.schedule
+    - motd
+    - salt.minion-check
+    - salt.lasthighstate
+    - common
+    - docker
+    - docker_clean
+
+  '*_eval and G@saltversion:{{saltversion}} and not I@node_data:False':
+    - match: compound
+    - salt.master
+    - sensor
+    - ca
+    - ssl
+    - registry
+    - manager
+    - backup.config_backup
+    - nginx
+    - influxdb
+    - soc
+    - kratos
+    - hydra
+    - sensoroni
+    - telegraf
+    - firewall
+    - idstools
+    - suricata.manager
+    - healthcheck
+    - elasticsearch
+    - elastic-fleet-package-registry
+    - kibana
+    - pcap
+    - suricata
+    - zeek
+    - strelka
+    - curator.disabled
+    - elastalert
+    - utility
+    - elasticfleet
+
+  '*_standalone and G@saltversion:{{saltversion}} and not I@node_data:False':
+    - match: compound
+    - salt.master
+    - sensor
+    - ca
+    - ssl
+    - registry
+    - manager
+    - backup.config_backup
+    - nginx
+    - influxdb
+    - soc
+    - kratos
+    - hydra
+    - firewall
+    - sensoroni
+    - telegraf
+    - idstools
+    - suricata.manager
+    - healthcheck
+    - elasticsearch
+    - logstash
+    - redis
+    - elastic-fleet-package-registry
+    - kibana
+    - pcap
+    - suricata
+    - zeek
+    - strelka
+    - curator.disabled
+    - elastalert
+    - utility
+    - elasticfleet
+    - stig
+    - kafka
+
+  '*_manager or *_managerhype and G@saltversion:{{saltversion}} and not I@node_data:False':
+    - match: compound
+    - salt.master
+    - ca
+    - ssl
+    - registry
+    - nginx
+    - influxdb
+    - strelka.manager
+    - soc
+    - kratos
+    - hydra
+    - firewall
+    - manager
+    - sensoroni
+    - telegraf
+    - backup.config_backup
+    - idstools
+    - suricata.manager
+    - elasticsearch
+    - logstash
+    - redis
+    - elastic-fleet-package-registry
+    - kibana
+    - curator.disabled
+    - elastalert
+    - utility
+    - elasticfleet
+    - stig
+    - kafka
+
+  '*_managerhype and I@features:vrt and G@saltversion:{{saltversion}}':
+    - match: compound
+    - manager.hypervisor
+
+  '*_managersearch and G@saltversion:{{saltversion}} and not I@node_data:False':
+    - match: compound
+    - salt.master
+    - ca
+    - ssl
+    - registry
+    - nginx
+    - influxdb
+    - strelka.manager
+    - soc
+    - kratos
+    - hydra
+    - firewall
+    - manager
+    - sensoroni
+    - telegraf
+    - backup.config_backup
+    - idstools
+    - suricata.manager
+    - elasticsearch
+    - logstash
+    - redis
+    - curator.disabled
+    - elastic-fleet-package-registry
+    - kibana
+    - elastalert
+    - utility
+    - elasticfleet
+    - stig
+    - kafka
+
+  '*_import and G@saltversion:{{saltversion}} and not I@node_data:False':
+    - match: compound
+    - salt.master
+    - sensor
+    - ca
+    - ssl
+    - registry
+    - manager
+    - nginx
+    - influxdb
+    - strelka.manager
+    - soc
+    - kratos
+    - hydra
+    - sensoroni
+    - telegraf
+    - firewall
+    - idstools
+    - suricata.manager
+    - pcap
+    - elasticsearch
+    - elastic-fleet-package-registry
+    - kibana
+    - utility
+    - suricata
+    - zeek
+    - elasticfleet
+
+  '*_searchnode and G@saltversion:{{saltversion}}':
+    - match: compound
+    - firewall
+    - ssl
+    - elasticsearch
+    - logstash
+    - sensoroni
+    - telegraf
+    - nginx
+    - elasticfleet.install_agent_grid
+    - stig
+    - kafka
 
   '*_sensor and G@saltversion:{{saltversion}}':
     - match: compound
@@ -46,147 +246,7 @@ base:
     - zeek
     - strelka
     - elasticfleet.install_agent_grid
-
-  '*_eval and G@saltversion:{{saltversion}}':
-    - match: compound
-    - salt.master
-    - sensor
-    - ca
-    - ssl
-    - registry
-    - manager
-    - backup.config_backup
-    - nginx
-    - influxdb
-    - soc
-    - kratos
-    - sensoroni
-    - telegraf
-    - firewall
-    - idstools
-    - suricata.manager
-    - healthcheck
-    - mysql
-    - elasticsearch
-    - elastic-fleet-package-registry
-    - kibana
-    - pcap
-    - suricata
-    - zeek
-    - strelka
-    - curator
-    - elastalert
-    - utility
-    - soctopus
-    - playbook
-    - elasticfleet
-
-  '*_manager and G@saltversion:{{saltversion}}':
-    - match: compound
-    - salt.master
-    - ca
-    - ssl
-    - registry
-    - nginx
-    - influxdb
-    - soc
-    - kratos
-    - firewall
-    - manager
-    - sensoroni
-    - telegraf
-    - backup.config_backup
-    - idstools
-    - suricata.manager
-    - mysql
-    - elasticsearch
-    - logstash
-    - redis
-    - elastic-fleet-package-registry
-    - kibana
-    - curator
-    - elastalert
-    - utility
-    - soctopus
-    - playbook
-    - elasticfleet
-
-  '*_standalone and G@saltversion:{{saltversion}}':
-    - match: compound
-    - salt.master
-    - sensor
-    - ca
-    - ssl
-    - registry
-    - manager
-    - backup.config_backup
-    - nginx
-    - influxdb
-    - soc
-    - kratos
-    - firewall
-    - sensoroni
-    - telegraf
-    - idstools
-    - suricata.manager    
-    - healthcheck
-    - mysql
-    - elasticsearch
-    - logstash
-    - redis
-    - elastic-fleet-package-registry
-    - kibana
-    - pcap
-    - suricata
-    - zeek
-    - strelka
-    - curator
-    - elastalert
-    - utility
-    - soctopus
-    - playbook
-    - elasticfleet
-
-  '*_searchnode and G@saltversion:{{saltversion}}':
-    - match: compound
-    - ssl
-    - sensoroni
-    - telegraf
-    - nginx
-    - firewall
-    - elasticsearch
-    - logstash
-    - elasticfleet.install_agent_grid
-
-  '*_managersearch and G@saltversion:{{saltversion}}':
-    - match: compound
-    - salt.master
-    - ca
-    - ssl
-    - registry
-    - nginx
-    - influxdb
-    - soc
-    - kratos
-    - firewall
-    - manager
-    - sensoroni
-    - telegraf
-    - backup.config_backup
-    - idstools
-    - suricata.manager
-    - mysql
-    - elasticsearch
-    - logstash
-    - redis
-    - curator
-    - elastic-fleet-package-registry
-    - kibana
-    - elastalert
-    - utility
-    - soctopus
-    - playbook
-    - elasticfleet
+    - stig
 
   '*_heavynode and G@saltversion:{{saltversion}}':
     - match: compound
@@ -199,39 +259,13 @@ base:
     - elasticsearch
     - logstash
     - redis
-    - curator
+    - curator.disabled
     - strelka
     - pcap
     - suricata
     - zeek
     - elasticfleet.install_agent_grid
     - elasticagent
-  
-  '*_import and G@saltversion:{{saltversion}}':
-    - match: compound
-    - salt.master
-    - sensor
-    - ca
-    - ssl
-    - registry
-    - manager
-    - nginx
-    - influxdb
-    - soc
-    - kratos
-    - sensoroni
-    - telegraf
-    - firewall
-    - idstools
-    - suricata.manager
-    - pcap
-    - elasticsearch
-    - elastic-fleet-package-registry
-    - kibana
-    - utility
-    - suricata
-    - zeek
-    - elasticfleet
 
   '*_receiver and G@saltversion:{{saltversion}}':
     - match: compound
@@ -242,6 +276,8 @@ base:
     - logstash
     - redis
     - elasticfleet.install_agent_grid
+    - kafka
+    - stig
 
   '*_idh and G@saltversion:{{saltversion}}':
     - match: compound
@@ -259,15 +295,29 @@ base:
     - telegraf
     - firewall
     - logstash
+    - nginx
     - elasticfleet
     - elasticfleet.install_agent_grid
     - schedule
 
+  '*_hypervisor and I@features:vrt and G@saltversion:{{saltversion}}':
+    - match: compound
+    - ssl
+    - sensoroni
+    - telegraf
+    - firewall
+    - hypervisor
+    - libvirt
+    - libvirt.images
+    - elasticfleet.install_agent_grid
+    - stig
+  
   '*_desktop and G@saltversion:{{saltversion}}':
     - ssl
     - sensoroni
     - telegraf
     - elasticfleet.install_agent_grid
+    - stig
 
   'J@desktop:gui:enabled:^[Tt][Rr][Uu][Ee]$ and ( G@saltversion:{{saltversion}} and G@os:OEL )':
     - match: compound

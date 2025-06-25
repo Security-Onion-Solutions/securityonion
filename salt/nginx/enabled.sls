@@ -14,6 +14,9 @@ include:
   - nginx.config
   - nginx.sostatus
 
+
+{%   if grains.role not in ['so-fleet'] %}
+
 {#   if the user has selected to replace the crt and key in the ui #}
 {%   if NGINXMERGED.ssl.replace_cert %}
 
@@ -60,7 +63,7 @@ managerssl_crt:
     - signing_policy: managerssl
     - private_key: /etc/pki/managerssl.key
     - CN: {{ GLOBALS.hostname }}
-    - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
+    - subjectAltName: "DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}, DNS:{{ GLOBALS.url_base }}" 
     - days_remaining: 0
     - days_valid: 820
     - backup: True
@@ -88,6 +91,16 @@ make-rule-dir-nginx:
     - recurse:
       - user
       - group
+    - show_changes: False
+      
+{%   endif %}
+
+{# if this is an so-fleet node then we want to use the port bindings, custom bind mounts defined for fleet #}
+{% if GLOBALS.role == 'so-fleet' %}
+{%   set container_config = 'so-nginx-fleet-node' %}
+{% else %}
+{%   set container_config = 'so-nginx' %}
+{% endif %}
 
 so-nginx:
   docker_container.running:
@@ -95,11 +108,11 @@ so-nginx:
     - hostname: so-nginx
     - networks:
       - sobridge:
-        - ipv4_address: {{ DOCKER.containers['so-nginx'].ip }}
+        - ipv4_address: {{ DOCKER.containers[container_config].ip }}
     - extra_hosts:
       - {{ GLOBALS.manager }}:{{ GLOBALS.manager_ip }}
-    {% if DOCKER.containers['so-nginx'].extra_hosts %}
-      {% for XTRAHOST in DOCKER.containers['so-nginx'].extra_hosts %}
+    {% if DOCKER.containers[container_config].extra_hosts %}
+      {% for XTRAHOST in DOCKER.containers[container_config].extra_hosts %}
       - {{ XTRAHOST }}
       {% endfor %}
     {% endif %}
@@ -108,9 +121,9 @@ so-nginx:
       - /opt/so/log/nginx/:/var/log/nginx:rw
       - /opt/so/tmp/nginx/:/var/lib/nginx:rw
       - /opt/so/tmp/nginx/:/run:rw
-      - /opt/so/saltstack/local/salt/elasticfleet/files/so_agent-installers/:/opt/socore/html/packages
+      - /nsm/elastic-fleet/so_agent-installers/:/opt/socore/html/packages
       - /nsm/elastic-fleet/artifacts/:/opt/socore/html/artifacts 
-      {% if grains.role in ['so-manager', 'so-managersearch', 'so-eval', 'so-standalone', 'so-import'] %}
+      {% if GLOBALS.is_manager %}
       - /etc/pki/managerssl.crt:/etc/pki/nginx/server.crt:ro
       - /etc/pki/managerssl.key:/etc/pki/nginx/server.key:ro
       # ATT&CK Navigator binds
@@ -118,21 +131,24 @@ so-nginx:
       - /opt/so/conf/navigator/config.json:/opt/socore/html/navigator/assets/config.json:ro
       - /nsm/repo:/opt/socore/html/repo:ro
       - /nsm/rules:/nsm/rules:ro
+      {%   if NGINXMERGED.external_suricata %}
+      - /opt/so/rules/nids/suri:/surirules:ro
+      {%   endif %}
       {% endif %}
-      {% if DOCKER.containers['so-nginx'].custom_bind_mounts %}
-        {% for BIND in DOCKER.containers['so-nginx'].custom_bind_mounts %}
+      {% if DOCKER.containers[container_config].custom_bind_mounts %}
+        {% for BIND in DOCKER.containers[container_config].custom_bind_mounts %}
       - {{ BIND }}
         {% endfor %}
       {% endif %}
-    {% if DOCKER.containers['so-nginx'].extra_env %}
+    {% if DOCKER.containers[container_config].extra_env %}
     - environment:
-      {% for XTRAENV in DOCKER.containers['so-nginx'].extra_env %}
+      {% for XTRAENV in DOCKER.containers[container_config].extra_env %}
       - {{ XTRAENV }}
       {% endfor %}
     {% endif %}
     - cap_add: NET_BIND_SERVICE
     - port_bindings:
-      {% for BINDING in DOCKER.containers['so-nginx'].port_bindings %}
+      {% for BINDING in DOCKER.containers[container_config].port_bindings %}
       - {{ BINDING }}
       {% endfor %}
     - watch:
@@ -140,7 +156,7 @@ so-nginx:
       - file: nginxconfdir
     - require:
       - file: nginxconf
-{%   if grains.role in ['so-manager', 'so-managersearch', 'so-eval', 'so-standalone', 'so-import'] %}
+{% if GLOBALS.is_manager %}
 {%     if NGINXMERGED.ssl.replace_cert %}
       - file: managerssl_key
       - file: managerssl_crt
@@ -149,7 +165,6 @@ so-nginx:
       - x509: managerssl_crt
 {%     endif%}
       - file: navigatorconfig
-      - file: navigatordefaultlayer
 {%   endif %}
 
 delete_so-nginx_so-status.disabled:

@@ -1,0 +1,411 @@
+#!/bin/bash
+
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+if [[ -f /usr/sbin/so-common ]]; then
+  source /usr/sbin/so-common
+else
+  source $(dirname $0)/../../../common/tools/sbin/so-common
+fi
+
+function usage() {
+  cat <<USAGE_EOF
+  Usage: $0 <operation> [supporting parameters]
+  
+  where <operation> is one of the following:
+  
+      list: Lists all client IDs and permissions currently defined in the oauth2 system
+  
+       add: Adds a new client to the oauth2 system and outputs the generated secret
+            Required parameters: 
+              --name <name>
+            Optional parameters: 
+              --note <note>             (defaults to blank)
+              --json                    output as JSON
+
+    delete: Deletes a client from the oauth2 system
+            Required parameters: 
+              --id <id>
+  
+   addperm: Grants a permission to an existing client
+            Required parameters: 
+              --id <id>
+              --permission <permission>
+  
+   delperm: Removes a permission from an existing client
+            Required parameters: 
+              --id <id>
+              --permission <permission>
+
+    update: Updates a client name and note.
+            Required parameters:
+              --id <id>
+              --name <name>
+              --note <note>
+              --searchusername <run-as username>
+  
+  generate-secret: Regenerates a client's secret and outputs the new secret. 
+            Required parameters: 
+              --id <id>
+            Optional parameters: 
+              --json                     output as JSON
+
+USAGE_EOF
+  exit 1
+}
+
+if [[ $# -lt 1 || $1 == --help || $1 == -h || $1 == -? || $1 == --h ]]; then
+  usage
+fi
+
+operation=$1
+shift
+
+searchUsername=__MISSING__
+note=__MISSING__
+
+while [[ $# -gt 0 ]]; do
+  param=$1
+  shift
+  case "$param" in
+    --id)
+      id=$(echo $1 | sed 's/"/\\"/g')
+      [[ ${#id} -gt 55 ]] && fail "id cannot be longer than 55 characters"
+      shift
+      ;;
+    --permission)
+      perm=$(echo $1 | sed 's/"/\\"/g')
+      [[ ${#perm} -gt 50 ]] && fail "permission cannot be longer than 50 characters"
+      shift
+      ;;
+    --name)
+      name=$(echo $1 | sed 's/"/\\"/g')
+      [[ ${#name} -gt 50 ]] && fail "name cannot be longer than 50 characters"
+      shift
+      ;;
+    --note) 
+      note=$(echo $1 | sed 's/"/\\"/g')
+      [[ ${#note} -gt 100 ]] && fail "note cannot be longer than 100 characters"
+      shift
+      ;;
+    --searchusername) 
+      searchUsername=$(echo $1 | sed 's/"/\\"/g')
+      [[ ${#searchUsername} -gt 50 ]] && fail "search username cannot be longer than 50 characters"
+      shift
+      ;;
+    --json) 
+      json=1
+      ;;
+    *) 
+      echo "Encountered unexpected parameter: $param"
+      usage
+      ;;
+  esac
+done
+
+hydraUrl=${HYDRA_URL:-http://127.0.0.1:4445}
+socRolesFile=${SOC_ROLES_FILE:-/opt/so/conf/soc/soc_clients_roles}
+soUID=${SOCORE_UID:-939}
+soGID=${SOCORE_GID:-939}
+
+function lock() {
+  # Obtain file descriptor lock
+  exec 99>/var/tmp/so-client.lock || fail "Unable to create lock descriptor; if the system was not shutdown gracefully you may need to remove /var/tmp/so-client.lock manually."
+  flock -w 10 99 || fail "Another process is using so-client; if the system was not shutdown gracefully you may need to remove /var/tmp/so-client.lock manually."
+  trap 'rm -f /var/tmp/so-client.lock' EXIT
+}
+
+function fail() {
+  msg=$1
+  echo "$1"
+  exit 1
+}
+
+function require() {
+  cmd=$1
+  which "$1" 2>&1 > /dev/null
+  [[ $? != 0 ]] && fail "This script requires the following command be installed: ${cmd}"
+}
+
+# Verify this environment is capable of running this script
+function verifyEnvironment() {
+  require "jq"
+  require "curl"
+  response=$(curl -Ss -L ${hydraUrl}/)
+  [[ "$response" != *"Error 404"* ]] && fail "Unable to communicate with Hydra; specify URL via HYDRA_URL environment variable"
+}
+
+function createFile() {
+  filename=$1
+  uid=$2
+  gid=$3
+
+  mkdir -p $(dirname "$filename")
+  truncate -s 0 "$filename"
+  chmod 600 "$filename"
+  chown "${uid}:${gid}" "$filename"
+}
+
+function ensureRoleFileExists() {
+  if [[ ! -f "$socRolesFile" ]]; then
+    # Generate the new roles file
+    rolesTmpFile="${socRolesFile}.tmp"
+    createFile "$rolesTmpFile" "$soUID" "$soGID"
+
+    if [[ -d "$socRolesFile" ]]; then
+      echo "Removing invalid roles directory created by Docker"
+      rm -fr "$socRolesFile"
+    fi
+    mv "${rolesTmpFile}" "${socRolesFile}"
+  fi
+}
+
+function listClients() {
+  response=$(curl -Ss -L -f ${hydraUrl}/admin/clients)
+  [[ $? != 0 ]] && fail "Unable to communicate with Hydra"
+
+  clientIds=$(echo "${response}" | jq -r ".[] | .client_id" | sort)
+  for clientId in $clientIds; do
+    perms=$(grep ":$clientId\$" "$socRolesFile" | cut -d: -f1 | tr '\n' ' ')
+    echo "$clientId: $perms"
+  done
+}
+
+function addClientPermission() {
+  id=$1
+  perm=$2
+
+  adjustClientPermission "$id" "$perm" "add"
+}
+
+function deleteClientPermission() {
+  id=$1
+  perm=$2
+
+  adjustClientPermission "$id" "$perm" "del"
+}
+
+function adjustClientPermission() {
+  identityId=$1
+  perm=$2
+  op=$3
+
+  [[ ${identityId} == "" ]] && fail "Client not found"
+
+  ensureRoleFileExists
+
+  filename="$socRolesFile"
+  hasPerm=0
+  grep "^$perm:" "$socRolesFile" | grep -q "$identityId" && hasPerm=1
+  if [[ "$op" == "add" ]]; then
+    if [[ "$hasPerm" == "1" ]]; then
+      echo "Client '$identityId' already has the permission: $perm"
+      return 1
+    else
+      echo "$perm:$identityId" >> "$filename"
+    fi
+  elif [[ "$op" == "del" ]]; then
+    if [[ "$hasPerm" -ne 1 ]]; then
+      fail "Client '$identityId' does not have the permission: $perm"
+    else
+      sed -e "\!^$perm:$identityId\$!d" "$filename" > "$filename.tmp"
+      cat "$filename".tmp > "$filename"
+      rm -f "$filename".tmp
+    fi
+  else
+    fail "Unsupported permission adjustment operation: $op"
+  fi
+  return 0
+}
+
+function convertNameToId() {
+    name=$1
+
+    name=${name//[^[:alnum:]]/_}
+    echo "socl_$name" | tr '[:upper:]' '[:lower:]'
+}
+
+function createClient() {
+  name=$1
+  note=$2
+
+  id=$(convertNameToId "$name")
+  now=$(date -u +%FT%TZ)
+  secret=$(get_random_value)
+  body=$(cat <<EOF
+{
+  "access_token_strategy": "opaque",
+  "client_id": "$id",
+  "client_secret": "$secret",
+  "client_name": "$name",
+  "grant_types": [ "client_credentials" ],
+  "response_types": [ "code" ],
+  "metadata": {
+    "note": "$note",
+    "searchUsername": ""
+  }
+}
+EOF
+  )
+  
+  response=$(curl -Ss -L --fail-with-body -X POST ${hydraUrl}/admin/clients -d "$body")
+  if [[ $? != 0 ]]; then
+    error=$(echo $response | jq .error)
+    fail "Failed to submit request to Hydra: $error"
+  fi
+}
+
+function update() {
+  clientId=$1
+  name=$2
+  note=$3
+  username=$4
+  
+  body=$(cat <<EOF
+[
+    {
+        "op": "replace",
+        "path": "/client_name",
+        "value": "$name"
+    },
+    {
+        "op": "replace",
+        "path": "/metadata",
+        "value": {
+          "note": "$note",
+          "searchUsername": "$username"
+        }
+    }
+]
+EOF
+  )
+  
+  response=$(curl -Ss -L --fail-with-body -X PATCH ${hydraUrl}/admin/clients/$id -d "$body")
+  if [[ $? != 0 ]]; then
+    error=$(echo $response | jq .error)
+    fail "Failed to submit request to Hydra: $error"
+  fi
+}
+
+function generateSecret() {
+  clientId=$1
+  
+  secret=$(get_random_value)
+  body=$(cat <<EOF
+[
+    {
+        "op": "replace",
+        "path": "/client_secret",
+        "value": "$secret"
+    }
+]
+EOF
+  )
+  
+  response=$(curl -Ss -L --fail-with-body -X PATCH ${hydraUrl}/admin/clients/$id -d "$body")
+  if [[ $? != 0 ]]; then
+    error=$(echo $response | jq .error)
+    fail "Failed to submit request to Hydra: $error"
+  fi
+}
+
+function deleteClient() {
+  identityId=$1
+
+  [[ ${identityId} == "" ]] && fail "Client not found"
+
+  response=$(curl -Ss -XDELETE -L --fail-with-body "${hydraUrl}/admin/clients/$identityId")
+  if [[ $? != 0 ]]; then
+    error=$(echo $response | jq .error)
+    fail "Failed to submit request to Hydra: $error"
+  fi
+
+  rolesTmpFile="${socRolesFile}.tmp"
+  createFile "$rolesTmpFile" "$soUID" "$soGID"
+  grep -v "$identityId" "$socRolesFile" > "$rolesTmpFile"
+  cat "$rolesTmpFile" > "$socRolesFile"
+}
+
+case "${operation}" in
+  "add")
+    verifyEnvironment
+    [[ "$name" == "" ]] && fail "A short client name must be provided"
+
+    lock
+    createClient "$name" "$note"
+    if [[ "$json" == "1" ]]; then
+      echo "{\"id\":\"$id\",\"secret\":\"$secret\"}"
+    else
+      echo "Successfully added client ID $id with generated secret: $secret"
+    fi
+    ;;
+
+  "list")
+    verifyEnvironment
+    listClients
+    ;;
+
+  "addperm")
+    verifyEnvironment
+    [[ "$id" == "" ]] && fail "Id must be provided"
+    [[ "$perm" == "" ]] && fail "Permission must be provided"
+
+    lock
+    if addClientPermission "$id" "$perm"; then
+      echo "Successfully added permission to client"
+    fi
+    ;;
+
+  "delperm")
+    verifyEnvironment
+    [[ "$id" == "" ]] && fail "Id must be provided"
+    [[ "$perm" == "" ]] && fail "Permission must be provided"
+
+    lock
+    deleteClientPermission "$id" "$perm"
+    echo "Successfully removed permission from client"
+    ;;
+
+  "update")
+    verifyEnvironment
+    [[ "$id" == "" ]] && fail "Id must be provided"
+    [[ "$name" == "" ]] && fail "Name must be provided"
+    [[ "$note" == "__MISSING__" ]] && fail "Note must be provided"
+    [[ "$searchUsername" == "__MISSING__" ]] && fail "Search Username must be provided"
+
+    lock
+    update "$id" "$name" "$note" "$searchUsername"
+    echo "Successfully updated client"
+    ;;
+
+  "generate-secret")
+    verifyEnvironment
+    [[ "$id" == "" ]] && fail "Id must be provided"
+
+    lock
+    generateSecret "$id"
+    if [[ "$json" == "1" ]]; then
+      echo "{\"secret\":\"$secret\"}"
+    else
+      echo "Successfully generated secret: $secret"
+    fi
+    ;;
+
+  "delete")
+    verifyEnvironment
+    [[ "$id" == "" ]] && fail "Id must be provided"
+
+    lock
+    deleteClient "$id"
+    echo "Successfully deleted client."
+    ;;
+  *)
+    fail "Unsupported operation: $operation"
+    usage
+    ;;
+esac
+
+exit 0

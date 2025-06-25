@@ -7,6 +7,7 @@
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 {%   from 'docker/docker.map.jinja' import DOCKER %}
+{%   from 'suricata/map.jinja' import SURICATAMERGED %}
 
 
 include:
@@ -24,14 +25,23 @@ so-suricata:
       - {{ XTRAENV }}
         {% endfor %}
       {% endif %}
+    {# we look at SURICATAMERGED.config['af-packet'][0] since we only allow one interface and therefore always the first list item #}
+    {% if SURICATAMERGED.config['af-packet'][0]['mmap-locked'] == "yes" and DOCKER.containers['so-suricata'].ulimits %}
+    - ulimits:
+    {%   for ULIMIT in DOCKER.containers['so-suricata'].ulimits %}
+      - {{ ULIMIT }}
+    {%   endfor %}
+    {% endif %}
     - binds:
       - /opt/so/conf/suricata/suricata.yaml:/etc/suricata/suricata.yaml:ro
       - /opt/so/conf/suricata/threshold.conf:/etc/suricata/threshold.conf:ro
+      - /opt/so/conf/suricata/classification.config:/etc/suricata/classification.config:ro
       - /opt/so/conf/suricata/rules:/etc/suricata/rules:ro
       - /opt/so/log/suricata/:/var/log/suricata/:rw
       - /nsm/suricata/:/nsm/:rw
       - /nsm/suricata/extracted:/var/log/suricata//filestore:rw
       - /opt/so/conf/suricata/bpf:/etc/suricata/bpf:ro
+      - /nsm/suripcap/:/nsm/suripcap:rw
       {% if DOCKER.containers['so-suricata'].custom_bind_mounts %}
         {% for BIND in DOCKER.containers['so-suricata'].custom_bind_mounts %}
       - {{ BIND }}
@@ -47,13 +57,22 @@ so-suricata:
     - watch:
       - file: suriconfig
       - file: surithresholding
-      - file: /opt/so/conf/suricata/rules/
       - file: /opt/so/conf/suricata/bpf
+      - file: suriclassifications
     - require:
       - file: suriconfig
       - file: surithresholding
       - file: suribpf
+      - file: suriclassifications
 
+surirulereload:
+  cmd.run: 
+    - name: /usr/sbin/so-suricata-reload-rules >> /opt/so/log/suricata/reload.log 2>&1
+    - onchanges: 
+        - file: surirulesync
+    - require:
+        - docker_container: so-suricata
+    
 delete_so-suricata_so-status.disabled:
   file.uncomment:
     - name: /opt/so/conf/so-status/so-status.conf

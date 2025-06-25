@@ -13,7 +13,7 @@ ruleslink:
     - name: /opt/so/saltstack/local/salt/suricata/rules
     - user: socore
     - group: socore
-    - target: /opt/so/rules/nids
+    - target: /opt/so/rules/nids/suri
 
 refresh_salt_master_fileserver_suricata_ruleslink:
   salt.runner:

@@ -1,0 +1,36 @@
+{% from 'elasticfleet/map.jinja' import ELASTICFLEETMERGED %}
+{% raw %}
+{
+  "package": {
+    "name": "httpjson",
+    "version": ""
+  },
+  "name": "kismet-logs",
+  "namespace": "so",
+  "description": "Kismet Logs",
+  "policy_id": "FleetServer_{% endraw %}{{ NAME }}{% raw %}",
+  "inputs": {
+    "generic-httpjson": {
+      "enabled": true,
+      "streams": {
+        "httpjson.generic": {
+          "enabled": true,
+          "vars": {
+            "data_stream.dataset": "kismet",
+            "request_url": "{% endraw %}{{ ELASTICFLEETMERGED.optional_integrations.kismet.base_url }}{% raw %}/devices/last-time/-600/devices.tjson",
+            "request_interval": "{% endraw %}{{ ELASTICFLEETMERGED.optional_integrations.kismet.poll_interval }}{% raw %}",
+            "request_method": "GET",
+            "request_transforms": "- set:\r\n    target: header.Cookie\r\n    value: 'KISMET={% endraw %}{{ ELASTICFLEETMERGED.optional_integrations.kismet.api_key }}{% raw %}'",
+            "request_redirect_headers_ban_list": [],
+            "oauth_scopes": [],
+            "processors": "",
+            "tags": [],
+            "pipeline": "kismet.common"
+          }
+        }
+      }
+    }
+  },
+  "force": true
+}
+{% endraw %}

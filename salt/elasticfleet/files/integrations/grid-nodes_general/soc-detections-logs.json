@@ -1,0 +1,35 @@
+{
+  "policy_id": "so-grid-nodes_general",
+  "package": {
+    "name": "log",
+    "version": ""
+  },
+  "name": "soc-detections-logs",
+  "description": "Security Onion Console - Detections Logs",
+  "namespace": "so",
+  "inputs": {
+    "logs-logfile": {
+      "enabled": true,
+      "streams": {
+        "log.logs": {
+          "enabled": true,
+          "vars": {
+            "paths": [
+              "/opt/so/log/soc/detections_runtime-status_sigma.log",
+              "/opt/so/log/soc/detections_runtime-status_yara.log"
+            ],
+            "exclude_files": [],
+            "ignore_older": "72h",
+            "data_stream.dataset": "soc",
+            "tags": [
+              "so-soc"
+            ],
+            "processors": "- decode_json_fields:\n    fields: [\"message\"]\n    target: \"soc\"\n    process_array: true\n    max_depth: 2\n    add_error_key: true      \n- add_fields:\n    target: event\n    fields:\n      category: host\n      module: soc\n      dataset_temp: detections\n- rename:\n    fields:\n      - from: \"soc.fields.sourceIp\"\n        to: \"source.ip\"\n      - from: \"soc.fields.status\"\n        to: \"http.response.status_code\"\n      - from: \"soc.fields.method\"\n        to: \"http.request.method\"\n      - from: \"soc.fields.path\"\n        to: \"url.path\"\n      - from: \"soc.message\"\n        to: \"event.action\"\n      - from: \"soc.level\"\n        to: \"log.level\"\n    ignore_missing: true",
+            "custom": "pipeline: common"
+          }
+        }
+      }
+    }
+  },
+  "force": true
+}

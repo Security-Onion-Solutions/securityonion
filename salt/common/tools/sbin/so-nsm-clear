@@ -41,8 +41,13 @@ done
 if [ $SKIP -ne 1 ]; then
         # Inform user we are about to delete all data
         echo
-        echo "This script will delete all NIDS data (PCAP, Suricata, Zeek)" 
-        echo "If you would like to proceed, please type "AGREE" and hit ENTER."
+        echo "This script will delete all NSM data from /nsm."
+        echo
+        echo "This includes Suricata data, Zeek data, and full packet capture (PCAP)."
+        echo
+        echo "This will NOT delete any Suricata or Zeek logs that have already been ingested into Elasticsearch."
+        echo
+        echo "If you would like to proceed, then type AGREE and press ENTER."
         echo
         # Read user input
         read INPUT
@@ -54,8 +59,8 @@ delete_pcap() {
   [ -d $PCAP_DATA ] && so-pcap-stop && rm -rf $PCAP_DATA/* && so-pcap-start
 }
 delete_suricata() {
-  SURI_LOG="/opt/so/log/suricata/eve.json"
-  [ -f $SURI_LOG ] && so-suricata-stop && rm -f $SURI_LOG && so-suricata-start
+  SURI_LOG="/nsm/suricata/"
+  [ -d $SURI_LOG ] && so-suricata-stop && rm -rf $SURI_LOG/* && so-suricata-start
 }
 delete_zeek() {
   ZEEK_LOG="/nsm/zeek/logs/"

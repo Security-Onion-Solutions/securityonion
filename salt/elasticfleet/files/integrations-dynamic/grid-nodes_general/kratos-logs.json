@@ -1,0 +1,46 @@
+{%- set identities = salt['sqlite3.fetch']('/nsm/kratos/db/db.sqlite', 'SELECT id, json_extract(traits, "$.email") as email FROM identities;') -%}
+{%- set valid_identities = false -%}
+{%- if identities -%}
+  {%- set valid_identities = true -%}
+  {%- for id, email in identities -%}
+    {%- if not id or not email -%}
+      {%- set valid_identities = false -%}
+      {%- break -%}
+    {%- endif -%}
+  {%- endfor -%}
+{%- endif -%}
+{
+  "package": {
+    "name": "log",
+    "version": ""
+  },
+  "name": "kratos-logs",
+  "namespace": "so",
+  "description": "Kratos logs",
+  "policy_id": "so-grid-nodes_general",
+  "inputs": {
+    "logs-logfile": {
+      "enabled": true,
+      "streams": {
+        "log.logs": {
+          "enabled": true,
+          "vars": {
+            "paths": [
+              "/opt/so/log/kratos/kratos.log"
+            ],
+            "data_stream.dataset": "kratos",
+            "tags": ["so-kratos"],
+            {%- if valid_identities -%}
+            "processors": "- decode_json_fields:\n    fields: [\"message\"]\n    target: \"\"\n    add_error_key: true\n- add_fields:\n    target: event\n    fields:\n      category: iam\n      module: kratos\n- if:\n    has_fields:\n      - identity_id\n  then:{% for id, email in identities %}\n    - if:\n        equals:\n          identity_id: \"{{ id }}\"\n      then:\n        - add_fields:\n            target: ''\n            fields:\n              user.name: \"{{ email }}\"{% endfor %}",
+            {%- else -%}
+            "processors": "- decode_json_fields:\n    fields: [\"message\"]\n    target: \"\"\n    add_error_key: true\n- add_fields:\n    target: event\n    fields:\n      category: iam\n      module: kratos",
+            {%- endif -%}
+            "custom": "pipeline: kratos"
+          }
+        }
+      }
+    }
+  },
+  "force": true
+}
+

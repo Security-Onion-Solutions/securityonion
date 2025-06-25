@@ -24,14 +24,37 @@ idstools_sbin:
     - group: 939
     - file_mode: 755
 
-idstools_sbin_jinja:
-  file.recurse:
-    - name: /usr/sbin
-    - source: salt://idstools/tools/sbin_jinja
+# If this is used, exclude so-rule-update
+#idstools_sbin_jinja:
+#  file.recurse:
+#    - name: /usr/sbin
+#    - source: salt://idstools/tools/sbin_jinja
+#    - user: 934
+#    - group: 939 
+#    - file_mode: 755
+#    - template: jinja
+
+idstools_so-rule-update:
+  file.managed:
+    - name: /usr/sbin/so-rule-update
+    - source: salt://idstools/tools/sbin_jinja/so-rule-update
     - user: 934
     - group: 939 
-    - file_mode: 755
+    - mode: 755
     - template: jinja
+
+suricatacustomdirsfile:
+  file.directory:
+    - name: /nsm/rules/detect-suricata/custom_file
+    - user: 939
+    - group: 939
+    - makedirs: True
+
+suricatacustomdirsurl:
+  file.directory:
+    - name: /nsm/rules/detect-suricata/custom_temp
+    - user: 939
+    - group: 939
 
 {% else %}
 

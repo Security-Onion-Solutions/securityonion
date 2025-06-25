@@ -39,7 +39,7 @@ so-idstools:
     {% endif %}
     - binds:
       - /opt/so/conf/idstools/etc:/opt/so/idstools/etc:ro
-      - /opt/so/rules/nids:/opt/so/rules/nids:rw
+      - /opt/so/rules/nids/suri:/opt/so/rules/nids/suri:rw
       - /nsm/rules/:/nsm/rules/:rw
     {% if DOCKER.containers['so-idstools'].custom_bind_mounts %}
       {% for BIND in DOCKER.containers['so-idstools'].custom_bind_mounts %}
@@ -55,6 +55,7 @@ so-idstools:
     {% endif %}
     - watch:
       - file: idstoolsetcsync
+      - file: idstools_so-rule-update
 
 delete_so-idstools_so-status.disabled:
   file.uncomment:
@@ -76,6 +77,7 @@ run_so-rule-update:
     - require:
       - docker_container: so-idstools
     - onchanges:
+      - file: idstools_so-rule-update
       - file: idstoolsetcsync
       - file: synclocalnidsrules
     - order: last

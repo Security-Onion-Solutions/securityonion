@@ -100,23 +100,23 @@ while [[ $# -gt 0 ]]; do
   shift
   case "$param" in
     --email)
-      email=$1
+      email=$(echo $1 | sed 's/"/\\"/g')
       shift
       ;;
     --role)
-      role=$1
+      role=$(echo $1 | sed 's/"/\\"/g')
       shift
       ;;
     --firstName)
-      firstName=$1
+      firstName=$(echo $1 | sed 's/"/\\"/g')
       shift
       ;;
     --lastName) 
-      lastName=$1
+      lastName=$(echo $1 | sed 's/"/\\"/g')
       shift
       ;;
     --note) 
-      note=$1
+      note=$(echo $1 | sed 's/"/\\"/g')
       shift
       ;;
     --skip-sync) 
@@ -173,7 +173,7 @@ function verifyEnvironment() {
 }
 
 function findIdByEmail() {
-  email=$1
+  email=${1,,}
 
   response=$(curl -Ss -L ${kratosUrl}/identities)
   identityId=$(echo "${response}" | jq -r ".[] | select(.verifiable_addresses[0].value == \"$email\") | .id")
@@ -195,12 +195,13 @@ function validatePassword() {
 
 function validateEmail() {
   email=$1
+  requireLower=$2
   # (?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9]))\.){3}(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9])|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])
   if [[ ! "$email" =~ ^[[:alnum:]._%+-]+@[[:alnum:].-]+\.[[:alpha:]]{2,}$ ]]; then
     fail "Email address is invalid"
   fi
 
-  if [[ "$email" =~ [A-Z] ]]; then
+  if [[ "$requireLower" == "true" && "$email" =~ [A-Z] ]]; then
     fail "Email addresses cannot contain uppercase letters"
   fi
 }
@@ -234,10 +235,18 @@ function updatePassword() {
     passwordHash=$(hashPassword "$password")
     # Update DB with new hash
     echo "update identity_credentials set config=CAST('{\"hashed_password\":\"$passwordHash\"}' as BLOB), created_at=datetime('now'), updated_at=datetime('now') where identity_id='${identityId}' and identity_credential_type_id=(select id from identity_credential_types where name='password');" | sqlite3 -cmd ".timeout ${databaseTimeout}" "$databasePath"
-    # Deactivate MFA
-    echo "delete from identity_credential_identifiers where identity_credential_id=(select id from identity_credentials where identity_id='${identityId}' and identity_credential_type_id=(select id from identity_credential_types where name in ('totp', 'webauthn', 'oidc')));" | sqlite3 -cmd ".timeout ${databaseTimeout}" "$databasePath"
-    echo "delete from identity_credentials where identity_id='${identityId}' and identity_credential_type_id=(select id from identity_credential_types where name in ('totp', 'webauthn', 'oidc'));" | sqlite3 -cmd ".timeout ${databaseTimeout}" "$databasePath"
     [[ $? != 0 ]] && fail "Unable to update password"
+    # Deactivate MFA
+    echo "delete from identity_credential_identifiers where identity_credential_id in (select id from identity_credentials where identity_id='${identityId}' and identity_credential_type_id in (select id from identity_credential_types where name in ('totp', 'webauthn', 'oidc')));" | sqlite3 -cmd ".timeout ${databaseTimeout}" "$databasePath"
+    [[ $? != 0 ]] && fail "Unable to clear aal2 identity IDs"
+    echo "delete from identity_credentials where identity_id='${identityId}' and identity_credential_type_id in (select id from identity_credential_types where name in ('totp', 'webauthn', 'oidc'));" | sqlite3 -cmd ".timeout ${databaseTimeout}" "$databasePath"
+    [[ $? != 0 ]] && fail "Unable to clear aal2 identity credentials"
+    echo "delete from session_devices where session_id in (select id from sessions where identity_id='${identityId}');" | sqlite3 -cmd ".timeout ${databaseTimeout}" "$databasePath"
+    [[ $? != 0 ]] && fail "Unable to clear session devices"
+    echo "delete from sessions where identity_id='${identityId}';" | sqlite3 -cmd ".timeout ${databaseTimeout}" "$databasePath"
+    [[ $? != 0 ]] && fail "Unable to clear sessions"
+    echo "update identities set available_aal='aal1' where id='${identityId}';" | sqlite3 -cmd ".timeout ${databaseTimeout}" "$databasePath"
+    [[ $? != 0 ]] && fail "Unable to reset aal"
   fi
 }
 
@@ -347,12 +356,11 @@ function syncElastic() {
     [[ $? != 0 ]] && fail "Unable to read credential hashes from database"
 
     user_data_formatted=$(echo "${userData}" | jq -r '.user + ":" + .data.hashed_password')
-    if lookup_salt_value "licensed_features" "" "pillar" | grep -x oidc; then
+    if lookup_salt_value "features" "" "pillar" | grep -qx odc; then
       # generate random placeholder salt/hash for users without passwords
       random_crypt=$(get_random_value 53)
       user_data_formatted=$(echo "${user_data_formatted}" | sed -r "s/^(.+:)\$/\\1\$2a\$12${random_crypt}/")
     fi
-
     echo "${user_data_formatted}" >> "$usersTmpFile"
 
     # Append the user roles
@@ -368,7 +376,6 @@ function syncElastic() {
         sqlite3 -cmd ".timeout ${databaseTimeout}" "$databasePath" >> "$rolesTmpFile"
       [[ $? != 0 ]] && fail "Unable to read role identities from database"
     done < "$socRolesFile"
-
   else
     echo "Database file or soc roles file does not exist yet, skipping users export"
   fi
@@ -577,7 +584,7 @@ case "${operation}" in
     [[ "$email" == "" ]] && fail "Email address must be provided"
 
     lock
-    validateEmail "$email"
+    validateEmail "$email" true
     updatePassword
     createUser "$email" "${role:-$DEFAULT_ROLE}" "${firstName}" "${lastName}" "${note}"
     syncAll
@@ -683,13 +690,13 @@ case "${operation}" in
     ;;
 
   "validate")
-    validateEmail "$email"
+    validateEmail "$email" true
     updatePassword
     echo "Email and password are acceptable"
     ;;
 
   "valemail")
-    validateEmail "$email"
+    validateEmail "$email" true
     echo "Email is acceptable"
     ;;
 

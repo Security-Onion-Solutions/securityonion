@@ -1,0 +1,11 @@
+#!/bin/bash
+#
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+. /usr/sbin/so-common
+
+retry 60 3 'docker exec so-suricata /opt/suricata/bin/suricatasc -c reload-rules /var/run/suricata/suricata-command.socket' '{"message": "done", "return": "OK"}' || fail "The Suricata container was not ready in time."
+retry 60 3 'docker exec so-suricata /opt/suricata/bin/suricatasc -c ruleset-reload-nonblocking /var/run/suricata/suricata-command.socket' '{"message": "done", "return": "OK"}' || fail "The Suricata container was not ready in time."

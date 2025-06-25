@@ -8,12 +8,6 @@
 # Elastic agent is not managed by salt. Because of this we must store this base information in a 
 # script that accompanies the soup system. Since so-common is one of those special soup files, 
 # and since this same logic is required during installation, it's included in this file.
-ELASTIC_AGENT_TARBALL_VERSION="8.10.4"
-ELASTIC_AGENT_URL="https://repo.securityonion.net/file/so-repo/prod/2.4/elasticagent/elastic-agent_SO-$ELASTIC_AGENT_TARBALL_VERSION.tar.gz"
-ELASTIC_AGENT_MD5_URL="https://repo.securityonion.net/file/so-repo/prod/2.4/elasticagent/elastic-agent_SO-$ELASTIC_AGENT_TARBALL_VERSION.md5"
-ELASTIC_AGENT_FILE="/nsm/elastic-fleet/artifacts/elastic-agent_SO-$ELASTIC_AGENT_TARBALL_VERSION.tar.gz"
-ELASTIC_AGENT_MD5="/nsm/elastic-fleet/artifacts/elastic-agent_SO-$ELASTIC_AGENT_TARBALL_VERSION.md5"
-ELASTIC_AGENT_EXPANSION_DIR=/nsm/elastic-fleet/artifacts/beats/elastic-agent
 
 DEFAULT_SALT_DIR=/opt/so/saltstack/default
 DOC_BASE_URL="https://docs.securityonion.net/en/2.4"
@@ -29,6 +23,11 @@ fi
 # Ensure /usr/sbin is in path
 if ! echo "$PATH" | grep -q "/usr/sbin"; then
   export PATH="$PATH:/usr/sbin"
+fi
+
+# See if a proxy is set. If so use it.
+if [ -f /etc/profile.d/so-proxy.sh ]; then
+  . /etc/profile.d/so-proxy.sh
 fi
 
 # Define a banner to separate sections
@@ -100,6 +99,17 @@ add_interface_bond0() {
 	fi
 }
 
+airgap_playbooks() {
+	SRC_DIR=$1
+	# Copy playbooks if using airgap
+	mkdir -p /nsm/airgap-resources
+	# Purge old airgap playbooks to ensure SO only uses the latest released playbooks
+	rm -fr /nsm/airgap-resources/playbooks
+	tar xf $SRC_DIR/airgap-resources/playbooks.tgz -C /nsm/airgap-resources/
+	chown -R socore:socore /nsm/airgap-resources/playbooks
+	git config --global --add safe.directory /nsm/airgap-resources/playbooks
+}
+
 check_container() {
 	docker ps | grep "$1:" > /dev/null 2>&1
 	return $?
@@ -169,6 +179,46 @@ check_salt_minion_status() {
 	return $status
 }
 
+# Compare es versions and return the highest version
+compare_es_versions() {
+    # Save the original IFS
+    local OLD_IFS="$IFS"
+
+    IFS=.
+    local i ver1=($1) ver2=($2)
+
+    # Restore the original IFS
+    IFS="$OLD_IFS"
+
+    # Determine the maximum length between the two version arrays
+    local max_len=${#ver1[@]}
+    if [[ ${#ver2[@]} -gt $max_len ]]; then
+        max_len=${#ver2[@]}
+    fi
+
+    # Compare each segment of the versions
+    for ((i=0; i<max_len; i++)); do
+		# If a segment in ver1 or ver2 is missing, set it to 0
+        if [[ -z ${ver1[i]} ]]; then
+            ver1[i]=0
+        fi
+        if [[ -z ${ver2[i]} ]]; then
+            ver2[i]=0
+        fi
+        if ((10#${ver1[i]} > 10#${ver2[i]})); then
+            echo "$1"
+            return 0
+        fi
+        if ((10#${ver1[i]} < 10#${ver2[i]})); then
+            echo "$2"
+            return 0
+        fi
+    done
+
+    echo "$1"  # If versions are equal, return either
+    return 0
+}
+
 copy_new_files() {
   # Copy new files over to the salt dir
   cd $UPDATE_DIR
@@ -177,6 +227,21 @@ copy_new_files() {
   chown -R socore:socore $DEFAULT_SALT_DIR/
   chmod 755 $DEFAULT_SALT_DIR/pillar/firewall/addfirewall.sh
   cd /tmp
+}
+
+create_local_directories() {
+	echo "Creating local pillar and salt directories if needed"
+	PILLARSALTDIR=$1
+	local_salt_dir="/opt/so/saltstack/local"
+	for i in "pillar" "salt"; do
+		for d in $(find $PILLARSALTDIR/$i -type d); do
+			suffixdir=${d//$PILLARSALTDIR/}
+			if [ ! -d "$local_salt_dir/$suffixdir" ]; then
+				mkdir -p $local_salt_dir$suffixdir
+			fi
+		done
+		chown -R socore:socore $local_salt_dir/$i
+	done
 }
 
 disable_fastestmirror() {
@@ -241,6 +306,31 @@ fail() {
 	echo "ERROR: $msg"
 	echo "Exiting."
 	exit 1
+}
+
+get_agent_count() {
+	if [ -f /opt/so/log/agents/agentstatus.log ]; then
+		AGENTCOUNT=$(cat /opt/so/log/agents/agentstatus.log | grep -wF active | awk '{print $2}' | sed 's/,//')
+		[[ -z "$AGENTCOUNT" ]] && AGENTCOUNT="0"
+	else
+		AGENTCOUNT=0
+	fi
+}
+
+get_elastic_agent_vars() {
+	local path="${1:-/opt/so/saltstack/default}"
+	local defaultsfile="${path}/salt/elasticsearch/defaults.yaml"
+
+	if [ -f "$defaultsfile" ]; then
+		ELASTIC_AGENT_TARBALL_VERSION=$(egrep " +version: " $defaultsfile | awk -F: '{print $2}' | tr -d '[:space:]')
+		ELASTIC_AGENT_URL="https://repo.securityonion.net/file/so-repo/prod/2.4/elasticagent/elastic-agent_SO-$ELASTIC_AGENT_TARBALL_VERSION.tar.gz"
+		ELASTIC_AGENT_MD5_URL="https://repo.securityonion.net/file/so-repo/prod/2.4/elasticagent/elastic-agent_SO-$ELASTIC_AGENT_TARBALL_VERSION.md5"
+		ELASTIC_AGENT_FILE="/nsm/elastic-fleet/artifacts/elastic-agent_SO-$ELASTIC_AGENT_TARBALL_VERSION.tar.gz"
+		ELASTIC_AGENT_MD5="/nsm/elastic-fleet/artifacts/elastic-agent_SO-$ELASTIC_AGENT_TARBALL_VERSION.md5"
+		ELASTIC_AGENT_EXPANSION_DIR=/nsm/elastic-fleet/artifacts/beats/elastic-agent
+	else
+		fail "Could not find salt/elasticsearch/defaults.yaml"
+	fi
 }
 
 get_random_value() {
@@ -329,7 +419,7 @@ lookup_salt_value() {
 		local=""
 	fi
 
-	salt-call --no-color  ${kind}.get ${group}${key} --out=${output} ${local}
+	salt-call -lerror --no-color  ${kind}.get ${group}${key} --out=${output} ${local}
 }
 
 lookup_pillar() {
@@ -364,6 +454,13 @@ is_feature_enabled() {
 		fi
 	done
 	return 1
+}
+
+read_feat() {
+	if [ -f /opt/so/log/sostatus/lks_enabled ]; then
+		lic_id=$(cat /opt/so/saltstack/local/pillar/soc/license.sls | grep license_id: | awk '{print $2}')
+		echo "$lic_id/$(cat /opt/so/log/sostatus/lks_enabled)/$(cat /opt/so/log/sostatus/fps_enabled)"
+	fi
 }
 
 require_manager() {
@@ -559,6 +656,15 @@ status () {
     printf "\n=========================================================================\n$(date) | $1\n=========================================================================\n"
 }
 
+sync_options() {
+	set_version
+	set_os
+	salt_minion_count
+	get_agent_count
+	
+	echo "$VERSION/$OS/$(uname -r)/$MINIONCOUNT:$AGENTCOUNT/$(read_feat)"
+}
+
 systemctl_func() {
 	local action=$1
 	local echo_action=$1
@@ -583,6 +689,8 @@ has_uppercase() {
 }
 
 update_elastic_agent() {
+	local path="${1:-/opt/so/saltstack/default}"
+	get_elastic_agent_vars "$path"
 	echo "Checking if Elastic Agent update is necessary..."
 	download_and_verify "$ELASTIC_AGENT_URL" "$ELASTIC_AGENT_MD5_URL" "$ELASTIC_AGENT_FILE" "$ELASTIC_AGENT_MD5" "$ELASTIC_AGENT_EXPANSION_DIR"
 }

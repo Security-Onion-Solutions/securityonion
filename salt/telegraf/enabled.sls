@@ -20,7 +20,6 @@ so-telegraf:
     - user: 939
     - group_add: 939,920
     - environment:
-      - HOST_PROC=/host/proc
       - HOST_ETC=/host/etc
       - HOST_SYS=/host/sys
       - HOST_MOUNT_PREFIX=/host
@@ -38,7 +37,7 @@ so-telegraf:
       - /opt/so/conf/telegraf/node_config.json:/etc/telegraf/node_config.json:ro
       - /var/run/utmp:/var/run/utmp:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /:/host/root:ro
+      - /:/host:ro
       - /sys:/host/sys:ro
       - /proc:/host/proc:ro
       - /nsm:/host/nsm:ro
@@ -55,6 +54,11 @@ so-telegraf:
       - /opt/so/log/suricata:/var/log/suricata:ro
       - /opt/so/log/raid:/var/log/raid:ro
       - /opt/so/log/sostatus:/var/log/sostatus:ro
+      - /opt/so/log/salt:/var/log/salt:ro
+      - /opt/so/log/agents:/var/log/agents:ro
+      {% if GLOBALS.is_manager or GLOBALS.role == 'so-heavynode' %}
+      - /opt/so/conf/telegraf/etc/escurl.config:/etc/telegraf/elasticsearch.config:ro
+      {% endif %}
       {% if DOCKER.containers['so-telegraf'].custom_bind_mounts %}
         {% for BIND in DOCKER.containers['so-telegraf'].custom_bind_mounts %}
       - {{ BIND }}

@@ -41,6 +41,8 @@ strelka_filestream:
       - {{ XTRAENV }}
       {% endfor %}
     {% endif %}
+    - watch:
+      - file: filestream_config
 
 delete_so-strelka-filestream_so-status.disabled:
   file.uncomment:

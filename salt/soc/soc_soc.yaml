@@ -1,7 +1,12 @@
 soc:
   enabled:
-    description: You can enable or disable SOC.
+    description: Enables or disables SOC. WARNING - Disabling this setting is unsupported and will cause the grid to malfunction. Re-enabling this setting is a manual effort via SSH.
     advanced: True
+  telemetryEnabled:
+    title: SOC Telemetry
+    description: When this setting is enabled and the grid is not in airgap mode, SOC will provide feature usage data to the Security Onion development team via Google Analytics. This data helps Security Onion developers determine which product features are being used and can also provide insight into improving the user interface. When changing this setting, wait for the grid to fully synchronize and then perform a hard browser refresh on SOC, to force the browser cache to update and reflect the new setting.
+    global: True
+    helpLink: telemetry.html
   files:
     soc:
       banner__md:
@@ -32,6 +37,14 @@ soc:
         global: True
         advanced: True
         helpLink: soc-customization.html
+      sigma_final_pipeline__yaml:
+        title: Final Sigma Pipeline
+        description: Final Processing Pipeline for Sigma Rules.
+        syntax: yaml
+        file: True
+        global: True
+        advanced: True
+        helpLink: soc-customization.html
   config:
     licenseKey:
       title: License Key
@@ -41,16 +54,76 @@ soc:
       title: Log Level
       description: The SOC log level, useful for enabling debug logging for advanced troubleshooting. Allowed values are debug, info, warn, error. The SOC log is available at /opt/so/log/soc/sensoroni-server.log.
       global: True
-      regex: ^(info|debug|warn|error)$
+      options:
+      - info
+      - debug
+      - warn
+      - error
     actions:
-      description: A list of actions a user can take from the SOC UI against a hunt, alert, and other records. The action must be defined in JSON object format, and contain a "name" key and "links" key. The links is a list of URLs, where the most suitable URL in the list will be the selected URL when the user clicks the action.
+      description: A list of actions a user can take from the SOC UI against a hunt, alert, and other records. The links is a list of URLs, where the most suitable URL in the list will be the selected URL when the user clicks the action.
       global: True
       forcedType: "[]{}"
+      syntax: json
+      uiElements:
+      - field: name
+        label: Name
+        required: True
+      - field: description
+        label: Description
+      - field: icon
+        label: "Icon (Example: fa-shuttle-space)"
+      - field: links
+        label: Links
+        required: True
+        forcedType: "[]string"
+        multiline: True
+      - field: target
+        label: Target
+      - field: jscall
+        label: JavaScript Call
+      - field: background
+        label: Background XHR Request
+        forcedType: bool
+      - field: method
+        label: XHR Method
+        options:
+        - DELETE
+        - GET
+        - PATCH
+        - POST
+        - PUT
+      - field: options
+        label: XHR Options (JSON)
+        multiline: True
+        forcedType: "{}"
+      - field: body
+        label: XHR Content
+      - field: encodeBody
+        label: Encode XHR Content Variable Data
+        forcedType: bool
+      - field: backgroundSuccessLink
+        label: XHR Success Link
+      - field: backgroundFailureLink
+        label: XHR Failure Link
+      - field: category
+        label: Category
+        options:
+        - hunt
+        - alerts
+        - dashboards
+        forcedType: "[]string"
     eventFields:
-      default:
-        description: Event fields mappings are defined by the format ":event.module:event.dataset". For example, to customize which fields show for 'syslog' events originating from 'zeek', find the eventField item in the left panel that looks like ':zeek:syslog'. This 'default' entry is used for all events that do not match an existing mapping defined in the list to the left.
+      default: &eventFields
+        description: Event fields mappings are defined by the format ":event.module:event.dataset". For example, to customize which fields show for 'syslog' events originating from 'zeek', find the eventField item in the left panel that looks like ':zeek:syslog'. The 'default' entry is used for all events that do not match an existing mapping defined in the list to the left.
         global: True
         advanced: True
+      ':endpoint:events_x_api': *eventFields
+      ':endpoint:events_x_file': *eventFields
+      ':endpoint:events_x_library': *eventFields
+      ':endpoint:events_x_network': *eventFields
+      ':endpoint:events_x_process': *eventFields
+      ':endpoint:events_x_registry': *eventFields
+      ':endpoint:events_x_security': *eventFields
     server:
       srvKey:
         description: Unique key for protecting the integrity of user submitted data via the web browser.
@@ -61,7 +134,239 @@ soc:
         description: Maximum number of packets to show in the PCAP viewer. Larger values can cause more resource utilization on both the SOC server and the browser.
         global: True
         advanced: True
+      forceUserOtp:
+        title: Require TOTP
+        description: Require all users to enable Time-based One Time Passwords (MFA) upon login to SOC.
+        global: True
+      subgrids:
+        title: Subordinate Grids
+        description: |
+          Optional list of *subgrids* that this grid has access to manage. This is also known as a 'Manager of Managers' configuration. The values entered must originate from the remote subordinate grid. The API Client must be granted most permissions in order to perform required functions.
+
+          *Requires a valid Security Onion license key with subgrid allocations.*
+        global: True
+        syntax: json
+        forcedType: "[]{}"
+        uiElements:
+        - field: id
+          label: Unique Subgrid ID
+          regex: "^((?!_)).+$"
+          regexFailureMessage: Subgrid ID cannot start with an underscore
+          required: true
+        - field: managerUrl
+          label: Subgrid Manager URL
+          required: true
+        - field: clientId
+          label: Subgrid API Client ID
+          required: true
+          regex: "^socl_[a-z0-9_]+$"
+          regexFailureMessage: Client ID must be a valid socl_* API Client ID
+        - field: clientSecret
+          label: Subgrid API Client Secret
+          required: true
+        - field: tlsSkipVerify
+          label: Skip Subgrid TLS Certification Validation
+          forcedType: bool
+          default: false
+        - field: caCertificate
+          label: Subgrid CA Certificate
+          multiline: True
+        - field: enabled
+          label: Subgrid Enabled
+          forcedType: bool
+          default: false
       modules:
+        elastalertengine:
+          aiRepoUrl:
+            description: URL to the AI repository. This is used to pull in AI models for use in ElastAlert rules.
+            global: True
+            advanced: True
+          aiRepoBranch:
+            description: The branch to pull from the AI repository. Leaving this blank will pull the default branch.
+            global: True
+            advanced: True
+          aiRepoPath:
+            description: Path to the AI repository. This is used to pull in AI models for use in ElastAlert rules.
+            global: True
+            advanced: True
+          showAiSummaries:
+            description: Show AI summaries for ElastAlert rules.
+            global: True
+          additionalAlerters:
+            title: "Notifications: Sev 0/Default Alerters"
+            description: "Specify default alerters to enable for outbound notifications. These alerters will be used unless overridden by higher severity alerter settings. Specify one alerter name (Ex: 'email') per line. Alerters refers to ElastAlert 2 alerters, as documented at https://elastalert2.readthedocs.io. A full update of the ElastAlert rule engine, via the Detections screen, is required in order to apply these changes. Requires a valid Security Onion license key."
+            global: True
+            helpLink: notifications.html
+            forcedType: "[]string"
+            multiline: True
+          additionalSev0AlertersParams:
+            title: "Notifications: Sev 0/Default Parameters"
+            description: Optional configuration parameters for default alerters. Use YAML format for these parameters, and reference the ElastAlert 2 documentation, located at https://elastalert2.readthedocs.io, for available alerters and their required configuration parameters. A full update of the ElastAlert rule engine, via the Detections screen, is required in order to apply these changes. Requires a valid Security Onion license key.
+            global: True
+            multiline: True
+            syntax: yaml
+            helpLink: notifications.html
+            forcedType: string
+            jinjaEscaped: True
+          additionalSev1Alerters:
+            title: "Notifications: Sev 1/Informational Alerters"
+            description: "Specify specific alerters to use when alerting at the info severity level or higher. These alerters will be used unless overridden by higher severity alerter settings. Specify one alerter name (Ex: 'email') per line. Alerters refers to ElastAlert 2 alerters, as documented at https://elastalert2.readthedocs.io. A full update of the ElastAlert rule engine, via the Detections screen, is required in order to apply these changes. Requires a valid Security Onion license key."
+            global: True
+            helpLink: notifications.html
+            forcedType: "[]string"
+            multiline: True
+          additionalSev1AlertersParams:
+            title: "Notifications: Sev 1/Informational Parameters"
+            description: Optional configuration parameters for informational severity alerters. Info level is less severe than 'Low Severity'. Use YAML format for these parameters, and reference the ElastAlert 2 documentation, located at https://elastalert2.readthedocs.io, for available alerters and their required configuration parameters. A full update of the ElastAlert rule engine, via the Detections screen, is required in order to apply these changes. Requires a valid Security Onion license key.
+            global: True
+            multiline: True
+            syntax: yaml
+            helpLink: notifications.html
+            forcedType: string
+            jinjaEscaped: True
+          additionalSev2Alerters:
+            title: "Notifications: Sev 2/Low Alerters"
+            description: "Specify specific alerters to use when alerting at the low severity level or higher. These alerters will be used unless overridden by higher severity alerter settings. Specify one alerter name (Ex: 'email') per line. Alerters refers to ElastAlert 2 alerters, as documented at https://elastalert2.readthedocs.io. A full update of the ElastAlert rule engine, via the Detections screen, is required in order to apply these changes. Requires a valid Security Onion license key."
+            global: True
+            helpLink: notifications.html
+            forcedType: "[]string"
+            multiline: True
+          additionalSev2AlertersParams:
+            title: "Notifications: Sev 2/Low Parameters"
+            description: Optional configuration parameters for low severity alerters. Use YAML format for these parameters, and reference the ElastAlert 2 documentation, located at https://elastalert2.readthedocs.io, for available alerters and their required configuration parameters. A full update of the ElastAlert rule engine, via the Detections screen, is required in order to apply these changes. Requires a valid Security Onion license key.
+            global: True
+            multiline: True
+            syntax: yaml
+            helpLink: notifications.html
+            forcedType: string
+            jinjaEscaped: True
+          additionalSev3Alerters:
+            title: "Notifications: Sev 3/Medium Alerters"
+            description: "Specify specific alerters to use when alerting at the medium severity level or higher. These alerters will be used unless overridden by higher severity alerter settings. Specify one alerter name (Ex: 'email') per line. Alerters refers to ElastAlert 2 alerters, as documented at https://elastalert2.readthedocs.io. A full update of the ElastAlert rule engine, via the Detections screen, is required in order to apply these changes. Requires a valid Security Onion license key."
+            global: True
+            helpLink: notifications.html
+            forcedType: "[]string"
+            multiline: True
+          additionalSev3AlertersParams:
+            title: "Notifications: Sev 3/Medium Parameters"
+            description: Optional configuration parameters for medium severity alerters. Use YAML format for these parameters, and reference the ElastAlert 2 documentation, located at https://elastalert2.readthedocs.io, for available alerters and their required configuration parameters. A full update of the ElastAlert rule engine, via the Detections screen, is required in order to apply these changes. Requires a valid Security Onion license key.
+            global: True
+            multiline: True
+            syntax: yaml
+            helpLink: notifications.html
+            forcedType: string
+            jinjaEscaped: True
+          additionalSev4Alerters:
+            title: "Notifications: Sev 4/High Alerters"
+            description: "Specify specific alerters to use when alerting at the high severity level or critical severity level. These alerters will be used unless overridden by critical severity alerter settings. Specify one alerter name (Ex: 'email') per line. Alerters refers to ElastAlert 2 alerters, as documented at https://elastalert2.readthedocs.io. A full update of the ElastAlert rule engine, via the Detections screen, is required in order to apply these changes. Requires a valid Security Onion license key."
+            global: True
+            helpLink: notifications.html
+            forcedType: "[]string"
+            multiline: True
+          additionalSev4AlertersParams:
+            title: "Notifications: Sev 4/High Parameters"
+            description: Optional configuration parameters for high severity alerters. Use YAML format for these parameters, and reference the ElastAlert 2 documentation, located at https://elastalert2.readthedocs.io, for available alerters and their required configuration parameters. A full update of the ElastAlert rule engine, via the Detections screen, is required in order to apply these changes. Requires a valid Security Onion license key.
+            global: True
+            multiline: True
+            syntax: yaml
+            helpLink: notifications.html
+            forcedType: string
+            jinjaEscaped: True
+          additionalSev5Alerters:
+            title: "Notifications: Sev 5/Critical Alerters"
+            description: "Specify specific alerters to use when alerting at the critical severity level. Specify one alerter name (Ex: 'email') per line. Alerters refers to ElastAlert 2 alerters, as documented at https://elastalert2.readthedocs.io. A full update of the ElastAlert rule engine, via the Detections screen, is required in order to apply these changes. Requires a valid Security Onion license key."
+            global: True
+            helpLink: notifications.html
+            forcedType: "[]string"
+            multiline: True
+          additionalSev5AlertersParams:
+            title: "Notifications: Sev 5/Critical Parameters"
+            description: Optional configuration parameters for critical severity alerters. Use YAML format for these parameters, and reference the ElastAlert 2 documentation, located at https://elastalert2.readthedocs.io, for available alerters and their required configuration parameters. A full update of the ElastAlert rule engine, via the Detections screen, is required in order to apply these changes. Requires a valid Security Onion license key.
+            global: True
+            multiline: True
+            syntax: yaml
+            helpLink: notifications.html
+            forcedType: string
+            jinjaEscaped: True
+          additionalUserDefinedNotifications:
+            customAlerters:
+              description: "Specify custom notification alerters to use when the Sigma rule contains the following tag: so.alerters.customAlerters. This setting can be duplicated to create new custom alerter configurations. Specify one alerter name (Ex: 'email') per line. Alerters refers to ElastAlert 2 alerters, as documented at https://elastalert2.readthedocs.io. A full update of the ElastAlert rule engine, via the Detections screen, is required in order to apply these changes. Requires a valid Security Onion license key."
+              global: True
+              helpLink: notifications.html
+              forcedType: "[]string"
+              duplicates: True
+              multiline: True
+            customAlertersParams:
+              description: "Optional configuration parameters for custom notification alerters, used when the Sigma rule contains the following tag: so.params.customAlertersParams. This setting can be duplicated to create new custom alerter configurations. Use YAML format for these parameters, and reference the ElastAlert 2 documentation, located at https://elastalert2.readthedocs.io, for available alerters and their required configuration parameters. A full update of the ElastAlert rule engine, via the Detections screen, is required in order to apply these changes. Requires a valid Security Onion license key."
+              global: True
+              multiline: True
+              syntax: yaml
+              helpLink: notifications.html
+              duplicates: True
+              forcedType: string
+              jinjaEscaped: True
+          enabledSigmaRules:
+            default: &enabledSigmaRules
+              description: 'Sigma rules to automatically enable on initial import. The format is a YAML list, with the ability to filter for ruleset, level, product, category and service. Refer to the documentation for further details. These will be applied based on role if defined and default if not.'
+              global: True
+              helpLink: sigma.html
+              multiline: True
+              syntax: yaml
+              forcedType: string
+              jinjaEscaped: True
+            so-eval: *enabledSigmaRules
+            so-import: *enabledSigmaRules
+          autoEnabledSigmaRules:
+            default: &autoEnabledSigmaRules
+              description: 'DEPRECATED: Will be removed in a future release - use enabledSigmaRules instead.'
+              global: True
+              advanced: True
+              helpLink: sigma.html
+            so-eval: *autoEnabledSigmaRules
+            so-import: *autoEnabledSigmaRules
+          autoUpdateEnabled:
+            description: 'Automatically update Sigma rules on a regular basis. This will update the rules based on the configured frequency.'
+            global: True
+            advanced: True
+          communityRulesImportFrequencySeconds:
+            description: 'How often to check for new Sigma rules (in seconds). This applies to both Community Rule Packages and any configured Git repos.'
+            global: True
+            advanced: True
+            helpLink: sigma.html
+          integrityCheckFrequencySeconds:
+            description: 'How often the ElastAlert integrity checker runs (in seconds). This verifies the integrity of deployed rules.'
+            global: True
+            advanced: True
+          rulesRepos:
+            default: &eerulesRepos
+              description: "Custom Git repositories to pull Sigma rules from. 'license' field is required, 'folder' is optional. 'community' disables some management options for the imported rules - they can't be deleted or edited, just tuned, duplicated and Enabled | Disabled. The new settings will be applied within 15 minutes. At that point, you will need to wait for the scheduled rule update to take place (by default, every 24 hours), or you can force the update by nagivating to Detections -->  Options dropdown menu --> Elastalert --> Full Update."
+              global: True
+              advanced: True
+              forcedType: "[]{}"
+              helpLink: sigma.html
+              syntax: json
+              uiElements:
+              - field: rulesetName
+                label: Ruleset Name
+              - field: repo
+                label: Repo URL
+                required: True
+              - field: branch
+                label: Branch
+              - field: license
+                label: License
+                required: True
+              - field: folder
+                label: Folder
+              - field: community
+                label: Community
+                forcedType: bool
+            airgap: *eerulesRepos
+          sigmaRulePackages:
+            description: 'Defines the Sigma Community Ruleset you want to run. One of these (core | core+ | core++ | all ) as well as an optional Add-on (emerging_threats_addon). Once you have changed the ruleset here, the new settings will be applied within 15 minutes. At that point, you will need to wait for the scheduled rule update to take place (by default, every 24 hours), or you can force the update by nagivating to Detections -->  Options dropdown menu --> Elastalert --> Full Update. WARNING! Changing the ruleset will remove all existing non-overlapping Sigma rules of the previous ruleset and their associated overrides. This removal cannot be undone.'
+            global: True
+            advanced: False
+            helpLink: sigma.html
         elastic:
           index:
             description: Comma-separated list of indices or index patterns (wildcard "*" supported) that SOC will search for records.
@@ -75,6 +380,7 @@ soc:
             description: Duration (in milliseconds) to wait for a response from the Elasticsearch host before giving up and showing an error on the SOC UI.
             global: True
             advanced: True
+            forcedType: int
           casesEnabled:
             description: Set to true if the SOC case management module, natively integrated with Elasticsearch, should be enabled.
             global: True
@@ -102,6 +408,13 @@ soc:
             description: Maximum number of events that can be acknowledged synchronously. When acknowledging large numbers of events, where the count exceeds this value, the acknowledge update will be performed in the background, as it can take several minutes to complete.
             global: True
             advanced: True
+          lookupTunnelParent:
+            description: When true, if a pivoted event appears to be encapsulated, such as in a VXLAN packet, then SOC will pivot to the VXLAN packet stream. When false, SOC will attempt to pivot to the encapsulated packet stream itself, but at the risk that it may be unable to locate it in the stored PCAP data.
+            global: True
+          maxScrollSize:
+            description: The maximum number of documents to request in a single Elasticsearch scroll request.
+          bulkIndexWorkerCount:
+            description: The number of worker threads to use when bulk indexing data into Elasticsearch. A value below 1 will default to the number of CPUs available.
         sostatus:
           refreshIntervalMs:
             description: Duration (in milliseconds) between refreshes of the grid status. Shortening this duration may not have expected results, as the backend systems feeding this sostatus data will continue their updates as scheduled.
@@ -116,10 +429,129 @@ soc:
             description: Duration (in milliseconds) to wait for a response from the Salt API when executing tasks known for being long running before giving up and showing an error on the SOC UI.
             global: True
             advanced: True
+            forcedType: int
           relayTimeoutMs:
             description: Duration (in milliseconds) to wait for a response from the Salt API when executing common grid management tasks before giving up and showing an error on the SOC UI.
             global: True
             advanced: True
+            forcedType: int
+        strelkaengine:
+          aiRepoUrl:
+            description: URL to the AI repository. This is used to pull in AI models for use in Strelka rules.
+            global: True
+            advanced: True
+          aiRepoBranch:
+            description: The branch to pull from the AI repository. Leaving this blank will pull the default branch.
+            global: True
+            advanced: True
+          aiRepoPath:
+            description: Path to the AI repository. This is used to pull in AI models for use in Strelka rules.
+            global: True
+            advanced: True
+          showAiSummaries:
+            description: Show AI summaries for Strelka rules.
+            global: True
+          autoUpdateEnabled:
+            description: 'Automatically update YARA rules on a regular basis. This will update the rules based on the configured frequency.'
+            global: True
+            advanced: True
+          autoEnabledYaraRules:
+            description: 'YARA rules to automatically enable on initial import. Format is $Ruleset - for example, for the default shipped ruleset: securityonion-yara'
+            global: True
+            advanced: True
+            helpLink: sigma.html
+          communityRulesImportFrequencySeconds:
+            description: 'How often to check for new YARA rules (in seconds). This applies to both Community Rules and any configured Git repos.'
+            global: True
+            advanced: True
+            helpLink: yara.html
+          integrityCheckFrequencySeconds:
+            description: 'How often the Strelka integrity checker runs (in seconds). This verifies the integrity of deployed rules.'
+            global: True
+            advanced: True
+          rulesRepos:
+            default: &serulesRepos
+              description: "Custom Git repositories to pull YARA rules from. 'license' field is required, 'folder' is optional. 'community' disables some management options for the imported rules - they can't be deleted or edited, just tuned, duplicated and Enabled | Disabled. The new settings will be applied within 15 minutes. At that point, you will need to wait for the scheduled rule update to take place (by default, every 24 hours), or you can force the update by nagivating to Detections -->  Options dropdown menu --> Strelka --> Full Update."
+              global: True
+              advanced: True
+              forcedType: "[]{}"
+              helpLink: yara.html
+              syntax: json
+              uiElements:
+              - field: rulesetName
+                label: Ruleset Name
+              - field: repo
+                label: Repo URL
+                required: True
+              - field: branch
+                label: Branch
+              - field: license
+                label: License
+                required: True
+              - field: folder
+                label: Folder
+              - field: community
+                label: Community
+                forcedType: bool
+            airgap: *serulesRepos
+        suricataengine:
+          aiRepoUrl:
+            description: URL to the AI repository. This is used to pull in AI models for use in Suricata rules.
+            global: True
+            advanced: True
+          aiRepoBranch:
+            description: The branch to pull from the AI repository. Leaving this blank will pull the default branch.
+            global: True
+            advanced: True
+          aiRepoPath:
+            description: Path to the AI repository. This is used to pull in AI models for use in Suricata rules.
+            global: True
+            advanced: True
+          showAiSummaries:
+            description: Show AI summaries for Suricata rules.
+            global: True
+          autoUpdateEnabled:
+            description: 'Automatically update Suricata rules on a regular basis. This will update the rules based on the configured frequency.'
+            global: True
+            advanced: True
+          communityRulesImportFrequencySeconds:
+            description: 'How often to check for new Suricata rules (in seconds).'
+            global: True
+            advanced: True
+            helpLink: suricata.html
+          disableRegex:
+            description: A list of regular expressions used to automatically disable rules that match any of them. Each regular expression is tested against the rule's content.
+            global: True
+            forcedType: "[]string"
+          enableRegex:
+            description: A list of regular expressions used to automatically enable rules that match any of them. Each regular expression is tested against the rule's content. Takes priority over disableRegex matches.
+            global: True
+            forcedType: "[]string"
+          integrityCheckFrequencySeconds:
+            description: 'How often the Suricata integrity checker runs (in seconds). This verifies the integrity of deployed rules.'
+            global: True
+            advanced: True
+          customRulesets:
+            description: 'URLs and/or Local File configurations for Suricata custom rulesets. Refer to the linked documentation for important specification and file placement information'
+            global: True
+            advanced: True
+            forcedType: "[]{}"
+            helpLink: suricata.html
+          ignoredSidRanges:
+            description: 'List of Suricata SID ranges to ignore during the Integrity Check. This is useful for ignoring specific rules not governed by the UI. Each line should contain 1 range in the format "1100000-1200000". The ranges are treated as inclusive.'
+            global: True
+            advanced: True
+            forcedType: "[]string"
+            helpLink: detections.html#rule-engine-status
+        navigator:
+          intervalMinutes:
+            description: How often to generate the Navigator Layers. (minutes)
+            global: True
+            helpLink: attack-navigator.html
+          lookbackDays:
+            description: How far back to search for ATT&CK-tagged alerts. (days)
+            global: True
+            helpLink: attack-navigator.html
       client:
         enableReverseLookup:
           description: Set to true to enable reverse DNS lookups for IP addresses in the SOC UI.
@@ -128,19 +560,26 @@ soc:
           description: Duration (in milliseconds) to wait for a response from the SOC server API before giving up and showing an error on the SOC UI.
           global: True
           advanced: True
+          forcedType: int
         webSocketTimeoutMs:
           description: Duration (in milliseconds) to wait for a response from the SOC server websocket before giving up and reconnecting.
           global: True
           advanced: True
+          forcedType: int
         tipTimeoutMs:
           description: Duration (in milliseconds) to show the popup tips, which typically indicate a successful operation.
           global: True
+          forcedType: int
         cacheExpirationMs:
           description: Duration (in milliseconds) of cached data within the browser, including users and settings.
           global: True
           advanced: True
+          forcedType: int
         casesEnabled:
           description: Set to true to enable case management in SOC.
+          global: True
+        detectionsEnabled:
+          description: Set to true to enable the Detections module in SOC.
           global: True
         inactiveTools:
           description: List of external tools to remove from the SOC UI.
@@ -173,17 +612,63 @@ soc:
             description: Number of items to show in the most recently used queries list. Larger values cause default queries to be located further down the list.
             global: True
           queries:
-            description: List of default queries to show in the query list. Each query is represented in JSON object notation, and must include the "name" key and "query" key.
+            description: List of default queries to show in the query list.
             global: True
             forcedType: "[]{}"
+            syntax: json
+            uiElements:
+            - field: name
+              label: Name
+              required: True
+            - field: description
+              label: Description
+            - field: query
+              label: Query
+              required: True
+            - field: showSubtitle
+              label: Show Query in Dropdown.
+              forcedType: bool
           queryToggleFilters:
             description: Customize togglable query filters that apply to all queries. Exclusive toggles will invert the filter if toggled off rather than omitting the filter from the query.
             global: True
             advanced: True
             forcedType: "[]{}"
-        alerts: *appSettings
+        alerts:
+          <<: *appSettings
+          maxBulkEscalateEvents:
+            description: Maximum number of events to escalate in a single bulk escalation. Large values may run into other limits.
+            global: True
         cases: *appSettings
         dashboards: *appSettings
+        detections:
+          <<: *appSettings
+          detectionEngineStatusQueries:
+            description: Queries mapped to the detection engine statuses. Acceptable statuses are "Migrating", "Importing", "MigrationFailure", "IntegrityFailure", "SyncFailure", "ImportPending", "Syncing", and "Healthy" and will fallback to a "default" entry if specified.
+            global: True
+            syntax: yaml
+            multiline: True
+            forcedType: "string"
+        detection:
+          showUnreviewedAiSummaries:
+            description: Show AI summaries in detections even if they have not yet been reviewed by a human.
+            global: True
+          templateDetections:
+            suricata:
+              description: The template used when creating a new Suricata detection. [publicId] will be replaced with an unused Public Id.
+              multiline: True
+            strelka:
+              description: The template used when creating a new Strelka detection.
+              multiline: True
+            elastalert:
+              description: The template used when creating a new ElastAlert detection. [publicId] will be replaced with an unused Public Id.
+              multiline: True
+        grid:
+          maxUploadSize:
+            description: The maximum number of bytes for an uploaded PCAP import file.
+            global: True
+          staleMetricsMs:
+            description: The age in milliseconds of node metrics when they are considered stale. Stale metrics have a faded appearance on the Grid screen.
+            global: True
         case:
           analyzerNodeId:
             description: The node ID on which analyzers will be executed.

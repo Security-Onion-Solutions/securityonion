@@ -1,0 +1,133 @@
+{# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+  or more contributor license agreements. Licensed under the Elastic License 2.0; you may not use
+  this file except in compliance with the Elastic License 2.0. #}
+
+
+{% import_json '/opt/so/state/esfleet_package_components.json' as ADDON_PACKAGE_COMPONENTS %}
+{% import_yaml 'elasticfleet/defaults.yaml' as ELASTICFLEETDEFAULTS %}
+
+{% set CORE_ESFLEET_PACKAGES = ELASTICFLEETDEFAULTS.get('elasticfleet', {}).get('packages', {}) %}
+{% set ADDON_INTEGRATION_DEFAULTS = {} %}
+
+{# Some fleet integrations don't follow the standard naming convention #}
+{% set WEIRD_INTEGRATIONS = {
+    'awsfirehose.logs': 'awsfirehose',
+    'awsfirehose.metrics': 'aws.cloudwatch',
+    'cribl.logs': 'cribl',
+    'sentinel_one_cloud_funnel.logins': 'sentinel_one_cloud_funnel.login',
+    'azure_application_insights.app_insights': 'azure.app_insights',
+    'azure_application_insights.app_state': 'azure.app_state',
+    'azure_billing.billing': 'azure.billing',
+    'azure_functions.metrics': 'azure.function',
+    'azure_metrics.compute_vm_scaleset': 'azure.compute_vm_scaleset',
+    'azure_metrics.compute_vm': 'azure.compute_vm',
+    'azure_metrics.container_instance': 'azure.container_instance',
+    'azure_metrics.container_registry': 'azure.container_registry',
+    'azure_metrics.container_service': 'azure.container_service',
+    'azure_metrics.database_account': 'azure.database_account',
+    'azure_metrics.monitor': 'azure.monitor',
+    'azure_metrics.storage_account': 'azure.storage_account',
+    'azure_openai.metrics': 'azure.open_ai',
+    'beat.state': 'beats.stack_monitoring.state',
+    'beat.stats': 'beats.stack_monitoring.stats',
+    'enterprisesearch.health': 'enterprisesearch.stack_monitoring.health',
+    'enterprisesearch.stats': 'enterprisesearch.stack_monitoring.stats',
+    'kibana.cluster_actions': 'kibana.stack_monitoring.cluster_actions',
+    'kibana.cluster_rules': 'kibana.stack_monitoring.cluster_rules',
+    'kibana.node_actions': 'kibana.stack_monitoring.node_actions',
+    'kibana.node_rules': 'kibana.stack_monitoring.node_rules',
+    'kibana.stats': 'kibana.stack_monitoring.stats',
+    'kibana.status': 'kibana.stack_monitoring.status',
+    'logstash.node_cel': 'logstash.stack_monitoring.node',
+    'logstash.node_stats': 'logstash.stack_monitoring.node_stats',
+    'synthetics.browser': 'synthetics-browser',
+    'synthetics.browser_network': 'synthetics-browser.network',
+    'synthetics.browser_screenshot': 'synthetics-browser.screenshot',
+    'synthetics.http': 'synthetics-http',
+    'synthetics.icmp': 'synthetics-icmp',
+    'synthetics.tcp': 'synthetics-tcp'
+   } %}
+
+{% for pkg in ADDON_PACKAGE_COMPONENTS %}
+{%   if pkg.name in CORE_ESFLEET_PACKAGES %}
+{#     skip core integrations #}
+{%   elif pkg.name not in CORE_ESFLEET_PACKAGES %}
+{#     generate defaults for each integration #}
+{%     if pkg.es_index_patterns is defined and pkg.es_index_patterns is not none %}
+{%       for pattern in pkg.es_index_patterns %}
+{%         if "metrics-" in pattern.name %}
+{%           set integration_type = "metrics-" %}
+{%         elif "logs-" in pattern.name %}
+{%           set integration_type = "logs-" %}
+{%         else %}
+{%           set integration_type = "" %}
+{%         endif %}
+{%           set component_name = pkg.name ~ "." ~ pattern.title %}
+{#           fix weirdly named components #}
+{%           if component_name in WEIRD_INTEGRATIONS %}
+{%             set component_name = WEIRD_INTEGRATIONS[component_name] %}
+{%           endif %}
+{#           component_name_x maintains the functionality of merging local pillar changes with generated 'defaults' via SOC UI #}
+{%           set component_name_x = component_name.replace(".","_x_") %}
+{#           pillar overrides/merge expects the key names to follow the naming in elasticsearch/defaults.yaml eg. so-logs-1password_x_item_usages . The _x_ is replaced later on in elasticsearch/template.map.jinja #}
+{%           set integration_key = "so-" ~ integration_type ~ component_name_x %}
+
+{#           Default integration settings #}
+{%           set integration_defaults = {
+              "index_sorting": false,
+              "index_template": {
+                  "composed_of": [integration_type ~ component_name ~ "@package", integration_type ~ component_name ~ "@custom", "so-fleet_integrations.ip_mappings-1", "so-fleet_globals-1", "so-fleet_agent_id_verification-1"],
+                  "data_stream": {
+                      "allow_custom_routing": false,
+                      "hidden": false
+                  },
+                  "ignore_missing_component_templates": [integration_type ~ component_name ~ "@custom"],
+                  "index_patterns": [pattern.name],
+                  "priority": 501,
+                  "template": {
+                      "settings": {
+                          "index": {
+                              "lifecycle": {"name": "so-" ~ integration_type ~ component_name ~ "-logs"},
+                              "number_of_replicas": 0
+                          }
+                      }
+                  }
+              },
+              "policy": {
+                  "phases": {
+                      "cold": {
+                          "actions": {
+                              "set_priority": {"priority": 0}
+                          },
+                          "min_age": "60d"
+                      },
+                      "delete": {
+                          "actions": {
+                              "delete": {}
+                          },
+                          "min_age": "365d"
+                      },
+                      "hot": {
+                          "actions": {
+                              "rollover": {
+                                  "max_age": "30d",
+                                  "max_primary_shard_size": "50gb"
+                              },
+                              "set_priority": {"priority": 100}
+                          },
+                          "min_age": "0ms"
+                      },
+                      "warm": {
+                          "actions": {
+                              "set_priority": {"priority": 50}
+                          },
+                          "min_age": "30d"
+                      }
+                  }
+              }
+          } %}
+{%         do ADDON_INTEGRATION_DEFAULTS.update({integration_key: integration_defaults}) %}
+{%       endfor %}
+{%     endif %}
+{%   endif %}
+{% endfor %}

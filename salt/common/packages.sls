@@ -1,6 +1,6 @@
-{% from 'vars/globals.map.jinja' import GLOBALS %}
-
-{% if GLOBALS.os_family == 'Debian' %}
+# we cannot import GLOBALS from vars/globals.map.jinja in this state since it is called in setup.virt.init
+# since it is early in setup of a new VM, the pillars imported in GLOBALS are not yet defined
+{% if grains.os_family == 'Debian' %}
 commonpkgs:
   pkg.installed:
     - skip_suggestions: True
@@ -27,6 +27,7 @@ commonpkgs:
       - vim
       - tar
       - unzip
+      - bc
       {% if grains.oscodename != 'focal' %}
       - python3-rich
       {% endif %}
@@ -45,7 +46,7 @@ python-rich:
 {%     endif %}
 {% endif %}
 
-{% if GLOBALS.os_family == 'RedHat' %}
+{% if grains.os_family == 'RedHat' %}
 
 remove_mariadb:
   pkg.removed:
@@ -56,6 +57,7 @@ commonpkgs:
     - skip_suggestions: True
     - pkgs:
       - python3-dnf-plugin-versionlock
+      - bc
       - curl
       - device-mapper-persistent-data
       - fuse

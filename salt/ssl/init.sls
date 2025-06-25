@@ -17,7 +17,7 @@
   {% set COMMONNAME = GLOBALS.manager %}
 {% endif %}
 
-{% if grains.id.split('_')|last in ['manager', 'managersearch', 'eval', 'standalone', 'import'] %}
+{% if GLOBALS.is_manager %}
 include:
   - ca
     {% set trusttheca_text = salt['cp.get_file_str']('/etc/pki/ca.crt')|replace('\n', '') %}
@@ -99,7 +99,7 @@ influxkeyperms:
     - mode: 640
     - group: 939
 
-{% if grains['role'] in ['so-manager', 'so-eval', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-fleet', 'so-receiver'] %}
+{% if GLOBALS.is_manager or GLOBALS.role in ['so-heavynode', 'so-fleet', 'so-receiver'] %}
 # Create a cert for Redis encryption
 redis_key:
   x509.private_key_managed:
@@ -139,7 +139,7 @@ rediskeyperms:
     - group: 939
 {% endif %}
 
-{% if grains['role'] in ['so-manager', 'so-eval', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-fleet', 'so-receiver'] %}
+{% if GLOBALS.is_manager or GLOBALS.role in ['so-heavynode', 'so-fleet', 'so-receiver'] %}
 
 {% if grains['role'] not in [ 'so-heavynode', 'so-receiver'] %}
 # Start -- Elastic Fleet Host Cert
@@ -388,7 +388,7 @@ chownelasticfleetagentkey:
 
 {% endif %}
 
-{% if grains['role'] in ['so-manager', 'so-eval', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-receiver'] %}
+{% if GLOBALS.is_manager or GLOBALS.role in ['so-heavynode', 'so-receiver'] %}
 etc_filebeat_key:
   x509.private_key_managed:
     - name: /etc/pki/filebeat.key
@@ -552,7 +552,7 @@ elasticp12perms:
 
 {% endif %}
 
-{% if grains['role'] in ['so-sensor', 'so-manager', 'so-searchnode', 'so-eval', 'so-managersearch', 'so-heavynode', 'so-fleet', 'so-standalone', 'so-idh', 'so-import', 'so-receiver'] %}
+{% if GLOBALS.is_manager or GLOBALS.role in ['so-sensor', 'so-searchnode', 'so-heavynode', 'so-fleet', 'so-idh', 'so-receiver'] %}
    
 fbcertdir:
   file.directory:
@@ -661,8 +661,55 @@ elastickeyperms:
     - name: /etc/pki/elasticsearch.key
     - mode: 640
     - group: 930
-
 {%- endif %}
+
+{% if GLOBALS.role in ['so-manager', 'so-managerhype', 'so-managersearch', 'so-standalone'] %}
+elasticfleet_kafka_key:
+  x509.private_key_managed:
+    - name: /etc/pki/elasticfleet-kafka.key
+    - keysize: 4096
+    - backup: True
+    - new: True
+    {% if salt['file.file_exists']('/etc/pki/elasticfleet-kafka.key') -%}
+    - prereq:
+      - x509: elasticfleet_kafka_crt
+    {%- endif %}
+    - retry:
+        attempts: 5
+        interval: 30
+
+elasticfleet_kafka_crt:
+  x509.certificate_managed:
+    - name: /etc/pki/elasticfleet-kafka.crt
+    - ca_server: {{ ca_server }}
+    - signing_policy: kafka
+    - private_key: /etc/pki/elasticfleet-kafka.key
+    - CN: {{ GLOBALS.hostname }}
+    - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
+    - days_remaining: 0
+    - days_valid: 820
+    - backup: True
+    - timeout: 30
+    - retry:
+        attempts: 5
+        interval: 30
+
+elasticfleet_kafka_cert_perms:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/elasticfleet-kafka.crt
+    - mode: 640
+    - user: 947
+    - group: 939
+
+elasticfleet_kafka_key_perms:
+  file.managed:
+    - replace: False
+    - name: /etc/pki/elasticfleet-kafka.key
+    - mode: 640
+    - user: 947
+    - group: 939
+{% endif %}
 
 {% else %}
 

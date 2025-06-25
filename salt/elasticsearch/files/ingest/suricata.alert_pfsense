@@ -1,0 +1,16 @@
+{
+  "description" : "suricata.alert",
+  "processors" : [
+    { "set":   { "field": "data_stream.dataset", "value": "suricata" } },
+    { "set":   { "field": "data_stream.namespace", "value": "so" } },
+    { "set":   { "field": "_index", "value": "logs-suricata.alerts-so" } },
+    { "set":   { "field": "tags","value": "alert" }},
+    { "rename":{ "field": "message2.alert",	"target_field": "rule",	"ignore_failure": true 	} },
+    { "rename":{ "field": "rule.signature",     "target_field": "rule.name", "ignore_failure": true  } },
+    { "rename":{ "field": "rule.ref",     "target_field": "rule.version", "ignore_failure": true  } },
+    { "rename":{ "field": "rule.signature_id",     "target_field": "rule.uuid", "ignore_failure": true  } },
+    { "rename":{ "field": "rule.signature_id",     "target_field": "rule.signature", "ignore_failure": true  } },
+    { "rename":{ "field": "message2.payload_printable",     "target_field": "network.data.decoded", "ignore_failure": true  } },
+    { "pipeline": { "name": "common.nids" } }
+  ]
+}

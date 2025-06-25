@@ -4,7 +4,6 @@
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 
 include:
-  - common.soup_scripts
   - common.packages
 {% if GLOBALS.role in GLOBALS.manager_roles %}
   - manager.elasticsearch # needed for elastic_curl_config state
@@ -14,6 +13,11 @@ include:
 net.core.wmem_default:
   sysctl.present:
     - value: 26214400
+
+# Users are not a fan of console messages
+kernel.printk:
+  sysctl.present:
+    - value: "3 4 1 3"
 
 # Remove variables.txt from /tmp - This is temp
 rmvariablesfile:
@@ -102,7 +106,7 @@ Etc/UTC:
   timezone.system
 
 # Sync curl configuration for Elasticsearch authentication
-{% if GLOBALS.role in ['so-eval', 'so-heavynode', 'so-import', 'so-manager', 'so-managersearch', 'so-searchnode', 'so-standalone'] %}
+{% if GLOBALS.is_manager or GLOBALS.role in ['so-heavynode', 'so-searchnode'] %}
 elastic_curl_config:
   file.managed:
     - name: /opt/so/conf/elasticsearch/curl.config
@@ -124,6 +128,11 @@ common_sbin:
     - user: 939
     - group: 939
     - file_mode: 755
+    - show_changes: False
+{% if GLOBALS.role == 'so-heavynode' %}
+    - exclude_pat:
+      - so-pcap-import
+{% endif %}
 
 common_sbin_jinja:
   file.recurse:
@@ -133,6 +142,33 @@ common_sbin_jinja:
     - group: 939 
     - file_mode: 755
     - template: jinja
+    - show_changes: False
+{% if GLOBALS.role == 'so-heavynode' %}
+    - exclude_pat:
+      - so-import-pcap
+{% endif %}
+
+{% if GLOBALS.role == 'so-heavynode' %}
+remove_so-pcap-import_heavynode:
+  file.absent:
+    - name: /usr/sbin/so-pcap-import
+
+remove_so-import-pcap_heavynode:
+  file.absent:
+    - name: /usr/sbin/so-import-pcap
+{% endif %}
+
+{% if not GLOBALS.is_manager%}
+# prior to 2.4.50 these scripts were in common/tools/sbin on the manager because of soup and distributed to non managers
+# these two states remove the scripts from non manager nodes
+remove_soup:
+  file.absent:
+    - name: /usr/sbin/soup
+
+remove_so-firewall:
+  file.absent:
+    - name: /usr/sbin/so-firewall
+{% endif %}
 
 so-status_script:
   file.managed:
@@ -166,6 +202,7 @@ sostatus_log:
   file.managed:
     - name: /opt/so/log/sostatus/status.log
     - mode: 644
+    - replace: False
 
 # Install sostatus check cron. This is used to populate Grid.
 so-status_check_cron:
@@ -178,6 +215,14 @@ so-status_check_cron:
     - daymonth: '*'
     - month: '*'
     - dayweek: '*'
+
+# This cronjob/script runs a check if the node needs restarted, but should be used for future status checks as well
+common_status_check_cron:
+  cron.present:
+    - name: '/usr/sbin/so-common-status-check > /dev/null 2>&1'
+    - identifier: common_status_check
+    - user: root
+    - minute: '*/10'
 
 remove_post_setup_cron:
   cron.absent:

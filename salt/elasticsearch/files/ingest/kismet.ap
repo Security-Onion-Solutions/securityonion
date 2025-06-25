@@ -1,0 +1,50 @@
+{
+  "processors": [
+    {
+      "rename": {
+        "field": "message2.dot11_device.dot11_device_last_beaconed_ssid_record.dot11_advertisedssid_cloaked",
+        "target_field": "network.wireless.ssid_cloaked",
+        "if": "ctx?.message2?.dot11_device?.dot11_device_last_beaconed_ssid_record?.dot11_advertisedssid_cloaked != null"
+      }
+    },
+    {
+      "rename": {
+        "field": "message2.dot11_device.dot11_device_last_beaconed_ssid_record.dot11_advertisedssid_ssid",
+        "target_field": "network.wireless.ssid",
+        "if": "ctx?.message2?.dot11_device?.dot11_device_last_beaconed_ssid_record?.dot11_advertisedssid_ssid != null"
+      }
+    },
+    {
+      "set": {
+        "field": "network.wireless.ssid",
+        "value": "Hidden",
+        "if": "ctx?.network?.wireless?.ssid_cloaked != null && ctx?.network?.wireless?.ssid_cloaked == 1"
+      }
+    },
+    {
+      "rename": {
+        "field": "message2.dot11_device.dot11_device_last_beaconed_ssid_record.dot11_advertisedssid_dot11e_channel_utilization_perc",
+        "target_field": "network.wireless.channel_utilization",
+        "if": "ctx?.message2?.dot11_device?.dot11_device_last_beaconed_ssid_record?.dot11_advertisedssid_dot11e_channel_utilization_perc != null"
+      }
+    },
+    {
+      "rename": {
+        "field": "message2.dot11_device.dot11_device_last_bssid",
+        "target_field": "network.wireless.bssid"
+      }
+    },
+    {
+      "foreach": {
+        "field": "message2.dot11_device.dot11_device_associated_client_map",
+        "processor": {
+          "append": {
+            "field": "network.wireless.associated_clients",
+            "value": "{{_ingest._key}}"
+          }
+        },
+        "if": "ctx?.message2?.dot11_device?.dot11_device_associated_client_map != null"
+      }
+    }
+  ]
+}

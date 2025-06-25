@@ -1,0 +1,33 @@
+#!/bin/bash
+#
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+# Set the default output destination to stdout
+output_dest="/dev/stdout"
+
+# If the "cron" flag is passed, change the output destination to the log file
+if [ "$1" = "cron" ]; then
+    output_dest="/opt/so/log/soc/detections_runtime-status_sigma.log"
+fi
+
+# Run the query and output based on the output_dest value
+/sbin/so-elasticsearch-query '*:elastalert_error*/_search' -d '{"query":{"range":{"@timestamp":{"gte":"now-11m","lte":"now"}}},"size": 50}' | \
+jq --compact-output '.hits.hits[] | {
+      _timestamp: ._source["@timestamp"], 
+      "rule.name": ._source.data.rule, 
+      error_type: "runtime_status",
+      error_message: ._source.message,
+      detection_type: "sigma",
+      event_module: "soc",
+      event_dataset: "soc.detections",
+      error_analysis: (
+        if ._source.message | contains("Unknown column [winlog.channel]") then "Target logsource never seen" 
+        elif ._source.message | contains("parsing_exception") then "Syntax Error" 
+        else "Unknown"
+        end
+      )
+    }' >> $output_dest
+

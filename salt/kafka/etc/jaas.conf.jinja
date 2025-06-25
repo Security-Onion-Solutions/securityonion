@@ -1,0 +1,16 @@
+{% set KAFKA_EXTERNAL_USERS = salt['pillar.get']('kafka:config:external_access:remote_users') -%}
+
+{%- set valid_users = [] -%}
+
+{%- for item, user in KAFKA_EXTERNAL_USERS.items() -%}
+{%   if 'password' in user and user.password is not none and user.password.strip() != "" -%}
+{%     do valid_users.append('user_' ~ user.username ~ '="' ~ user.password ~ '"') -%}
+{%   endif -%}
+{%- endfor -%}
+
+KafkaServer {
+    org.apache.kafka.common.security.plain.PlainLoginModule required
+    {% for user_entry in valid_users -%}
+    {{ user_entry }}{{ ";" if loop.last }}
+    {% endfor %}
+};

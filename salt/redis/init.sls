@@ -4,9 +4,10 @@
 # Elastic License 2.0.
 
 {% from 'redis/map.jinja' import REDISMERGED %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 
 include:
-{% if REDISMERGED.enabled %}
+{% if GLOBALS.pipeline == "REDIS" and REDISMERGED.enabled %}
   - redis.enabled
 {% else %}
   - redis.disabled
