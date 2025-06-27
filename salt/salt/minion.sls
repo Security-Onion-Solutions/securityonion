@@ -48,13 +48,15 @@ install_salt_minion:
 {% endif %}
 
 {% if INSTALLEDSALTVERSION|string == SALTVERSION|string %}
-
+# only hold the package if it is already installed
 hold_salt_packages:
   pkg.held:
     - pkgs:
-{% for package in SALTPACKAGES %}
+{%   for package in SALTPACKAGES %}
+{%     if salt['pkg.version'](package) %}
       - {{ package }}: {{SALTVERSION}}-0.*
-{% endfor %}
+{%     endif %}
+{%   endfor %}
 
 remove_error_log_level_logfile:
   file.line:

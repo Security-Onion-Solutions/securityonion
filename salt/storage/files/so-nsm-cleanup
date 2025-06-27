@@ -1,0 +1,256 @@
+#!/bin/bash
+
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+# Usage:
+#     so-nsm-cleanup
+#
+# Options:
+#     None - script automatically detects and cleans NVMe devices
+#
+# Examples:
+#     1. Clean NVMe devices and LVM configuration:
+#         ```bash
+#         sudo so-nsm-cleanup
+#         ```
+#
+# Notes:
+#     - Requires root privileges
+#     - CAUTION: This script will destroy all data on NVMe devices
+#     - Removes:
+#         * /nsm mount point
+#         * LVM configuration
+#         * Partitions and signatures
+#     - Safe to run multiple times
+#
+# Description:
+#     This script cleans up NVMe devices and LVM configuration to prepare
+#     for testing so-nsm-mount. It performs these steps:
+#
+#     1. Safety Checks:
+#        - Verifies root privileges
+#        - Detects NVMe devices
+#        - Warns about data loss
+#
+#     2. Cleanup Operations:
+#        - Unmounts and removes /nsm
+#        - Removes LVM configuration
+#        - Cleans partitions and signatures
+#        - Zeros out partition tables
+#
+# Exit Codes:
+#     0: Success - cleanup completed
+#     1: Error conditions:
+#        - Must be run as root
+#        - No NVMe devices found
+#        - Cleanup operation failed
+#
+# Logging:
+#     - All operations logged to both console and /opt/so/log/so-nsm-cleanup.log
+
+set -e
+
+LOG_FILE="/opt/so/log/so-nsm-cleanup.log"
+MOUNT_POINT="/nsm"
+VG_NAME="system"
+LV_NAME="nsm"
+
+# Function to log messages
+log() {
+    local msg="$(date '+%Y-%m-%d %H:%M:%S') $1"
+    echo "$msg" | tee -a "$LOG_FILE"
+}
+
+# Function to log command output
+log_cmd() {
+    local cmd="$1"
+    local output
+    output=$($cmd 2>&1)
+    if [ -n "$output" ]; then
+        log "$2:"
+        echo "$output" | while IFS= read -r line; do
+            log "  $line"
+        done
+    fi
+}
+
+# Function to check if running as root
+check_root() {
+    if [ "$EUID" -ne 0 ]; then
+        log "Error: Failed to execute - script must be run as root"
+        exit 1
+    fi
+}
+
+# Function to detect NVMe devices
+detect_nvme_devices() {
+    local -a devices=()
+    
+    {
+        log "----------------------------------------"
+        log "Starting NVMe device detection"
+        log "----------------------------------------"
+        
+        # Get list of NVMe devices
+        while read -r dev; do
+            if [[ -b "$dev" ]]; then
+                devices+=("$dev")
+            fi
+        done < <(find /dev -name 'nvme*n1' 2>/dev/null)
+        
+        if [ ${#devices[@]} -eq 0 ]; then
+            log "Error: No NVMe devices found"
+            log "----------------------------------------"
+            exit 1
+        fi
+        
+        log "Found ${#devices[@]} NVMe device(s):"
+        for dev in "${devices[@]}"; do
+            local size=$(lsblk -dbn -o SIZE "$dev" 2>/dev/null | numfmt --to=iec)
+            log "  - $dev ($size)"
+        done
+        log "----------------------------------------"
+    } >&2
+    
+    # Only output device paths to stdout
+    printf '%s\n' "${devices[@]}"
+}
+
+# Function to cleanup mount point
+cleanup_mount() {
+    log "Cleaning up mount point $MOUNT_POINT"
+    
+    if mountpoint -q "$MOUNT_POINT" 2>/dev/null; then
+        log "  Unmounting $MOUNT_POINT"
+        if ! umount "$MOUNT_POINT" 2>/dev/null; then
+            log "  WARNING: Failed to unmount $MOUNT_POINT"
+            return 1
+        fi
+        log "  Successfully unmounted"
+    else
+        log "  Not mounted - skipping unmount"
+    fi
+    
+    if [[ -d "$MOUNT_POINT" ]]; then
+        log "  Removing directory"
+        rm -rf "$MOUNT_POINT"
+        log "  Directory removed"
+    fi
+    
+    return 0
+}
+
+# Function to cleanup LVM
+cleanup_lvm() {
+    log "Cleaning up LVM configuration"
+    
+    # Remove logical volume if it exists
+    if lvs "$VG_NAME/$LV_NAME" &>/dev/null; then
+        log "  Removing logical volume $VG_NAME/$LV_NAME"
+        if ! lvremove -f "$VG_NAME/$LV_NAME" 2>/dev/null; then
+            log "  WARNING: Failed to remove logical volume"
+        else
+            log "  Logical volume removed"
+        fi
+    fi
+    
+    # Remove volume group if it exists
+    if vgs "$VG_NAME" &>/dev/null; then
+        log "  Removing volume group $VG_NAME"
+        if ! vgremove -f "$VG_NAME" 2>/dev/null; then
+            log "  WARNING: Failed to remove volume group"
+        else
+            log "  Volume group removed"
+        fi
+    fi
+}
+
+# Function to cleanup a device
+cleanup_device() {
+    local device=$1
+    
+    if [[ ! -b "$device" ]]; then
+        log "ERROR: Invalid device path: $device"
+        return 1
+    fi
+    
+    local size=$(lsblk -dbn -o SIZE "$device" 2>/dev/null | numfmt --to=iec)
+    log "Processing device: $device ($size)"
+    
+    # Remove physical volume if it exists
+    if pvs "$device" &>/dev/null; then
+        log "  Removing physical volume"
+        if ! pvremove -ff -y "$device" 2>/dev/null; then
+            log "  WARNING: Failed to remove physical volume"
+        else
+            log "  Physical volume removed"
+        fi
+    fi
+    
+    # Clean all signatures and partitions
+    log "  Cleaning signatures and partitions"
+    if ! wipefs -a "$device" 2>/dev/null; then
+        log "  WARNING: Failed to clean signatures"
+    else
+        log "  Signatures cleaned"
+    fi
+    
+    # Zero out partition table
+    log "  Zeroing partition table"
+    if ! dd if=/dev/zero of="$device" bs=1M count=10 status=none; then
+        log "  WARNING: Failed to zero partition table"
+    else
+        log "  Partition table zeroed"
+    fi
+    
+    log "  Device cleanup completed"
+}
+
+# Main function
+main() {
+    check_root
+    
+    log "Starting NVMe device cleanup"
+    log "WARNING: This will destroy all data on NVMe devices!"
+    log ""
+    
+    # Log initial system state
+    log "Initial system state:"
+    log_cmd "lsblk" "Block devices"
+    log_cmd "pvs" "Physical volumes"
+    log_cmd "vgs" "Volume groups"
+    log_cmd "lvs" "Logical volumes"
+    log ""
+    
+    # Clean up mount point
+    cleanup_mount
+    
+    # Clean up LVM configuration
+    cleanup_lvm
+    
+    # Detect and clean up devices
+    local -a devices=()
+    mapfile -t devices < <(detect_nvme_devices)
+    
+    log "Starting device cleanup"
+    for device in "${devices[@]}"; do
+        cleanup_device "$device"
+    done
+    
+    # Log final system state
+    log ""
+    log "Final system state:"
+    log_cmd "lsblk" "Block devices"
+    log_cmd "pvs" "Physical volumes"
+    log_cmd "vgs" "Volume groups"
+    log_cmd "lvs" "Logical volumes"
+    
+    log ""
+    log "Cleanup completed successfully"
+}
+
+# Run main function
+main "$@"

@@ -1,0 +1,228 @@
+{# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+   or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+   https://securityonion.net/license; you may not use this file except in compliance with the
+   Elastic License 2.0. 
+   
+   Note: Per the Elastic License 2.0, the second limitation states:
+
+    "You may not move, change, disable, or circumvent the license key functionality
+     in the software, and you may not remove or obscure any functionality in the
+     software that is protected by the license key." #}
+
+{%- if 'vrt' in salt['pillar.get']('features', []) -%}
+
+{%- import_yaml 'soc/dyanno/hypervisor/hypervisor.yaml' as ANNOTATION -%}
+{%- from 'hypervisor/map.jinja' import HYPERVISORS -%}
+{%- from 'soc/dyanno/hypervisor/map.jinja' import PROCESS_STEPS -%}
+
+{%- set TEMPLATE = ANNOTATION.hypervisor.hosts.pop('defaultHost') -%}
+
+{%- macro update_description(description, cpu_free, mem_free, disk_free, copper_free, sfp_free, vm_list, cpu_total, mem_total, disk_total, copper_total, sfp_total) -%}
+#### Resource Summary
+|           | CPU Cores | Memory (GB) | Disk        | Copper      | SFP         |
+|-----------|-----------|-------------|-------------|-------------|-------------|
+| Available | {{ cpu_free }}      | {{ mem_free }}        | {{ disk_free | replace('\n', ',') if disk_free else 'None' }} | {{ copper_free | replace('\n', ',') if copper_free else 'None' }} | {{ sfp_free | replace('\n', ',') if sfp_free else 'None' }} |
+| Total     | {{ cpu_total }}      | {{ mem_total }}        | {{ disk_total | replace('\n', ',') }} | {{ copper_total | replace('\n', ',') }} | {{ sfp_total | replace('\n', ',') }} |
+
+{%- if baseDomainStatus == 'Initialized' %}
+{%-   if vm_list %}
+#### Virtual Machines
+Status values: {% for step in PROCESS_STEPS %}{{ step }}{% if not loop.last %}, {% endif %}{% endfor %}. "Last Updated" shows when status changed. After "Highstate Initiated", only "Destroyed Instance" updates the timestamp.
+
+| Name               | Status             | CPU Cores | Memory (GB)| Disk | Copper | SFP  | Last Updated        |
+|--------------------|--------------------|-----------|------------|------|--------|------|---------------------|
+{%-     for hostname, vm_data in vm_list.items() %}
+{%-       set vm_status = vm_data.get('status', {}).get('status', 'Unknown') %}
+{%-       set is_destroyed = vm_status == 'Destroyed Instance' %}
+{%-       if is_destroyed %}
+| {{ hostname }} | {{ vm_status }} | - | - | - | - | - | {{ vm_data.get('status', {}).get('timestamp', 'Never') | replace('T', ' ') | regex_replace('\\.[0-9]+', '') }} |
+{%-       else %}
+| {{ hostname }} | {{ vm_status }} | {{ vm_data.get('config', {}).get('cpu', 'N/A') }} | {{ vm_data.get('config', {}).get('memory', 'N/A') }} | {{ vm_data.get('config', {}).get('disk', []) | join(',') if vm_data.get('config', {}).get('disk') else '-' }} | {{ vm_data.get('config', {}).get('copper', []) | join(',') if vm_data.get('config', {}).get('copper') else '-' }} | {{ vm_data.get('config', {}).get('sfp', []) | join(',') if vm_data.get('config', {}).get('sfp') else '-' }} | {{ vm_data.get('status', {}).get('timestamp', 'Never') | replace('T', ' ') | regex_replace('\\.[0-9]+', '') }} |
+{%-       endif %}
+{%-     endfor %}
+{%-   else %}
+#### Virtual Machines
+Status values: {% for step in PROCESS_STEPS %}{{ step }}{% if not loop.last %}, {% endif %}{% endfor %}. "Last Updated" shows when status changed. After "Highstate Initiated", only "Destroyed Instance" updates the timestamp.
+
+No Virtual Machines Found
+{%-   endif %}
+{%- else %}
+#### WARNING
+
+Base domain has not been initialized.
+{%- endif %}
+{%- endmacro -%}
+
+{%- macro update_label(label, total, free) -%}
+{{- label | replace('TOTAL', total | string)
+         | replace('FREE', free | string) -}}
+{%- endmacro -%}
+
+{%- macro get_available_pci(hw_config, device_type, used_indices) -%}
+{%- set available = [] -%}
+{%- for idx in hw_config.get(device_type, {}).keys() -%}
+  {%- if idx | string not in used_indices -%}
+    {%- do available.append(idx) -%}
+  {%- endif -%}
+{%- endfor -%}
+{{- available | join(',') -}}
+{%- endmacro -%}
+
+{%- macro update_resource_field(field, free_value, total_value, unit_label) -%}
+{%-   set resource_regex = '' -%}
+{%-   if free_value < 10 -%}
+{%-     set resource_regex = '^[1-' ~ free_value ~ ']$' -%}
+{%-   elif free_value < 100 -%}
+{%-     set tens_digit = free_value // 10 -%}
+{%-     set ones_digit = free_value % 10 -%}
+{%-     if ones_digit == 0 -%}
+{%-       set resource_regex = '^([1-9]|[1-' ~ (tens_digit-1) ~ '][0-9]|' ~ tens_digit ~ '0)$' -%}
+{%-     else -%}
+{%-       set resource_regex = '^([1-9]|[1-' ~ (tens_digit-1) ~ '][0-9]|' ~ tens_digit ~ '[0-' ~ ones_digit ~ '])$' -%}
+{%-     endif -%}
+{%-   elif free_value < 1000 -%}
+{%-     set hundreds_digit = free_value // 100 -%}
+{%-     set tens_digit = (free_value % 100) // 10 -%}
+{%-     set ones_digit = free_value % 10 -%}
+{%-     if hundreds_digit == 1 -%}
+{%-       if tens_digit == 0 and ones_digit == 0 -%}
+{%-         set resource_regex = '^([1-9]|[1-9][0-9]|100)$' -%}
+{%-       elif tens_digit == 0 -%}
+{%-         set resource_regex = '^([1-9]|[1-9][0-9]|10[0-' ~ ones_digit ~ '])$' -%}
+{%-       elif ones_digit == 0 -%}
+{%-         set resource_regex = '^([1-9]|[1-9][0-9]|10[0-9]|1[1-' ~ tens_digit ~ ']0)$' -%}
+{%-       else -%}
+{%-         set resource_regex = '^([1-9]|[1-9][0-9]|10[0-9]|1[1-' ~ (tens_digit-1) ~ '][0-9]|1' ~ tens_digit ~ '[0-' ~ ones_digit ~ '])$' -%}
+{%-       endif -%}
+{%-     else -%}
+{%-       if tens_digit == 0 and ones_digit == 0 -%}
+{%-         set resource_regex = '^([1-9]|[1-9][0-9]|[1-9][0-9][0-9]|[1-' ~ (hundreds_digit-1) ~ '][0-9][0-9]|' ~ hundreds_digit ~ '00)$' -%}
+{%-       elif ones_digit == 0 -%}
+{%-         set resource_regex = '^([1-9]|[1-9][0-9]|[1-9][0-9][0-9]|[1-' ~ (hundreds_digit-1) ~ '][0-9][0-9]|' ~ hundreds_digit ~ '[0-' ~ tens_digit ~ ']0)$' -%}
+{%-       else -%}
+{%-         set resource_regex = '^([1-9]|[1-9][0-9]|[1-9][0-9][0-9]|[1-' ~ (hundreds_digit-1) ~ '][0-9][0-9]|' ~ hundreds_digit ~ '[0-' ~ (tens_digit-1) ~ '][0-9]|' ~ hundreds_digit ~ tens_digit ~ '[0-' ~ ones_digit ~ '])$' -%}
+{%-       endif -%}
+{%-     endif -%}
+{%-   endif -%}
+{%-   do field.update({
+        'label': field.label | replace('FREE', free_value | string) | replace('TOTAL', total_value | string),
+        'regex': resource_regex,
+        'regexFailureMessage': 'Enter a value not exceeding ' ~ free_value | string ~ ' ' ~ unit_label
+      }) -%}
+{%- endmacro -%}
+
+{%- for role in HYPERVISORS -%}
+{%-   for hypervisor in HYPERVISORS[role].keys() -%}
+{%-     set hw_config = HYPERVISORS[role][hypervisor].hardware -%}
+{%-     set vms = HYPERVISORS[role][hypervisor].vms -%}
+
+{# Calculate used CPU and memory #}
+{%-     set used_cpu = 0 -%}
+{%-     set used_memory = 0 -%}
+{%-     set ns = namespace(used_cpu=0, used_memory=0) -%}
+{%-     for hostname, vm_data in vms.items() -%}
+{%-       set vm_status = vm_data.get('status', {}).get('status', '') -%}
+{%-       if vm_status != 'Destroyed Instance' -%}
+{%-         set vm_config = vm_data.config -%}
+{%-         set ns.used_cpu = ns.used_cpu + vm_config.get('cpu', 0) | int -%}
+{%-         set ns.used_memory = ns.used_memory + vm_config.get('memory', 0) | int -%}
+{%-       endif -%}
+{%-     endfor -%}
+
+{# Calculate available resources #}
+{%-     set cpu_free = hw_config.cpu - ns.used_cpu -%}
+{%-     set mem_free = hw_config.memory - ns.used_memory -%}
+
+{# Get used PCI indices #}
+{%-     set used_disk = [] -%}
+{%-     set used_copper = [] -%}
+{%-     set used_sfp = [] -%}
+{%-     for hostname, vm in vms.items() -%}
+{%-       set vm_status = vm.get('status', {}).get('status', '') -%}
+{%-       if vm_status != 'Destroyed Instance' -%}
+{%-         set config = vm.get('config', {}) -%}
+{%-         do used_disk.extend(config.get('disk', [])) -%}
+{%-         do used_copper.extend(config.get('copper', [])) -%}
+{%-         do used_sfp.extend(config.get('sfp', [])) -%}
+{%-       endif -%}
+{%-     endfor -%}
+
+{# Get available PCI indices #}
+{%-     set disk_free = get_available_pci(hw_config, 'disk', used_disk) -%}
+{%-     set copper_free = get_available_pci(hw_config, 'copper', used_copper) -%}
+{%-     set sfp_free = get_available_pci(hw_config, 'sfp', used_sfp) -%}
+
+{# Get total resources #}
+{%-     set cpu_total = hw_config.cpu -%}
+{%-     set mem_total = hw_config.memory -%}
+{%-     set disk_total = hw_config.disk.keys() | join('\n') -%}
+{%-     set copper_total = hw_config.copper.keys() | join('\n') -%}
+{%-     set sfp_total = hw_config.sfp.keys() | join('\n') -%}
+
+{# Update field labels with total and free values #}
+{%-     set updated_template = TEMPLATE.copy() -%}
+{%-     set updated_elements = [] -%}
+{%-     for field in updated_template.uiElements -%}
+{%-       set updated_field = field.copy() -%}
+{%-       if field.field == 'cpu' -%}
+{%-         do update_resource_field(updated_field, cpu_free, cpu_total, 'cores') -%}
+{%-       elif field.field == 'memory' -%}
+{%-         do update_resource_field(updated_field, mem_free, mem_total, 'GB') -%}
+{%-       elif field.field == 'disk' -%}
+{%-         set disk_free_list = disk_free.split(',') if disk_free else [] -%}
+{%-         do updated_field.update({
+              'label': field.label | replace('FREE', disk_free) | replace('TOTAL', disk_total | replace('\n', ',')),
+              'options': disk_free_list
+            }) -%}
+{%-       elif field.field == 'copper' -%}
+{%-         set copper_free_list = copper_free.split(',') if copper_free else [] -%}
+{%-         do updated_field.update({
+              'label': field.label | replace('FREE', copper_free) | replace('TOTAL', copper_total | replace('\n', ',')),
+              'options': copper_free_list
+            }) -%}
+{%-       elif field.field == 'sfp' -%}
+{%-         set sfp_free_list = sfp_free.split(',') if sfp_free else [] -%}
+{%-         do updated_field.update({
+              'label': field.label | replace('FREE', sfp_free) | replace('TOTAL', sfp_total | replace('\n', ',')),
+              'options': sfp_free_list
+            }) -%}
+{%-       endif -%}
+{%-       do updated_elements.append(updated_field) -%}
+{%-     endfor -%}
+{%-     if baseDomainStatus == 'Initialized' %}
+{%-         do updated_template.update({'uiElements': updated_elements}) -%}
+{%-     else -%}
+{%-         do updated_template.pop('uiElements') -%}
+{%-     endif -%}
+{%-     do updated_template.update({
+        'title': hypervisor,
+        'description': update_description(
+          hypervisor,
+          cpu_free,
+          mem_free,
+          disk_free,
+          copper_free,
+          sfp_free,
+          vms,
+          cpu_total,
+          mem_total,
+          disk_total,
+          copper_total,
+          sfp_total
+        )
+      }) -%}
+{%-     do ANNOTATION.hypervisor.hosts.update({hypervisor ~ 'VMs': updated_template}) -%}
+{%-   endfor -%}
+{%- endfor -%}
+
+{{- ANNOTATION | yaml(False) -}}
+
+{%- else -%}
+
+{%- do salt.log.error(
+  'Hypervisor nodes are a feature supported only for customers with a valid license.'
+  'Contact Security Onion Solutions, LLC via our website at https://securityonionsolutions.com'
+  'for more information about purchasing a license to enable this feature.'
+) -%}
+
+{%- endif -%}
