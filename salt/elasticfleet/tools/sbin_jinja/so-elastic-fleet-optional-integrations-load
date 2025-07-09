@@ -156,9 +156,11 @@ if [[ -f $STATE_FILE_SUCCESS  ]]; then
         # Write out file for generating index/component/ilm templates
         latest_installed_package_list=$(elastic_fleet_installed_packages)
         echo $latest_installed_package_list | jq '[.items[] | {name: .name, es_index_patterns: .dataStreams}]' > $PACKAGE_COMPONENTS
-        # Refresh installed component template list
-        latest_component_templates_list=$(so-elasticsearch-query _component_template | jq '.component_templates[] | .name' | jq -s '.')
-        echo $latest_component_templates_list > $COMPONENT_TEMPLATES
+        if retry 3 1 "so-elasticsearch-query / --fail --output /dev/null"; then
+            # Refresh installed component template list
+            latest_component_templates_list=$(so-elasticsearch-query _component_template | jq '.component_templates[] | .name' | jq -s '.')
+            echo $latest_component_templates_list > $COMPONENT_TEMPLATES
+        fi
 
     else
         # This is the installation of add-on integrations and upgrade of existing integrations. Exiting without error, next highstate will attempt to re-run.
