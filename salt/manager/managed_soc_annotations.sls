@@ -5,7 +5,7 @@
 
 {# Managed elasticsearch/soc_elasticsearch.yaml file for adding integration configuration items to UI #}
 {% set managed_integrations = salt['pillar.get']('elasticsearch:managed_integrations', []) %}
-{% if managed_integrations and salt['file.file_exists']('/opt/so/state/esfleet_package_components.json') %}
+{% if managed_integrations and salt['file.file_exists']('/opt/so/state/esfleet_package_components.json') and salt['file.file_exists']('/opt/so/state/esfleet_component_templates.json') %}
 {%   from 'elasticfleet/integration-defaults.map.jinja' import ADDON_INTEGRATION_DEFAULTS %}
 {%   set addon_integration_keys = ADDON_INTEGRATION_DEFAULTS.keys() %}
 {%   set matched_integration_names = [] %}
