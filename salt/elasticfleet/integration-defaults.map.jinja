@@ -4,7 +4,7 @@
 
 
 {% import_json '/opt/so/state/esfleet_package_components.json' as ADDON_PACKAGE_COMPONENTS %}
-{% import_json '/opt/so/state/esfleet_package_components.json' as INSTALLED_COMPONENT_TEMPLATES %}
+{% import_json '/opt/so/state/esfleet_component_templates.json' as INSTALLED_COMPONENT_TEMPLATES %}
 {% import_yaml 'elasticfleet/defaults.yaml' as ELASTICFLEETDEFAULTS %}
 
 {% set CORE_ESFLEET_PACKAGES = ELASTICFLEETDEFAULTS.get('elasticfleet', {}).get('packages', {}) %}
@@ -83,7 +83,8 @@
 {#           pillar overrides/merge expects the key names to follow the naming in elasticsearch/defaults.yaml eg. so-logs-1password_x_item_usages . The _x_ is replaced later on in elasticsearch/template.map.jinja #}
 {%           set integration_key = "so-" ~ integration_type ~ component_name_x %}
 
-{%         if ".generic" in component_name and component_name not in INSTALLED_COMPONENT_TEMPLATES %}
+{#         if its a .generic template make sure that a .generic@package for the integration exists. Else default to logs-filestream.generic@package #}
+{%         if ".generic" in component_name and integration_type ~ component_name ~ "@package" not in INSTALLED_COMPONENT_TEMPLATES %}
 {#           these generic templates by default are directed to index_pattern of 'logs-generic-*', overwrite that here to point to eg gcp_pubsub.generic-* #}
 {%           set index_pattern = integration_type ~ component_name ~ "-*" %}
 {#           includes use of .generic component template, but it doesn't exist in installed component templates. Redirect it to filestream.generic@package #}
