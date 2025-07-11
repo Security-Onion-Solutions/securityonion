@@ -148,8 +148,22 @@ if [[ -f $STATE_FILE_SUCCESS  ]]; then
         done <<< "$(jq -c '.packages[]' "$INSTALLED_PACKAGE_LIST")"
 
         if [ "$PENDING_UPDATE" = true ]; then
-            # Run bulk install of packages
-            elastic_fleet_bulk_package_install $BULK_INSTALL_PACKAGE_LIST > $BULK_INSTALL_OUTPUT
+            # Run chunked install of packages
+            echo "" > $BULK_INSTALL_OUTPUT
+            pkg_group=1
+            pkg_filename="${BULK_INSTALL_PACKAGE_LIST%.json}"
+
+            jq -c '.packages | _nwise(25)' $BULK_INSTALL_PACKAGE_LIST | while read -r line; do
+                echo "$line" | jq '{ "packages": . }' > "${pkg_filename}_${pkg_group}.json"
+                pkg_group=$((pkg_group + 1))
+            done
+
+            for file in "${pkg_filename}_"*.json; do
+                [ -e "$file" ] || continue
+                elastic_fleet_bulk_package_install $file >> $BULK_INSTALL_OUTPUT
+            done
+            # cleanup any temp files for chunked package install
+            rm -f ${pkg_filename}_*.json $BULK_INSTALL_PACKAGE_LIST
         else
             echo "Elastic integrations don't appear to need installation/updating..."
         fi
