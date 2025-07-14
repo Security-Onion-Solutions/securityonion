@@ -2166,6 +2166,9 @@ soc:
             - name: Firewall - pfSense/OPNsense Auth
               description: pfSense/OPNsense firewall authentication logs
               query: 'observer.type:firewall AND event.category:authentication | groupby user.name | groupby -sankey user.name source.ip | groupby source.ip | table soc_timestamp user.name source.ip message'
+            - name: Firewall - iptables
+              description: All network traffic logged by Elastic integration for iptables
+              query: 'event.module:iptables AND event.type:connection | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby -sankey destination.ip destination.port | groupby destination.port'
             - name: Firewall - UniFi Firewall Overview
               description: All network traffic logged by UniFi firewall
               query: 'event.module:iptables AND event.type:connection | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby -sankey destination.ip destination.port | groupby destination.port'
@@ -2175,8 +2178,11 @@ soc:
             - name: Firewall - UniFi Firewall Allows
               description: Network traffic allowed by UniFi firewall
               query: 'event.module:iptables AND event.type:connection AND NOT (message:iptables-dropped OR message:block) | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby -sankey destination.ip destination.port | groupby destination.port'
-            - name: Firewall - UniFi Auth
-              description: UniFi authentication logs
+            - name: Firewall - UniFi System
+              description: UniFi system logs
+              query: 'event.module:cef | groupby cef.device.event_class_id | groupby -sankey cef.device.event_class_id cef.device.vendor | groupby cef.device.vendor | groupby cef.device.product | groupby cef.device.version | groupby log.source.address'
+            - name: CEF
+              description: Logs handled by the Elastic integration for CEF
               query: 'event.module:cef | groupby cef.device.event_class_id | groupby -sankey cef.device.event_class_id cef.device.vendor | groupby cef.device.vendor | groupby cef.device.product | groupby cef.device.version | groupby log.source.address'
             - name: Kismet - WiFi Devices
               description: WiFi devices seen by Kismet sensors
@@ -2184,9 +2190,6 @@ soc:
             - name: SOC Detections - Runtime Status
               description: Runtime Status of Detections
               query: 'event.dataset:soc.detections | groupby  soc.detection_type soc.error_type | groupby soc.error_analysis | groupby soc.rule.name | groupby soc.error_message'
-
-
-
         job:
         alerts:
           advanced: false
