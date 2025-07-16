@@ -1336,6 +1336,21 @@ soc:
         - soc.fields.statusCode
         - event.action
         - soc.fields.error
+      ':iptables:':
+        - soc_timestamp
+        - source.ip
+        - source.port
+        - destination.ip
+        - destination.port
+        - message
+      ':cef:':
+        - soc_timestamp
+        - cef.device.event_class_id
+        - cef.device.vendor
+        - cef.device.product
+        - cef.device.version
+        - log.source.address
+        - message
     server:
       bindAddress: 0.0.0.0:9822
       baseUrl: /
@@ -1910,7 +1925,7 @@ soc:
               query: 'event.dataset:kratos.audit AND msg:*authenticated* | groupby http_request.headers.x-real-ip | groupby -sankey http_request.headers.x-real-ip user.name | groupby user.name | groupby http_request.headers.user-agent'
             - name: SOC Login Failures
               description: SOC (Security Onion Console) login failures
-              query: 'event.dataset:kratos.audit AND msg:*Encountered*self-service*login*error* | groupby http_request.headers.x-real-ip | groupby -sankey http_request.headers.x-real-ip http_request.headers.user-agent | groupby http_request.headers.user-agent'
+              query: 'event.dataset:kratos.audit AND msg:*Encountered*self-service*login*error* | groupby user.name | groupby http_request.headers.x-real-ip | groupby -sankey http_request.headers.x-real-ip http_request.headers.user-agent | groupby http_request.headers.user-agent'
             - name: Alerts
               description: Overview of all alerts
               query: 'tags:alert | groupby event.module* | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby rule.name | groupby event.severity | groupby destination_geo.organization_name'
@@ -2127,15 +2142,6 @@ soc:
             - name: ICS S7
               description: S7 (Siemens) network metadata
               query: 'tags:s7* | groupby event.dataset | groupby -sankey event.dataset source.ip | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port'
-            - name: NetFlow
-              description: NetFlow records
-              query: 'event.module:netflow | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby network.type | groupby network.transport | groupby network.direction | groupby netflow.type | groupby netflow.exporter.version  | groupby observer.ip | groupby source.as.organization.name | groupby source.geo.country_name | groupby destination.as.organization.name | groupby destination.geo.country_name'
-            - name: Firewall
-              description: Firewall logs
-              query: 'observer.type:firewall | groupby event.action | groupby -sankey event.action observer.ingress.interface.name | groupby observer.ingress.interface.name | groupby network.type | groupby network.transport | groupby source.ip | groupby destination.ip | groupby destination.port'
-            - name: Firewall Auth
-              description: Firewall authentication logs
-              query: 'observer.type:firewall AND event.category:authentication | groupby user.name | groupby -sankey user.name source.ip | groupby source.ip | table soc_timestamp user.name source.ip message'
             - name: VLAN
               description: VLAN (Virtual Local Area Network) tagged logs
               query: '* AND _exists_:network.vlan.id | groupby network.vlan.id | groupby -sankey network.vlan.id source.ip | groupby source.ip | groupby destination.ip | groupby destination.port | groupby event.dataset | groupby event.module | groupby observer.name | groupby source.geo.country_name | groupby destination.geo.country_name'
@@ -2151,15 +2157,39 @@ soc:
             - name: GeoIP - Source Organizations
               description: GeoIP tagged logs visualized by source organizations
               query: '* AND _exists_:source_geo.organization_name | groupby source_geo.organization_name | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby source.geo.country_name | groupby event.dataset | groupby event.module'
+            - name: NetFlow
+              description: NetFlow records
+              query: 'event.module:netflow | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby network.type | groupby network.transport | groupby network.direction | groupby netflow.type | groupby netflow.exporter.version  | groupby observer.ip | groupby source.as.organization.name | groupby source.geo.country_name | groupby destination.as.organization.name | groupby destination.geo.country_name'
+            - name: Firewall - pfSense/OPNsense
+              description: pfSense/OPNsense firewall logs
+              query: 'observer.type:firewall | groupby event.action | groupby -sankey event.action observer.ingress.interface.name | groupby observer.ingress.interface.name | groupby network.type | groupby network.transport | groupby source.ip | groupby destination.ip | groupby destination.port'
+            - name: Firewall - pfSense/OPNsense Auth
+              description: pfSense/OPNsense firewall authentication logs
+              query: 'observer.type:firewall AND event.category:authentication | groupby user.name | groupby -sankey user.name source.ip | groupby source.ip | table soc_timestamp user.name source.ip message'
+            - name: Firewall - iptables
+              description: All network traffic logged by Elastic integration for iptables
+              query: 'event.module:iptables AND event.type:connection | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby -sankey destination.ip destination.port | groupby destination.port'
+            - name: Firewall - UniFi Firewall Overview
+              description: All network traffic logged by UniFi firewall
+              query: 'event.module:iptables AND event.type:connection | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby -sankey destination.ip destination.port | groupby destination.port'
+            - name: Firewall - UniFi Firewall Blocks
+              description: Network traffic blocked by UniFi firewall
+              query: 'event.module:iptables AND event.type:connection AND message:block | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby -sankey destination.ip destination.port | groupby destination.port'
+            - name: Firewall - UniFi Firewall Allows
+              description: Network traffic allowed by UniFi firewall
+              query: 'event.module:iptables AND event.type:connection AND NOT message:block | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby -sankey destination.ip destination.port | groupby destination.port'
+            - name: Firewall - UniFi System
+              description: UniFi system logs
+              query: 'event.module:cef | groupby cef.device.event_class_id | groupby -sankey cef.device.event_class_id cef.device.vendor | groupby cef.device.vendor | groupby cef.device.product | groupby cef.device.version | groupby log.source.address'
+            - name: CEF
+              description: Logs handled by the Elastic integration for CEF
+              query: 'event.module:cef | groupby cef.device.event_class_id | groupby -sankey cef.device.event_class_id cef.device.vendor | groupby cef.device.vendor | groupby cef.device.product | groupby cef.device.version | groupby log.source.address'
             - name: Kismet - WiFi Devices
               description: WiFi devices seen by Kismet sensors
               query: 'event.module: kismet | groupby network.wireless.ssid | groupby device.manufacturer | groupby -pie device.manufacturer | groupby event.dataset'
             - name: SOC Detections - Runtime Status
               description: Runtime Status of Detections
               query: 'event.dataset:soc.detections | groupby  soc.detection_type soc.error_type | groupby soc.error_analysis | groupby soc.rule.name | groupby soc.error_message'
-
-
-
         job:
         alerts:
           advanced: false
