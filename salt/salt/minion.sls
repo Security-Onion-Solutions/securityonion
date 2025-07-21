@@ -42,13 +42,9 @@ install_salt_minion:
     - name: /bin/sh -c '{{ UPGRADECOMMAND }}'
 
 # minion service is in failed state after upgrade. this command will start it after the state run for the upgrade completes
-start_minion:
+start_minion_post_upgrade:
   cmd.run:
-    - name: |
-        exec 0>&- # close stdin
-        exec 1>&- # close stdout
-        exec 2>&- # close stderr
-        nohup /bin/sh -c 'sleep 30; systemctl start salt-minion' &
+    - name: nohup /bin/sh -c 'sleep 30; systemctl start salt-minion' &
     - require:
       - cmd: install_salt_minion
     - watch:
