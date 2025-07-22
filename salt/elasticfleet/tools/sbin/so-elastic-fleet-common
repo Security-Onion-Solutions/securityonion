@@ -88,7 +88,13 @@ elastic_fleet_package_version_check() {
 
 elastic_fleet_package_latest_version_check() {
     PACKAGE=$1
-    curl -s -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X GET "localhost:5601/api/fleet/epm/packages/$PACKAGE" | jq -r '.item.latestVersion'
+    if output=$(curl -s -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X GET "localhost:5601/api/fleet/epm/packages/$PACKAGE" --fail); then
+        if version=$(jq -e -r '.item.latestVersion' <<< $output); then
+            echo "$version"
+        fi
+    else
+        echo "Error: Failed to get latest version for $PACKAGE"
+    fi
 }
 
 elastic_fleet_package_install() {
@@ -149,9 +155,13 @@ elastic_fleet_integration_policy_package_name() {
 elastic_fleet_integration_policy_package_version() {
     AGENT_POLICY=$1
     INTEGRATION=$2
-    curl -s -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X GET "localhost:5601/api/fleet/agent_policies/$AGENT_POLICY" | jq -r --arg INTEGRATION "$INTEGRATION" '.item.package_policies[] | select(.name==$INTEGRATION)| .package.version'
-    if [ $? -ne 0 ]; then
-        echo "Error: Failed to retrieve package version for '$INTEGRATION' in '$AGENT_POLICY'."
+
+    if output=$(curl -s -K /opt/so/conf/elasticsearch/curl.config -L -X GET "localhost:5601/api/fleet/agent_policies/$AGENT_POLICY" --fail); then
+        if version=$(jq -e -r --arg INTEGRATION "$INTEGRATION" '.item.package_policies[] | select(.name==$INTEGRATION)| .package.version' <<< $output); then
+            echo "$version"
+        fi
+    else
+        echo "Error: Failed to retrieve agent policy $AGENT_POLICY"
         exit 1
     fi
 }
