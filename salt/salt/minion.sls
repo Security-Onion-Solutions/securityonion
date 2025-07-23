@@ -58,12 +58,15 @@ start_minion_post_upgrade:
 {% endif %}
 
 {% if INSTALLEDSALTVERSION|string == SALTVERSION|string %}
-# only hold the package if it is already installed
-hold_salt_packages:
-  pkg.held:
-    - pkgs:
+
 {% for package in SALTPACKAGES %}
-      - {{ package }}: {{SALTVERSION}}-0.*
+# only hold the package if it is already installed
+{%   if salt['pkg.version'](package) %}
+hold_{{ package }}_package:
+  pkg.held:
+    - name: {{ package }}
+    - version: {{SALTVERSION}}-0.*
+{%   endif %}
 {% endfor %}
 
 remove_error_log_level_logfile:
