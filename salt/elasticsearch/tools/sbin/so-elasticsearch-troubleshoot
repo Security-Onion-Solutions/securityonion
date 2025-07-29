@@ -121,7 +121,7 @@ watermark_settings() {
     return 1
   fi
 
-  if ! disk_allocation_output=$(so-elasticsearch-query _cat/nodes?v\&h=name,ip,disk.used_percent,disk.avail,disk.total\&format=json --fail 2>/dev/null); then
+  if ! disk_allocation_output=$(so-elasticsearch-query _cat/nodes?v\&h=name,ip,disk.used_percent,disk.avail,disk.total,node.role\&format=json --fail 2>/dev/null); then
     log_title "ERROR" "Failed to retrieve disk allocation data from Elasticsearch"
     return 1
   fi
@@ -139,7 +139,8 @@ watermark_settings() {
   log_title "LOG" "Disk Usage Check"
   echo -e "${BOLD}LOW:${GREEN}$low${NC}${BOLD} HIGH:${YELLOW}${high}${NC}${BOLD} FLOOD:${RED}${flood}${NC}\n"
 
-  echo "$disk_allocation_output" | jq -r '.[] | "\(.name)|\(.["disk.used_percent"])"' | while IFS='|' read -r node_name disk_used; do
+  # Only show data nodes (d=data, h=hot, w=warm, c=cold, f=frozen, s=content)
+  echo "$disk_allocation_output" | jq -r '.[] | select(.["node.role"] | test("[dhwcfs]")) | "\(.name)|\(.["disk.used_percent"])"' | while IFS='|' read -r node_name disk_used; do
     disk_used_num=$(echo $disk_used | bc)
 
     if (( $(echo "$disk_used_num >= $flood_num" | bc -l) )); then
