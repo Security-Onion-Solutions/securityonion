@@ -16,10 +16,17 @@
 
 {%     if GLOBALS.is_manager %}
 
-qemu_ssh_client_config:
-  file.managed:
+root_ssh_config:
+  file.touch:
     - name: /root/.ssh/config
+
+qemu_ssh_client_config:
+  file.blockreplace:
+    - name: /root/.ssh/config
+    - marker_start: "# START of block managed by Salt - soqemussh config"
+    - marker_end: "# END of block managed by Salt - soqemussh config"
     - source: salt://libvirt/ssh/files/config
+    - prepend_if_not_found: True
 
 {%     endif %}
 
