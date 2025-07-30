@@ -1187,12 +1187,15 @@ get_minion_type() {
 }
 
 hypervisor_local_states() {
-	# these states need to run before the first highstate so that we dont deal with the salt-minion restarting
-	# and we need these setup prior to the highstate
-	if [ $is_hypervisor ] || [ $is_managerhype ]; then
-        salt-call state.apply libvirt.64962 --local --file-root=../salt/ -l info
-        salt-call state.apply libvirt.bridge --local --file-root=../salt/ -l info pillar='{"host": {"mainint": "enp1s0"}}'
-	fi
+        # these states need to run before the first highstate so that we dont deal with the salt-minion restarting
+        # and we need these setup prior to the highstate
+        info "Check if hypervisor or managerhype"
+        if [ $is_hypervisor ] || [ $is_managerhype ]; then
+                info "Running libvirt states for hypervisor"
+                logCmd "salt-call state.apply libvirt.64962 --local --file-root=../salt/ -l info"
+                info "Setting up bridge for $MNIC"
+                salt-call state.apply libvirt.bridge --local --file-root=../salt/ -l info pillar="{\"host\": {\"mainint\": \"$MNIC\"}}"
+        fi
 }
 
 install_cleanup() {

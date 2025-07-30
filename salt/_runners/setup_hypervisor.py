@@ -165,7 +165,7 @@ def _validate_image_checksum(path, expected_sha256):
     return True
 
 # Constants
-IMAGE_URL = "https://yum.oracle.com/templates/OracleLinux/OL9/u5/x86_64/OL9U5_x86_64-kvm-b253.qcow2"
+IMAGE_URL = "https://download.securityonion.net/file/securityonion/OL9U5_x86_64-kvm-b253.qcow2"
 IMAGE_SHA256 = "3b00bbbefc8e78dd28d9f538834fb9e2a03d5ccdc2cadf2ffd0036c0a8f02021"
 IMAGE_PATH = "/nsm/libvirt/boot/OL9U5_x86_64-kvm-b253.qcow2"
 MANAGER_HOSTNAME = socket.gethostname()

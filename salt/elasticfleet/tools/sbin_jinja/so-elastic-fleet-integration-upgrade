@@ -34,10 +34,18 @@ for AGENT_POLICY in $agent_policies; do
             if [[ " ${default_packages[@]} " =~ " $PACKAGE_NAME " ]]; then
             {%- endif %}
                 # Get currently installed version of package
-                PACKAGE_VERSION=$(elastic_fleet_integration_policy_package_version "$AGENT_POLICY" "$INTEGRATION")
-
-                # Get latest available version of package
-                AVAILABLE_VERSION=$(elastic_fleet_package_latest_version_check "$PACKAGE_NAME")
+                attempt=0
+                max_attempts=3
+                while [ $attempt -lt $max_attempts ]; do
+                    if PACKAGE_VERSION=$(elastic_fleet_integration_policy_package_version "$AGENT_POLICY" "$INTEGRATION") && AVAILABLE_VERSION=$(elastic_fleet_package_latest_version_check "$PACKAGE_NAME"); then
+                        break
+                    fi
+                    attempt=$((attempt + 1))
+                done
+                if [ $attempt -eq $max_attempts ]; then
+                    echo "Error: Failed getting $PACKAGE_VERSION or $AVAILABLE_VERSION"
+                    exit 1
+                fi
 
                 # Get integration ID
                 INTEGRATION_ID=$(elastic_fleet_integration_id "$AGENT_POLICY" "$INTEGRATION")

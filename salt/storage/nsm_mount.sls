@@ -23,7 +23,7 @@ storage_nsm_mount_logdir:
 storage_nsm_mount_script:
   file.managed:
     - name: /usr/sbin/so-nsm-mount
-    - source: salt://storage/files/so-nsm-mount
+    - source: salt://storage/tools/sbin/so-nsm-mount
     - mode: 755
     - user: root
     - group: root

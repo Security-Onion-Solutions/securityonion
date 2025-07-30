@@ -20,7 +20,7 @@ idstools_sbin:
   file.recurse:
     - name: /usr/sbin
     - source: salt://idstools/tools/sbin
-    - user: 934
+    - user: 939
     - group: 939
     - file_mode: 755
 
@@ -29,7 +29,7 @@ idstools_sbin:
 #  file.recurse:
 #    - name: /usr/sbin
 #    - source: salt://idstools/tools/sbin_jinja
-#    - user: 934
+#    - user: 939
 #    - group: 939 
 #    - file_mode: 755
 #    - template: jinja
@@ -38,7 +38,7 @@ idstools_so-rule-update:
   file.managed:
     - name: /usr/sbin/so-rule-update
     - source: salt://idstools/tools/sbin_jinja/so-rule-update
-    - user: 934
+    - user: 939
     - group: 939 
     - mode: 755
     - template: jinja

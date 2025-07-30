@@ -48,6 +48,7 @@ manage_userdata_sool9:
   file.managed:
     - name: /nsm/libvirt/images/sool9/user-data
     - source: salt://libvirt/images/sool9/user-data
+    - show_changes: False
 
 # Manage qcow2 image
 manage_qcow2_sool9:
