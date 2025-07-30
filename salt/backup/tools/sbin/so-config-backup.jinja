@@ -11,6 +11,10 @@ TODAY=$(date '+%Y_%m_%d')
 BACKUPDIR={{ DESTINATION }}
 BACKUPFILE="$BACKUPDIR/so-config-backup-$TODAY.tar"
 MAXBACKUPS=7
+EXCLUSIONS=(
+  "--exclude=/opt/so/saltstack/local/salt/elasticfleet/files/so_agent-installers"
+)
+
 
 # Create backup dir if it does not exist
 mkdir -p /nsm/backup
@@ -23,7 +27,7 @@ if [ ! -f $BACKUPFILE ]; then
 
   # Loop through all paths defined in global.sls, and append them to backup file
   {%- for LOCATION in BACKUPLOCATIONS %}
-  tar -rf $BACKUPFILE {{ LOCATION }}
+  tar -rf $BACKUPFILE "${EXCLUSIONS[@]}" {{ LOCATION }}
   {%- endfor %}
 
 fi
