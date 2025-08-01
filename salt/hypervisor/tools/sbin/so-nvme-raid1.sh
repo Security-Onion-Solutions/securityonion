@@ -30,7 +30,7 @@
 #
 # WARNING: This script will DESTROY all data on the target drives!
 #
-# USAGE: sudo ./raid_setup.sh
+# USAGE: sudo ./so-nvme-raid1.sh
 #
 #################################################################
 
