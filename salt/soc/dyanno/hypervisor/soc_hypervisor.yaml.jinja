@@ -70,41 +70,7 @@ Base domain has not been initialized.
 {%- endmacro -%}
 
 {%- macro update_resource_field(field, free_value, total_value, unit_label) -%}
-{%-   set resource_regex = '' -%}
-{%-   if free_value < 10 -%}
-{%-     set resource_regex = '^[1-' ~ free_value ~ ']$' -%}
-{%-   elif free_value < 100 -%}
-{%-     set tens_digit = free_value // 10 -%}
-{%-     set ones_digit = free_value % 10 -%}
-{%-     if ones_digit == 0 -%}
-{%-       set resource_regex = '^([1-9]|[1-' ~ (tens_digit-1) ~ '][0-9]|' ~ tens_digit ~ '0)$' -%}
-{%-     else -%}
-{%-       set resource_regex = '^([1-9]|[1-' ~ (tens_digit-1) ~ '][0-9]|' ~ tens_digit ~ '[0-' ~ ones_digit ~ '])$' -%}
-{%-     endif -%}
-{%-   elif free_value < 1000 -%}
-{%-     set hundreds_digit = free_value // 100 -%}
-{%-     set tens_digit = (free_value % 100) // 10 -%}
-{%-     set ones_digit = free_value % 10 -%}
-{%-     if hundreds_digit == 1 -%}
-{%-       if tens_digit == 0 and ones_digit == 0 -%}
-{%-         set resource_regex = '^([1-9]|[1-9][0-9]|100)$' -%}
-{%-       elif tens_digit == 0 -%}
-{%-         set resource_regex = '^([1-9]|[1-9][0-9]|10[0-' ~ ones_digit ~ '])$' -%}
-{%-       elif ones_digit == 0 -%}
-{%-         set resource_regex = '^([1-9]|[1-9][0-9]|10[0-9]|1[1-' ~ tens_digit ~ ']0)$' -%}
-{%-       else -%}
-{%-         set resource_regex = '^([1-9]|[1-9][0-9]|10[0-9]|1[1-' ~ (tens_digit-1) ~ '][0-9]|1' ~ tens_digit ~ '[0-' ~ ones_digit ~ '])$' -%}
-{%-       endif -%}
-{%-     else -%}
-{%-       if tens_digit == 0 and ones_digit == 0 -%}
-{%-         set resource_regex = '^([1-9]|[1-9][0-9]|[1-9][0-9][0-9]|[1-' ~ (hundreds_digit-1) ~ '][0-9][0-9]|' ~ hundreds_digit ~ '00)$' -%}
-{%-       elif ones_digit == 0 -%}
-{%-         set resource_regex = '^([1-9]|[1-9][0-9]|[1-9][0-9][0-9]|[1-' ~ (hundreds_digit-1) ~ '][0-9][0-9]|' ~ hundreds_digit ~ '[0-' ~ tens_digit ~ ']0)$' -%}
-{%-       else -%}
-{%-         set resource_regex = '^([1-9]|[1-9][0-9]|[1-9][0-9][0-9]|[1-' ~ (hundreds_digit-1) ~ '][0-9][0-9]|' ~ hundreds_digit ~ '[0-' ~ (tens_digit-1) ~ '][0-9]|' ~ hundreds_digit ~ tens_digit ~ '[0-' ~ ones_digit ~ '])$' -%}
-{%-       endif -%}
-{%-     endif -%}
-{%-   endif -%}
+{%-   set resource_regex = '^[0-9]{1,3}$' -%}
 {%-   do field.update({
         'label': field.label | replace('FREE', free_value | string) | replace('TOTAL', total_value | string),
         'regex': resource_regex,
