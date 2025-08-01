@@ -12,7 +12,7 @@
 # - Detects and reports existing RAID configurations
 # - Thoroughly cleans target drives of any existing data/configurations
 # - Creates GPT partition tables with RAID-type partitions
-# - Establishes RAID-1 array (/dev/md0) for data redundancy
+# - Establishes RAID-1 array (${RAID_DEVICE}) for data redundancy
 # - Formats the array with XFS filesystem for performance
 # - Automatically mounts at /nsm and configures for boot persistence
 # - Provides monitoring information for resync operations
@@ -30,12 +30,17 @@
 #
 # WARNING: This script will DESTROY all data on the target drives!
 #
-# USAGE: sudo ./raid_setup.sh
+# USAGE: sudo ./so-nvme-raid1.sh
 #
 #################################################################
 
 # Exit on any error
 set -e
+
+# Configuration variables
+RAID_ARRAY_NAME="md0"
+RAID_DEVICE="/dev/${RAID_ARRAY_NAME}"
+MOUNT_POINT="/nsm"
 
 # Function to log messages
 log() {
@@ -50,50 +55,159 @@ check_root() {
     fi
 }
 
+# Function to find MD arrays using specific devices
+find_md_arrays_using_devices() {
+    local target_devices=("$@")
+    local found_arrays=()
+    
+    # Parse /proc/mdstat to find arrays using our target devices
+    if [ -f "/proc/mdstat" ]; then
+        while IFS= read -r line; do
+            if [[ $line =~ ^(md[0-9]+) ]]; then
+                local array_name="${BASH_REMATCH[1]}"
+                local array_path="/dev/$array_name"
+                
+                # Check if this array uses any of our target devices
+                for device in "${target_devices[@]}"; do
+                    if echo "$line" | grep -q "${device##*/}"; then
+                        found_arrays+=("$array_path")
+                        break
+                    fi
+                done
+            fi
+        done < /proc/mdstat
+    fi
+    
+    printf '%s\n' "${found_arrays[@]}"
+}
+
 # Function to check if RAID is already set up
 check_existing_raid() {
-    if [ -e "/dev/md0" ]; then
-        if mdadm --detail /dev/md0 &>/dev/null; then
-            local raid_state=$(mdadm --detail /dev/md0 | grep "State" | awk '{print $3}')
-            local mount_point="/nsm"
-            
-            log "Found existing RAID array /dev/md0 (State: $raid_state)"
-            
-            if mountpoint -q "$mount_point"; then
-                log "RAID is already mounted at $mount_point"
-                log "Current RAID details:"
-                mdadm --detail /dev/md0
+    local target_devices=("/dev/nvme0n1p1" "/dev/nvme1n1p1")
+    local found_arrays=($(find_md_arrays_using_devices "${target_devices[@]}"))
+    
+    # Check if we found any arrays using our target devices
+    if [ ${#found_arrays[@]} -gt 0 ]; then
+        for array_path in "${found_arrays[@]}"; do
+            if mdadm --detail "$array_path" &>/dev/null; then
+                local raid_state=$(mdadm --detail "$array_path" | grep "State" | awk '{print $3}')
+                local mount_point="/nsm"
                 
-                # Check if resyncing
-                if grep -q "resync" /proc/mdstat; then
-                    log "RAID is currently resyncing:"
-                    grep resync /proc/mdstat
-                    log "You can monitor progress with: watch -n 60 cat /proc/mdstat"
+                log "Found existing RAID array $array_path (State: $raid_state)"
+                
+                # Check what's currently mounted at /nsm
+                local current_mount=$(findmnt -n -o SOURCE "$mount_point" 2>/dev/null || echo "")
+                
+                if [ -n "$current_mount" ]; then
+                    if [ "$current_mount" = "$array_path" ]; then
+                        log "RAID array $array_path is already correctly mounted at $mount_point"
+                        log "Current RAID details:"
+                        mdadm --detail "$array_path"
+                        
+                        # Check if resyncing
+                        if grep -q "resync" /proc/mdstat; then
+                            log "RAID is currently resyncing:"
+                            grep resync /proc/mdstat
+                            log "You can monitor progress with: watch -n 60 cat /proc/mdstat"
+                        else
+                            log "RAID is fully synced and operational"
+                        fi
+                        
+                        # Show disk usage
+                        log "Current disk usage:"
+                        df -h "$mount_point"
+                        
+                        exit 0
+                    else
+                        log "Found $mount_point mounted on $current_mount, but RAID array $array_path exists"
+                        log "Will unmount current filesystem and remount on RAID array"
+                        
+                        # Unmount current filesystem
+                        log "Unmounting $mount_point"
+                        umount "$mount_point"
+                        
+                        # Remove old fstab entry
+                        log "Removing old fstab entry for $current_mount"
+                        sed -i "\|$current_mount|d" /etc/fstab
+                        
+                        # Mount the RAID array
+                        log "Mounting RAID array $array_path at $mount_point"
+                        mount "$array_path" "$mount_point"
+                        
+                        # Update fstab
+                        log "Updating fstab for RAID array"
+                        sed -i "\|${array_path}|d" /etc/fstab
+                        echo "${array_path}  ${mount_point}  xfs  defaults,nofail  0  0" >> /etc/fstab
+                        
+                        log "RAID array is now mounted at $mount_point"
+                        log "Current RAID details:"
+                        mdadm --detail "$array_path"
+                        
+                        # Check if resyncing
+                        if grep -q "resync" /proc/mdstat; then
+                            log "RAID is currently resyncing:"
+                            grep resync /proc/mdstat
+                            log "You can monitor progress with: watch -n 60 cat /proc/mdstat"
+                        else
+                            log "RAID is fully synced and operational"
+                        fi
+                        
+                        # Show disk usage
+                        log "Current disk usage:"
+                        df -h "$mount_point"
+                        
+                        exit 0
+                    fi
                 else
-                    log "RAID is fully synced and operational"
+                    # /nsm not mounted, mount the RAID array
+                    log "Mounting RAID array $array_path at $mount_point"
+                    mount "$array_path" "$mount_point"
+                    
+                    # Update fstab
+                    log "Updating fstab for RAID array"
+                    sed -i "\|${array_path}|d" /etc/fstab
+                    echo "${array_path}  ${mount_point}  xfs  defaults,nofail  0  0" >> /etc/fstab
+                    
+                    log "RAID array is now mounted at $mount_point"
+                    log "Current RAID details:"
+                    mdadm --detail "$array_path"
+                    
+                    # Show disk usage
+                    log "Current disk usage:"
+                    df -h "$mount_point"
+                    
+                    exit 0
                 fi
-                
-                # Show disk usage
-                log "Current disk usage:"
-                df -h "$mount_point"
-                
-                exit 0
             fi
-        fi
+        done
     fi
     
     # Check if any of the target devices are in use
-    for device in "/dev/nvme0n1" "/dev/nvme1n1"; do
-        if lsblk -o NAME,MOUNTPOINT "$device" | grep -q "nsm"; then
-            log "Error: $device is already mounted at /nsm"
-            exit 1
-        fi
-        
+    for device in "/dev/nvme0n1" "/dev/nvme1n1"; do        
         if mdadm --examine "$device" &>/dev/null || mdadm --examine "${device}p1" &>/dev/null; then
+            # Find the actual array name for this device
+            local device_arrays=($(find_md_arrays_using_devices "${device}p1"))
+            local array_name=""
+            
+            if [ ${#device_arrays[@]} -gt 0 ]; then
+                array_name="${device_arrays[0]}"
+            else
+                # Fallback: try to find array name from /proc/mdstat
+                local partition_name="${device##*/}p1"
+                array_name=$(grep -l "$partition_name" /proc/mdstat 2>/dev/null | head -1)
+                if [ -n "$array_name" ]; then
+                    array_name=$(grep "^md[0-9]" /proc/mdstat | grep "$partition_name" | awk '{print "/dev/" $1}' | head -1)
+                fi
+                # Final fallback
+                if [ -z "$array_name" ]; then
+                    array_name="$RAID_DEVICE"
+                fi
+            fi
+            
             log "Error: $device appears to be part of an existing RAID array"
             log "To reuse this device, you must first:"
             log "1. Unmount any filesystems"
-            log "2. Stop the RAID array: mdadm --stop /dev/md0"
+            log "2. Stop the RAID array: mdadm --stop $array_name"
             log "3. Zero the superblock: mdadm --zero-superblock ${device}p1"
             exit 1
         fi
@@ -183,20 +297,20 @@ main() {
     fi
     
     log "Creating RAID array"
-    mdadm --create /dev/md0 --level=1 --raid-devices=2 \
+    mdadm --create "$RAID_DEVICE" --level=1 --raid-devices=2 \
           --metadata=1.2 \
           /dev/nvme0n1p1 /dev/nvme1n1p1 \
           --force --run
     
     log "Creating XFS filesystem"
-    mkfs.xfs -f /dev/md0
+    mkfs.xfs -f "$RAID_DEVICE"
     
     log "Creating mount point"
     mkdir -p /nsm
     
     log "Updating fstab"
-    sed -i '/\/dev\/md0/d' /etc/fstab
-    echo "/dev/md0  /nsm  xfs  defaults,nofail  0  0" >> /etc/fstab
+    sed -i "\|${RAID_DEVICE}|d" /etc/fstab
+    echo "${RAID_DEVICE}  ${MOUNT_POINT}  xfs  defaults,nofail  0  0" >> /etc/fstab
     
     log "Reloading systemd daemon"
     systemctl daemon-reload
@@ -209,7 +323,7 @@ main() {
     
     log "RAID setup complete"
     log "RAID array details:"
-    mdadm --detail /dev/md0
+    mdadm --detail "$RAID_DEVICE"
     
     if grep -q "resync" /proc/mdstat; then
         log "RAID is currently resyncing. You can monitor progress with:"
