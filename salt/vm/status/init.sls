@@ -19,7 +19,7 @@ vm_highstate_trigger:
     - data:
         status: Highstate Initiated
         vm_name: {{ grains.id }}
-        hypervisor: {{ salt['grains.get']('salt-cloud:profile', '').split('-')[1] }}
+        hypervisor: {{ salt['grains.get']('salt-cloud:profile', '').split('_')[1] }}
     - unless: test -f /opt/so/state/highstate_trigger.txt
     - order: 1 # Ensure this runs early in the highstate process
 

@@ -650,7 +650,7 @@ def process_vm_creation(hypervisor_path: str, vm_config: dict) -> None:
         create_vm_tracking_file(hypervisor_path, vm_name, vm_config)
 
         # Build and execute so-salt-cloud command
-        cmd = ['so-salt-cloud', '-p', f'sool9-{hypervisor}', vm_name]
+        cmd = ['so-salt-cloud', '-p', f'sool9_{hypervisor}', vm_name]
         
         # Add network configuration
         if vm_config['network_mode'] == 'static4':
@@ -788,7 +788,7 @@ def process_vm_deletion(hypervisor_path: str, vm_name: str) -> None:
                 log.warning("Failed to read VM config from tracking file %s: %s", vm_file, str(e))
         
         # Attempt VM deletion with so-salt-cloud
-        cmd = ['so-salt-cloud', '-p', f'sool9-{hypervisor}', vm_name, '-yd']
+        cmd = ['so-salt-cloud', '-p', f'sool9_{hypervisor}', vm_name, '-yd']
         
         log.info("Executing: %s", ' '.join(cmd))
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
