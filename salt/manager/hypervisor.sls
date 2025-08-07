@@ -16,9 +16,9 @@
 
 # Check if hypervisor environment has been set up
 {% set ssh_user_exists = salt['user.info']('soqemussh') %}
-{% set ssh_keys_exist = salt['file.file_exists']('/etc/ssh/auth_keys/soqemussh/id_ed25519') and 
-                        salt['file.file_exists']('/etc/ssh/auth_keys/soqemussh/id_ed25519.pub') and
-                        salt['file.file_exists']('/opt/so/saltstack/local/salt/libvirt/ssh/keys/id_ed25519.pub') %}
+{% set ssh_keys_exist = salt['file.file_exists']('/etc/ssh/auth_keys/soqemussh/id_ecdsa') and 
+                        salt['file.file_exists']('/etc/ssh/auth_keys/soqemussh/id_ecdsa.pub') and
+                        salt['file.file_exists']('/opt/so/saltstack/local/salt/libvirt/ssh/keys/id_ecdsa.pub') %}
 {% set base_image_exists = salt['file.file_exists']('/nsm/libvirt/boot/OL9U5_x86_64-kvm-b253.qcow2') %}
 {% set vm_files_exist = salt['file.directory_exists']('/opt/so/saltstack/local/salt/libvirt/images/sool9') and
                         salt['file.file_exists']('/opt/so/saltstack/local/salt/libvirt/images/sool9/sool9.qcow2') and

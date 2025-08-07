@@ -46,7 +46,7 @@ create_soqemussh_user:
 soqemussh_pub_key:
   ssh_auth.present:
     - user: soqemussh
-    - source: salt://libvirt/ssh/keys/id_ed25519.pub
+    - source: salt://libvirt/ssh/keys/id_ecdsa.pub
 
 {%     endif %}
 
