@@ -1,4 +1,4 @@
-### 2.4.170-20250812 ISO image released on 2025/06/25
+### 2.4.170-20250812 ISO image released on 2025/08/12
 
 
 ### Download and Verify
