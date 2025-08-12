@@ -1,0 +1,969 @@
+#!/bin/bash
+
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+# Usage:
+#     so-nsm-mount
+#
+# Options:
+#     None - script automatically detects and configures NVMe devices
+#
+# Examples:
+#     1. Configure and mount NVMe devices:
+#         ```bash
+#         sudo so-nsm-mount
+#         ```
+#
+# Notes:
+#     - Requires root privileges
+#     - Automatically detects unmounted NVMe devices
+#     - Handles multiple NVMe devices:
+#         * Creates PV from each device
+#         * Combines all devices into single volume group
+#         * Creates single logical volume using total space
+#     - Safely handles existing LVM configurations:
+#         * Preserves proper existing configurations
+#         * Provides cleanup instructions if conflicts found
+#     - Creates or extends LVM configuration if no conflicts
+#     - Uses XFS filesystem
+#     - Configures persistent mount via /etc/fstab
+#     - Safe to run multiple times
+#
+# Description:
+#     This script automates the configuration and mounting of NVMe devices
+#     as /nsm in Security Onion virtual machines. It performs these steps:
+#
+# Dependencies:
+#     - dmidecode: Required for getting system UUID
+#     - nvme-cli: Required for NVMe secure erase operations
+#     - lvm2: Required for LVM operations
+#     - xfsprogs: Required for XFS filesystem operations
+#
+#     1. Safety Checks:
+#        - Verifies root privileges
+#        - Checks if /nsm is already mounted
+#        - Detects available unmounted NVMe devices
+#
+#     2. LVM Configuration Check:
+#        - If device is part of "system" VG with "nsm" LV:
+#          * Uses existing configuration
+#          * Exits successfully
+#        - If device is part of different LVM configuration:
+#          * Logs current configuration details
+#          * Provides specific cleanup instructions
+#          * Exits with error to prevent data loss
+#
+#     3. New Configuration (if no conflicts):
+#        - Creates physical volume on each NVMe device
+#        - Combines all devices into single "system" volume group
+#        - Creates single "nsm" logical volume using total space
+#        - Creates XFS filesystem
+#        - Updates /etc/fstab for persistence
+#        - Mounts the filesystem as /nsm
+#
+# Exit Codes:
+#     0: Success conditions:
+#        - Devices configured and mounted
+#        - Already properly mounted
+#     1: Error conditions:
+#        - Must be run as root
+#        - No available NVMe devices found
+#        - Device has conflicting LVM configuration
+#        - Device preparation failed
+#        - LVM operation failed
+#        - Filesystem/mount operation failed
+#
+# Logging:
+#     - All operations logged to both console and /opt/so/log/so-nsm-mount.log
+
+set -e
+
+LOG_FILE="/opt/so/log/so-nsm-mount.log"
+VG_NAME=""
+LV_NAME="nsm"
+MOUNT_POINT="/nsm"
+
+# Function to log messages
+log() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') $1" | tee -a "$LOG_FILE" >&2
+}
+
+# Function to log errors
+log_error() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') ERROR: $1" | tee -a "$LOG_FILE" >&2
+}
+
+# Function to log command output
+log_cmd() {
+    local cmd="$1"
+    local desc="$2"
+    local output
+    local ret=0
+    
+    output=$(eval "$cmd" 2>&1) || ret=$?
+    
+    if [ -n "$output" ]; then
+        log "$desc:"
+        printf '%s\n' "$output" | sed 's/^/  /' | while IFS= read -r line; do
+            log "$line"
+        done
+    fi
+    
+    [ $ret -eq 0 ] || log_error "Command failed with exit code $ret: $cmd"
+    return $ret
+}
+
+# Get system UUID for unique VG naming
+get_system_uuid() {
+    local uuid
+    
+    if ! uuid=$(dmidecode -s system-uuid 2>/dev/null); then
+        log_error "Failed to get system UUID"
+        exit 1
+    fi
+    
+    # Just convert hyphens to underscores
+    echo "${uuid//-/_}"
+}
+
+# Convert VG name back to UUID format
+vg_name_to_uuid() {
+    local vg=$1
+    # Just convert underscores back to hyphens
+    echo "$vg" | tr '_' '-'
+}
+
+# Function to perform secure erase of NVMe device
+secure_erase_nvme() {
+    local device=$1
+    local ret=0
+    local retry=3
+    
+    log "Performing secure erase of NVMe device $device"
+    
+    if [[ ! "$device" =~ ^/dev/nvme[0-9]+n[0-9]+$ ]]; then
+        log_error "Device $device is not an NVMe device"
+        return 1
+    fi
+    
+    # Check if device is mounted
+    if mountpoint -q "$device" || findmnt -n | grep -q "$device"; then
+        log_error "Device $device is mounted, cannot secure erase"
+        return 1
+    fi
+    
+    # Attempt secure erase with retries
+    while [ $retry -gt 0 ]; do
+        log "  Executing secure erase command (attempt $((4-retry))/3)"
+        if nvme format "$device" --namespace-id 1 --ses 1 --lbaf 0 --force 2>nvme.err; then
+            log "  Success: Secure erase completed"
+            rm -f nvme.err
+            return 0
+        fi
+        
+        # Check error type
+        if grep -q "Device or resource busy" nvme.err; then
+            log "  Device busy, waiting before retry"
+            sleep 3
+        else
+            log_error "Secure erase failed"
+            log "  Details: $(cat nvme.err)"
+            rm -f nvme.err
+            return 1
+        fi
+        
+        retry=$((retry - 1))
+    done
+    
+    log_error "Failed to secure erase device after 3 attempts"
+    return 1
+}
+
+# Function to check if running as root
+check_root() {
+    if [ "$EUID" -ne 0 ]; then
+        log_error "Failed to execute - script must be run as root"
+        exit 1
+    fi
+}
+
+# Function to check LVM configuration of a device
+check_lvm_config() {
+    local device=$1
+    local vg_name
+    local lv_name
+    
+    log "Checking LVM configuration for $device"
+    
+    # Log device details
+    log_cmd "lsblk -o NAME,SIZE,TYPE,MOUNTPOINT $device" "Device details"
+    
+    # Check if device is a PV
+    if ! pvs "$device" &>/dev/null; then
+        log "Device is not a physical volume"
+        return 0
+    fi
+    
+    # Log PV details
+    log_cmd "pvs --noheadings -o pv_name,vg_name,pv_size,pv_used $device" "Physical volume details"
+    
+    # Get VG name if any
+    vg_name=$(pvs --noheadings -o vg_name "$device" | tr -d ' ')
+    if [ -z "$vg_name" ]; then
+        log "Device is not part of any volume group"
+        return 0
+    fi
+    
+    # Safety check - never touch system VGs
+    if is_system_vg "$vg_name"; then
+        log_error "Device $device is part of system VG: $vg_name"
+        log "Cannot modify system volume groups. Aborting."
+        exit 1
+    fi
+    
+    # Log VG details
+    log_cmd "vgs --noheadings -o vg_name,vg_size,vg_free,pv_count $vg_name" "Volume group details"
+    
+    # If it's our expected configuration
+    if [ "$vg_name" = "$VG_NAME" ]; then
+        if lvs "$VG_NAME/$LV_NAME" &>/dev/null; then
+            # Log LV details
+            log_cmd "lvs --noheadings -o lv_name,lv_size,lv_path $VG_NAME/$LV_NAME" "Logical volume details"
+            return 0
+        fi
+    fi
+    
+    # Get all LVs in the VG
+    local lvs_in_vg=$(lvs --noheadings -o lv_name "$vg_name" 2>/dev/null | tr '\n' ',' | sed 's/,$//')
+    
+    log_error "Device $device is part of existing LVM configuration:"
+    log "  Volume Group: $vg_name"
+    log "  Logical Volumes: ${lvs_in_vg:-none}"
+    log ""
+    log "To preserve data safety, no changes will be made."
+    log ""
+    log "If you want to repurpose this device for /nsm, verify it's safe to proceed:"
+    log "1. Check current usage: lsblk $device"
+    log "2. Then run this command to clean up (CAUTION: THIS WILL DESTROY ALL DATA):"
+    log "   umount $MOUNT_POINT 2>/dev/null; "
+    for lv in $(echo "$lvs_in_vg" | tr ',' ' '); do
+        log "   lvremove -f /dev/$vg_name/$lv; "
+    done
+    log "   vgreduce $vg_name $device && pvremove -ff -y $device && wipefs -a $device"
+    
+    exit 1
+}
+
+# Function to check if VG is system critical
+is_system_vg() {
+    local vg=$1
+    local root_dev
+    local root_vg
+    local mp
+    local dev
+    
+    # First check if it's the current root VG
+    root_dev=$(findmnt -n -o SOURCE /)
+    if [ -n "$root_dev" ]; then
+        # Get VG name from root device
+        if lvs --noheadings -o vg_name "$root_dev" 2>/dev/null | grep -q "^$vg$"; then
+            return 0  # true
+        fi
+    fi
+    
+    # Check all mounted LVM devices
+    while read -r mp; do
+        # Skip our NSM mount
+        [ "$mp" = "$MOUNT_POINT" ] && continue
+        
+        # Check if mount uses this VG
+        if lvs --noheadings -o vg_name "$mp" 2>/dev/null | grep -q "^$vg$"; then
+            return 0  # true
+        fi
+    done < <(findmnt -n -o SOURCE -t ext4,xfs,btrfs,swap | grep "/dev/mapper/")
+    
+    # Check if VG contains any mounted devices
+    while read -r dev; do
+        if [ -n "$dev" ] && findmnt -n | grep -q "$dev"; then
+            return 0  # true
+        fi
+    done < <(lvs "/dev/$vg" --noheadings -o lv_path 2>/dev/null)
+    
+    # Check if VG contains critical LV names
+    if lvs "/dev/$vg" &>/dev/null; then
+        if lvs --noheadings -o lv_name "/dev/$vg" 2>/dev/null | grep -qE '^(root|swap|home|var|usr|tmp|opt|srv|boot)$'; then
+            return 0  # true
+        fi
+    fi
+    
+    # Check if VG has common system names
+    if [[ "$vg" =~ ^(vg_main|system|root|os|rhel|centos|ubuntu|debian|fedora)$ ]]; then
+        return 0  # true
+    fi
+    
+    return 1  # false
+}
+
+# Function to deactivate LVM on device
+deactivate_lvm() {
+    local device=$1
+    local vg=$2
+    
+    # Safety check - never touch system VGs
+    if is_system_vg "$vg"; then
+        log_error "Refusing to deactivate system VG: $vg"
+        return 1
+    fi
+    
+    log "  Deactivating LVM on device $device (VG: $vg)"
+    
+    # Get list of LVs that specifically use this device
+    local lvs_to_deactivate
+    lvs_to_deactivate=$(pvs --noheadings -o vg_name,lv_name "$device" 2>/dev/null | awk '{print $1"/"$2}')
+    
+    # Deactivate only LVs that use this device
+    if [ -n "$lvs_to_deactivate" ]; then
+        log "    Deactivating logical volumes on device"
+        while read -r lv; do
+            if [ -n "$lv" ]; then
+                log "      Deactivating: $lv"
+                if ! lvchange -an "/dev/$lv" 2>/dev/null; then
+                    log "      WARNING: Failed to deactivate $lv"
+                fi
+            fi
+        done <<< "$lvs_to_deactivate"
+    fi
+    
+    # No need to attempt VG removal - secure erase will handle it
+    return 0
+}
+
+# Function to cleanup device
+cleanup_device() {
+    local device=$1
+    local ret=0
+    
+    log "Cleaning up device $device"
+    
+    # Check if device belongs to current system
+    if pvs "$device" &>/dev/null; then
+        local vg=$(pvs --noheadings -o vg_name "$device" | tr -d ' ')
+        local current_vg=$(get_system_uuid)
+        local vg_uuid=""
+        local current_uuid=""
+        
+        if [[ -n "$vg" ]]; then
+            # Convert VG names to UUIDs for comparison
+            vg_uuid=$(vg_name_to_uuid "$vg")
+            current_uuid=$(vg_name_to_uuid "$current_vg")
+            
+            if [[ "$vg_uuid" == "$current_uuid" ]]; then
+                log "  Device belongs to current system, skipping secure erase"
+            else
+                log "  Device belongs to different system (VG: $vg)"
+                
+                # First deactivate LVM
+                if ! deactivate_lvm "$device" "$vg"; then
+                    log_error "Failed to fully deactivate LVM"
+                    ret=1
+                fi
+                
+                # Attempt secure erase even if LVM cleanup had issues
+                log "  Performing secure erase"
+                if ! secure_erase_nvme "$device"; then
+                    log_error "Failed to secure erase device"
+                    ret=1
+                fi
+            fi
+        fi
+    else
+        # No LVM configuration found, perform secure erase
+        log "  No LVM configuration found, performing secure erase"
+        if ! secure_erase_nvme "$device"; then
+            log_error "Failed to secure erase device"
+            ret=1
+        fi
+    fi
+    
+    # Always attempt to remove partitions and signatures
+    log "  Removing partitions and signatures"
+    if ! wipefs -a "$device" 2>/dev/null; then
+        log_error "Failed to remove signatures"
+        ret=1
+    fi
+    
+    if [ $ret -eq 0 ]; then
+        log "  Device cleanup successful"
+    else
+        log_error "Device cleanup had some issues"
+    fi
+    return $ret
+}
+
+# Function to validate device state
+validate_device_state() {
+    local device=$1
+    
+    if [[ ! -b "$device" ]]; then
+        log_error "$device is not a valid block device"
+        return 1
+    fi
+    
+    # Check if device is already properly configured
+    if pvs "$device" &>/dev/null; then
+        local vg=$(pvs --noheadings -o vg_name "$device" | tr -d ' ')
+        
+        # Safety check - never touch system VGs
+        if is_system_vg "$vg"; then
+            log_error "Device $device is part of system VG: $vg"
+            log "Cannot modify system volume groups. Aborting."
+            return 1
+        fi
+        
+        # Convert VG names to UUIDs for comparison
+        local vg_uuid=$(vg_name_to_uuid "$vg")
+        local current_uuid=$(vg_name_to_uuid "$VG_NAME")
+        
+        if [[ "$vg_uuid" == "$current_uuid" ]]; then
+            if lvs "$vg/$LV_NAME" &>/dev/null; then
+                log "Device $device is already properly configured in VG $vg"
+                return 0
+            fi
+        fi
+    fi
+    
+    # Check for existing partitions or LVM
+    if pvs "$device" &>/dev/null || lsblk -no TYPE "$device" | grep -q "part"; then
+        # Check if device is mounted as root filesystem
+        if mountpoint -q / && findmnt -n -o SOURCE / | grep -q "$device"; then
+            log_error "Device $device contains root filesystem. Aborting."
+            return 1
+        fi
+        
+        log "Device $device has existing configuration"
+        if ! cleanup_device "$device"; then
+            log "Failed to cleanup device $device"
+            return 1
+        fi
+    fi
+    
+    return 0
+}
+
+# Function to log device details
+log_device_details() {
+    local device=$1
+    local size mount fs_type vg_name
+    
+    size=$(lsblk -dbn -o SIZE "$device" 2>/dev/null | numfmt --to=iec)
+    mount=$(lsblk -no MOUNTPOINT "$device" 2>/dev/null)
+    fs_type=$(lsblk -no FSTYPE "$device" 2>/dev/null)
+    
+    log "Device details for $device:"
+    log "  Size: $size"
+    log "  Filesystem: ${fs_type:-none}"
+    log "  Mountpoint: ${mount:-none}"
+    
+    if pvs "$device" &>/dev/null; then
+        vg_name=$(pvs --noheadings -o vg_name "$device" | tr -d ' ')
+        log "  LVM status: Physical volume in VG ${vg_name:-none}"
+    else
+        log "  LVM status: Not a physical volume"
+    fi
+}
+
+# Function to detect NVMe devices
+detect_nvme_devices() {
+    local -a devices=()
+    local -a available_devices=()
+    local -a configured_devices=()
+    
+    {
+        log "----------------------------------------"
+        log "Starting NVMe device detection"
+        log "----------------------------------------"
+        
+        # First get a clean list of devices
+        while read -r dev; do
+            if [[ -b "$dev" ]]; then
+                devices+=("$dev")
+            fi
+        done < <(find /dev -name 'nvme*n1' 2>/dev/null)
+        
+        if [ ${#devices[@]} -eq 0 ]; then
+            log_error "No NVMe devices found"
+            log "----------------------------------------"
+            exit 1
+        fi
+        
+        log "Found ${#devices[@]} NVMe device(s)"
+        
+        # Process and validate each device
+        for dev in "${devices[@]}"; do
+            log_device_details "$dev"
+            
+            if validate_device_state "$dev"; then
+                if pvs "$dev" &>/dev/null; then
+                    local vg=$(pvs --noheadings -o vg_name "$dev" | tr -d ' ')
+                    local vg_uuid=$(vg_name_to_uuid "$vg")
+                    local current_uuid=$(vg_name_to_uuid "$VG_NAME")
+                    
+                    if [[ "$vg_uuid" == "$current_uuid" ]]; then
+                        configured_devices+=("$dev")
+                        log "Status: Already configured in VG $vg"
+                    else
+                        available_devices+=("$dev")
+                        log "Status: Available for use"
+                    fi
+                else
+                    available_devices+=("$dev")
+                    log "Status: Available for use"
+                fi
+            else
+                log "Status: Not available (see previous messages)"
+            fi
+            log "----------------------------------------"
+        done
+        
+        if [ ${#configured_devices[@]} -gt 0 ]; then
+            log "Found ${#configured_devices[@]} device(s) already configured:"
+            for dev in "${configured_devices[@]}"; do
+                local size=$(lsblk -dbn -o SIZE "$dev" 2>/dev/null | numfmt --to=iec)
+                log "  - $dev ($size)"
+            done
+            log "Proceeding with mount setup"
+            return 0
+        fi
+        
+        if [ ${#available_devices[@]} -eq 0 ]; then
+            log_error "No available NVMe devices found"
+            log "----------------------------------------"
+            exit 1
+        fi
+        
+        log "Summary: ${#available_devices[@]} device(s) available for use"
+        for dev in "${available_devices[@]}"; do
+            local size=$(lsblk -dbn -o SIZE "$dev" 2>/dev/null | numfmt --to=iec)
+            log "  - $dev ($size)"
+        done
+        log "----------------------------------------"
+    } >&2
+    
+    # Return array elements one per line
+    printf '%s\n' "${available_devices[@]}"
+}
+
+# Function to prepare devices for LVM
+prepare_devices() {
+    local -a devices=("$@")
+    local -a prepared_devices=()
+    
+    {
+        log "----------------------------------------"
+        log "Starting device preparation"
+        log "----------------------------------------"
+        
+        for device in "${devices[@]}"; do
+            if [[ ! -b "$device" ]]; then
+                log_error "Invalid device path: $device"
+                continue
+            fi
+            
+            log "Processing device: $device"
+            log_device_details "$device"
+            
+            # Check if device needs preparation
+            if ! validate_device_state "$device"; then
+                log "Skipping device $device - invalid state"
+                continue
+            fi
+            
+            log "Preparing device for LVM use:"
+            
+            # Clean existing signatures
+            log "  Step 1: Cleaning existing signatures"
+            if ! wipefs -a "$device" 2>wipefs.err; then
+                log_error "Failed to clean signatures"
+                log "  Details: $(cat wipefs.err)"
+                rm -f wipefs.err
+                continue
+            fi
+            rm -f wipefs.err
+            log "  Success: Signatures cleaned"
+
+            # Create physical volume
+            log "  Step 2: Creating physical volume"
+            if ! pvcreate -ff -y "$device" 2>pv.err; then
+                log_error "Physical volume creation failed"
+                log "  Details: $(cat pv.err)"
+                rm -f pv.err
+                continue
+            fi
+            rm -f pv.err
+            
+            # Log success and add to prepared devices
+            size=$(lsblk -dbn -o SIZE "$device" | numfmt --to=iec)
+            log "  Success: Created physical volume"
+            log "    Device: $device"
+            log "    Size: $size"
+            log_cmd "pvs --noheadings -o pv_name,vg_name,pv_size,pv_used $device" "Physical volume details"
+            
+            prepared_devices+=("$device")
+            log "----------------------------------------"
+        done
+        
+        if [ ${#prepared_devices[@]} -eq 0 ]; then
+            log_error "No devices were successfully prepared"
+            exit 1
+        fi
+    } >&2
+    
+    printf '%s\n' "${prepared_devices[@]}"
+}
+
+# Function to wait for device
+wait_for_device() {
+    local device="$1"
+    local timeout=10
+    local count=0
+    
+    log "Waiting for device $device to be available"
+    while [ ! -e "$device" ] && [ $count -lt $timeout ]; do
+        sleep 1
+        count=$((count + 1))
+        log "  Attempt $count/$timeout"
+    done
+    
+    if [ ! -e "$device" ]; then
+        log_error "Device $device did not appear after $timeout seconds"
+        return 1
+    fi
+    
+    # Run udevadm trigger to ensure device nodes are created
+    log "  Running udevadm trigger"
+    if ! udevadm trigger "$device" 2>/dev/null; then
+        log "  WARNING: udevadm trigger failed, continuing anyway"
+    fi
+    
+    # Give udev a moment to create device nodes
+    sleep 1
+    
+    # Run udevadm settle to wait for udev to finish processing
+    log "  Waiting for udev to settle"
+    if ! udevadm settle 2>/dev/null; then
+        log "  WARNING: udevadm settle failed, continuing anyway"
+    fi
+    
+    # Run vgscan to ensure LVM sees the device
+    log "  Running vgscan"
+    if ! vgscan --mknodes 2>/dev/null; then
+        log "  WARNING: vgscan failed, continuing anyway"
+    fi
+    
+    log "  Device $device is now available"
+    return 0
+}
+
+# Function to setup LVM
+setup_lvm() {
+    local -a devices=("$@")
+    
+    log "----------------------------------------"
+    log "Starting LVM configuration"
+    log "----------------------------------------"
+    
+    # Log initial LVM state
+    log "Initial LVM state:"
+    log_cmd "pvs" "Physical volumes"
+    log_cmd "vgs" "Volume groups"
+    log_cmd "lvs" "Logical volumes"
+    
+    # Create or extend volume group
+    if vgs "$VG_NAME" &>/dev/null; then
+        log "Step 1: Extending existing volume group"
+        log "  Target VG: $VG_NAME"
+        log "  Devices to add: ${devices[*]}"
+        
+        # Extend existing VG
+        if ! vgextend "$VG_NAME" "${devices[@]}" 2>vg.err; then
+            log_error "Volume group extension failed"
+            log "  Details: $(cat vg.err)"
+            rm -f vg.err
+            exit 1
+        fi
+        rm -f vg.err
+        
+        size=$(vgs --noheadings -o vg_size --units h "$VG_NAME" | tr -d ' ')
+        log "  Success: Extended volume group"
+        log "    Name: $VG_NAME"
+        log "    Total size: $size"
+    else
+        log "Step 1: Creating new volume group"
+        log "  Name: $VG_NAME"
+        log "  Devices: ${devices[*]}"
+        
+        # Create new VG
+        if ! vgcreate "$VG_NAME" "${devices[@]}" 2>vg.err; then
+            log_error "Volume group creation failed"
+            log "  Details: $(cat vg.err)"
+            rm -f vg.err
+            exit 1
+        fi
+        rm -f vg.err
+        
+        size=$(vgs --noheadings -o vg_size --units h "$VG_NAME" | tr -d ' ')
+        log "  Success: Created volume group"
+        log "    Name: $VG_NAME"
+        log "    Size: $size"
+    fi
+
+    log_cmd "vgs $VG_NAME" "Volume group details"
+
+    # Create logical volume using all available space
+    if ! lvs "$VG_NAME/$LV_NAME" &>/dev/null; then
+        log "Step 2: Creating logical volume"
+        log "  Name: $LV_NAME"
+        log "  Size: 100% of free space"
+        
+        # Create LV with yes flag
+        if ! lvcreate -l 100%FREE -n "$LV_NAME" "$VG_NAME" -y 2>lv.err; then
+            log_error "Logical volume creation failed"
+            log "  Details: $(cat lv.err)"
+            rm -f lv.err
+            exit 1
+        fi
+        rm -f lv.err
+        
+        size=$(lvs --noheadings -o lv_size --units h "$VG_NAME/$LV_NAME" | tr -d ' ')
+        log "  Success: Created logical volume"
+        log "    Name: $LV_NAME"
+        log "    Size: $size"
+        log_cmd "lvs $VG_NAME/$LV_NAME" "Logical volume details"
+    else
+        log "Step 2: Logical volume already exists"
+        log_cmd "lvs $VG_NAME/$LV_NAME" "Existing logical volume details"
+    fi
+    
+    log "----------------------------------------"
+}
+
+# Function to create and mount filesystem
+setup_filesystem() {
+    local device="/dev/$VG_NAME/$LV_NAME"
+    
+    log "----------------------------------------"
+    log "Starting filesystem setup"
+    log "----------------------------------------"
+    
+    log "Step 1: Checking device status"
+    log "  Device path: $device"
+    
+    # Wait for device to be available
+    if ! wait_for_device "$device"; then
+        exit 1
+    fi
+    
+    # Check for existing /nsm directory
+    if [[ -d "$MOUNT_POINT" ]]; then
+        log "WARNING: $MOUNT_POINT directory already exists"
+        if [[ -n "$(ls -A "$MOUNT_POINT")" ]]; then
+            log "WARNING: $MOUNT_POINT is not empty"
+            log "Contents will be hidden when mounted"
+        fi
+    fi
+    
+    # Check filesystem type - don't fail if blkid fails
+    local fs_type
+    fs_type=$(blkid -o value -s TYPE "$device" 2>/dev/null || echo "none")
+    log "  Current filesystem type: ${fs_type:-none}"
+    
+        # Create XFS filesystem if needed
+    log "Step 2: Filesystem preparation"
+    if [[ "$fs_type" != "xfs" ]]; then
+        log "  Creating new XFS filesystem:"
+        log "    Device: $device"
+        log "    Options: -f (force)"
+        
+        # Clean any existing signatures first
+        wipefs -a "$device" 2>/dev/null || true
+        
+        # Create filesystem with force flag
+        if ! mkfs.xfs -f "$device" -K -q 2>mkfs.err; then
+            log_error "XFS filesystem creation failed"
+            log "  Details: $(cat mkfs.err)"
+            rm -f mkfs.err
+            exit 1
+        fi
+        rm -f mkfs.err
+        
+        size=$(lvs --noheadings -o lv_size --units h "$VG_NAME/$LV_NAME" | tr -d ' ')
+        log "  Success: Created XFS filesystem"
+        log "    Device: $device"
+        log "    Size: $size"
+        
+        # Verify filesystem was created
+        fs_type=$(blkid -o value -s TYPE "$device")
+        if [[ "$fs_type" != "xfs" ]]; then
+            log_error "Failed to verify XFS filesystem creation"
+            exit 1
+        fi
+        log "  Verified XFS filesystem"
+    else
+        log "  XFS filesystem already exists"
+    fi
+
+    # Create mount point
+    log "Step 3: Mount point preparation"
+    if [[ ! -d "$MOUNT_POINT" ]]; then
+        log "  Creating mount point directory: $MOUNT_POINT"
+        mkdir -p "$MOUNT_POINT"
+        log "  Success: Directory created"
+    else
+        log "  Mount point already exists: $MOUNT_POINT"
+    fi
+
+    # Update fstab if needed
+    log "Step 4: Configuring persistent mount"
+    log "  Checking current fstab entries:"
+    # Temporarily disable exit on error for fstab operations
+    set +e
+    
+    # Check fstab entries without failing on no match
+    if ! grep -P "^/dev/$VG_NAME/$LV_NAME\\s" /etc/fstab >/dev/null 2>&1; then
+        log "  No existing fstab entry found"
+    else
+        log_cmd "grep -P '^/dev/$VG_NAME/$LV_NAME\\s' /etc/fstab" "Current configuration"
+    fi
+    
+    # Check if we need to add fstab entry
+    if ! grep -q "^$device.*$MOUNT_POINT" /etc/fstab >/dev/null 2>&1; then
+        # Re-enable exit on error for critical operations
+        set -e
+        log "  Adding new fstab entry"
+        local mount_options="rw,relatime,seclabel,attr2,inode64,logbufs=8,logbsize=32k,noquota"
+        echo "$device $MOUNT_POINT xfs $mount_options 0 0" >> /etc/fstab
+        log "  Success: Added entry"
+        log "    Device: $device"
+        log "    Mount point: $MOUNT_POINT"
+        log "    Options: $mount_options"
+        log_cmd "grep -P \"^/dev/$VG_NAME/$LV_NAME\\s\" /etc/fstab" "New configuration"
+        
+        # Reload systemd to recognize new fstab entry
+        log "  Reloading systemd to recognize new fstab entry"
+        if ! systemctl daemon-reload; then
+            log "  WARNING: Failed to reload systemd, continuing anyway"
+        fi
+    else
+        log "  Existing fstab entry found"
+        # Re-enable exit on error
+        set -e
+    fi
+
+    # Mount the filesystem
+    log "Step 5: Mounting filesystem"
+    if ! mountpoint -q "$MOUNT_POINT"; then
+        log "  Mounting $device to $MOUNT_POINT"
+        if ! mount "$MOUNT_POINT" 2>mount.err; then
+            log_error "Mount operation failed"
+            log "  Details: $(cat mount.err)"
+            rm -f mount.err
+            exit 1
+        fi
+        rm -f mount.err
+        
+        size=$(df -h "$MOUNT_POINT" | awk 'NR==2 {print $2}')
+        log "  Success: Filesystem mounted"
+        log "    Device: $device"
+        log "    Mount point: $MOUNT_POINT"
+        log "    Size: $size"
+        log_cmd "df -h $MOUNT_POINT" "Mount details"
+    else
+        log "  Filesystem already mounted"
+        log_cmd "df -h $MOUNT_POINT" "Current mount details"
+    fi
+    
+    log "----------------------------------------"
+}
+
+# Main function
+main() {
+    check_root
+    
+    # Set VG_NAME based on system UUID
+    VG_NAME=$(get_system_uuid)
+
+    # Check if already mounted
+    if mountpoint -q "$MOUNT_POINT"; then
+        size=$(df -h "$MOUNT_POINT" | awk 'NR==2 {print $2}')
+        log "$MOUNT_POINT already mounted (size: $size)"
+        log_cmd "df -h $MOUNT_POINT" "Current mount details"
+        exit 0
+    fi
+
+    # Log initial system state with context
+    log "----------------------------------------"
+    log "Checking initial system state"
+    log "NOTE: If any drives were previously used in another system, you may see"
+    log "      warnings about missing devices or volume groups below. These warnings"
+    log "      are normal and expected when reusing drives. They indicate the drive"
+    log "      was part of a previous system's configuration and will be automatically"
+    log "      cleaned up in the following steps."
+    log "----------------------------------------"
+    
+    log_cmd "lsblk" "Block devices"
+    log_cmd "pvs" "Physical volumes"
+    log_cmd "vgs" "Volume groups"
+    log_cmd "lvs" "Logical volumes"
+    
+    log "----------------------------------------"
+    log "Proceeding with cleanup of any previous configurations and setup for /nsm"
+    log "----------------------------------------"
+
+    # Check if LVM is already configured
+    if vgs "$VG_NAME" &>/dev/null && lvs "$VG_NAME/$LV_NAME" &>/dev/null; then
+        log "Found existing LVM configuration"
+        log "Proceeding with filesystem setup"
+    else
+        # Detect NVMe devices
+        local -a devices=()
+        mapfile -t devices < <(detect_nvme_devices)
+        
+        if [ ${#devices[@]} -eq 0 ]; then
+            log_error "No NVMe devices found"
+            exit 1
+        fi
+
+        # Prepare devices and get list of successfully prepared ones
+        local -a prepared_devices=()
+        mapfile -t prepared_devices < <(prepare_devices "${devices[@]}")
+        
+        if [ ${#prepared_devices[@]} -eq 0 ]; then
+            if vgs "$VG_NAME" &>/dev/null && lvs "$VG_NAME/$LV_NAME" &>/dev/null; then
+                log "Devices already configured, proceeding with filesystem setup"
+            else
+                log_error "No devices were successfully prepared and no existing configuration found"
+                exit 1
+            fi
+        else
+            # Setup LVM with prepared devices
+            setup_lvm "${prepared_devices[@]}"
+        fi
+    fi
+    
+    # Create and mount filesystem
+    setup_filesystem
+
+    # Log final system state
+    log "Final system state:"
+    log_cmd "lsblk" "Block devices"
+    log_cmd "pvs" "Physical volumes"
+    log_cmd "vgs" "Volume groups"
+    log_cmd "lvs" "Logical volumes"
+    log_cmd "df -h $MOUNT_POINT" "Mount details"
+}
+
+# Run main function
+main "$@"

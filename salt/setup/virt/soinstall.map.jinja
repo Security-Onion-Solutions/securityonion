@@ -1,0 +1,89 @@
+{# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+   or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+   https://securityonion.net/license; you may not use this file except in compliance with the
+   Elastic License 2.0. #}
+
+{% set nodetype = grains.id.split("_") | last %}
+{% set hypervisor = salt['grains.get']('salt-cloud:profile').split('_')[1] %}
+
+{# Import hardware details from VM hardware tracking file #}
+{% import_json 'hypervisor/hosts/' ~ hypervisor ~ '/' ~ grains.id as vm_hardware %}
+
+{% set DATA = {} %}
+{% do DATA.update({'MNIC': 'enp1s0'}) %}
+{% do DATA.update({'MAINIP': grains.ip_interfaces.get(DATA.MNIC)[0]}) %}
+
+{# Use CPU value from VM hardware file if available, otherwise fallback to grains #}
+{% if vm_hardware and vm_hardware.get('config', {}).get('cpu') %}
+  {% do DATA.update({'CPUCORES': vm_hardware.get('config', {}).get('cpu')|int }) %}
+  {% do salt.log.info('Using CPU from VM hardware file: ' ~ vm_hardware.get('config', {}).get('cpu')|string) %}
+{% else %}
+  {% do DATA.update({'CPUCORES': grains.num_cpus }) %}
+  {% do salt.log.error('Using CPU from grains: ' ~ grains.num_cpus|string) %}
+{% endif %}
+
+{# Use memory value from VM hardware file if available, otherwise fallback to grains. If grains is used, it will be from cpu/mem from the base domain. #}
+{% if vm_hardware and vm_hardware.get('config', {}).get('memory') %}
+  {% set total_mem = vm_hardware.get('config', {}).get('memory')|int * 1024 %}
+  {% do salt.log.info('Using memory from VM hardware file: ' ~ vm_hardware.get('config', {}).get('memory')|string ~ ' (converted to ' ~ total_mem|string ~ ')') %}
+{% else %}
+  {% set total_mem = grains.mem_total %}
+  {% do salt.log.error('Using memory from grains: ' ~ total_mem|string) %}
+{% endif %}
+
+{% do DATA.update({'NODE_DESCRIPTION': 'VM of ' ~ hypervisor}) %}
+{% do DATA.update({'NODETYPE': nodetype | upper}) %}
+
+{% if nodetype in ['standalone', 'sensor', 'heavynode']%}
+{%   do DATA.update({'INTERFACE': 'bond0'}) %}
+{% endif %}
+
+{#   Calculate reasonable core usage #}
+{% set cores_for_zeek = (DATA.CPUCORES / 2) - 1 %}
+{% set lb_procs_round = cores_for_zeek|round|int %}
+{% set lb_procs = 1 if lb_procs_round < 1 else lb_procs_round %}
+{% do salt.log.info('Cores for load balancing: ' ~ lb_procs|string) %}
+{#   Check memory conditions #}
+{% set low_mem = false %}
+{% do salt.log.info('Memory check using total_mem: ' ~ total_mem|string) %}
+{% if nodetype in ['standalone', 'heavynode'] %}
+{%   if total_mem > 15000 and total_mem < 24000 %}
+{%     set low_mem = true %}
+{%   endif %}
+{% endif %}
+{# Set CORECOUNT based on memory conditions #}
+{% if low_mem %}
+{%   do DATA.update({'CORECOUNT': 1}) %}
+{% else %}
+{%   do DATA.update({'CORECOUNT': lb_procs}) %}
+{% endif %}
+
+
+{% if nodetype in ['searchnode', 'receiver', 'fleet', 'heavynode'] %}
+{#   we can't use the host grain here because the grain may not be updated yet from the hostname change #}
+{%   do DATA.update({'LSHOSTNAME': grains.id.split("_") | first}) %}
+{%   if total_mem >= 32000 or nodetype in ['managersearch','heavynode','standalone'] %}
+{%     set LSHEAP="1000m" %}
+{%   elif nodetype == 'eval' %}
+{%     set LSHEAP="700m" %}
+{%   else %}
+{%     set LSHEAP="500m" %}
+{%   endif %}
+{%   do DATA.update({'LSHEAP': LSHEAP}) %}
+{% endif %}
+{% if nodetype in ['searchnode', 'heavynode'] %}
+{#   this replicates the function es_heapsize in so-functions #}
+{%   if total_mem < 8000 %}
+{%     set ES_HEAP_SIZE = "600m" %}
+{%   elif total_mem >= 100000 %}
+{%     set ES_HEAP_SIZE = "25000m" %}
+{%   else %}
+{%    set ES_HEAP_SIZE = (total_mem / 3) | int %}
+{%    if ES_HEAP_SIZE > 25000 %}
+{%      set ES_HEAP_SIZE = "25000m" %}
+{%    else %}
+{%      set ES_HEAP_SIZE = ES_HEAP_SIZE ~ "m" %}
+{%    endif %}
+{%   endif %}
+{%   do DATA.update({'ES_HEAP_SIZE': ES_HEAP_SIZE}) %}
+{% endif %}

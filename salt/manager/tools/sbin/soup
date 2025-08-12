@@ -418,6 +418,7 @@ preupgrade_changes() {
     [[ "$INSTALLEDVERSION" == 2.4.140 ]] && up_to_2.4.141
     [[ "$INSTALLEDVERSION" == 2.4.141 ]] && up_to_2.4.150
     [[ "$INSTALLEDVERSION" == 2.4.150 ]] && up_to_2.4.160
+    [[ "$INSTALLEDVERSION" == 2.4.160 ]] && up_to_2.4.170
     true
 }
 
@@ -446,6 +447,7 @@ postupgrade_changes() {
     [[ "$POSTVERSION"  == 2.4.140 ]] && post_to_2.4.141
     [[ "$POSTVERSION"  == 2.4.141 ]] && post_to_2.4.150
     [[ "$POSTVERSION"  == 2.4.150 ]] && post_to_2.4.160
+    [[ "$POSTVERSION"  == 2.4.160 ]] && post_to_2.4.170
     true
 }
 
@@ -576,14 +578,25 @@ post_to_2.4.141() {
 }
 
 post_to_2.4.150() {
-  echo "Regenerating Elastic Agent Installers"
-  /sbin/so-elastic-agent-gen-installers
+  echo "Nothing to apply"
   POSTVERSION=2.4.150
 }
 
 post_to_2.4.160() {
   echo "Nothing to apply"
   POSTVERSION=2.4.160
+}
+
+post_to_2.4.170() {
+  echo "Regenerating Elastic Agent Installers"
+  /sbin/so-elastic-agent-gen-installers
+
+  # Update kibana default space
+  salt-call state.apply kibana.config queue=True
+  echo "Updating Kibana default space"
+  /usr/sbin/so-kibana-space-defaults
+
+  POSTVERSION=2.4.170
 }
 
 repo_sync() {
@@ -795,9 +808,6 @@ up_to_2.4.130() {
   # Remove any old Elastic Defend config files
   rm -f /opt/so/conf/elastic-fleet/integrations/endpoints-initial/elastic-defend-endpoints.json
 
-  # Elastic Update for this release, so download Elastic Agent files
-  determine_elastic_agent_upgrade
-
   # Ensure override exists to allow nmcli access to other devices
   touch /etc/NetworkManager/conf.d/10-globally-managed-devices.conf
 
@@ -827,6 +837,23 @@ up_to_2.4.160() {
   echo "Nothing to do for 2.4.160"
 
   INSTALLEDVERSION=2.4.160
+}
+
+up_to_2.4.170() {
+  echo "Creating pillar files for virtualization feature"
+
+  states=("hypervisor" "vm" "libvirt")
+  
+  # Create pillar files for each state
+  for state in "${states[@]}"; do
+    mkdir -p /opt/so/saltstack/local/pillar/$state
+    touch /opt/so/saltstack/local/pillar/$state/adv_$state.sls /opt/so/saltstack/local/pillar/$state/soc_$state.sls
+  done
+
+  # Elastic Update for this release, so download Elastic Agent files
+  determine_elastic_agent_upgrade
+
+  INSTALLEDVERSION=2.4.170
 }
 
 add_hydra_pillars() {

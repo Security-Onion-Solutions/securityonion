@@ -204,7 +204,7 @@ so-elasticsearch-roles-load:
       - docker_container: so-elasticsearch
       - file: elasticsearch_sbin_jinja
 
-{%     if grains.role in ['so-managersearch', 'so-manager'] %}
+{%     if grains.role in ['so-managersearch', 'so-manager', 'so-managerhype'] %}
 {%       set ap = "absent" %}
 {%     endif %}
 {%     if grains.role in ['so-eval', 'so-standalone', 'so-heavynode'] %}

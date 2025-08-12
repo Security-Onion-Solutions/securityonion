@@ -18,6 +18,7 @@ base:
     - telegraf.adv_telegraf
     - versionlock.soc_versionlock
     - versionlock.adv_versionlock
+    - soc.license
 
   '* and not *_desktop':
     - firewall.soc_firewall
@@ -25,7 +26,12 @@ base:
     - nginx.soc_nginx
     - nginx.adv_nginx
 
-  '*_manager or *_managersearch':
+  'salt-cloud:driver:libvirt':
+    - match: grain
+    - vm.soc_vm
+    - vm.adv_vm
+
+  '*_manager or *_managersearch or *_managerhype':
     - match: compound
     - node_data.ips
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
@@ -44,7 +50,6 @@ base:
     - logstash.adv_logstash
     - soc.soc_soc
     - soc.adv_soc
-    - soc.license
     - kibana.soc_kibana
     - kibana.adv_kibana
     - kratos.soc_kratos
@@ -70,6 +75,9 @@ base:
     - kafka.nodes
     - kafka.soc_kafka
     - kafka.adv_kafka
+    - hypervisor.nodes
+    - hypervisor.soc_hypervisor
+    - hypervisor.adv_hypervisor
     - stig.soc_stig
 
   '*_sensor':
@@ -87,7 +95,6 @@ base:
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
     - stig.soc_stig
-    - soc.license
 
   '*_eval':
     - node_data.ips
@@ -114,7 +121,6 @@ base:
     - idstools.adv_idstools
     - soc.soc_soc
     - soc.adv_soc
-    - soc.license
     - kibana.soc_kibana
     - kibana.adv_kibana
     - strelka.soc_strelka
@@ -174,7 +180,6 @@ base:
     - manager.adv_manager
     - soc.soc_soc
     - soc.adv_soc
-    - soc.license
     - kibana.soc_kibana
     - kibana.adv_kibana
     - strelka.soc_strelka
@@ -240,7 +245,6 @@ base:
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
     - stig.soc_stig
-    - soc.license
     - kafka.nodes
     - kafka.soc_kafka
     - kafka.adv_kafka
@@ -258,8 +262,6 @@ base:
     - minions.adv_{{ grains.id }}
     - kafka.nodes
     - kafka.soc_kafka
-    - kafka.adv_kafka
-    - soc.license
 
   '*_import':
     - node_data.ips
@@ -283,7 +285,6 @@ base:
     - manager.adv_manager
     - soc.soc_soc
     - soc.adv_soc
-    - soc.license
     - kibana.soc_kibana
     - kibana.adv_kibana
     - backup.soc_backup
@@ -319,8 +320,12 @@ base:
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
 
+  '*_hypervisor':
+    - minions.{{ grains.id }}
+    - minions.adv_{{ grains.id }}
+
   '*_desktop':
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
     - stig.soc_stig
-    - soc.license
+

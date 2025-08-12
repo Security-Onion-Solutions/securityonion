@@ -1,0 +1,51 @@
+{#- Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+   or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+   https://securityonion.net/license; you may not use this file except in compliance with the
+   Elastic License 2.0. #}
+
+{%- for role, hosts in HYPERVISORS.items() %}
+{%-   for host in hosts.keys() %}
+
+sool9_{{host}}:
+  provider: kvm-ssh-{{host}}
+  base_domain: sool9
+  ip_source: qemu-agent
+  ssh_username: soqemussh
+  private_key: /etc/ssh/auth_keys/soqemussh/id_ecdsa
+  sudo: True
+  deploy_command: sh /tmp/.saltcloud-*/deploy.sh
+  script_args: -r -F -x python3 stable 3006.9
+  minion:
+    master: {{ grains.host }}
+    master_port: 4506
+    use_superseded:
+      - module.run
+    features:
+      x509_v2: true
+    log_level: info
+    log_level_logfile: info
+    log_file: /opt/so/log/salt/minion
+  grains:
+    hypervisor_host: {{host ~ "_" ~ role}}
+  preflight_cmds:
+    - |
+      tee -a /etc/hosts <<< "{{ MANAGERIP }}    {{ MANAGERHOSTNAME }}"
+    - |
+      timeout 600 bash -c 'trap "echo \"Preflight Check: Failed to establish repo connectivity\"; exit 1" TERM; \
+        while ! dnf makecache --repoid=securityonion >/dev/null 2>&1; do echo "Preflight Check: Waiting for repo connectivity..."; \
+        sleep 5; done && echo "Preflight Check: Successfully connected to repo" || exit 1; [ $? -eq 0 ]'
+  # the destination directory will be created if it doesn't exist
+  #file_map:
+  #  /opt/so/saltstack/default/salt/salt/mine_functions.sls: /opt/so/conf/salt/cloud_file_map/salt/salt/mine_functions.sls
+  # if calling states with pillar values, need to pass them in since minion pillars are not set until setup.virt.sominion state runs
+  inline_script:
+    - |
+      salt-call state.apply salt.mine_functions \
+        pillar='{"host": {"mainint": "enp1s0"}}'
+    - salt-call mine.update
+    - |
+      salt-call state.apply setup.virt \
+        pillar='{"host": {"mainint": "enp1s0"}}'
+
+{%-   endfor %}
+{%- endfor %}

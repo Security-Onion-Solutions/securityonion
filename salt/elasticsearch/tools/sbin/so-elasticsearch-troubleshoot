@@ -1,0 +1,195 @@
+#!/bin/bash
+
+. /usr/sbin/so-common
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+BOLD='\033[1;37m'
+NC='\033[0m'
+
+log_title() {
+  if [ $1 == "LOG" ]; then
+    echo -e "\n${BOLD}================ $2 ================${NC}\n"
+  elif [ $1 == "OK" ]; then
+    echo -e "${GREEN} $2 ${NC}"
+  elif [ $1 == "WARN" ]; then
+    echo -e "${YELLOW} $2 ${NC}"
+  elif [ $1 == "ERROR" ]; then
+    echo -e "${RED} $2 ${NC}"
+  fi
+}
+
+health_report() {
+  if ! health_report_output=$(so-elasticsearch-query _health_report?format=json --fail 2>/dev/null); then
+    log_title "ERROR" "Failed to retrieve health report from Elasticsearch"
+    return 1
+  fi
+  non_green_count=$(echo "$health_report_output" | jq '[.indicators | to_entries[] | select(.value.status != "green")] | length')
+
+  if [ "$non_green_count" -gt 0 ]; then
+    echo "$health_report_output" | jq -r '.indicators | to_entries[] | select(.value.status != "green") | .key' | while read -r indicator_name; do
+      indicator=$(echo "$health_report_output" | jq -r ".indicators.\"$indicator_name\"")
+      status=$(echo "$indicator" | jq -r '.status')
+      symptom=$(echo "$indicator" | jq -r '.symptom // "No symptom available"')
+
+      # reormat indicator name
+      display_name=$(echo "$indicator_name" | tr '_' ' ' | sed 's/\b\(.\)/\u\1/g')
+
+      if [ "$status" = "yellow" ]; then
+        log_title "WARN" "$display_name: $symptom"
+      else
+        log_title "ERROR" "$display_name: $symptom"
+      fi
+
+      # diagnosis if available
+      echo "$indicator" | jq -c '.diagnosis[]? // empty' | while read -r diagnosis; do
+        cause=$(echo "$diagnosis" | jq -r '.cause // "Unknown"')
+        action=$(echo "$diagnosis" | jq -r '.action // "No action specified"')
+
+        echo -e "  ${BOLD}Cause:${NC} $cause\n"
+        echo -e "  ${BOLD}Action:${NC} $action\n"
+
+        # Check for affected indices
+        affected_indices=$(echo "$diagnosis" | jq -r '.affected_resources.indices[]? // empty')
+        if [ -n "$affected_indices" ]; then
+          echo -e "  ${BOLD}Affected indices:${NC}"
+          total_indices=$(echo "$affected_indices" | wc -l)
+          echo "$affected_indices" | head -10 | while read -r index; do
+            echo "    - $index"
+          done
+          if [ "$total_indices" -gt 10 ]; then
+            remaining=$((total_indices - 10))
+            echo "    ... and $remaining more indices (truncated for readability)"
+          fi
+        fi
+        echo
+      done
+    done
+  else
+    log_title "OK" "All health indicators are green"
+  fi
+}
+
+elasticsearch_status() {
+  log_title "LOG" "Elasticsearch Status"
+  if so-elasticsearch-query / --fail --output /dev/null; then
+    health_report
+  else
+    log_title "ERROR" "Elasticsearch API is not accessible"
+    so-status
+    log_title "ERROR" "Make sure Elasticsearch is running. Addtionally, check for startup errors in /opt/so/log/elasticsearch/securityonion.log${NC}\n"
+
+    exit 1
+  fi
+
+}
+
+indices_by_age() {
+  log_title "LOG" "Indices by Creation Date - Size > 1KB"
+  log_title "WARN" "Since high/flood watermark has been reached consider updating ILM policies.\n"
+  if ! indices_output=$(so-elasticsearch-query '_cat/indices?v&s=creation.date:asc&h=creation.date.string,index,status,health,docs.count,pri.store.size&bytes=b&format=json' --fail 2>/dev/null); then
+    log_title "ERROR" "Failed to retrieve indices list from Elasticsearch"
+    return 1
+  fi
+
+  # Filter for indices with size > 1KB (1024 bytes) and format output
+  echo -e "${BOLD}Creation Date                   Name                                                                        Size${NC}"
+  echo -e "${BOLD}--------------------------------------------------------------------------------------------------------------${NC}"
+
+  #  Create list of indices excluding .internal, so-detection*, so-case*
+  echo "$indices_output" | jq -r '.[] | select((."pri.store.size" | tonumber) > 1024) | select(.index | (startswith(".internal") or startswith("so-detection") or startswith("so-case")) | not ) | "\(."creation.date.string") | \(.index) | \(."pri.store.size")"' | while IFS='|' read -r creation_date index_name size_bytes; do
+    # Convert bytes to GB / MB
+    if [ "$size_bytes" -gt 1073741824 ]; then
+      size_human=$(echo "scale=2; $size_bytes / 1073741824" | bc)GB
+    else
+      size_human=$(echo "scale=2; $size_bytes / 1048576" | bc)MB
+    fi
+
+    creation_date=$(date -d "$creation_date" '+%Y-%m-%dT%H:%MZ' )
+
+    # Format output with spacing
+    printf "%-19s %-76s %10s\n" "$creation_date" "$index_name" "$size_human"
+  done
+}
+
+watermark_settings() {
+  watermark_path=".defaults.cluster.routing.allocation.disk.watermark"
+  if ! watermark_output=$(so-elasticsearch-query _cluster/settings?include_defaults=true\&filter_path=*.cluster.routing.allocation.disk.* --fail 2>/dev/null); then
+    log_title "ERROR" "Failed to retrieve watermark settings from Elasticsearch"
+    return 1
+  fi
+
+  if ! disk_allocation_output=$(so-elasticsearch-query _cat/nodes?v\&h=name,ip,disk.used_percent,disk.avail,disk.total,node.role\&format=json --fail 2>/dev/null); then
+    log_title "ERROR" "Failed to retrieve disk allocation data from Elasticsearch"
+    return 1
+  fi
+
+  flood=$(echo $watermark_output | jq -r "$watermark_path.flood_stage" )
+  high=$(echo $watermark_output | jq -r "$watermark_path.high" )
+  low=$(echo $watermark_output | jq -r "$watermark_path.low" )
+
+  # Strip percentage signs for comparison
+  flood_num=${flood%\%}
+  high_num=${high%\%}
+  low_num=${low%\%}
+
+  # Check each nodes disk usage
+  log_title "LOG" "Disk Usage Check"
+  echo -e "${BOLD}LOW:${GREEN}$low${NC}${BOLD} HIGH:${YELLOW}${high}${NC}${BOLD} FLOOD:${RED}${flood}${NC}\n"
+
+  # Only show data nodes (d=data, h=hot, w=warm, c=cold, f=frozen, s=content)
+  echo "$disk_allocation_output" | jq -r '.[] | select(.["node.role"] | test("[dhwcfs]")) | "\(.name)|\(.["disk.used_percent"])"' | while IFS='|' read -r node_name disk_used; do
+    disk_used_num=$(echo $disk_used | bc)
+
+    if (( $(echo "$disk_used_num >= $flood_num" | bc -l) )); then
+      log_title "ERROR" "$node_name is at or above the flood watermark ($flood)! Disk usage: ${disk_used}%"
+      touch /tmp/watermark_reached
+    elif (( $(echo "$disk_used_num >= $high_num" | bc -l) )); then
+      log_title "ERROR" "$node_name is at or above the high watermark ($high)! Disk usage: ${disk_used}%"
+      touch /tmp/watermark_reached
+    else
+      log_title "OK" "$node_name disk usage: ${disk_used}%"
+    fi
+  done
+
+   # Check if we need to show indices by age
+  if [ -f /tmp/watermark_reached ]; then
+    indices_by_age
+    rm -f /tmp/watermark_reached
+  fi
+
+}
+
+unassigned_shards() {
+
+  if ! unassigned_shards_output=$(so-elasticsearch-query _cat/shards?v\&h=index,shard,prirep,state,unassigned.reason,unassigned.details\&s=state\&format=json --fail 2>/dev/null); then
+    log_title "ERROR" "Failed to retrieve shard data from Elasticsearch"
+    return 1
+  fi
+
+  log_title "LOG" "Unassigned Shards Check"
+  # Check if there are any UNASSIGNED shards
+  unassigned_count=$(echo "$unassigned_shards_output" | jq '[.[] | select(.state == "UNASSIGNED")] | length')
+
+  if [ "$unassigned_count" -gt 0 ]; then
+    echo "$unassigned_shards_output" | jq -r '.[] | select(.state == "UNASSIGNED") | "\(.index)|\(.shard)|\(.prirep)|\(."unassigned.reason")"' | while IFS='|' read -r index shard prirep reason; do
+      if [ "$prirep" = "r" ]; then
+        log_title "WARN" "Replica shard for index $index is unassigned. Reason: $reason"
+      elif [ "$prirep" = "p" ]; then
+        log_title "ERROR" "Primary shard for index $index is unassigned. Reason: $reason"
+      fi
+    done
+  else
+    log_title "OK" "All shards are assigned"
+  fi
+}
+
+main() {
+  elasticsearch_status
+  watermark_settings
+  unassigned_shards
+}
+
+main

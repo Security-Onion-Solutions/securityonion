@@ -1,0 +1,164 @@
+{# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+   or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+   https://securityonion.net/license; you may not use this file except in compliance with the
+   Elastic License 2.0. 
+   
+   Note: Per the Elastic License 2.0, the second limitation states:
+
+    "You may not move, change, disable, or circumvent the license key functionality
+     in the software, and you may not remove or obscure any functionality in the
+     software that is protected by the license key." #}
+
+{% if 'vrt' in salt['pillar.get']('features', []) %}
+
+{# Import defaults.yaml for model hardware capabilities #}
+{% import_yaml 'hypervisor/defaults.yaml' as DEFAULTS %}
+
+{# Get hypervisor nodes from pillar #}
+{% set NODES = salt['pillar.get']('hypervisor:nodes', {}) %}
+
+{# Build enhanced HYPERVISORS structure #}
+{% set HYPERVISORS = {} %}
+{% do salt.log.debug('salt/hypervisor/map.jinja: NODES content: ' ~ NODES | tojson) %}
+{% for role, hypervisors in NODES.items() %}
+  {% do salt.log.debug('salt/hypervisor/map.jinja: Processing role: ' ~ role) %}
+  {% do HYPERVISORS.update({role: {}}) %}
+  {% for hypervisor, config in hypervisors.items() %}
+    {% do salt.log.debug('salt/hypervisor/map.jinja: Processing hypervisor: ' ~ hypervisor ~ ' with config: ' ~ config | tojson) %}
+    {# Get model from cached grains using Salt runner #}
+    {% set grains = salt.saltutil.runner('cache.grains', tgt=hypervisor ~ '_*', tgt_type='glob') %}
+    {% set model = '' %}
+    {% if grains %}
+      {% set minion_id = grains.keys() | first %}
+      {% set model = grains[minion_id].get('sosmodel', '') %}
+    {% endif %}
+    {% set model_config = DEFAULTS.hypervisor.model.get(model, {}) %}
+    
+    {# Get VM list from VMs file #}
+    {% set vms = {} %}
+    {% set vm_list = [] %}
+    {% set vm_list_file = 'hypervisor/hosts/' ~ hypervisor ~ 'VMs' %}
+    {% do salt.log.debug('salt/hypervisor/map.jinja: VM list file: ' ~ vm_list_file) %}
+    {% if salt['file.file_exists']('/opt/so/saltstack/local/salt/' ~ vm_list_file) %}
+    {%   import_json vm_list_file as vm_list %}
+    {% endif %}
+    {% if vm_list %}
+      {% do salt.log.debug('salt/hypervisor/map.jinja: VM list content: ' ~ vm_list | tojson) %}
+    {% else %}
+      {# we won't get here if the vm_list_file doesn't exist because we will get TemplateNotFound on the import_json #}
+      {% do salt.log.debug('salt/hypervisor/map.jinja: VM list empty: ' ~ vm_list_file) %}
+    {% endif %}
+    
+    {# Load status and configuration for each VM #}
+    {% for vm in vm_list %}
+      {# Get VM details from list entry #}
+      {% set hostname = vm.get('hostname', '') %}
+      {% set role = vm.get('role', '') %}
+      {% do salt.log.debug('salt/hypervisor/map.jinja: Processing VM - hostname: ' ~ hostname ~ ', role: ' ~ role) %}
+      
+      {# Load VM configuration from config file #}
+      {% set vm_file = 'hypervisor/hosts/' ~ hypervisor ~ '/' ~ hostname ~ '_' ~ role %}
+      {% do salt.log.debug('salt/hypervisor/map.jinja: VM config file: ' ~ vm_file) %}
+      {% import_json vm_file as vm_state %}
+      {% if vm_state %}
+        {% do salt.log.debug('salt/hypervisor/map.jinja: VM config content: ' ~ vm_state | tojson) %}
+        {% set vm_data = {'config': vm_state.config} %}
+        
+        {# Load VM status from status file #}
+        {% set status_file = vm_file ~ '.status' %}
+        {% do salt.log.debug('salt/hypervisor/map.jinja: VM status file: ' ~ status_file) %}
+        {% import_json status_file as status_data %}
+        {% if status_data %}
+          {% do salt.log.debug('salt/hypervisor/map.jinja: VM status content: ' ~ status_data | tojson) %}
+          {% do vm_data.update({'status': status_data}) %}
+        {% else %}
+          {% do salt.log.debug('salt/hypervisor/map.jinja: Status file empty: ' ~ status_file) %}
+          {% do vm_data.update({
+            'status': {
+              'status': '',
+              'details': null,
+              'timestamp': ''
+            }
+          }) %}
+        {% endif %}
+        {% do vms.update({hostname ~ '_' ~ role: vm_data}) %}
+      {% else %}
+        {% do salt.log.debug('salt/hypervisor/map.jinja: Config file empty: ' ~ vm_file) %}
+      {% endif %}
+    {% endfor %}
+    
+    {# Find and add destroyed VMs from status files #}
+    {% set processed_vms = [] %}
+    {% for vm_full_name, vm_data in vms.items() %}
+      {% do processed_vms.append(vm_full_name) %}
+    {% endfor %}
+    
+    {# Find all status files for this hypervisor #}
+    {% set relative_path = 'hypervisor/hosts/' ~ hypervisor %}
+    {% set absolute_path = '/opt/so/saltstack/local/salt/' ~ relative_path %}
+    {% do salt.log.debug('salt/hypervisor/map.jinja: Scanning for status files in: ' ~ absolute_path) %}
+    
+    {# Try to find status files using file.find with absolute path #}
+    {% set status_files = salt['file.find'](absolute_path, name='*_*.status', type='f') %}
+    {% do salt.log.debug('salt/hypervisor/map.jinja: Found status files: ' ~ status_files | tojson) %}
+    
+    {# Convert absolute paths back to relative paths for processing #}
+    {% set relative_status_files = [] %}
+    {% for status_file in status_files %}
+      {% set relative_file = status_file | replace('/opt/so/saltstack/local/salt/', '') %}
+      {% do relative_status_files.append(relative_file) %}
+    {% endfor %}
+    {% set status_files = relative_status_files %}
+    
+    {% do salt.log.debug('salt/hypervisor/map.jinja: Converted to relative paths: ' ~ status_files | tojson) %}
+    
+    {% for status_file in status_files %}
+      {# Extract the VM name from the filename #}
+      {% set basename = status_file.split('/')[-1] %}
+      {% set vm_name = basename.replace('.status', '') %}
+      {% set hostname = vm_name.split('_')[0] %}
+      
+      {# Skip already processed VMs #}
+      {% if vm_name in processed_vms %}
+        {% continue %}
+      {% endif %}
+      
+      {# Read the status file #}
+      {% do salt.log.debug('salt/hypervisor/map.jinja: Processing potential destroyed VM status file: ' ~ status_file) %}
+      {% import_json status_file as status_data %}
+      
+      {# Only process files with "Destroyed Instance" status #}
+      {% if status_data and status_data.status == 'Destroyed Instance' %}
+        {% do salt.log.debug('salt/hypervisor/map.jinja: Found VM with Destroyed Instance status: ' ~ vm_name) %}
+        
+        {# Add to vms with minimal config #}
+        {% do vms.update({
+          vm_name: {
+            'status': status_data,
+            'config': {}
+          }
+        }) %}
+      {% endif %}
+    {% endfor %}
+    
+    {# Merge node config with model capabilities and VM states #}
+    {% do HYPERVISORS[role].update({
+      hypervisor: {
+        'config': config,
+        'model': model,
+        'hardware': model_config.get('hardware', {}),
+        'vms': vms
+      }
+    }) %}
+  {% endfor %}
+{% endfor %}
+
+{% else %}
+
+{% do salt.log.error(
+  'Hypervisor nodes are a feature supported only for customers with a valid license.'
+  'Contact Security Onion Solutions, LLC via our website at https://securityonionsolutions.com'
+  'for more information about purchasing a license to enable this feature.'
+) %}
+
+{% endif %}

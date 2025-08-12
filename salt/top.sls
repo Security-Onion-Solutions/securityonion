@@ -8,6 +8,11 @@
 {% set INSTALLEDSALTVERSION = grains.saltversion %}
 
 base:
+  'salt-cloud:driver:libvirt':
+    - match: grain
+    - storage
+    - vm.status
+    - vm.user
 
   '*':
     - cron.running
@@ -120,7 +125,7 @@ base:
     - stig
     - kafka
 
-  '*_manager and G@saltversion:{{saltversion}} and not I@node_data:False':
+  '*_manager or *_managerhype and G@saltversion:{{saltversion}} and not I@node_data:False':
     - match: compound
     - salt.master
     - ca
@@ -150,6 +155,10 @@ base:
     - elasticfleet
     - stig
     - kafka
+
+  '*_managerhype and I@features:vrt and G@saltversion:{{saltversion}}':
+    - match: compound
+    - manager.hypervisor
 
   '*_managersearch and G@saltversion:{{saltversion}} and not I@node_data:False':
     - match: compound
@@ -291,6 +300,18 @@ base:
     - elasticfleet.install_agent_grid
     - schedule
 
+  '*_hypervisor and I@features:vrt and G@saltversion:{{saltversion}}':
+    - match: compound
+    - ssl
+    - sensoroni
+    - telegraf
+    - firewall
+    - hypervisor
+    - libvirt
+    - libvirt.images
+    - elasticfleet.install_agent_grid
+    - stig
+  
   '*_desktop and G@saltversion:{{saltversion}}':
     - ssl
     - sensoroni

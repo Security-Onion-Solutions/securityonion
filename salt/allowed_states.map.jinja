@@ -1,264 +1,179 @@
-# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
-# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
-# https://securityonion.net/license; you may not use this file except in compliance with the
-# Elastic License 2.0.
+{# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+   or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+   https://securityonion.net/license; you may not use this file except in compliance with the
+   Elastic License 2.0. #}
 
 {% set ISAIRGAP = salt['pillar.get']('global:airgap', False) %}
 {% import_yaml 'salt/minion.defaults.yaml' as saltversion %}
 {% set saltversion = saltversion.salt.minion.version %}
 
-{# this is the list we are returning from this map file, it gets built below #}
-{% set allowed_states= [] %}
+{# Define common state groups to reduce redundancy #}
+{% set base_states = [
+    'common',
+    'patch.os.schedule',
+    'motd',
+    'salt.minion-check',
+    'sensoroni',
+    'salt.lasthighstate',
+    'salt.minion'
+] %}
+
+{% set ssl_states = [
+    'ssl',
+    'telegraf',
+    'firewall',
+    'schedule',
+    'docker_clean'
+] %}
+
+{% set manager_states = [
+    'salt.master',
+    'ca',
+    'registry',
+    'manager',
+    'nginx',
+    'influxdb',
+    'soc',
+    'kratos',
+    'hydra',
+    'elasticfleet',
+    'elastic-fleet-package-registry',
+    'idstools',
+    'suricata.manager',
+    'utility'
+] %}
+
+{% set sensor_states = [
+    'pcap',
+    'suricata',
+    'healthcheck',
+    'tcpreplay',
+    'zeek',
+    'strelka'
+] %}
+
+{% set kafka_states = [
+    'kafka'
+] %}
+
+{% set stig_states = [
+    'stig'
+] %}
+
+{% set elastic_stack_states = [
+    'elasticsearch',
+    'elasticsearch.auth',
+    'kibana',
+    'kibana.secrets',
+    'elastalert',
+    'logstash',
+    'redis'
+] %}
+
+{# Initialize the allowed_states list #}
+{% set allowed_states = [] %}
 
 {% if grains.saltversion | string == saltversion | string %}
+    {# Map role-specific states #}
+    {% set role_states = {
+        'so-eval': (
+            ssl_states +
+            manager_states +
+            sensor_states +
+            elastic_stack_states | reject('equalto', 'logstash') | list
+        ),
+        'so-heavynode': (
+            ssl_states +
+            sensor_states +
+            ['elasticagent', 'elasticsearch', 'logstash', 'redis', 'nginx']
+        ),
+        'so-idh': (
+            ssl_states +
+            ['idh']
+        ),
+        'so-import': (
+            ssl_states +
+            manager_states +
+            sensor_states | reject('equalto', 'strelka') | reject('equalto', 'healthcheck') | list +
+            ['elasticsearch', 'elasticsearch.auth', 'kibana', 'kibana.secrets', 'strelka.manager']
+        ),
+        'so-manager': (
+            ssl_states +
+            manager_states +
+            ['salt.cloud', 'libvirt.packages', 'libvirt.ssh.users', 'strelka.manager'] +
+            stig_states +
+            kafka_states +
+            elastic_stack_states
+        ),
+        'so-managerhype': (
+            ssl_states +
+            manager_states +
+            ['salt.cloud', 'strelka.manager', 'hypervisor', 'libvirt'] +
+            stig_states +
+            kafka_states +
+            elastic_stack_states
+        ),
+        'so-managersearch': (
+            ssl_states +
+            manager_states +
+            ['salt.cloud', 'libvirt.packages', 'libvirt.ssh.users', 'strelka.manager'] +
+            stig_states +
+            kafka_states +
+            elastic_stack_states
+        ),
+        'so-searchnode': (
+            ssl_states +
+            ['kafka.ca', 'kafka.ssl', 'elasticsearch', 'logstash', 'nginx'] +
+            stig_states
+        ),
+        'so-standalone': (
+            ssl_states +
+            manager_states +
+            ['salt.cloud', 'libvirt.packages', 'libvirt.ssh.users'] +
+            sensor_states +
+            stig_states +
+            kafka_states +
+            elastic_stack_states
+        ),
+        'so-sensor': (
+            ssl_states +
+            sensor_states +
+            ['nginx'] +
+            stig_states
+        ),
+        'so-fleet': (
+            ssl_states +
+            ['logstash', 'nginx', 'healthcheck', 'elasticfleet']
+        ),
+        'so-receiver': (
+            ssl_states +
+            kafka_states +
+            stig_states +
+            ['logstash', 'redis']
+        ),
+        'so-hypervisor': (
+            ssl_states +
+            stig_states +
+            ['hypervisor', 'libvirt']
+        ),
+        'so-desktop': (
+            ['ssl', 'docker_clean', 'telegraf'] +
+            stig_states
+        )
+    } %}
 
-  {% set allowed_states= salt['grains.filter_by']({
-      'so-eval': [
-          'salt.master',
-          'ca',
-          'ssl',
-          'registry',
-          'manager',
-          'nginx',
-          'telegraf',
-          'influxdb',
-          'soc',
-          'kratos',
-          'hydra',
-          'elasticfleet',
-          'elastic-fleet-package-registry',
-          'firewall',
-          'idstools',
-          'suricata.manager',
-          'healthcheck',
-          'pcap',
-          'suricata',
-          'utility',
-          'schedule',
-          'tcpreplay',
-          'docker_clean'
-          ],
-      'so-heavynode': [
-          'ssl',
-          'nginx',
-          'telegraf',
-          'firewall',
-          'pcap',
-          'suricata',
-          'healthcheck',
-          'elasticagent',
-          'schedule',
-          'tcpreplay',
-          'docker_clean'
-          ],
-     'so-idh': [
-          'ssl',
-          'telegraf',
-          'firewall',
-          'idh',
-          'schedule',
-          'docker_clean'
-          ],
-      'so-import': [
-          'salt.master',
-          'ca',
-          'ssl',
-          'registry',
-          'manager',
-          'nginx',
-          'strelka.manager',
-          'soc',
-          'kratos',
-          'hydra',
-          'influxdb',
-          'telegraf',
-          'firewall',
-          'idstools',
-          'suricata.manager',
-          'pcap',
-          'utility',
-          'suricata',
-          'zeek',
-          'schedule',
-          'tcpreplay',
-          'docker_clean',
-          'elasticfleet',
-          'elastic-fleet-package-registry'
-          ],
-      'so-manager': [
-          'salt.master',
-          'ca',
-          'ssl',
-          'registry',
-          'manager',
-          'nginx',
-          'telegraf',
-          'influxdb',
-          'strelka.manager',
-          'soc',
-          'kratos',
-          'hydra',
-          'elasticfleet',
-          'elastic-fleet-package-registry',
-          'firewall',
-          'idstools',
-          'suricata.manager',
-          'utility',
-          'schedule',
-          'docker_clean',
-          'stig',
-          'kafka'
-          ],
-      'so-managersearch': [
-          'salt.master',
-          'ca',
-          'ssl',
-          'registry',
-          'nginx',
-          'telegraf',
-          'influxdb',
-          'strelka.manager',
-          'soc',
-          'kratos',
-          'hydra',
-          'elastic-fleet-package-registry',
-          'elasticfleet',
-          'firewall',
-          'manager',
-          'idstools',
-          'suricata.manager',
-          'utility',
-          'schedule',
-          'docker_clean',
-          'stig',
-          'kafka'
-          ],
-      'so-searchnode': [
-          'ssl',
-          'nginx',
-          'telegraf',
-          'firewall',
-          'schedule',
-          'docker_clean',
-          'stig',
-          'kafka.ca',
-          'kafka.ssl'
-          ],
-      'so-standalone': [
-          'salt.master',
-          'ca',
-          'ssl',
-          'registry',
-          'manager',
-          'nginx',
-          'telegraf',
-          'influxdb',
-          'soc',
-          'kratos',
-          'hydra',
-          'elastic-fleet-package-registry',
-          'elasticfleet',
-          'firewall',
-          'idstools',
-          'suricata.manager',
-          'pcap',
-          'suricata',
-          'healthcheck',
-          'utility',
-          'schedule',
-          'tcpreplay',
-          'docker_clean',
-          'stig',
-          'kafka'
-          ],
-      'so-sensor': [
-          'ssl',
-          'telegraf',
-          'firewall',
-          'nginx',
-          'pcap',
-          'suricata',
-          'healthcheck',
-          'schedule',
-          'tcpreplay',
-          'docker_clean',
-          'stig'
-          ],
-      'so-fleet': [
-          'ssl',
-          'telegraf',
-          'firewall',
-          'logstash',
-          'nginx',
-          'healthcheck',
-          'schedule',
-          'elasticfleet',
-          'docker_clean'
-          ],
-      'so-receiver': [
-          'ssl',
-          'telegraf',
-          'firewall',
-          'schedule',
-          'docker_clean',
-          'kafka',
-          'stig'
-          ],
-      'so-desktop': [
-          'ssl',
-          'docker_clean',
-          'telegraf',
-          'stig'
-          ],
-  }, grain='role') %}
+    {# Get states for the current role #}
+    {% if grains.role in role_states %}
+        {% set allowed_states = role_states[grains.role] %}
+    {% endif %}
 
-  {%- if grains.role in ['so-sensor', 'so-eval', 'so-standalone', 'so-heavynode'] %}
-    {% do allowed_states.append('zeek') %}
-  {%- endif %}
-
-  {% if grains.role in ['so-sensor', 'so-eval', 'so-standalone', 'so-heavynode'] %}
-    {% do allowed_states.append('strelka') %}
-  {% endif %}
-
-  {% if grains.role in ['so-eval', 'so-manager', 'so-standalone', 'so-searchnode', 'so-managersearch', 'so-heavynode', 'so-import'] %}
-    {% do allowed_states.append('elasticsearch') %}
-  {% endif %}
-
-  {% if grains.role in ['so-eval', 'so-manager', 'so-standalone', 'so-managersearch', 'so-import'] %}
-    {% do allowed_states.append('elasticsearch.auth') %}
-  {% endif %}
-
-  {% if grains.role in ['so-eval', 'so-manager', 'so-standalone', 'so-managersearch', 'so-import'] %}
-    {% do allowed_states.append('kibana') %}
-    {% do allowed_states.append('kibana.secrets') %}
-  {% endif %}
-
-  {% if grains.role in ['so-eval', 'so-manager', 'so-standalone', 'so-managersearch'] %}
-    {% do allowed_states.append('elastalert') %}
-  {% endif %}
-
-  {% if grains.role in ['so-manager', 'so-standalone', 'so-searchnode', 'so-managersearch', 'so-heavynode', 'so-receiver'] %}
-    {% do allowed_states.append('logstash') %}
-  {% endif %}
-
-  {% if grains.role in ['so-manager', 'so-standalone', 'so-managersearch', 'so-heavynode', 'so-receiver', 'so-eval'] %}
-    {% do allowed_states.append('redis') %}
-  {% endif %}
-  
-  {# all nodes on the right salt version can run the following states #}
-  {% do allowed_states.append('common') %}
-  {% do allowed_states.append('patch.os.schedule') %}
-  {% do allowed_states.append('motd') %}
-  {% do allowed_states.append('salt.minion-check') %}
-  {% do allowed_states.append('sensoroni') %}
-  {% do allowed_states.append('salt.lasthighstate') %}
-
+    {# Add base states that apply to all roles #}
+    {% for state in base_states %}
+        {% do allowed_states.append(state) %}
+    {% endfor %}
 {% endif %}
 
-
+{# Add airgap state if needed #}
 {% if ISAIRGAP %}
-  {% do allowed_states.append('airgap') %}
+    {% do allowed_states.append('airgap') %}
 {% endif %}
-
-{# all nodes can always run salt.minion state #}
-{% do allowed_states.append('salt.minion') %}

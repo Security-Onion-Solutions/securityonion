@@ -1,0 +1,665 @@
+#!/opt/saltstack/salt/bin/python3
+
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+#
+# Note: Per the Elastic License 2.0, the second limitation states:
+#
+#   "You may not move, change, disable, or circumvent the license key functionality
+#    in the software, and you may not remove or obscure any functionality in the
+#    software that is protected by the license key."
+
+{%   if 'vrt' in salt['pillar.get']('features', []) -%}
+
+"""
+Script for automated virtual machine provisioning and configuration in Security Onion's virtualization infrastructure. 
+This script integrates multiple components to provide a streamlined VM deployment process:
+
+1. Salt Cloud Integration:
+   - Works with libvirt salt-cloud provider for VM creation
+   - Manages VM lifecycle from provisioning through configuration
+   - Handles profile-based deployment for consistent VM setups
+
+2. Network Configuration Management:
+   - Supports both DHCP and static IPv4 networking
+   - Pre-configures network settings before VM deployment
+   - Integrates with qcow2.modify_network_config for image modification
+   - Ensures VMs boot with correct network configuration
+
+3. Hardware Resource Management:
+   - Flexible CPU and memory allocation
+   - Advanced PCI device passthrough capabilities
+   - Controlled VM startup sequence
+   - Uses qcow2.modify_hardware_config for hardware settings
+
+4. Security Integration:
+   - Automatic firewall rule configuration
+   - Directly integrates with so-firewall for consistent VM management
+   - Configures role-based firewall rules for new VMs
+   - Uses same firewall integration approach for both adding and removing VMs
+
+This script serves as the primary interface for VM deployment in Security Onion, coordinating 
+between salt-cloud, network configuration, hardware management, and security components to 
+ensure proper VM provisioning and configuration.
+
+Usage:
+    # Create a VM:
+    so-salt-cloud -p <profile> <vm_name> (--dhcp4 | --static4 --ip4 <ip_address> --gw4 <gateway>) 
+                            [-c <cpu_count>] [-m <memory_amount>] [-P <pci_id>] [-P <pci_id> ...] [--dns4 <dns_servers>] [--search4 <search_domain>]
+
+    # Delete a VM:
+    so-salt-cloud -p <profile> <vm_name> -d [-y]
+
+Options:
+    -p, --profile         The cloud profile to build the VM from.
+    <vm_name>             The name of the VM.
+    -d, --destroy         Delete the specified VM.
+    -y, --assume-yes      Default yes in answer to all confirmation questions.
+
+    Network Configuration (required for VM creation):
+    --dhcp4               Configure interface for DHCP (IPv4).
+    --static4             Configure interface for static IPv4 settings.
+    --ip4                 IPv4 address (e.g., 192.168.1.10/24). Required for static IPv4 configuration.
+    --gw4                 IPv4 gateway (e.g., 192.168.1.1). Required for static IPv4 configuration.
+    --dns4                Comma-separated list of IPv4 DNS servers (e.g., 8.8.8.8,8.8.4.4).
+    --search4             DNS search domain for IPv4.
+
+    Hardware Configuration (optional):
+    -c, --cpu             Number of virtual CPUs to assign.
+    -m, --memory          Amount of memory to assign in MiB.
+    -P, --pci             PCI hardware ID(s) to passthrough to the VM (e.g., 0000:c7:00.0). Can be specified multiple times.
+                          Format: domain:bus:device.function
+
+Examples:
+
+1. Static IP Configuration with Multiple PCI Devices:
+
+    Command:
+    so-salt-cloud -p sool9_hyper1 vm1_sensor --static4 --ip4 192.168.1.10/24 --gw4 192.168.1.1 \
+        --dns4 192.168.1.1,192.168.1.2 --search4 example.local -c 4 -m 8192 -P 0000:c7:00.0 -P 0000:c4:00.0
+
+    This command provisions a VM named vm1_sensor using the sool9_hyper1 profile with the following settings:
+
+    - Static IPv4 configuration:
+        - IP Address: 192.168.1.10/24
+        - Gateway: 192.168.1.1
+        - DNS Servers: 192.168.1.1, 192.168.1.2
+        - DNS Search Domain: example.local
+    - Hardware Configuration:
+        - CPUs: 4
+        - Memory: 8192 MiB
+        - PCI Device Passthrough: 0000:c7:00.0, 0000:c4:00.0
+
+2. DHCP Configuration with Default Hardware Settings:
+
+    Command:
+    so-salt-cloud -p sool9_hyper1 vm2_master --dhcp4
+
+    This command provisions a VM named vm2_master using the sool9_hyper1 profile with DHCP for network configuration and default hardware settings.
+
+3. Static IP Configuration without Hardware Specifications:
+
+    Command:
+    so-salt-cloud -p sool9_hyper1 vm3_search --static4 --ip4 192.168.1.20/24 --gw4 192.168.1.1
+
+    This command provisions a VM named vm3_search with a static IP configuration and default hardware settings.
+
+4. DHCP Configuration with Custom Hardware Specifications and Multiple PCI Devices:
+
+    Command:
+    so-salt-cloud -p sool9_hyper1 vm4_node --dhcp4 -c 8 -m 16384 -P 0000:c7:00.0 -P 0000:c4:00.0 -P 0000:c4:00.1
+
+    This command provisions a VM named vm4_node using DHCP for network configuration and custom hardware settings:
+
+    - CPUs: 8
+    - Memory: 16384 MiB
+    - PCI Device Passthrough: 0000:c7:00.0, 0000:c4:00.0, 0000:c4:00.1
+
+5. Static IP Configuration with DNS and Search Domain:
+
+    Command:
+    so-salt-cloud -p sool9_hyper1 vm1_sensor --static4 --ip4 192.168.1.10/24 --gw4 192.168.1.1 --dns4 192.168.1.1 --search4 example.local
+
+    This command provisions a VM named vm1_sensor using the sool9_hyper1 profile with static IPv4 configuration:
+
+    - Static IPv4 configuration:
+        - IP Address: 192.168.1.10/24
+        - Gateway: 192.168.1.1
+        - DNS Server: 192.168.1.1
+        - DNS Search Domain: example.local
+
+6. Delete a VM with Confirmation:
+
+    Command:
+    so-salt-cloud -p sool9_hyper1 vm1_sensor -d
+
+    This command deletes the VM named vm1_sensor and will prompt for confirmation before proceeding.
+
+7. Delete a VM without Confirmation:
+
+    Command:
+    so-salt-cloud -p sool9_hyper1 vm1_sensor -yd
+
+    This command deletes the VM named vm1_sensor without prompting for confirmation.
+
+Notes:
+
+- When using --static4, both --ip4 and --gw4 options are required.
+- The script assumes the cloud profile name follows the format basedomain-hypervisorname.
+- Hardware parameters (-c, -m, -P) are optional. If not provided, default values from the profile will be used.
+- The -P or --pci option can be specified multiple times to pass through multiple PCI devices to the VM.
+- The vm_name should include the role of the VM after an underscore (e.g., hostname_role), as the script uses this to determine the VM's role for firewall configuration.
+- PCI hardware IDs must be in the format domain:bus:device.function (e.g., 0000:c7:00.0).
+
+Description:
+
+The so-salt-cloud script automates the provisioning and configuration of virtual machines in Security Onion's infrastructure. It orchestrates multiple components to ensure proper VM setup and security configuration. The script executes in the following phases:
+
+1. Network Configuration Phase:
+   - Pre-deployment network setup using qcow2.modify_network_config
+   - Supports both DHCP and static IPv4 configurations
+   - Modifies the base QCOW2 image directly to ensure network settings persist
+   - Handles DNS and search domain configuration for proper name resolution
+   - Validates network parameters before modification
+   - Ensures network settings are in place before VM creation
+
+2. VM Provisioning Phase:
+   - Leverages salt-cloud for consistent VM deployment
+   - Uses predefined profiles for standardized configurations
+   - Manages the VM lifecycle through libvirt
+   - Prevents automatic VM start to allow hardware configuration
+   - Validates profile and VM name format
+   - Extracts role information from VM name for security configuration
+
+3. Hardware Configuration Phase:
+   - Configures VM hardware through qcow2.modify_hardware_config
+   - Manages CPU allocation based on host capabilities
+   - Handles memory assignment in MiB units
+   - Supports multiple PCI device passthrough for advanced networking
+   - Validates hardware parameters against host resources
+   - Controls VM startup sequence after configuration
+
+4. Security Integration Phase:
+   - Monitors salt-cloud output for VM IP address assignment
+   - Extracts role information from VM name
+   - Calls so-firewall directly to configure firewall rules
+   - Configures role-based firewall rules automatically
+   - Ensures security policies are in place for VM access
+   - Logs all security-related operations for audit purposes
+
+The script implements extensive error handling and logging throughout each phase:
+- Validates all input parameters before execution
+- Provides detailed error messages for troubleshooting
+- Logs operations to both file and console
+- Handles process interruption gracefully
+- Ensures atomic operations where possible
+- Maintains audit trail of all configuration changes
+
+Integration points:
+- Works with Security Onion's salt-cloud provider
+- Interfaces with qcow2 module for image and hardware management
+- Directly integrates with so-firewall for security configuration
+- Uses libvirt for VM management
+- Leverages SaltStack for distributed execution
+
+Exit Codes:
+
+- 0: Success
+- Non-zero: An error occurred during execution.
+
+Logging:
+
+- Logs are written to /opt/so/log/salt/so-salt-cloud.log.
+- Both file and console logging are enabled for real-time monitoring.
+
+"""
+
+import argparse
+import os
+import subprocess
+import re
+import sys
+import threading
+import salt.client
+import logging
+import yaml
+
+# Initialize Salt local client
+local = salt.client.LocalClient()
+
+# Set up logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+file_handler = logging.FileHandler('/opt/so/log/salt/so-salt-cloud.log')
+console_handler = logging.StreamHandler()
+
+formatter = logging.Formatter('%(asctime)s %(message)s')
+file_handler.setFormatter(formatter)
+console_handler.setFormatter(formatter)
+
+logger.addHandler(file_handler)
+logger.addHandler(console_handler)
+
+def add_host_to_firewall(ip, role):
+    """Configure firewall rules for a new VM.
+    
+    Args:
+        ip (str): The IP address of the VM to add to the firewall
+        role (str): The role of the VM (e.g., 'sensor', 'manager', etc.)
+        
+    This function calls so-firewall directly to configure firewall rules,
+    maintaining consistency with how firewall rules are managed during
+    VM deletion.
+    """
+    try:
+        # Call so-firewall directly with --apply
+        process = subprocess.Popen(
+            ['/usr/sbin/so-firewall', 'includehost', role.lower(), ip, '--apply'],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True
+        )
+
+        # Read and log the output
+        for line in iter(process.stdout.readline, ''):
+            if line:
+                logger.info(line.rstrip('\n'))
+
+        process.stdout.close()
+        process.wait()
+
+    except Exception as e:
+        logger.error(f"An error occurred while adding host to firewall: {e}")
+
+def get_vm_ip(vm_name):
+    """Get IP address of VM before deletion"""
+    try:
+        # Get IP from minion's pillar file
+        pillar_file = f"/opt/so/saltstack/local/pillar/minions/{vm_name}.sls"
+        with open(pillar_file, 'r') as f:
+            pillar_data = yaml.safe_load(f)
+            
+        if pillar_data and 'host' in pillar_data and 'mainip' in pillar_data['host']:
+            return pillar_data['host']['mainip']
+        raise Exception(f"Could not find mainip in pillar file {pillar_file}")
+    except FileNotFoundError:
+        raise Exception(f"Pillar file not found: {pillar_file}")
+    except Exception as e:
+        logger.error(f"Failed to get IP for VM {vm_name}: {e}")
+        raise
+
+def cleanup_deleted_vm(ip, role):
+    """Handle cleanup tasks when a VM is deleted"""
+    try:
+        # Remove IP from firewall
+        process = subprocess.Popen(
+            ['/usr/sbin/so-firewall', '--apply', 'removehost', ip],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True
+        )
+        
+        for line in iter(process.stdout.readline, ''):
+            if line:
+                logger.info(line.rstrip('\n'))
+                
+        process.stdout.close()
+        process.wait()
+        
+        if process.returncode == 0:
+            logger.info(f"Successfully removed IP {ip} from firewall configuration")
+        else:
+            logger.error(f"Failed to remove IP {ip} from firewall configuration")
+            
+    except Exception as e:
+        logger.error(f"Error during VM cleanup: {e}")
+
+def delete_vm(profile, vm_name, assume_yes=False):
+    """Delete a VM and perform cleanup tasks"""
+    try:
+        # Get VM's IP before deletion for cleanup
+        ip = get_vm_ip(vm_name)
+        role = vm_name.split("_")[1]
+        
+        # Run salt-cloud destroy command
+        cmd = ['salt-cloud', '-p', profile, vm_name, '-d']
+        if assume_yes:
+            cmd.append('-y')
+            
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True
+        )
+        
+        # Pattern to detect when no machines were found to be destroyed
+        no_machines_string = 'No machines were found to be destroyed'
+        no_machines_pattern = re.compile(re.escape(no_machines_string))
+        
+        # Track if we found any successful destruction
+        machines_destroyed = False
+        output_lines = []
+        
+        # Monitor output
+        for line in iter(process.stdout.readline, ''):
+            if line:
+                logger.info(line.rstrip('\n'))
+                output_lines.append(line.strip())
+                
+                # Check if no machines were found to be destroyed
+                if no_machines_pattern.search(line):
+                    machines_destroyed = False
+                    break
+                
+        process.stdout.close()
+        process.wait()
+        
+        # If we hit the "No machines were found" case, it's a failure
+        if no_machines_pattern.search('\n'.join(output_lines)):
+            logger.error(f"VM {vm_name} was not found to be destroyed. Verify that all configured hypervisors are online.")
+            sys.exit(1)
+        
+        # Check for successful destruction patterns in the output
+        # Look for the VM name appearing in libvirt section - this indicates successful processing
+        full_output = '\n'.join(output_lines)
+        if vm_name in full_output and 'libvirt:' in full_output:
+            # VM was processed by libvirt, which means destruction was attempted
+            # If we reach here and didn't hit the "No machines found" case, it's success
+            machines_destroyed = True
+        
+        # Check success criteria: returncode == 0 AND we found evidence of destruction
+        if process.returncode == 0 and machines_destroyed:
+            # Start cleanup tasks only when actual deletion occurred
+            cleanup_deleted_vm(ip, role)
+            logger.info(f"Successfully deleted VM {vm_name}")
+        elif process.returncode == 0:
+            # Command succeeded but we couldn't confirm destruction - this is the edge case we're fixing
+            # If salt-cloud returned 0 and we didn't hit the "No machines found" case,
+            # but we also don't see clear destruction evidence, we should still consider it success
+            # because salt-cloud returning 0 means it completed successfully
+            cleanup_deleted_vm(ip, role)
+            logger.info(f"Successfully deleted VM {vm_name} (salt-cloud completed successfully)")
+        else:
+            logger.error(f"Failed to delete VM {vm_name}")
+            sys.exit(1)
+            
+    except Exception as e:
+        logger.error(f"Failed to delete VM {vm_name}: {e}")
+        raise
+
+def _add_hypervisor_host_key(hostname):
+    """Add hypervisor host key to root's known_hosts file.
+    
+    Args:
+        hostname (str): The hostname or IP of the hypervisor
+        
+    Returns:
+        bool: True if key was added or already exists, False on error
+    """
+    try:
+        known_hosts = '/root/.ssh/known_hosts'
+        os.makedirs(os.path.dirname(known_hosts), exist_ok=True)
+        
+        # Check if key already exists using ssh-keygen
+        if os.path.exists(known_hosts):
+            check_result = subprocess.run(['ssh-keygen', '-F', hostname],
+                                        capture_output=True, text=True)
+            if check_result.returncode == 0 and check_result.stdout.strip():
+                logger.info("Host key for %s already in known_hosts", hostname)
+                return True
+            
+        # Get host key using ssh-keyscan
+        logger.info("Scanning host key for %s", hostname)
+        process = subprocess.run(['ssh-keyscan', '-H', hostname],
+                               capture_output=True, text=True)
+        
+        if process.returncode == 0 and process.stdout:
+            # Append new key
+            with open(known_hosts, 'a') as f:
+                f.write(process.stdout)
+            logger.info("Added host key for %s to known_hosts", hostname)
+            return True
+        else:
+            logger.error("Failed to get host key for %s: %s",
+                      hostname, process.stderr)
+            return False
+            
+    except Exception as e:
+        logger.error("Error adding host key for %s: %s", hostname, str(e))
+        return False
+
+def call_salt_cloud(profile, vm_name, destroy=False, assume_yes=False):
+    """Call salt-cloud to create or destroy a VM"""
+    try:
+        if destroy:
+            delete_vm(profile, vm_name, assume_yes)
+            return
+
+        # Extract hypervisor hostname from profile (e.g., sool9_hype1 -> hype1)
+        hypervisor = profile.split('_', 1)[1] if '_' in profile else None
+        if hypervisor:
+            logger.info("Ensuring host key exists for hypervisor %s", hypervisor)
+            if not _add_hypervisor_host_key(hypervisor):
+                logger.error("Failed to add host key for %s, cannot proceed with VM creation", hypervisor)
+                sys.exit(1)
+
+        # Start the salt-cloud command as a subprocess
+        process = subprocess.Popen(
+            ['salt-cloud', '-p', profile, vm_name, '-l', 'info'],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True
+        )
+
+        role = vm_name.split("_")[1]
+
+        ip_search_string = '[INFO    ] Address ='
+        ip_search_pattern = re.compile(re.escape(ip_search_string))
+
+        # Continuously read the output from salt-cloud
+        while True:
+            # Read stdout line by line
+            line = process.stdout.readline()
+            if line:
+                logger.info(line.rstrip('\n'))
+
+                if ip_search_pattern.search(line):
+                    parts = line.split("Address =")
+                    if len(parts) > 1:
+                        ip_address = parts[1].strip()
+                        logger.info(f"Extracted IP address: {ip_address}")
+                        # Create and start a thread to add host to firewall
+                        thread = threading.Thread(target=add_host_to_firewall, args=(ip_address, role))
+                        thread.start()
+                    else:
+                        logger.error("No IP address found.")
+            else:
+                # Check if salt-cloud has terminated
+                if process.poll() is not None:
+                    break
+
+        process.stdout.close()
+        process.wait()
+
+    except Exception as e:
+        logger.error(f"An error occurred while calling salt-cloud: {e}")
+
+def format_qcow2_output(operation, result):
+    """Format the output from qcow2 module operations for better readability.
+    
+    Args:
+        operation (str): The name of the operation (e.g., 'Network configuration', 'Hardware configuration')
+        result (dict): The result dictionary from the qcow2 module
+        
+    Returns:
+        None - logs the formatted output directly
+    """
+    for host, host_result in result.items():
+        if isinstance(host_result, dict):
+            # Extract and format stderr which contains the detailed log
+            if 'stderr' in host_result:
+                logger.info(f"{operation} on {host}:")
+                for line in host_result['stderr'].split('\n'):
+                    if line.strip():
+                        logger.info(f"  {line.strip()}")
+            if host_result.get('retcode', 0) != 0:
+                logger.error(f"{operation} failed on {host} with return code {host_result.get('retcode')}")
+        else:
+            logger.info(f"{operation} result from {host}: {host_result}")
+
+def run_qcow2_modify_hardware_config(profile, vm_name, cpu=None, memory=None, pci_list=None, start=False):
+    hv_name = profile.split('_')[1]
+    target = hv_name + "_*"
+
+    try:
+        args_list = [
+            'vm_name=' + vm_name,
+            'cpu=' + str(cpu) if cpu else '',
+            'memory=' + str(memory) if memory else '',
+            'start=' + str(start)
+        ]
+
+        # Add PCI devices if provided
+        if pci_list:
+            # Pass all PCI devices as a comma-separated list
+            args_list.append('pci=' + ','.join(pci_list))
+
+        result = local.cmd(target, 'qcow2.modify_hardware_config', args_list)
+        format_qcow2_output('Hardware configuration', result)
+    except Exception as e:
+        logger.error(f"An error occurred while running qcow2.modify_hardware_config: {e}")
+
+def run_qcow2_modify_network_config(profile, vm_name, mode, ip=None, gateway=None, dns=None, search_domain=None):
+    hv_name = profile.split('_')[1]
+    target = hv_name + "_*"
+    image = '/nsm/libvirt/images/sool9/sool9.qcow2'
+    interface = 'enp1s0'
+
+    try:
+        # Base arguments that are always included
+        args = [
+            'image=' + image,
+            'interface=' + interface,
+            'mode=' + mode,
+            'vm_name=' + vm_name
+        ]
+        
+        # Only include IP-related arguments if not using DHCP
+        if mode != "dhcp4":
+            if ip:
+                args.append('ip4=' + ip)
+            if gateway:
+                args.append('gw4=' + gateway)
+            if dns:
+                args.append('dns4=' + dns)
+            if search_domain:
+                args.append('search4=' + search_domain)
+                
+        result = local.cmd(target, 'qcow2.modify_network_config', args)
+        format_qcow2_output('Network configuration', result)
+    except Exception as e:
+        logger.error(f"An error occurred while running qcow2.modify_network_config: {e}")
+
+def parse_arguments():
+    parser = argparse.ArgumentParser(description="Call salt-cloud and pass the profile and VM name to it.")
+    parser.add_argument('-p', '--profile', type=str, required=True, help="The cloud profile to build the VM from.")
+    parser.add_argument('vm_name', type=str, help="The name of the VM.")
+    parser.add_argument('-d', '--destroy', action='store_true', help='Delete the specified VM')
+    parser.add_argument('-y', '--assume-yes', action='store_true', help='Default yes in answer to all confirmation questions')
+
+    # Create a group for network config arguments
+    network_group = parser.add_argument_group('Network Configuration')
+    # Make the group mutually exclusive but not required by default
+    mode_group = network_group.add_mutually_exclusive_group()
+    mode_group.add_argument("--dhcp4", action="store_true", help="Configure interface for DHCP (IPv4).")
+    mode_group.add_argument("--static4", action="store_true", help="Configure interface for static IPv4 settings.")
+
+    # Add other network and hardware arguments
+    network_group.add_argument("--ip4", help="IPv4 address (e.g., 192.168.1.10/24). Required for static IPv4 configuration.")
+    network_group.add_argument("--gw4", help="IPv4 gateway (e.g., 192.168.1.1). Required for static IPv4 configuration.")
+    network_group.add_argument("--dns4", help="Comma-separated list of IPv4 DNS servers (e.g., 8.8.8.8,8.8.4.4).")
+    network_group.add_argument("--search4", help="DNS search domain for IPv4.")
+    network_group.add_argument('-c', '--cpu', type=int, help='Number of virtual CPUs to assign.')
+    network_group.add_argument('-m', '--memory', type=int, help='Amount of memory to assign in MiB.')
+    network_group.add_argument('-P', '--pci', action='append', help='PCI hardware ID(s) to passthrough to the VM (e.g., 0000:c7:00.0). Can be specified multiple times.')
+
+    args = parser.parse_args()
+
+    # Only validate network config if not destroying
+    if not args.destroy:
+        if not args.dhcp4 and not args.static4:
+            parser.error("One of --dhcp4 or --static4 is required for VM creation")
+        if args.static4 and (not args.ip4 or not args.gw4):
+            parser.error("Both --ip4 and --gw4 are required for static IPv4 configuration")
+
+    return args
+
+def main():
+    try:
+        args = parse_arguments()
+        
+        # Log the initial request
+        if args.destroy:
+            logger.info(f"Received request to destroy VM '{args.vm_name}' using profile '{args.profile}'{' with --assume-yes' if args.assume_yes else ''}")
+        else:
+            # Build network config string
+            network_config = "using DHCP" if args.dhcp4 else f"with static IP {args.ip4}, gateway {args.gw4}"
+            if args.dns4:
+                network_config += f", DNS {args.dns4}"
+            if args.search4:
+                network_config += f", search domain {args.search4}"
+            
+            # Build hardware config string
+            hw_config = []
+            if args.cpu:
+                hw_config.append(f"{args.cpu} CPUs")
+            if args.memory:
+                hw_config.append(f"{args.memory}MB RAM")
+            if args.pci:
+                hw_config.append(f"PCI devices: {', '.join(args.pci)}")
+            hw_string = f" and hardware config: {', '.join(hw_config)}" if hw_config else ""
+            
+            logger.info(f"Received request to create VM '{args.vm_name}' using profile '{args.profile}' {network_config}{hw_string}")
+
+        if args.destroy:
+            # Handle VM deletion
+            call_salt_cloud(args.profile, args.vm_name, destroy=True, assume_yes=args.assume_yes)
+        else:
+            # Handle VM creation
+            if args.dhcp4:
+                mode = "dhcp4"
+            elif args.static4:
+                mode = "static4"
+            else:
+                mode = "dhcp4"  # Default to DHCP if not specified
+
+            # Step 1: Modify network configuration
+            run_qcow2_modify_network_config(args.profile, args.vm_name, mode, args.ip4, args.gw4, args.dns4, args.search4)
+
+            # Step 2: Provision the VM (without starting it)
+            call_salt_cloud(args.profile, args.vm_name)
+
+            # Step 3: Modify hardware configuration
+            run_qcow2_modify_hardware_config(args.profile, args.vm_name, cpu=args.cpu, memory=args.memory, pci_list=args.pci, start=True)
+
+    except KeyboardInterrupt:
+        logger.error("so-salt-cloud: Operation cancelled by user.")
+        sys.exit(1)
+    except Exception as e:
+        logger.error(f"so-salt-cloud: An error occurred: {e}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
+
+{%- else -%}
+
+echo "Hypervisor nodes are a feature supported only for customers with a valid license. \
+      Contact Security Onion Solutions, LLC via our website at https://securityonionsolutions.com \
+      for more information about purchasing a license to enable this feature."
+
+{% endif -%}
