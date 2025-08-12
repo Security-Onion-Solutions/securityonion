@@ -67,6 +67,8 @@ so-elastic-fleet-auto-configure-artifact-urls:
 elasticagent_syncartifacts:
   file.recurse:
     - name: /nsm/elastic-fleet/artifacts/beats
+    - user: 947
+    - group: 947
     - source: salt://beats
 {% endif %}
 
