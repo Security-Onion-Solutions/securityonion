@@ -70,13 +70,13 @@
 {%   set vm_name = tag.split('/')[2] %}
 {%   do salt.log.debug('dyanno_hypervisor_orch: Got vm_name from tag: ' ~ vm_name) %}
 {%   if tag.endswith('/deploying') %}
-{%     set hypervisor = data.get('kwargs').get('cloud_grains').get('profile').split('-')[1] %}
+{%     set hypervisor = data.get('kwargs').get('cloud_grains').get('profile').split('_')[1] %}
 {%   endif %}
 {#   Set the hypervisor #}
 {#   First try to get it from the event #}
 {%   if data.get('profile', False) %}
 {%     do salt.log.debug('dyanno_hypervisor_orch: Did not get cache.grains.') %}
-{%     set hypervisor = data.profile.split('-')[1] %}
+{%     set hypervisor = data.profile.split('_')[1] %}
 {%     do salt.log.debug('dyanno_hypervisor_orch: Got hypervisor from data: ' ~ hypervisor) %}
 {%   else %}
 {%     set hypervisor = find_hypervisor_from_status(vm_name) %}
