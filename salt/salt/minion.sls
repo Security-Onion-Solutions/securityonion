@@ -39,21 +39,34 @@ unhold_salt_packages:
 
 install_salt_minion:
   cmd.run:
+    - name: /bin/sh -c '{{ UPGRADECOMMAND }}'
+
+# minion service is in failed state after upgrade. this command will start it after the state run for the upgrade completes
+start_minion_post_upgrade:
+  cmd.run:
     - name: |
         exec 0>&- # close stdin
         exec 1>&- # close stdout
         exec 2>&- # close stderr
-        nohup /bin/sh -c '{{ UPGRADECOMMAND }}' &
+        nohup /bin/sh -c 'sleep 30; systemctl start salt-minion' &
+    - require:
+      - cmd: install_salt_minion
+    - watch:
+      - cmd: install_salt_minion
+    - order: last
 
 {% endif %}
 
 {% if INSTALLEDSALTVERSION|string == SALTVERSION|string %}
 
-hold_salt_packages:
-  pkg.held:
-    - pkgs:
 {% for package in SALTPACKAGES %}
-      - {{ package }}: {{SALTVERSION}}-0.*
+# only hold the package if it is already installed
+{%   if salt['pkg.version'](package) %}
+hold_{{ package }}_package:
+  pkg.held:
+    - name: {{ package }}
+    - version: {{SALTVERSION}}-0.*
+{%   endif %}
 {% endfor %}
 
 remove_error_log_level_logfile:

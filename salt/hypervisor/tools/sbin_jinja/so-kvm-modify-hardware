@@ -1,0 +1,365 @@
+#!/usr/bin/python3
+
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+#
+# Note: Per the Elastic License 2.0, the second limitation states:
+#
+#   "You may not move, change, disable, or circumvent the license key functionality
+#    in the software, and you may not remove or obscure any functionality in the
+#    software that is protected by the license key."
+
+{% if 'vrt' in salt['pillar.get']('features', []) %}
+
+"""
+Script for managing hardware configurations of KVM virtual machines. This script provides
+functionality to modify CPU, memory, and PCI device settings without manual XML editing
+or direct libvirt interaction.
+
+The script offers three main configuration capabilities:
+1. CPU Management: Adjust virtual CPU count
+2. Memory Management: Modify memory allocation
+3. PCI Passthrough: Configure PCI device passthrough for direct hardware access
+
+This script is designed to work with Security Onion's virtualization infrastructure and is typically
+used during VM provisioning and hardware reconfiguration tasks.
+
+**Usage:**
+    so-kvm-modify-hardware -v <vm_name> [-c <cpu_count>] [-m <memory_amount>] [-p <pci_id>] [-p <pci_id> ...] [-s]
+
+**Options:**
+    -v, --vm          Name of the virtual machine to modify.
+    -c, --cpu         Number of virtual CPUs to assign.
+    -m, --memory      Amount of memory to assign in MiB.
+    -p, --pci         PCI hardware ID(s) to passthrough to the VM (e.g., 0000:00:1f.2). Can be specified multiple times.
+                      Format: domain:bus:device.function
+    -s, --start       Start the VM after modification.
+
+**Examples:**
+
+1. **Modify CPU and Memory with Multiple PCI Devices:**
+
+    ```bash
+    so-kvm-modify-hardware -v vm1_sensor -c 4 -m 8192 -p 0000:c7:00.0 -p 0000:c8:00.0 -s
+    ```
+
+    This command modifies a VM with the following settings:
+    - VM Name: `vm1_sensor`
+    - Hardware Configuration:
+        - CPUs: `4`
+        - Memory: `8192` MiB
+        - PCI Device Passthrough: `0000:c7:00.0`, `0000:c8:00.0`
+    - The VM is started after modification due to the `-s` flag
+
+2. **Add PCI Device Without Other Changes:**
+
+    ```bash
+    so-kvm-modify-hardware -v vm2_master -p 0000:c7:00.0
+    ```
+
+    This command adds a single PCI device passthrough to the VM:
+    - VM Name: `vm2_master`
+    - PCI Device: `0000:c7:00.0`
+    - Existing CPU and memory settings are preserved
+
+3. **Update Resource Allocation:**
+
+    ```bash
+    so-kvm-modify-hardware -v vm3_search -c 2 -m 4096
+    ```
+
+    This command updates only compute resources:
+    - VM Name: `vm3_search`
+    - CPUs: `2`
+    - Memory: `4096` MiB
+    - VM remains stopped after modification
+
+4. **Add Multiple PCI Devices:**
+
+    ```bash
+    so-kvm-modify-hardware -v vm4_node -p 0000:c7:00.0 -p 0000:c4:00.0 -p 0000:c4:00.1 -s
+    ```
+
+    This command adds multiple PCI devices and starts the VM:
+    - VM Name: `vm4_node`
+    - PCI Devices: `0000:c7:00.0`, `0000:c4:00.0`, `0000:c4:00.1`
+    - VM is started after modification
+
+**Notes:**
+
+- The script automatically stops the VM if it's running before making modifications.
+- At least one modification option (-c, -m, or -p) should be provided.
+- The PCI hardware IDs must be in the format `domain:bus:device.function` (e.g., `0000:c7:00.0`).
+- Multiple PCI devices can be added by using the `-p` option multiple times.
+- Without the `-s` flag, the VM remains stopped after modification.
+- Existing hardware configurations are preserved if not explicitly modified.
+
+**Description:**
+
+The `so-kvm-modify-hardware` script modifies hardware parameters of KVM virtual machines using the following process:
+
+1. **VM State Management:**
+   - Connects to the local libvirt daemon
+   - Stops the VM if it's currently running
+   - Retrieves current VM configuration
+
+2. **Hardware Configuration:**
+   - Modifies CPU count if specified
+   - Updates memory allocation if specified
+   - Adds PCI device passthrough configurations if specified
+   - All changes are made through libvirt XML configuration
+
+3. **VM Redefinition:**
+   - Applies the new configuration by redefining the VM
+   - Optionally starts the VM if requested
+   - Ensures clean shutdown and startup during modifications
+
+4. **Error Handling:**
+   - Validates all input parameters
+   - Ensures proper XML structure
+   - Provides detailed error messages for troubleshooting
+
+**Exit Codes:**
+
+- `0`: Success
+- `1`: An error occurred during execution
+
+**Logging:**
+
+- Logs are written to `/opt/so/log/hypervisor/so-kvm-modify-hardware.log`
+- Both file and console logging are enabled for real-time monitoring
+- Log entries include timestamps and severity levels
+- Detailed error messages are logged for troubleshooting
+"""
+
+import argparse
+import sys
+import libvirt
+import logging
+import socket
+import xml.etree.ElementTree as ET
+from io import StringIO
+from so_vm_utils import start_vm, stop_vm
+from so_logging_utils import setup_logging
+import subprocess
+
+# Get hypervisor name from local hostname
+HYPERVISOR = socket.gethostname()
+
+# Custom log handler to capture output
+class StringIOHandler(logging.Handler):
+    def __init__(self):
+        super().__init__()
+        self.strio = StringIO()
+
+    def emit(self, record):
+        msg = self.format(record)
+        self.strio.write(msg + '\n')
+
+    def get_value(self):
+        return self.strio.getvalue()
+
+def parse_arguments():
+    parser = argparse.ArgumentParser(description='Modify hardware parameters of a KVM virtual machine.')
+    parser.add_argument('-v', '--vm', required=True, help='Name of the virtual machine to modify.')
+    parser.add_argument('-c', '--cpu', type=int, help='Number of virtual CPUs to assign.')
+    parser.add_argument('-m', '--memory', type=int, help='Amount of memory to assign in MiB.')
+    parser.add_argument('-p', '--pci', action='append', help='PCI hardware ID(s) to passthrough to the VM (e.g., 0000:00:1f.2). Can be specified multiple times.')
+    parser.add_argument('-s', '--start', action='store_true', help='Start the VM after modification.')
+    args = parser.parse_args()
+    return args
+
+def modify_vm(dom, cpu_count, memory_amount, pci_ids, logger):
+    try:
+        # Get the XML description of the VM
+        xml_desc = dom.XMLDesc()
+        root = ET.fromstring(xml_desc)
+
+        # Modify CPU count
+        if cpu_count is not None:
+            vcpu_elem = root.find('./vcpu')
+            if vcpu_elem is not None:
+                vcpu_elem.text = str(cpu_count)
+                logger.info(f"Set CPU count to {cpu_count}.")
+            else:
+                logger.error("Could not find <vcpu> element in XML.")
+                sys.exit(1)
+
+        # Modify memory amount
+        if memory_amount is not None:
+            memory_elem = root.find('./memory')
+            current_memory_elem = root.find('./currentMemory')
+            if memory_elem is not None and current_memory_elem is not None:
+                memory_elem.text = str(memory_amount * 1024)  # Convert MiB to KiB
+                current_memory_elem.text = str(memory_amount * 1024)
+                logger.info(f"Set memory to {memory_amount} MiB.")
+            else:
+                logger.error("Could not find <memory> elements in XML.")
+                sys.exit(1)
+
+        # Add PCI device passthrough(s)
+        if pci_ids:
+            devices_elem = root.find('./devices')
+            if devices_elem is not None:
+                for pci_id in pci_ids:
+                    hostdev_elem = ET.SubElement(devices_elem, 'hostdev', attrib={
+                        'mode': 'subsystem',
+                        'type': 'pci',
+                        'managed': 'yes'
+                    })
+                    source_elem = ET.SubElement(hostdev_elem, 'source')
+                    # Split PCI ID into components (domain:bus:slot.function)
+                    parts = pci_id.split(':')
+                    if len(parts) != 3:
+                        logger.error(f"Invalid PCI ID format: {pci_id}. Expected format: domain:bus:slot.function")
+                        sys.exit(1)
+                    domain_id = parts[0]
+                    bus = parts[1]
+                    slot_func = parts[2].split('.')
+                    if len(slot_func) != 2:
+                        logger.error(f"Invalid PCI ID format: {pci_id}. Expected format: domain:bus:slot.function")
+                        sys.exit(1)
+                    slot = slot_func[0]
+                    function = slot_func[1]
+                    address_attrs = {
+                        'domain': f'0x{domain_id}',
+                        'bus': f'0x{bus}',
+                        'slot': f'0x{slot}',
+                        'function': f'0x{function}'
+                    }
+                    ET.SubElement(source_elem, 'address', attrib=address_attrs)
+                    logger.info(f"Added PCI device passthrough for {pci_id}.")
+            else:
+                logger.error("Could not find <devices> element in XML.")
+                sys.exit(1)
+
+        # Convert XML back to string
+        new_xml_desc = ET.tostring(root, encoding='unicode')
+        return new_xml_desc
+    except Exception as e:
+        logger.error(f"Failed to modify VM XML: {e}")
+        sys.exit(1)
+
+def redefine_vm(conn, new_xml_desc, logger):
+    try:
+        conn.defineXML(new_xml_desc)
+        logger.info("VM redefined with new hardware parameters.")
+    except libvirt.libvirtError as e:
+        logger.error(f"Failed to redefine VM: {e}")
+        sys.exit(1)
+
+def main():
+    # Set up logging using the so_logging_utils library
+    string_handler = StringIOHandler()
+    string_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+    logger = setup_logging(
+        logger_name='so-kvm-modify-hardware',
+        log_file_path='/opt/so/log/hypervisor/so-kvm-modify-hardware.log',
+        log_level=logging.INFO,
+        format_str='%(asctime)s - %(levelname)s - %(message)s'
+    )
+    logger.addHandler(string_handler)
+
+    try:
+        args = parse_arguments()
+
+        vm_name = args.vm
+        cpu_count = args.cpu
+        memory_amount = args.memory
+        pci_ids = args.pci  # This will be a list or None
+        start_vm_flag = args.start
+
+        # Connect to libvirt
+        try:
+            conn = libvirt.open(None)
+        except libvirt.libvirtError as e:
+            logger.error(f"Failed to open connection to libvirt: {e}")
+            try:
+                subprocess.run([
+                    'so-salt-emit-vm-deployment-status-event',
+                    '-v', vm_name,
+                    '-H', HYPERVISOR,
+                    '-s', 'Hardware Configuration Failed'
+                ], check=True)
+            except subprocess.CalledProcessError as e:
+                logger.error(f"Failed to emit failure status event: {e}")
+            sys.exit(1)
+
+        # Stop VM if running
+        dom = stop_vm(conn, vm_name, logger)
+
+        # Modify VM XML
+        new_xml_desc = modify_vm(dom, cpu_count, memory_amount, pci_ids, logger)
+
+        # Redefine VM
+        redefine_vm(conn, new_xml_desc, logger)
+
+        # Start VM if -s or --start argument is provided
+        if start_vm_flag:
+            dom = conn.lookupByName(vm_name)
+            start_vm(dom, logger)
+            logger.info(f"VM '{vm_name}' started successfully.")
+        else:
+            logger.info("VM start flag not provided; VM will remain stopped.")
+
+        # Close connection
+        conn.close()
+
+        # Send success status event
+        try:
+            subprocess.run([
+                'so-salt-emit-vm-deployment-status-event',
+                '-v', vm_name,
+                '-H', HYPERVISOR,
+                '-s', 'Hardware Configuration'
+            ], check=True)
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to emit success status event: {e}")
+
+    except KeyboardInterrupt:
+        error_msg = "Operation cancelled by user"
+        logger.error(error_msg)
+        try:
+            subprocess.run([
+                'so-salt-emit-vm-deployment-status-event',
+                '-v', vm_name,
+                '-H', HYPERVISOR,
+                '-s', 'Hardware Configuration Failed'
+            ], check=True)
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to emit failure status event: {e}")
+        sys.exit(1)
+    except Exception as e:
+        error_msg = str(e)
+        if "Failed to open connection to libvirt" in error_msg:
+            error_msg = f"Failed to connect to libvirt: {error_msg}"
+        elif "Failed to redefine VM" in error_msg:
+            error_msg = f"Failed to apply hardware changes: {error_msg}"
+        elif "Failed to modify VM XML" in error_msg:
+            error_msg = f"Failed to update hardware configuration: {error_msg}"
+        else:
+            error_msg = f"An error occurred: {error_msg}"
+        logger.error(error_msg)
+        try:
+            subprocess.run([
+                'so-salt-emit-vm-deployment-status-event',
+                '-v', vm_name,
+                '-h', HYPERVISOR,
+                '-s', 'Hardware Configuration Failed'
+            ], check=True)
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to emit failure status event: {e}")
+        sys.exit(1)
+
+if __name__ == '__main__':
+    main()
+
+{%- else -%}
+
+echo "Hypervisor nodes are a feature supported only for customers with a valid license. \
+      Contact Security Onion Solutions, LLC via our website at https://securityonionsolutions.com \
+      for more information about purchasing a license to enable this feature."
+
+{% endif -%}

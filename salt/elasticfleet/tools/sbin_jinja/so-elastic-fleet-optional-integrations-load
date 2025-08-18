@@ -19,6 +19,7 @@ BULK_INSTALL_PACKAGE_LIST=/tmp/esfleet_bulk_install.json
 BULK_INSTALL_PACKAGE_TMP=/tmp/esfleet_bulk_install_tmp.json
 BULK_INSTALL_OUTPUT=/opt/so/state/esfleet_bulk_install_results.json
 PACKAGE_COMPONENTS=/opt/so/state/esfleet_package_components.json
+COMPONENT_TEMPLATES=/opt/so/state/esfleet_component_templates.json
 
 PENDING_UPDATE=false
 
@@ -147,14 +148,33 @@ if [[ -f $STATE_FILE_SUCCESS  ]]; then
         done <<< "$(jq -c '.packages[]' "$INSTALLED_PACKAGE_LIST")"
 
         if [ "$PENDING_UPDATE" = true ]; then
-            # Run bulk install of packages
-            elastic_fleet_bulk_package_install $BULK_INSTALL_PACKAGE_LIST > $BULK_INSTALL_OUTPUT
+            # Run chunked install of packages
+            echo "" > $BULK_INSTALL_OUTPUT
+            pkg_group=1
+            pkg_filename="${BULK_INSTALL_PACKAGE_LIST%.json}"
+
+            jq -c '.packages | _nwise(25)' $BULK_INSTALL_PACKAGE_LIST | while read -r line; do
+                echo "$line" | jq '{ "packages": . }' > "${pkg_filename}_${pkg_group}.json"
+                pkg_group=$((pkg_group + 1))
+            done
+
+            for file in "${pkg_filename}_"*.json; do
+                [ -e "$file" ] || continue
+                elastic_fleet_bulk_package_install $file >> $BULK_INSTALL_OUTPUT
+            done
+            # cleanup any temp files for chunked package install
+            rm -f ${pkg_filename}_*.json $BULK_INSTALL_PACKAGE_LIST
         else
             echo "Elastic integrations don't appear to need installation/updating..."
         fi
         # Write out file for generating index/component/ilm templates
         latest_installed_package_list=$(elastic_fleet_installed_packages)
         echo $latest_installed_package_list | jq '[.items[] | {name: .name, es_index_patterns: .dataStreams}]' > $PACKAGE_COMPONENTS
+        if retry 3 1 "so-elasticsearch-query / --fail --output /dev/null"; then
+            # Refresh installed component template list
+            latest_component_templates_list=$(so-elasticsearch-query _component_template | jq '.component_templates[] | .name' | jq -s '.')
+            echo $latest_component_templates_list > $COMPONENT_TEMPLATES
+        fi
 
     else
         # This is the installation of add-on integrations and upgrade of existing integrations. Exiting without error, next highstate will attempt to re-run.

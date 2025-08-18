@@ -1,0 +1,22 @@
+{# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+   or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+   https://securityonion.net/license; you may not use this file except in compliance with the
+   Elastic License 2.0. #}
+
+{#- provider with qemu+ssh protocol #}
+{%- for role, hosts in HYPERVISORS.items() %}
+{%-   for host in hosts.keys() %}
+
+kvm-ssh-{{host}}:
+  driver: libvirt
+  url: qemu+ssh://soqemussh@{{host}}/system?socket=/var/run/libvirt/libvirt-sock
+
+{%-   endfor %}
+{%- endfor %}
+
+{#- local libvirt instance #}
+#local-kvm:
+#  driver: libvirt
+#  url: qemu:///system
+{#- work around flag for XML validation errors while cloning #}
+#  validate_xml: no

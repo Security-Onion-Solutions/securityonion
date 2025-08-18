@@ -10,27 +10,44 @@ import subprocess
 import sys
 import time
 import yaml
+import logging
+
+# Configure logging to both file and console
+logger = logging.getLogger('so-firewall')
+logger.setLevel(logging.INFO)
+
+# File handler
+file_handler = logging.FileHandler('/opt/so/log/so-firewall.log')
+file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+logger.addHandler(file_handler)
+
+# Console handler
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(logging.Formatter('%(levelname)s - %(message)s'))
+logger.addHandler(console_handler)
 
 lockFile = "/tmp/so-firewall.lock"
 hostgroupsFilename = "/opt/so/saltstack/local/pillar/firewall/soc_firewall.sls"
 defaultsFilename = "/opt/so/saltstack/default/salt/firewall/defaults.yaml"
 
 def showUsage(options, args):
-  print('Usage: {} [OPTIONS] <COMMAND> [ARGS...]'.format(sys.argv[0]))
-  print('  Options:')
-  print('   --apply         - After updating the firewall configuration files, apply the new firewall state')
-  print('')
-  print('  General commands:')
-  print('    help           - Prints this usage information.')
-  print('    apply          - Apply the firewall state.')
-  print('')
-  print('  Host commands:')
-  print('    includehost    - Includes the given IP in the given group. Args: <GROUP_NAME> <IP>')
-  print('    addhostgroup   - Adds a new, custom host group. Args: <GROUP_NAME>')
-  print('')
-  print('  Where:')
-  print('   GROUP_NAME    - The name of an alias group (Ex: analyst)')
-  print('   IP            - Either a single IP address (Ex: 8.8.8.8) or a CIDR block (Ex: 10.23.0.0/16).')
+  usage = f'''Usage: {sys.argv[0]} [OPTIONS] <COMMAND> [ARGS...]
+  Options:
+   --apply         - After updating the firewall configuration files, apply the new firewall state with queue=True
+
+  General commands:
+    help           - Prints this usage information.
+    apply          - Apply the firewall state.
+
+  Host commands:
+    includehost    - Includes the given IP in the given group. Args: <GROUP_NAME> <IP>
+    removehost     - Removes the given IP from all hostgroups. Args: <IP>
+    addhostgroup   - Adds a new, custom host group. Args: <GROUP_NAME>
+
+  Where:
+   GROUP_NAME    - The name of an alias group (Ex: analyst)
+   IP            - Either a single IP address (Ex: 8.8.8.8) or a CIDR block (Ex: 10.23.0.0/16).'''
+  logger.error(usage)
   sys.exit(1)
 
 def checkApplyOption(options):
@@ -61,7 +78,7 @@ def addIp(name, ip):
     else:
       hostgroup = content['firewall']['hostgroups'][name]
   else:
-    print('Host group not defined in salt/firewall/defaults.yaml or hostgroup name is unallowed.', file=sys.stderr)
+    logger.error(f"Host group {name} not defined in defaults or is unallowed")
     return 4
   ips = hostgroup
   if ips is None:
@@ -69,15 +86,16 @@ def addIp(name, ip):
     hostgroup = ips
   if ip not in ips:
     ips.append(ip)
+    writeYaml(hostgroupsFilename, content)
+    logger.info(f"Successfully added IP {ip} to hostgroup {name}")
   else:
-    print('Already exists', file=sys.stderr)
+    logger.warning(f"IP {ip} already exists in hostgroup {name}")
     return 3
-  writeYaml(hostgroupsFilename, content)
   return 0
 
 def includehost(options, args):
   if len(args) != 2:
-    print('Missing host group name or ip argument', file=sys.stderr)
+    logger.error('Missing host group name or ip argument')
     showUsage(options, args)
   result = addIp(args[0], args[1])
   code = result
@@ -86,8 +104,44 @@ def includehost(options, args):
   return code
 
 def apply(options, args):
-  proc = subprocess.run(['salt-call', 'state.apply', 'firewall', 'queue=True'])
+  logger.info("Applying firewall configuration changes")
+  salt_args = ['salt-call', 'state.apply', 'firewall', 'queue=True']
+  proc = subprocess.run(salt_args)
+  if proc.returncode != 0:
+    logger.error("Failed to apply firewall changes")
+  else:
+    logger.info("Successfully applied firewall changes")
   return proc.returncode
+
+def removehost(options, args):
+  """Remove an IP from all hostgroups and apply changes if requested"""
+  if len(args) != 1:
+    logger.error('Missing IP argument')
+    showUsage(options, args)
+  
+  ip = args[0]
+  content = loadYaml(hostgroupsFilename)
+  if not content or 'firewall' not in content or 'hostgroups' not in content['firewall']:
+    logger.error("Invalid firewall configuration structure")
+    return 4
+    
+  modified = False
+  removed_from = []
+  for group_name, ips in content['firewall']['hostgroups'].items():
+    if ips and ip in ips:
+      ips.remove(ip)
+      modified = True
+      removed_from.append(group_name)
+  
+  if modified:
+    writeYaml(hostgroupsFilename, content)
+    logger.info(f"Successfully removed IP {ip} from hostgroups: {', '.join(removed_from)}")
+    if "--apply" in options:
+      return apply(None, None)
+  else:
+    logger.error(f"IP {ip} not found in any hostgroups")
+  
+  return 0
 
 def main():
   options = []
@@ -103,6 +157,7 @@ def main():
   commands = {
     "help": showUsage,
     "includehost": includehost,
+    "removehost": removehost,
     "apply": apply
   }
 
@@ -121,7 +176,7 @@ def main():
         time.sleep(2)
 
     if lockAttempts == maxAttempts:
-      print("Lock file (" + lockFile + ") could not be created; proceeding without lock.")
+      logger.error(f"Lock file ({lockFile}) could not be created - proceeding without lock")
 
     cmd = commands.get(args[0], showUsage)
     code = cmd(options, args[1:])
@@ -129,7 +184,7 @@ def main():
     try:
       os.remove(lockFile)
     except:
-      print("Lock file (" + lockFile + ") already removed")
+      logger.error(f"Lock file ({lockFile}) already removed")
 
   sys.exit(code)
 

@@ -1,0 +1,12 @@
+{% import 'vars/init.map.jinja' as INIT %}
+{%
+  set has_br0 = INIT.GRAINS is defined and INIT.GRAINS.ip_interfaces is defined and 'br0' in INIT.GRAINS.ip_interfaces and INIT.GRAINS.ip_interfaces.br0 is defined and INIT.GRAINS.ip_interfaces.br0|length > 0 %}
+{%
+  set has_mainint = INIT.PILLAR is defined and INIT.PILLAR.host is defined and INIT.PILLAR.host.mainint is defined %}
+{%
+  set fallback_ip = INIT.GRAINS.ip_interfaces.get(INIT.PILLAR.host.mainint, ['127.0.0.1'])[0] if has_mainint else '127.0.0.1' %}
+{%
+  set ROLE_GLOBALS = {
+    'node_ip': INIT.GRAINS.ip_interfaces.get('br0', [fallback_ip])[0] if has_br0 else fallback_ip
+  }
+%}

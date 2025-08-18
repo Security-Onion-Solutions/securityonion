@@ -22,7 +22,8 @@ zeek:
   user.present:
     - uid: 937
     - gid: 937
-    - home: /home/zeek
+    - home: /opt/so/conf/zeek
+    - createhome: False
 
 # Create some directories
 zeekpolicydir:
@@ -149,6 +150,13 @@ plcronscript:
     - name: /usr/local/bin/packetloss.sh
     - source: salt://zeek/cron/packetloss.sh
     - mode: 755
+
+zeekja4cfg:
+  file.managed:
+    - name: /opt/so/conf/zeek/config.zeek
+    - source: salt://zeek/files/config.zeek.ja4
+    - user: 937
+    - group: 939
 
 # BPF compilation and configuration
 {% if ZEEKBPF %}
