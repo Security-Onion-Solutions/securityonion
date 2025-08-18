@@ -56,7 +56,7 @@ sensoronitemplates:
     - source: salt://sensoroni/files/templates
     - user: 939
     - group: 939
-    - mode: 664
+    - file_mode: 664
     - template: jinja
     - show_changes: False
 
