@@ -22,7 +22,7 @@ so-sensoroni:
       - /nsm/pcapout:/nsm/pcapout:rw
       - /opt/so/conf/sensoroni/sensoroni.json:/opt/sensoroni/sensoroni.json:ro
       - /opt/so/conf/sensoroni/analyzers:/opt/sensoroni/analyzers:rw
-      - /opt/so/conf/sensoroni/templates:/opt/sensoroni/templates:r
+      - /opt/so/conf/sensoroni/templates:/opt/sensoroni/templates:ro
       - /opt/so/log/sensoroni:/opt/sensoroni/logs:rw
       - /nsm/suripcap/:/nsm/suripcap:rw
       {% if DOCKER.containers['so-sensoroni'].custom_bind_mounts %}
