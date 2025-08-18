@@ -57,7 +57,6 @@ sensoronitemplates:
     - user: 939
     - group: 939
     - file_mode: 664
-    - template: jinja
     - show_changes: False
 
 sensoroni_sbin:
