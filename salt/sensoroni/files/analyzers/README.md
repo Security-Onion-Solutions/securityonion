@@ -43,7 +43,7 @@ Many analyzers require authentication, via an API key or similar. The table belo
 [Spamhaus](https://www.spamhaus.org/dbl/)                  |&cross;|
 [Sublime Platform](https://sublime.security)              |&check;| 
 [ThreatFox](https://threatfox.abuse.ch/)            |&cross;|
-[Urlhaus](https://urlhaus.abuse.ch/)                   |&cross;|
+[Urlhaus](https://urlhaus.abuse.ch/)                   |&check;|
 [Urlscan](https://urlscan.io/docs/api/)                   |&check;|
 [VirusTotal](https://developers.virustotal.com/reference/overview)                |&check;|
 [WhoisLookup](https://github.com/meeb/whoisit)           |&cross;|
