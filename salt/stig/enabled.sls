@@ -47,6 +47,7 @@ update_stig_profile:
     - name: /opt/so/conf/stig/sos-oscap.xml
     - source: salt://stig/files/sos-oscap.xml
     - user: socore
+    - show_changes: False
     - group: socore
     - mode: 0644
 
