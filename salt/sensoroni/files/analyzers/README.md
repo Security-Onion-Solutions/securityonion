@@ -42,7 +42,7 @@ Many analyzers require authentication, via an API key or similar. The table belo
 [Pulsedive](https://pulsedive.com/api/)                 |&check;|
 [Spamhaus](https://www.spamhaus.org/dbl/)                  |&cross;|
 [Sublime Platform](https://sublime.security)              |&check;| 
-[ThreatFox](https://threatfox.abuse.ch/)            |&cross;|
+[ThreatFox](https://threatfox.abuse.ch/)            |&check;|
 [Urlhaus](https://urlhaus.abuse.ch/)                   |&check;|
 [Urlscan](https://urlscan.io/docs/api/)                   |&check;|
 [VirusTotal](https://developers.virustotal.com/reference/overview)                |&check;|
