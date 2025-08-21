@@ -38,7 +38,7 @@ Many analyzers require authentication, via an API key or similar. The table belo
 [GreyNoise](https://www.greynoise.io/plans/community)                 |&check;|
 [LocalFile](https://github.com/Security-Onion-Solutions/securityonion/tree/fix/sublime_analyzer_documentation/salt/sensoroni/files/analyzers/localfile)                 |&cross;|
 [Malware Hash Registry](https://hash.cymru.com/docs_whois)    |&cross;|
-[MalwareBazaar](https://bazaar.abuse.ch/)            |&cross;|
+[MalwareBazaar](https://bazaar.abuse.ch/)            |&check;|
 [Pulsedive](https://pulsedive.com/api/)                 |&check;|
 [Spamhaus](https://www.spamhaus.org/dbl/)                  |&cross;|
 [Sublime Platform](https://sublime.security)              |&check;| 
