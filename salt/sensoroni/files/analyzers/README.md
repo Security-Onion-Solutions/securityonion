@@ -35,7 +35,7 @@ Many analyzers require authentication, via an API key or similar. The table belo
 [EchoTrail](https://www.echotrail.io/docs/quickstart)            |&check;|
 [EmailRep](https://emailrep.io/key)                  |&check;|
 [Elasticsearch](https://www.elastic.co/guide/en/elasticsearch/reference/7.17/setting-up-authentication.html)            |&check;|
-[GreyNoise](https://www.greynoise.io/plans/community)                 |&check;|
+[GreyNoise (community)](https://www.greynoise.io/plans/community)                 |&cross;|
 [LocalFile](https://github.com/Security-Onion-Solutions/securityonion/tree/fix/sublime_analyzer_documentation/salt/sensoroni/files/analyzers/localfile)                 |&cross;|
 [Malware Hash Registry](https://hash.cymru.com/docs_whois)    |&cross;|
 [MalwareBazaar](https://bazaar.abuse.ch/)            |&check;|
