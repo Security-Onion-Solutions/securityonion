@@ -23,7 +23,7 @@ include:
 # /nsm/pcap is empty until stenographer is used as pcap engine
 {% set pcap_id = 941 %}
 {% set user_list = salt['user.list_users']() %}
-{% if 'stenographer' not in user_list %}
+{% if GLOBALS.pcap_engine == "SURICATA" and 'stenographer' not in user_list %}
 {%   set pcap_id = 939 %}
 {% endif %}
 pcapdir:
