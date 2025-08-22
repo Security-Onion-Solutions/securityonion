@@ -130,7 +130,10 @@ class TestGreynoiseMethods(unittest.TestCase):
             mock.assert_called_once()
 
     def test_analyze_community_no_key(self):
-        output = {"ip": "8.8.8.8", "noise": "false", "riot": "true", "classification": "benign", "name": "Google Public DNS", "link": "https://viz.gn.io", "last_seen": "2022-04-26", "message": "Success"}
+        output = {"ip": "8.8.8.8", "noise": "false", "riot": "true",
+                  "classification": "benign", "name": "Google Public DNS",
+                  "link": "https://viz.gn.io", "last_seen": "2022-04-26",
+                  "message": "Success"}
         artifactInput = '{"value":"8.8.8.8","artifactType":"ip"}'
         conf = {"base_url": "myurl/", "api_version": "community"}
         with patch('greynoise.greynoise.sendReq', new=MagicMock(return_value=output)) as mock:
