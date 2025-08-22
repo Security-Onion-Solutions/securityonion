@@ -43,6 +43,11 @@ class TestGreynoiseMethods(unittest.TestCase):
             greynoise.checkConfigRequirements(conf)
         self.assertEqual(cm.exception.code, 126)
 
+    def test_checkConfigRequirements_investigate_with_key(self):
+        conf = {"api_version": "investigate", "api_key": "test_key"}
+        result = greynoise.checkConfigRequirements(conf)
+        self.assertTrue(result)
+
     def test_sendReq_community(self):
         with patch('requests.request', new=MagicMock(return_value=MagicMock())) as mock:
             meta = {}
