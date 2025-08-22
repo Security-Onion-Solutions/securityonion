@@ -1,4 +1,4 @@
-SECURITY ONION PRODUCTIVITY REPORT
+Security Onion Productivity Report
 ==================================
 
 {{ if .Error }}

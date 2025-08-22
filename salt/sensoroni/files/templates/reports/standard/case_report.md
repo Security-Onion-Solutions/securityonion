@@ -1,4 +1,4 @@
-SECURITY ONION CASE REPORT
+Security Onion Case Report
 ==========================
 
 ## Case Details

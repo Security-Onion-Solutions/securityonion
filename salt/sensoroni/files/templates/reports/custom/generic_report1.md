@@ -2,7 +2,7 @@
 {{- /* query.myDocEvents.MetricLimit = 10 */ -}}
 {{- /* query.myDocEvents.EventLimit = 100 */ -}}
 
-SECURITY ONION SAMPLE REPORT
+Security Onion Custom Report
 ============================
 
 {{ if .Error }}
