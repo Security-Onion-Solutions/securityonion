@@ -3,6 +3,8 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
+# We do not import GLOBALS in this state because it is called during setup
+
 {%  from 'libvirt/map.jinja' import LIBVIRTMERGED %}
 {%  from 'salt/map.jinja' import SYSTEMD_UNIT_FILE %}
 
@@ -38,6 +40,10 @@ update_mine_functions:
         mine_functions:
           network.ip_addrs:
             - interface: br0
+        {%- if role in ['so-eval','so-import','so-manager','so-managerhype','so-managersearch','so-standalone'] %}
+          x509.get_pem_entries:
+            - glob_path: '/etc/pki/ca.crt'
+        {% endif %}
     - onchanges:
       - cmd: wait_for_br0_ip
 
