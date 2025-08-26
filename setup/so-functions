@@ -1187,15 +1187,18 @@ get_minion_type() {
 }
 
 hypervisor_local_states() {
-        # these states need to run before the first highstate so that we dont deal with the salt-minion restarting
-        # and we need these setup prior to the highstate
-        info "Check if hypervisor or managerhype"
-        if [ $is_hypervisor ] || [ $is_managerhype ]; then
-                info "Running libvirt states for hypervisor"
-                logCmd "salt-call state.apply libvirt.64962 --local --file-root=../salt/ -l info"
-                info "Setting up bridge for $MNIC"
-                salt-call state.apply libvirt.bridge --local --file-root=../salt/ -l info pillar="{\"host\": {\"mainint\": \"$MNIC\"}}"
-        fi
+    # these states need to run before the first highstate so that we dont deal with the salt-minion restarting
+    # and we need these setup prior to the highstate
+    info "Check if hypervisor or managerhype"
+    if [ $is_hypervisor ] || [ $is_managerhype ]; then
+        info "Running libvirt states for hypervisor"
+        logCmd "salt-call state.apply libvirt.64962 --local --file-root=../salt/ -l info queue=True"
+        info "Setting up bridge for $MNIC"
+		salt-call state.apply libvirt.bridge --local --file-root=../salt/ -l info pillar="{\"host\": {\"mainint\": \"$MNIC\"}} queue=True"
+		if [ $is_managerhype ]; then
+			logCmd "salt-call state.apply salt.minion queue=True"
+		fi
+    fi
 }
 
 install_cleanup() {
@@ -1642,7 +1645,7 @@ reserve_ports() {
 reinstall_init() {
 	info "Putting system in state to run setup again"
 
-	if [[ $install_type =~ ^(MANAGER|EVAL|MANAGERSEARCH|STANDALONE|FLEET|IMPORT)$ ]]; then
+	if [[ $install_type =~ ^(MANAGER|EVAL|MANAGERSEARCH|MANAGERHYPE|STANDALONE|FLEET|IMPORT)$ ]]; then
 		local salt_services=( "salt-master" "salt-minion" )
 	else
 		local salt_services=( "salt-minion" )

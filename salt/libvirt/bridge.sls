@@ -5,9 +5,6 @@
 
 # We do not import GLOBALS in this state because it is called during setup
 
-{%  from 'libvirt/map.jinja' import LIBVIRTMERGED %}
-{%  from 'salt/map.jinja' import SYSTEMD_UNIT_FILE %}
-
 down_original_mgmt_interface:
   cmd.run:
     - name: "nmcli con down {{ pillar.host.mainint }}"
@@ -32,6 +29,8 @@ wait_for_br0_ip:
     - onchanges:
       - cmd: down_original_mgmt_interface
 
+{% if grains.role == 'so-hypervisor' %}
+
 update_mine_functions:
   file.managed:
     - name: /etc/salt/minion.d/mine_functions.conf
@@ -53,3 +52,5 @@ restart_salt_minion_service:
     - enable: True
     - listen:
       - file: update_mine_functions
+
+{% endif %}
