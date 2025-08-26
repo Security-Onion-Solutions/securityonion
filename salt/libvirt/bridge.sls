@@ -3,8 +3,7 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-{%  from 'libvirt/map.jinja' import LIBVIRTMERGED %}
-{%  from 'salt/map.jinja' import SYSTEMD_UNIT_FILE %}
+# We do not import GLOBALS in this state because it is called during setup
 
 down_original_mgmt_interface:
   cmd.run:
@@ -30,6 +29,8 @@ wait_for_br0_ip:
     - onchanges:
       - cmd: down_original_mgmt_interface
 
+{% if grains.role == 'so-hypervisor' %}
+
 update_mine_functions:
   file.managed:
     - name: /etc/salt/minion.d/mine_functions.conf
@@ -38,6 +39,10 @@ update_mine_functions:
         mine_functions:
           network.ip_addrs:
             - interface: br0
+        {%- if role in ['so-eval','so-import','so-manager','so-managerhype','so-managersearch','so-standalone'] %}
+          x509.get_pem_entries:
+            - glob_path: '/etc/pki/ca.crt'
+        {% endif %}
     - onchanges:
       - cmd: wait_for_br0_ip
 
@@ -47,3 +52,5 @@ restart_salt_minion_service:
     - enable: True
     - listen:
       - file: update_mine_functions
+
+{% endif %}

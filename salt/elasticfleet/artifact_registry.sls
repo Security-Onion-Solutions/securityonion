@@ -9,3 +9,6 @@ fleetartifactdir:
     - user: 947
     - group: 939
     - makedirs: True
+    - recurse:
+      - user
+      - group

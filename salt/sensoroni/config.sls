@@ -43,6 +43,22 @@ analyzerscripts:
     - source: salt://sensoroni/files/analyzers
     - show_changes: False
 
+templatesdir:
+  file.directory:
+    - name: /opt/so/conf/sensoroni/templates
+    - user: 939
+    - group: 939
+    - makedirs: True
+
+sensoronitemplates:
+  file.recurse:
+    - name: /opt/so/conf/sensoroni/templates
+    - source: salt://sensoroni/files/templates
+    - user: 939
+    - group: 939
+    - file_mode: 664
+    - show_changes: False
+
 sensoroni_sbin:
   file.recurse:
     - name: /usr/sbin
