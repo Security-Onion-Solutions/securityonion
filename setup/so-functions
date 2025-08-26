@@ -29,8 +29,46 @@ title() {
 }
 
 fail_setup() {
-	error "Setup encounted an unrecoverable failure, exiting"
-	touch /root/failure
+	local failure_reason="${1:-Unknown failure}"
+	
+	# Capture call stack information
+	local calling_function="${FUNCNAME[1]:-main}"
+	local calling_line="${BASH_LINENO[0]:-unknown}"
+	local calling_file="${BASH_SOURCE[1]:-unknown}"
+	
+	# Build call stack trace
+	local call_stack=""
+	local i=1
+	while [[ $i -lt ${#FUNCNAME[@]} ]]; do
+		local func="${FUNCNAME[$i]}"
+		local file="${BASH_SOURCE[$i]##*/}"  # Get basename only
+		local line="${BASH_LINENO[$((i-1))]}"
+		
+		if [[ -n "$call_stack" ]]; then
+			call_stack="$call_stack -> "
+		fi
+		call_stack="$call_stack$func($file:$line)"
+		((i++))
+	done
+	
+	# Enhanced error logging with call stack
+	error "FAILURE: Called from $calling_function() at line $calling_line"
+	error "REASON: $failure_reason"
+	error "STACK: $call_stack"
+	error "Setup encountered an unrecoverable failure: $failure_reason"
+	
+	# Create detailed failure file with enhanced information
+	{
+		echo "SETUP_FAILURE_TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+		echo "SETUP_FAILURE_REASON=$failure_reason"
+		echo "SETUP_CALLING_FUNCTION=$calling_function"
+		echo "SETUP_CALLING_LINE=$calling_line"
+		echo "SETUP_CALLING_FILE=${calling_file##*/}"
+		echo "SETUP_CALL_STACK=$call_stack"
+		echo "SETUP_LOG_LOCATION=$setup_log"
+		echo "SETUP_FAILURE_DETAILS=Check $setup_log for complete error details"
+	} > /root/failure
+	
 	exit 1
 }
 
@@ -1194,10 +1232,10 @@ hypervisor_local_states() {
         info "Running libvirt states for hypervisor"
         logCmd "salt-call state.apply libvirt.64962 --local --file-root=../salt/ -l info queue=True"
         info "Setting up bridge for $MNIC"
-		salt-call state.apply libvirt.bridge --local --file-root=../salt/ -l info pillar="{\"host\": {\"mainint\": \"$MNIC\"}} queue=True"
-		if [ $is_managerhype ]; then
-			logCmd "salt-call state.apply salt.minion queue=True"
-		fi
+		    salt-call state.apply libvirt.bridge --local --file-root=../salt/ -l info pillar="{\"host\": {\"mainint\": \"$MNIC\"}} queue=True"
+		    if [ $is_managerhype ]; then
+			    logCmd "salt-call state.apply salt.minion queue=True"
+		    fi
     fi
 }
 
