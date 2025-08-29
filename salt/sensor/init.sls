@@ -10,6 +10,7 @@
 #    software that is protected by the license key."
 
 {% from 'sensor/map.jinja' import SENSORMERGED %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 
 {% if 'vrt' in salt['pillar.get']('features') and salt['grains.get']('salt-cloud', {}) %}
 
@@ -31,6 +32,7 @@ execute_checksum:
     - onchanges:
       - file: offload_script
 
+{% if GLOBALS.is_sensor %}
 combine_bond_script:
   file.managed:
     - name: /usr/sbin/so-combine-bond
@@ -45,3 +47,4 @@ execute_combine_bond:
     - name: /usr/sbin/so-combine-bond
     - onchanges:
       - file: combine_bond_script
+{% endif %}
