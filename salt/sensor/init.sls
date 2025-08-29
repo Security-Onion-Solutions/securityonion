@@ -39,11 +39,9 @@ combine_bond_script:
     - template: jinja
     - defaults:
          CHANNELS: {{ SENSORMERGED.channels }}
-    - onlyif:
-      - ip link show bond0
 
 execute_combine_bond:
   cmd.run:
     - name: /usr/sbin/so-combine-bond
-    - onchanges:
-      - file: combine_bond_script
+    - onlyif:
+      - ip link show bond0
