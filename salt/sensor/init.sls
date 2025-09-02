@@ -43,5 +43,5 @@ combine_bond_script:
 execute_combine_bond:
   cmd.run:
     - name: /usr/sbin/so-combine-bond
-    - onchanges:
-      - file: combine_bond_script
+    - onlyif:
+      - ip link show bond0
