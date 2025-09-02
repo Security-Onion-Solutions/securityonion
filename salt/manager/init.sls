@@ -34,6 +34,26 @@ agents_log_dir:
       - user
       - group
 
+agents_conf_dir:
+  file.directory:
+    - name: /opt/so/conf/agents
+    - user: root
+    - group: root
+    - recurse:
+      - user
+      - group
+
+{% if MANAGERMERGED.agent_monitoring.config.critical_agents | length > 0 %}
+critical_agents_patterns:
+  file.managed:
+    - name: /opt/so/conf/agents/critical-agents.txt
+    - contents: {{ MANAGERMERGED.agent_monitoring.config.critical_agents }}
+{% else %}
+remove_critical_agents_config:
+  file.absent:
+    - name: /opt/so/conf/agents/critical-agents.txt
+{% endif %}
+
 yara_log_dir:
   file.directory:
     - name: /opt/so/log/yarasync
@@ -126,6 +146,21 @@ so_fleetagent_status:
     - daymonth: '*'
     - month: '*'
     - dayweek: '*'
+
+so_fleetagent_monitor:
+{% if MANAGERMERGED.agent_monitoring.enabled %}
+  cron.present:
+{% else %}
+  cron.absent:
+{% endif %}
+  - name: /usr/sbin/so-elastic-agent-monitor
+  - identifier: so_fleetagent_monitor
+  - user: root
+  - minute: '*/{{ MANAGERMERGED.agent_monitoring.config.run_interval }}'
+  - hour: '*'
+  - daymonth: '*'
+  - month: '*'
+  - dayweek: '*'
 
 socore_own_saltstack_default:
   file.directory:
