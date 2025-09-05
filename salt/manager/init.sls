@@ -153,7 +153,7 @@ so_fleetagent_monitor:
 {% else %}
   cron.absent:
 {% endif %}
-  - name: /usr/sbin/so-elastic-agent-monitor
+  - name: /bin/flock -n /opt/so/log/agents/agent-monitor.lock /usr/sbin/so-elastic-agent-monitor
   - identifier: so_fleetagent_monitor
   - user: root
   - minute: '*/{{ MANAGERMERGED.agent_monitoring.config.run_interval }}'
