@@ -7,7 +7,7 @@
 set -euo pipefail
 
 LOG_DIR="/opt/so/log/agents"
-LOG_FILE="$LOG_DIR/agent-monitor-$(date -u +"%Y%m%d").log"
+LOG_FILE="$LOG_DIR/agent-monitor.log"
 CURL_CONFIG="/opt/so/conf/elasticsearch/curl.config"
 FLEET_API="http://localhost:5601/api/fleet/agents"
 {#- When using custom kquery ignore critical agents patterns. Since we want all the results of custom query logged #}
@@ -71,17 +71,6 @@ calculate_offline_hours() {
     echo $((diff / 3600))
 }
 
-cleanup_old_logs() {
-    # Find and delete log files older than 7 days
-    local old_files=$(find "$LOG_DIR" -name "agent-monitor-*.log" -type f -mtime +7 2>/dev/null)
-
-    if [ -n "$old_files" ]; then
-        local deleted_count=$(echo "$old_files" | wc -l)
-        echo "$old_files" | xargs rm -f
-        log_message "INFO" "Cleaned up $deleted_count old log files (>7 days)"
-    fi
-}
-
 main() {
     log_message "INFO" "Starting Fleet agent status check"
 
@@ -92,8 +81,6 @@ main() {
     else
         log_message "INFO" "No critical agents filter found, monitoring all agents"
     fi
-    
-    cleanup_old_logs
 
     log_message "INFO" "Querying Fleet API"
 
@@ -115,7 +102,7 @@ main() {
 
         if ! response_body=$(curl -K "$CURL_CONFIG" \
             -s --fail \
-            $FLEET_QUERY \
+            "$FLEET_QUERY" \
             -H 'kbn-xsrf: true' 2>/dev/null); then
             log_message "ERROR" "Failed to query Fleet API (page $page)"
             exit 1
