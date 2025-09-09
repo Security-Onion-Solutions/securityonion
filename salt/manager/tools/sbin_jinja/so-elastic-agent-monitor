@@ -145,6 +145,11 @@ main() {
 
                 offline_hours=$(calculate_offline_hours "$last_checkin")
 
+                if [ "$offline_hours" -lt "$OFFLINE_THRESHOLD_HOURS" ]; then
+                    log_message "INFO" "${agent_hostname^^} has been offline for ${offline_hours}h (threshold: ${OFFLINE_THRESHOLD_HOURS}h). Not logging ${agent_status^^} agent until it reaches threshold"
+                    continue
+                fi
+
                 log_entry=$(echo 'null' | jq -c \
                     --arg ts "$current_timestamp" \
                     --arg id "$agent_id" \
