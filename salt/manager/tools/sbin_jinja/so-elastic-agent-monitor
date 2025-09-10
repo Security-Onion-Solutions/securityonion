@@ -2,6 +2,7 @@
 {%- set OFFLINE_THRESHOLD_HOURS = MANAGERMERGED.agent_monitoring.config.offline_threshold -%}
 {%- set PAGE_SIZE = MANAGERMERGED.agent_monitoring.config.page_size -%}
 {%- set CUSTOM_KQUERY = MANAGERMERGED.agent_monitoring.config.custom_kquery -%}
+{%- set REALERT_THRESHOLD = MANAGERMERGED.agent_monitoring.config.realert_threshold -%}
 #!/bin/bash
 
 set -euo pipefail
@@ -17,6 +18,7 @@ CRITICAL_AGENTS_FILE="/dev/null"
 CRITICAL_AGENTS_FILE="/opt/so/conf/agents/critical-agents.txt"
 {%- endif %}
 OFFLINE_THRESHOLD_HOURS={{ OFFLINE_THRESHOLD_HOURS }}
+REALERT_THRESHOLD={{ REALERT_THRESHOLD }}
 PAGE_SIZE="{{ PAGE_SIZE }}"
 
 log_message() {
@@ -69,6 +71,52 @@ calculate_offline_hours() {
     
     local diff=$((current_time - checkin_time))
     echo $((diff / 3600))
+}
+
+check_recent_log_entries() {
+    local agent_hostname="$1"
+
+    if [ ! -f "$LOG_FILE" ]; then
+        return 1
+    fi
+
+    local current_time=$(date +%s)
+    local threshold_seconds=$((REALERT_THRESHOLD * 3600))
+    local agent_hostname_lower=$(echo "$agent_hostname" | tr '[:upper:]' '[:lower:]')
+    local most_recent_timestamp=""
+
+    while IFS= read -r line; do
+        [ -z "$line" ] && continue
+
+        local logged_hostname=$(echo "$line" | jq -r '.["agent.hostname"] // empty' 2>/dev/null)
+        local logged_timestamp=$(echo "$line" | jq -r '.["@timestamp"] // empty' 2>/dev/null)
+
+        [ -z "$logged_hostname" ] || [ -z "$logged_timestamp" ] && continue
+
+        local logged_hostname_lower=$(echo "$logged_hostname" | tr '[:upper:]' '[:lower:]')
+
+        if [ "$logged_hostname_lower" = "$agent_hostname_lower" ]; then
+            most_recent_timestamp="$logged_timestamp"
+        fi
+    done < <(tail -n 1000 "$LOG_FILE" 2>/dev/null)
+
+    # If there is agent entry (within last 1000), check the time difference
+    if [ -n "$most_recent_timestamp" ]; then
+        local logged_time=$(date -d "$most_recent_timestamp" +%s 2>/dev/null || echo "0")
+
+        if [ "$logged_time" -ne "0" ]; then
+            local time_diff=$((current_time - logged_time))
+            local hours_diff=$((time_diff / 3600))
+
+            # Skip if last agent timestamp was more recent than realert threshold
+            if ((hours_diff < REALERT_THRESHOLD)); then
+                return 0
+            fi
+        fi
+    fi
+
+    # Agent has not been logged within realert threshold
+    return 1
 }
 
 main() {
@@ -147,6 +195,12 @@ main() {
 
                 if [ "$offline_hours" -lt "$OFFLINE_THRESHOLD_HOURS" ]; then
                     log_message "INFO" "${agent_hostname^^} has been offline for ${offline_hours}h (threshold: ${OFFLINE_THRESHOLD_HOURS}h). Not logging ${agent_status^^} agent until it reaches threshold"
+                    continue
+                fi
+
+                # Check if this agent was already logged within the realert_threshold
+                if check_recent_log_entries "$agent_hostname"; then
+                    log_message "INFO" "Skipping $agent_hostname (status: $agent_status) - already logged within last ${REALERT_THRESHOLD}h"
                     continue
                 fi
 
