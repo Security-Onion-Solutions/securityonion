@@ -1,0 +1,254 @@
+{%- from 'manager/map.jinja' import MANAGERMERGED -%}
+{%- set OFFLINE_THRESHOLD_HOURS = MANAGERMERGED.agent_monitoring.config.offline_threshold -%}
+{%- set PAGE_SIZE = MANAGERMERGED.agent_monitoring.config.page_size -%}
+{%- set CUSTOM_KQUERY = MANAGERMERGED.agent_monitoring.config.custom_kquery -%}
+{%- set REALERT_THRESHOLD = MANAGERMERGED.agent_monitoring.config.realert_threshold -%}
+#!/bin/bash
+
+set -euo pipefail
+
+LOG_DIR="/opt/so/log/agents"
+LOG_FILE="$LOG_DIR/agent-monitor.log"
+CURL_CONFIG="/opt/so/conf/elasticsearch/curl.config"
+FLEET_API="http://localhost:5601/api/fleet/agents"
+{#- When using custom kquery ignore critical agents patterns. Since we want all the results of custom query logged #}
+{%- if CUSTOM_KQUERY != None and CUSTOM_KQUERY | length > 0 %}
+CRITICAL_AGENTS_FILE="/dev/null"
+{%- else %}
+CRITICAL_AGENTS_FILE="/opt/so/conf/agents/critical-agents.txt"
+{%- endif %}
+OFFLINE_THRESHOLD_HOURS={{ OFFLINE_THRESHOLD_HOURS }}
+REALERT_THRESHOLD={{ REALERT_THRESHOLD }}
+PAGE_SIZE="{{ PAGE_SIZE }}"
+
+log_message() {
+    local level="$1"
+    local message="$2"
+    echo "$(date -u +"%Y-%m-%dT%H:%M:%SZ") [$level] $message" >&2
+}
+
+matches_critical_pattern() {
+    local hostname="$1"
+    local pattern_file="$2"
+    
+    # If critical agents file doesn't exist or is empty, match all
+    if [ ! -f "$pattern_file" ] || [ ! -s "$pattern_file" ]; then
+        return 0
+    fi
+    
+    local hostname_lower=$(echo "$hostname" | tr '[:upper:]' '[:lower:]')
+    
+    while IFS= read -r pattern || [ -n "$pattern" ]; do
+        # empty lines and comments
+        [[ -z "$pattern" || "$pattern" =~ ^[[:space:]]*# ]] && continue
+        
+        # cut whitespace
+        pattern=$(echo "$pattern" | xargs)
+        
+        local pattern_lower=$(echo "$pattern" | tr '[:upper:]' '[:lower:]')
+        
+        # Replace * with bash wildcard
+        local bash_pattern="${pattern_lower//\*/.*}"
+        
+        # Check if hostname matches the pattern
+        if [[ "$hostname_lower" =~ ^${bash_pattern}$ ]]; then
+            return 0
+        fi
+    done < "$pattern_file"
+    
+    return 1
+}
+
+calculate_offline_hours() {
+    local last_checkin="$1"
+    local current_time=$(date +%s)
+    local checkin_time=$(date -d "$last_checkin" +%s 2>/dev/null || echo "0")
+    
+    if [ "$checkin_time" -eq "0" ]; then
+        echo "0"
+        return
+    fi
+    
+    local diff=$((current_time - checkin_time))
+    echo $((diff / 3600))
+}
+
+check_recent_log_entries() {
+    local agent_hostname="$1"
+
+    if [ ! -f "$LOG_FILE" ]; then
+        return 1
+    fi
+
+    local current_time=$(date +%s)
+    local threshold_seconds=$((REALERT_THRESHOLD * 3600))
+    local agent_hostname_lower=$(echo "$agent_hostname" | tr '[:upper:]' '[:lower:]')
+    local most_recent_timestamp=""
+
+    while IFS= read -r line; do
+        [ -z "$line" ] && continue
+
+        local logged_hostname=$(echo "$line" | jq -r '.["agent.hostname"] // empty' 2>/dev/null)
+        local logged_timestamp=$(echo "$line" | jq -r '.["@timestamp"] // empty' 2>/dev/null)
+
+        [ -z "$logged_hostname" ] || [ -z "$logged_timestamp" ] && continue
+
+        local logged_hostname_lower=$(echo "$logged_hostname" | tr '[:upper:]' '[:lower:]')
+
+        if [ "$logged_hostname_lower" = "$agent_hostname_lower" ]; then
+            most_recent_timestamp="$logged_timestamp"
+        fi
+    done < <(tail -n 1000 "$LOG_FILE" 2>/dev/null)
+
+    # If there is agent entry (within last 1000), check the time difference
+    if [ -n "$most_recent_timestamp" ]; then
+        local logged_time=$(date -d "$most_recent_timestamp" +%s 2>/dev/null || echo "0")
+
+        if [ "$logged_time" -ne "0" ]; then
+            local time_diff=$((current_time - logged_time))
+            local hours_diff=$((time_diff / 3600))
+
+            # Skip if last agent timestamp was more recent than realert threshold
+            if ((hours_diff < REALERT_THRESHOLD)); then
+                return 0
+            fi
+        fi
+    fi
+
+    # Agent has not been logged within realert threshold
+    return 1
+}
+
+main() {
+    log_message "INFO" "Starting Fleet agent status check"
+
+    # Check if critical agents file is configured
+    if [ -f "$CRITICAL_AGENTS_FILE" ] && [ -s "$CRITICAL_AGENTS_FILE" ]; then
+        log_message "INFO" "Using critical agents filter from: $CRITICAL_AGENTS_FILE"
+        log_message "INFO" "Patterns: $(grep -v '^#' "$CRITICAL_AGENTS_FILE" 2>/dev/null | xargs | tr ' ' ',')"
+    else
+        log_message "INFO" "No critical agents filter found, monitoring all agents"
+    fi
+
+    log_message "INFO" "Querying Fleet API"
+
+    local page=1
+    local total_agents=0
+    local processed_agents=0
+    local current_timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+    {%- if CUSTOM_KQUERY != None and CUSTOM_KQUERY | length > 0 %}
+    log_message "INFO" "Using custom kquery: {{ CUSTOM_KQUERY }}"
+    FLEET_QUERY="${FLEET_API}?kuery={{ CUSTOM_KQUERY | urlencode }}&perPage=${PAGE_SIZE}&page=${page}"
+    {%- else %}
+    log_message "INFO" "Using default query (all offline or degraded agents)"
+    FLEET_QUERY="${FLEET_API}?kuery=status%3Aoffline%20OR%20status%3Adegraded&perPage=${PAGE_SIZE}&page=${page}"
+    {%- endif %}
+
+    while true; do
+        log_message "INFO" "Fetching page $page (${PAGE_SIZE} agents per page)"
+
+        if ! response_body=$(curl -K "$CURL_CONFIG" \
+            -s --fail \
+            "$FLEET_QUERY" \
+            -H 'kbn-xsrf: true' 2>/dev/null); then
+            log_message "ERROR" "Failed to query Fleet API (page $page)"
+            exit 1
+        fi
+
+        # pagination info
+        current_total=$(echo "$response_body" | jq -r '.total // 0')
+        current_page=$(echo "$response_body" | jq -r '.page // 1')
+        agents_in_page=$(echo "$response_body" | jq -r '.list | length')
+
+        # Update total
+        if [ "$page" -eq 1 ]; then
+            total_agents="$current_total"
+            log_message "INFO" "Found $total_agents total agents across all pages"
+        fi
+
+        log_message "INFO" "Processing page $current_page with $agents_in_page agents"
+
+        # Process agents from current page
+        mapfile -t agents < <(echo "$response_body" | jq -c '.list[]')
+
+        for agent in "${agents[@]}"; do
+            # Grab agent details
+            agent_id=$(echo "$agent" | jq -r '.id // "unknown"')
+            agent_hostname=$(echo "$agent" | jq -r '.local_metadata.host.hostname // "unknown"')
+            agent_name=$(echo "$agent" | jq -r '.local_metadata.host.name // "unknown"')
+            agent_status=$(echo "$agent" | jq -r '.status // "unknown"')
+            last_checkin=$(echo "$agent" | jq -r '.last_checkin // ""')
+            last_checkin_status=$(echo "$agent" | jq -r '.last_checkin_status // "unknown"')
+            policy_id=$(echo "$agent" | jq -r '.policy_id // "unknown"')
+
+            # Only log agents that are offline or degraded (skip inactive agents)
+            # Fleetserver agents can show multiple versions as 'inactive'
+            if [ "$agent_status" = "offline" ] || [ "$agent_status" = "degraded" ]; then
+                # Check if agent matches critical agent patterns (if configured)
+                if ! matches_critical_pattern "$agent_hostname" "$CRITICAL_AGENTS_FILE"; then
+                    log_message "WARN" "${agent_hostname^^} is ${agent_status^^}, but does not match configured critical agents patterns. Not logging ${agent_status^^} agent"
+                    continue  # Skip this agent if it doesn't match any critical agent pattern
+                fi
+
+                offline_hours=$(calculate_offline_hours "$last_checkin")
+
+                if [ "$offline_hours" -lt "$OFFLINE_THRESHOLD_HOURS" ]; then
+                    log_message "INFO" "${agent_hostname^^} has been offline for ${offline_hours}h (threshold: ${OFFLINE_THRESHOLD_HOURS}h). Not logging ${agent_status^^} agent until it reaches threshold"
+                    continue
+                fi
+
+                # Check if this agent was already logged within the realert_threshold
+                if check_recent_log_entries "$agent_hostname"; then
+                    log_message "INFO" "Skipping $agent_hostname (status: $agent_status) - already logged within last ${REALERT_THRESHOLD}h"
+                    continue
+                fi
+
+                log_entry=$(echo 'null' | jq -c \
+                    --arg ts "$current_timestamp" \
+                    --arg id "$agent_id" \
+                    --arg hostname "$agent_hostname" \
+                    --arg name "$agent_name" \
+                    --arg status "$agent_status" \
+                    --arg last_checkin "$last_checkin" \
+                    --arg last_checkin_status "$last_checkin_status" \
+                    --arg policy_id "$policy_id" \
+                    --arg offline_hours "$offline_hours" \
+                    '{
+                        "@timestamp": $ts,
+                        "agent.id": $id,
+                        "agent.hostname": $hostname,
+                        "agent.name": $name,
+                        "agent.status": $status,
+                        "agent.last_checkin": $last_checkin,
+                        "agent.last_checkin_status": $last_checkin_status,
+                        "agent.policy_id": $policy_id,
+                        "agent.offline_duration_hours": ($offline_hours | tonumber)
+                    }')
+
+                echo "$log_entry" >> "$LOG_FILE"
+
+                log_message "INFO" "Logged offline agent: $agent_hostname (status: $agent_status, offline: ${offline_hours}h)"
+            fi
+        done
+
+        processed_agents=$((processed_agents + agents_in_page))
+
+        if [ "$agents_in_page" -eq 0 ] || [ "$processed_agents" -ge "$total_agents" ]; then
+            log_message "INFO" "Completed processing all pages. Total processed: $processed_agents agents"
+            break
+        fi
+
+        page=$((page + 1))
+
+        # Limit pagination loops incase of any issues. If agent count is high enough increase page_size in SOC manager.agent_monitoring.config.page_size
+        if [ "$page" -gt 100 ]; then
+            log_message "ERROR" "Reached maximum page limit (100). Issue with script or extremely large fleet deployment. Consider increasing page_size in SOC -> manager.agent_monitoring.config.page_size"
+            break
+        fi
+    done
+
+    log_message "INFO" "Fleet agent status check completed. Processed $processed_agents out of $total_agents agents"
+}
+
+main "$@"
