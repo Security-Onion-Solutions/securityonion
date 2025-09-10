@@ -18,6 +18,7 @@ sensoroniagentconf:
     - group: 939
     - mode: 600
     - template: jinja
+    - show_changes: False
 
 analyzersdir:
   file.directory:
