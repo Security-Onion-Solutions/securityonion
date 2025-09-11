@@ -263,6 +263,8 @@ base:
     - kafka.nodes
     - kafka.soc_kafka
     - stig.soc_stig
+    - elasticfleet.soc_elasticfleet
+    - elasticfleet.adv_elasticfleet
 
   '*_import':
     - node_data.ips
