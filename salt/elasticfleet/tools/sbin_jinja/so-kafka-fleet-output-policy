@@ -59,14 +59,15 @@ if ! kafka_output=$(curl -sK /opt/so/conf/elasticsearch/curl.config -L "http://l
 elif kafka_output=$(curl -sK /opt/so/conf/elasticsearch/curl.config -L "http://localhost:5601/api/fleet/outputs/so-manager_kafka" --fail 2>/dev/null) && [[ "$force" == "true" ]]; then
   # force an update to Kafka policy. Keep the current value of Kafka output policy (enabled/disabled).
   ENABLED_DISABLED=$(echo "$kafka_output" | jq -e .item.is_default)
+  HOSTS=$(echo "$kafka_output" | jq -r '.item.hosts')
   JSON_STRING=$( jq -n \
     --arg KAFKACRT "$KAFKACRT" \
     --arg KAFKAKEY "$KAFKAKEY" \
     --arg KAFKACA "$KAFKACA" \
-    --arg MANAGER_IP "{{ GLOBALS.manager_ip }}:9092" \
     --arg ENABLED_DISABLED "$ENABLED_DISABLED"\
     --arg KAFKA_OUTPUT_VERSION "$KAFKA_OUTPUT_VERSION" \
-      '{"name":"grid-kafka","type":"kafka","hosts":[ $MANAGER_IP ],"is_default":$ENABLED_DISABLED,"is_default_monitoring":$ENABLED_DISABLED,"config_yaml":"","ssl":{"certificate_authorities":[ $KAFKACA ],"certificate": $KAFKACRT ,"key":"","verification_mode":"full"},"proxy_id":null,"client_id":"Elastic","version": $KAFKA_OUTPUT_VERSION ,"compression":"none","auth_type":"ssl","partition":"round_robin","round_robin":{"group_events":10},"topics":[{"topic":"default-securityonion"}],"headers":[{"key":"","value":""}],"timeout":30,"broker_timeout":30,"required_acks":1,"secrets":{"ssl":{"key": $KAFKAKEY }}}'
+    --argjson HOSTS "$HOSTS" \
+      '{"name":"grid-kafka","type":"kafka","hosts":$HOSTS,"is_default":$ENABLED_DISABLED,"is_default_monitoring":$ENABLED_DISABLED,"config_yaml":"","ssl":{"certificate_authorities":[ $KAFKACA ],"certificate": $KAFKACRT ,"key":"","verification_mode":"full"},"proxy_id":null,"client_id":"Elastic","version": $KAFKA_OUTPUT_VERSION ,"compression":"none","auth_type":"ssl","partition":"round_robin","round_robin":{"group_events":10},"topics":[{"topic":"default-securityonion"}],"headers":[{"key":"","value":""}],"timeout":30,"broker_timeout":30,"required_acks":1,"secrets":{"ssl":{"key": $KAFKAKEY }}}'
     )
   if ! response=$(curl -sK /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fleet/outputs/so-manager_kafka" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING" --fail 2>/dev/null); then
     echo -e "\nFailed to force update to Elastic Fleet output policy for Kafka...\n"
