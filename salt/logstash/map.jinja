@@ -17,7 +17,7 @@
 
 {% for node_type, node_details in redis_node_data.items() | sort %}
 {%   if GLOBALS.role in ['so-searchnode', 'so-standalone', 'so-managersearch', 'so-fleet'] %}
-{%     if node_type in ['manager', 'managersearch', 'standalone', 'receiver' ] %}
+{%     if node_type.startswith('manager') or node_type in ['standalone', 'receiver'] %}
 {%       for hostname in redis_node_data[node_type].keys() %}
 {%         do LOGSTASH_REDIS_NODES.append({hostname:node_details[hostname].ip}) %}
 {%       endfor %}
@@ -47,7 +47,7 @@
 {%   endif %}
 {# Disable logstash on manager & receiver nodes unless it has an override configured #}
 {%   if not KAFKA_LOGSTASH %}
-{%     if GLOBALS.role in ['so-manager', 'so-receiver'] and GLOBALS.hostname not in KAFKA_LOGSTASH %}
+{%     if GLOBALS.role in ['so-manager', 'so-managerhype', 'so-receiver'] and GLOBALS.hostname not in KAFKA_LOGSTASH %}
 {%       do LOGSTASH_MERGED.update({'enabled': False}) %}
 {%     endif %}
 {%   endif %}

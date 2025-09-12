@@ -1,0 +1,70 @@
+#!/bin/bash
+
+# Script to find all interfaces of bond0 and set channel parameters
+# Compatible with Oracle Linux 9, Ubuntu, and Debian
+
+. /usr/sbin/so-common
+
+# Number of channels to set
+CHANNELS={{ CHANNELS }}
+
+# Exit on any error
+set -e
+
+# Check if running as root
+if [[ $EUID -ne 0 ]]; then
+   exit 1
+fi
+
+# Check if bond0 exists
+if ! ip link show bond0 &>/dev/null; then
+    exit 0
+fi
+
+# Function to get slave interfaces - works across distributions
+get_bond_slaves() {
+    local bond_name="$1"
+    local slaves=""
+    
+    # Method 1: Try /sys/class/net first (most reliable)
+    if [ -f "/sys/class/net/$bond_name/bonding/slaves" ]; then
+        slaves=$(cat "/sys/class/net/$bond_name/bonding/slaves" 2>/dev/null)
+    fi
+    
+    # Method 2: Try /proc/net/bonding (older systems)
+    if [ -z "$slaves" ] && [ -f "/proc/net/bonding/$bond_name" ]; then
+        slaves=$(grep "Slave Interface:" "/proc/net/bonding/$bond_name" 2>/dev/null | awk '{print $3}' | tr '\n' ' ')
+    fi
+    
+    # Method 3: Parse ip link output (universal fallback)
+    if [ -z "$slaves" ]; then
+        slaves=$(ip -o link show | grep "master $bond_name" | awk -F': ' '{print $2}' | cut -d'@' -f1 | tr '\n' ' ')
+    fi
+    
+    echo "$slaves"
+}
+
+# Get slave interfaces
+SLAVES=$(get_bond_slaves bond0)
+
+if [ -z "$SLAVES" ]; then
+    exit 0
+fi
+
+# Process each slave interface
+for interface in $SLAVES; do
+    # Skip if interface doesn't exist
+    if ! ip link show "$interface" &>/dev/null; then
+        continue
+    fi
+    
+    # Try combined mode first
+    if ethtool -L "$interface" combined $CHANNELS &>/dev/null; then
+        continue
+    fi
+    
+    # Fall back to separate rx/tx
+    ethtool -L "$interface" rx $CHANNELS tx $CHANNELS &>/dev/null || true
+done
+
+exit 0
