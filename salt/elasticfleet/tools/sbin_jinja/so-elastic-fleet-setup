@@ -23,18 +23,17 @@ if [[ "$RETURN_CODE" != "0" ]]; then
     exit 1
 fi
 
-ALIASES=".fleet-servers .fleet-policies-leader .fleet-policies .fleet-agents .fleet-artifacts .fleet-enrollment-api-keys .kibana_ingest"
-for ALIAS in ${ALIASES}
-do
+ALIASES=(.fleet-servers .fleet-policies-leader .fleet-policies .fleet-agents .fleet-artifacts .fleet-enrollment-api-keys .kibana_ingest)
+for ALIAS in "${ALIASES[@]}"; do
     # Get all concrete indices from alias
-    INDXS=$(curl -K /opt/so/conf/kibana/curl.config -s -k -L -H "Content-Type: application/json" "https://localhost:9200/_resolve/index/${ALIAS}"  | jq -r '.aliases[].indices[]')
-
-    # Delete all resolved indices
-    for INDX in ${INDXS}
-    do
+    if INDXS_RAW=$(curl -sK /opt/so/conf/kibana/curl.config -s -k -L -H "Content-Type: application/json" "https://localhost:9200/_resolve/index/${ALIAS}" --fail 2>/dev/null); then
+        INDXS=$(echo "$INDXS_RAW" | jq -r '.aliases[].indices[]')
+        # Delete all resolved indices
+        for INDX in ${INDXS}; do
             status "Deleting $INDX"
             curl -K /opt/so/conf/kibana/curl.config -s -k -L -H "Content-Type: application/json" "https://localhost:9200/${INDX}" -XDELETE
-    done
+        done
+    fi
 done
 
 # Restarting Kibana...
