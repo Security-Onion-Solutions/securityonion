@@ -25,7 +25,10 @@ fi
 default_packages=({% for pkg in SUPPORTED_PACKAGES %}"{{ pkg }}"{% if not loop.last %} {% endif %}{% endfor %})
 
 for AGENT_POLICY in $agent_policies; do
-    integrations=$(elastic_fleet_integration_policy_names "$AGENT_POLICY")
+    if ! integrations=$(elastic_fleet_integration_policy_names "$AGENT_POLICY")
+        # this script upgrades default integration packages, exit 1 and let salt handle retrying
+        exit 1
+    fi
     for INTEGRATION in $integrations; do
         if ! [[ "$INTEGRATION" == "elastic-defend-endpoints" ]] && ! [[ "$INTEGRATION" == "fleet_server-"* ]]; then
             # Get package name so we know what package to look for when checking the current and latest available version

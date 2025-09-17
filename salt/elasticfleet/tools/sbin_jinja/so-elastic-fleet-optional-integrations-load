@@ -62,7 +62,12 @@ default_packages=({% for pkg in SUPPORTED_PACKAGES %}"{{ pkg }}"{% if not loop.l
 in_use_integrations=()
 
 for AGENT_POLICY in $agent_policies; do
-    integrations=$(elastic_fleet_integration_policy_names "$AGENT_POLICY")
+
+    if ! integrations=$(elastic_fleet_integration_policy_names "$AGENT_POLICY"); then
+        # skip the agent policy if we can't get required info, let salt retry. Integrations loaded by this script are non-default integrations.
+        echo "Skipping $AGENT_POLICY.. "
+        continue
+    fi
     for INTEGRATION in $integrations; do
         PACKAGE_NAME=$(elastic_fleet_integration_policy_package_name "$AGENT_POLICY" "$INTEGRATION")
         # non-default integrations that are in-use in any policy
