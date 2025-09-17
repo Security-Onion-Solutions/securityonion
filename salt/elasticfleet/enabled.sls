@@ -135,6 +135,9 @@ so-elastic-fleet-package-statefile:
 so-elastic-fleet-package-upgrade:
   cmd.run:
     - name: /usr/sbin/so-elastic-fleet-package-upgrade
+    - retry:
+        attempts: 3
+        interval: 10
     - onchanges:
       - file: /opt/so/state/elastic_fleet_packages.txt
 

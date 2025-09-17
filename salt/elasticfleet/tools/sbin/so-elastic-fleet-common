@@ -89,24 +89,32 @@ elastic_fleet_integration_policy_upgrade() {
 
 elastic_fleet_package_version_check() {
     PACKAGE=$1
-    curl -s -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X GET "localhost:5601/api/fleet/epm/packages/$PACKAGE" | jq -r '.item.version'
+
+    if output=$(curl -sK /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X GET "localhost:5601/api/fleet/epm/packages/$PACKAGE" --retry 3 --fail 2>/dev/null); then
+        echo $output | jq -r '.item.version'
+    else
+        return 1
+    fi
 }
 
 elastic_fleet_package_latest_version_check() {
     PACKAGE=$1
-    if output=$(curl -s -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X GET "localhost:5601/api/fleet/epm/packages/$PACKAGE" --fail); then
+    if output=$(curl -s -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X GET "localhost:5601/api/fleet/epm/packages/$PACKAGE" --retry 3 --fail 2>/dev/null); then
         if version=$(jq -e -r '.item.latestVersion' <<< $output); then
             echo "$version"
         fi
     else
         echo "Error: Failed to get latest version for $PACKAGE"
+        return 1
     fi
 }
 
 elastic_fleet_package_install() {
     PKG=$1
     VERSION=$2
-    curl -s -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST -H 'kbn-xsrf: true' -H 'Content-Type: application/json'  -d '{"force":true}' "localhost:5601/api/fleet/epm/packages/$PKG/$VERSION"
+    if ! curl -sK /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST -H 'kbn-xsrf: true' -H 'Content-Type: application/json'  -d '{"force":true}' "localhost:5601/api/fleet/epm/packages/$PKG/$VERSION" --retry 3 --fail 2>/dev/null; then
+        return 1
+    fi
 }
 
 elastic_fleet_bulk_package_install() {

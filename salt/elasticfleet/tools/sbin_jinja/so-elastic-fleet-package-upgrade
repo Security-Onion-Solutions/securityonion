@@ -10,8 +10,15 @@
 
 {%- for PACKAGE in SUPPORTED_PACKAGES %}
 echo "Upgrading {{ PACKAGE }} package..."
-VERSION=$(elastic_fleet_package_latest_version_check "{{ PACKAGE }}")
-elastic_fleet_package_install "{{ PACKAGE }}" "$VERSION"
+if VERSION=$(elastic_fleet_package_latest_version_check "{{ PACKAGE }}"); then
+    if ! elastic_fleet_package_install "{{ PACKAGE }}" "$VERSION"; then
+        # exit 1 on failure to upgrade a default package, allow salt to handle retries
+        echo -e "\nERROR: Failed to upgrade $PACKAGE to version: $VERSION"
+        exit 1
+    fi
+else
+    echo -e "\nERROR: Failed to get version information for integration $PACKAGE"
+fi
 echo
 {%- endfor %}
 echo
