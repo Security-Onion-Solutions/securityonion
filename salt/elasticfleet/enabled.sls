@@ -141,6 +141,9 @@ so-elastic-fleet-package-upgrade:
 so-elastic-fleet-integrations:
   cmd.run:
     - name: /usr/sbin/so-elastic-fleet-integration-policy-load
+    - retry:
+        attempts: 3
+        interval: 10
 
 so-elastic-agent-grid-upgrade:
   cmd.run:
