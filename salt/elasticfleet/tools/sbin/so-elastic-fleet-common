@@ -131,10 +131,11 @@ elastic_fleet_installed_packages() {
 }
 
 elastic_fleet_agent_policy_ids() {
-    curl -s -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X GET "localhost:5601/api/fleet/agent_policies" | jq -r .items[].id
-    if [ $? -ne 0 ]; then
+    if output=$(curl -s -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X GET "localhost:5601/api/fleet/agent_policies" --retry 3 --fail 2>/dev/null);
+        echo "$output" | jq -r .items[].id
+    else
         echo "Error: Failed to retrieve agent policies."
-        exit 1
+        return 1
     fi
 }
 
