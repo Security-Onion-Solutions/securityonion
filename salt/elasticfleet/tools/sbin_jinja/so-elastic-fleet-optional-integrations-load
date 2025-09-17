@@ -160,7 +160,11 @@ if [[ -f $STATE_FILE_SUCCESS  ]]; then
 
             for file in "${pkg_filename}_"*.json; do
                 [ -e "$file" ] || continue
-                elastic_fleet_bulk_package_install $file >> $BULK_INSTALL_OUTPUT
+                if ! elastic_fleet_bulk_package_install $file >> $BULK_INSTALL_OUTPUT; then
+                    # integrations loaded my this script are non-essential and shouldn't cause exit, skip them for now next highstate run can retry
+                    echo "Failed to complete a chunk of bulk package installs -- $file "
+                    continue
+                fi
             done
             # cleanup any temp files for chunked package install
             rm -f ${pkg_filename}_*.json $BULK_INSTALL_PACKAGE_LIST

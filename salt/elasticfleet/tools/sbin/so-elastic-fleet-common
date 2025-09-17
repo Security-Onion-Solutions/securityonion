@@ -119,7 +119,9 @@ elastic_fleet_package_install() {
 
 elastic_fleet_bulk_package_install() {
     BULK_PKG_LIST=$1
-    curl -s -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d@$1 "localhost:5601/api/fleet/epm/packages/_bulk"
+    if ! curl -sK /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d@$1 "localhost:5601/api/fleet/epm/packages/_bulk" --retry 3 --fail 2>/dev/null; then
+        return 1
+    fi
 }
 
 elastic_fleet_package_is_installed() {
