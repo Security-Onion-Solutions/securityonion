@@ -172,8 +172,9 @@ if [[ -f $STATE_FILE_SUCCESS  ]]; then
             echo "Elastic integrations don't appear to need installation/updating..."
         fi
         # Write out file for generating index/component/ilm templates
-        latest_installed_package_list=$(elastic_fleet_installed_packages)
-        echo $latest_installed_package_list | jq '[.items[] | {name: .name, es_index_patterns: .dataStreams}]' > $PACKAGE_COMPONENTS
+        if latest_installed_package_list=$(elastic_fleet_installed_packages); then
+            echo $latest_installed_package_list | jq '[.items[] | {name: .name, es_index_patterns: .dataStreams}]' > $PACKAGE_COMPONENTS
+        fi
         if retry 3 1 "so-elasticsearch-query / --fail --output /dev/null"; then
             # Refresh installed component template list
             latest_component_templates_list=$(so-elasticsearch-query _component_template | jq '.component_templates[] | .name' | jq -s '.')
