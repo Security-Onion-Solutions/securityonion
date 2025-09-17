@@ -73,7 +73,10 @@ UPDATED_INTEGRATION_POLICY=$(jq --arg policy_id "FleetServer_{{ GLOBALS.hostname
 .name = $name' /opt/so/conf/elastic-fleet/integrations/fleet-server/fleet-server.json)
 
 # Add the Fleet Server Integration to the new Fleet Policy
-elastic_fleet_integration_create "$UPDATED_INTEGRATION_POLICY"
+if ! elastic_fleet_integration_create "$UPDATED_INTEGRATION_POLICY"; then
+    echo -e "\nFailed to create Fleet server integration for Manager.."
+    exit 1
+fi
 
 # Now we can create the Logstash Output and set it to to be the default Output
 printf "\n\nCreate Logstash Output Config if node is not an Import or Eval install\n"
