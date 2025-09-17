@@ -9,6 +9,9 @@
 {% from 'elasticfleet/map.jinja' import ELASTICFLEETMERGED %}
 {% set node_data = salt['pillar.get']('node_data') %}
 
+include:
+  - elasticfleet.artifact_registry
+
 # Add EA Group
 elasticfleetgroup:
   group.present:
