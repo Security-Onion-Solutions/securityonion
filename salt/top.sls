@@ -294,6 +294,7 @@ base:
     - elasticfleet
     - elasticfleet.install_agent_grid
     - schedule
+    - stig
 
   '*_hypervisor and I@features:vrt and G@saltversion:{{saltversion}}':
     - match: compound

@@ -256,6 +256,9 @@ base:
     - minions.adv_{{ grains.id }}
     - kafka.nodes
     - kafka.soc_kafka
+    - stig.soc_stig
+    - elasticfleet.soc_elasticfleet
+    - elasticfleet.adv_elasticfleet
 
   '*_import':
     - node_data.ips
@@ -313,10 +316,12 @@ base:
     - elasticfleet.adv_elasticfleet
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
+    - stig.soc_stig
 
   '*_hypervisor':
     - minions.{{ grains.id }}
     - minions.adv_{{ grains.id }}
+    - stig.soc_stig
 
   '*_desktop':
     - minions.{{ grains.id }}

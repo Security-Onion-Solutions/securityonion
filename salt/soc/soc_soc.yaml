@@ -138,6 +138,11 @@ soc:
         title: Require TOTP
         description: Require all users to enable Time-based One Time Passwords (MFA) upon login to SOC.
         global: True
+      customReportsPath:
+        title: Custom Reports Path
+        description: Path to custom markdown templates for PDF report generation. All markdown files in this directory will be available as custom reports in the SOC Reports interface.
+        global: True
+        advanced: True
       subgrids:
         title: Subordinate Grids
         description: |
@@ -175,6 +180,10 @@ soc:
           label: Subgrid Enabled
           forcedType: bool
           default: false
+      enableReverseLookup:
+        description: "Set to true to enable reverse DNS lookups for IP addresses in the SOC UI. To add your own local lookups, create a CSV file at /nsm/custom-mappings/ip-descriptions.csv on your Manager and populate the file with IP addresses and descriptions as follows: IP, Description. Elasticsearch will then ingest the CSV during the next high state."
+        global: True
+        helpLink: soc-customization.html#reverse-dns
       modules:
         elastalertengine:
           aiRepoUrl:
@@ -607,6 +616,8 @@ soc:
               forcedType: "[]{}"
               syntax: json
               uiElements:
+              - field: rulesetName
+                label: Playbook Source Name
               - field: repo
                 label: Repo URL
                 required: True
@@ -615,10 +626,42 @@ soc:
               - field: folder
                 label: Folder
             airgap: *pbRepos
+        assistant:
+          apiUrl:
+            description: The URL of the AI gateway.
+            advanced: True
+            global: True
       client:
-        enableReverseLookup:
-          description: Set to true to enable reverse DNS lookups for IP addresses in the SOC UI.
-          global: True
+        assistant:
+          enabled:
+            description: Set to true to enable the Onion AI assistant in SOC.
+            global: True
+          investigationPrompt: 
+            description: Prompt given to Onion AI when beginning an investigation.
+            global: True
+          contextLimitSmall:
+            description: Smaller context limit for Onion AI.
+            global: True
+            advanced: True
+          contextLimitLarge:
+            description: Larger context limit for Onion AI.
+            global: True
+            advanced: True
+          thresholdColorRatioLow:
+            description: Lower visual context color change threshold.
+            global: True
+            advanced: True
+          thresholdColorRatioMed:
+            description: Middle visual context color change threshold.
+            global: True
+            advanced: True
+          thresholdColorRatioMax:
+            description: Max visual context color change threshold.
+            global: True
+            advanced: True 
+          lowBalanceColorAlert:
+            description: Onion AI credit amount at which balance turns red.
+            advanced: True
         apiTimeoutMs:
           description: Duration (in milliseconds) to wait for a response from the SOC server API before giving up and showing an error on the SOC UI.
           global: True
@@ -652,6 +695,10 @@ soc:
           global: True
           advanced: True
           forcedType: "[]{}"
+        exportNodeId:
+          description: The node ID on which export jobs will be executed.
+          global: True
+          advanced: True
         hunt: &appSettings
           groupItemsPerPage:
             description: Default number of aggregations to show per page. Larger values consume more vertical area in the SOC UI.

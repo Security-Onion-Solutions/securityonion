@@ -7,6 +7,10 @@ import argparse
 
 
 def checkConfigRequirements(conf):
+    # Community API doesn't require API key
+    if conf.get('api_version') == 'community':
+        return True
+    # Other API versions require API key
     if "api_key" not in conf or len(conf['api_key']) == 0:
         sys.exit(126)
     else:
@@ -17,10 +21,12 @@ def sendReq(conf, meta, ip):
     url = conf['base_url']
     if conf['api_version'] == 'community':
         url = url + 'v3/community/' + ip
-    elif conf['api_version'] == 'investigate' or 'automate':
+        # Community API doesn't use API key
+        response = requests.request('GET', url=url)
+    elif conf['api_version'] in ['investigate', 'automate']:
         url = url + 'v2/noise/context/' + ip
-    headers = {"key": conf['api_key']}
-    response = requests.request('GET', url=url, headers=headers)
+        headers = {"key": conf['api_key']}
+        response = requests.request('GET', url=url, headers=headers)
     return response.json()
 
 

@@ -95,7 +95,7 @@ enable_startup_states:
     - unless: pgrep so-setup
 
 # prior to 2.4.30 this managed file would restart the salt-minion service when updated
-# since this file is currently only adding a sleep timer on service start
+# since this file is currently only adding a delay service start
 # it is not required to restart the service
 salt_minion_service_unit_file:
   file.managed:
