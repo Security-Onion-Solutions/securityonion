@@ -46,7 +46,7 @@ elastic_fleet_integration_create() {
 
     JSON_STRING=$1
 
-    if ! fleet_api "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -XPOST -d "$JSON_STRING"; then
+    if ! fleet_api "package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -XPOST -d "$JSON_STRING"; then
         return 1
     fi
 }
@@ -65,7 +65,10 @@ elastic_fleet_integration_remove() {
                     '{"packagePolicyIds":[$INTEGRATIONID]}'
                     )
 
-    curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/package_policies/delete" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
+    if ! fleet_api "package_policies/delete" -XPOST -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"; then
+        echo "Error: Unable to delete '$NAME' from '$AGENT_POLICY'"
+        return 1
+    fi
 }
 
 elastic_fleet_integration_update() {
@@ -74,7 +77,7 @@ elastic_fleet_integration_update() {
 
     JSON_STRING=$2
 
-    if ! fleet_api "localhost:5601/api/fleet/package_policies/$UPDATE_ID" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -XPUT -d "$JSON_STRING"; then
+    if ! fleet_api "package_policies/$UPDATE_ID" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -XPUT -d "$JSON_STRING"; then
         return 1
     fi
 }
@@ -88,7 +91,7 @@ elastic_fleet_integration_policy_upgrade() {
                     '{"packagePolicyIds":[$INTEGRATIONID]}'
                     )
 
-    if ! fleet_api "localhost:5601/api/fleet/package_policies/upgrade" -XPOST -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"; then
+    if ! fleet_api "package_policies/upgrade" -XPOST -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"; then
         return 1
     fi
 }
@@ -97,21 +100,22 @@ elastic_fleet_integration_policy_upgrade() {
 elastic_fleet_package_version_check() {
     PACKAGE=$1
 
-    if output=$(fleet_api "localhost:5601/api/fleet/epm/packages/$PACKAGE"); then
-        echo $output | jq -r '.item.version'
+    if output=$(fleet_api "epm/packages/$PACKAGE"); then
+        echo "$output" | jq -r '.item.version'
     else
+        echo "Error: Failed to get current package version for '$PACKAGE'"
         return 1
     fi
 }
 
 elastic_fleet_package_latest_version_check() {
     PACKAGE=$1
-    if output=$(fleet_api "localhost:5601/api/fleet/epm/packages/$PACKAGE"); then
+    if output=$(fleet_api "epm/packages/$PACKAGE"); then
         if version=$(jq -e -r '.item.latestVersion' <<< $output); then
             echo "$version"
         fi
     else
-        echo "Error: Failed to get latest version for $PACKAGE"
+        echo "Error: Failed to get latest version for '$PACKAGE'"
         return 1
     fi
 }
@@ -119,26 +123,26 @@ elastic_fleet_package_latest_version_check() {
 elastic_fleet_package_install() {
     PKG=$1
     VERSION=$2
-    if ! fleet_api "localhost:5601/api/fleet/epm/packages/$PKG/$VERSION" -XPOST -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d '{"force":true}'; then
+    if ! fleet_api "epm/packages/$PKG/$VERSION" -XPOST -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d '{"force":true}'; then
         return 1
     fi
 }
 
 elastic_fleet_bulk_package_install() {
     BULK_PKG_LIST=$1
-    if ! fleet_api "localhost:5601/api/fleet/epm/packages/_bulk" -XPOST -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d@$BULK_PKG_LIST; then
+    if ! fleet_api "epm/packages/_bulk" -XPOST -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d@$BULK_PKG_LIST; then
         return 1
     fi
 }
 
 elastic_fleet_installed_packages() {
-    if ! fleet_api "localhost:5601/api/fleet/epm/packages/installed?perPage=500"; then
+    if ! fleet_api "epm/packages/installed?perPage=500"; then
         return 1
     fi
 }
 
 elastic_fleet_agent_policy_ids() {
-    if output=$(fleet_api "localhost:5601/api/fleet/agent_policies");
+    if output=$(fleet_api "agent_policies");
         echo "$output" | jq -r .items[].id
     else
         echo "Error: Failed to retrieve agent policies."
@@ -148,7 +152,7 @@ elastic_fleet_agent_policy_ids() {
 
 elastic_fleet_integration_policy_names() {
     AGENT_POLICY=$1
-    if output=$(fleet_api "localhost:5601/api/fleet/agent_policies/$AGENT_POLICY"); then
+    if output=$(fleet_api "agent_policies/$AGENT_POLICY"); then
         echo "$output" | jq -r .item.package_policies[].name
     else
         echo "Error: Failed to retrieve integrations for '$AGENT_POLICY'."
@@ -159,7 +163,7 @@ elastic_fleet_integration_policy_names() {
 elastic_fleet_integration_policy_package_name() {
     AGENT_POLICY=$1
     INTEGRATION=$2
-    if output=$(fleet_api "localhost:5601/api/fleet/agent_policies/$AGENT_POLICY"); then
+    if output=$(fleet_api "agent_policies/$AGENT_POLICY"); then
         echo "$output" | jq -r --arg INTEGRATION "$INTEGRATION" '.item.package_policies[] | select(.name==$INTEGRATION)| .package.name'
     else
         echo "Error: Failed to retrieve package name for '$INTEGRATION' in '$AGENT_POLICY'."
@@ -171,12 +175,12 @@ elastic_fleet_integration_policy_package_version() {
     AGENT_POLICY=$1
     INTEGRATION=$2
 
-    if output=$(fleet_api "localhost:5601/api/fleet/agent_policies/$AGENT_POLICY"); then
+    if output=$(fleet_api "agent_policies/$AGENT_POLICY"); then
         if version=$(jq -e -r --arg INTEGRATION "$INTEGRATION" '.item.package_policies[] | select(.name==$INTEGRATION)| .package.version' <<< "$output"); then
             echo "$version"
         fi
     else
-        echo "Error: Failed to retrieve agent policy $AGENT_POLICY"
+        echo "Error: Failed to retrieve integration version for '$INTEGRATION' in policy '$AGENT_POLICY'"
         return 1
     fi
 }
@@ -184,7 +188,7 @@ elastic_fleet_integration_policy_package_version() {
 elastic_fleet_integration_id() {
     AGENT_POLICY=$1
     INTEGRATION=$2
-    if output=$(fleet_api "localhost:5601/api/fleet/agent_policies/$AGENT_POLICY"); then
+    if output=$(fleet_api "agent_policies/$AGENT_POLICY"); then
         echo "$output" | jq -r --arg INTEGRATION "$INTEGRATION" '.item.package_policies[] | select(.name==$INTEGRATION)| .id'
     else
         echo "Error: Failed to retrieve integration ID for '$INTEGRATION' in '$AGENT_POLICY'."
@@ -194,10 +198,9 @@ elastic_fleet_integration_id() {
 
 elastic_fleet_integration_policy_dryrun_upgrade() {
     INTEGRATION_ID=$1
-    curl -s -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -H "Content-Type: application/json" -H 'kbn-xsrf: true' -L -X POST "localhost:5601/api/fleet/package_policies/upgrade/dryrun" -d "{\"packagePolicyIds\":[\"$INTEGRATION_ID\"]}"
-    if [ $? -ne 0 ]; then
+    if ! fleet_api "package_policies/upgrade/dryrun" -H "Content-Type: application/json" -H 'kbn-xsrf: true' -XPOST -d "{\"packagePolicyIds\":[\"$INTEGRATION_ID\"]}"; then
         echo "Error: Failed to complete dry run for '$INTEGRATION_ID'."
-        exit 1
+        return 1
     fi
 }
 
@@ -216,7 +219,7 @@ elastic_fleet_policy_create() {
             '{"name": $NAME,"id":$NAME,"description":$DESC,"namespace":"default","monitoring_enabled":["logs"],"inactivity_timeout":$TIMEOUT,"has_fleet_server":$FLEETSERVER}'
         )
     # Create Fleet Policy
-    if ! curl -sK /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/agent_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING" --retry 3 --fail 2>/dev/null; then
+    if ! fleet_api "agent_policies" -XPOST -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"; then
         return 1
     fi
 
