@@ -23,6 +23,13 @@ fi
 # Define a banner to separate sections
 banner="========================================================================="
 
+fleet_api() {
+    local QUERYPATH=$1
+    shift
+
+    curl -sK /opt/so/conf/elasticsearch/curl.config -L "localhost:5601/api/fleet/${QUERYPATH}" "$@" --retry 3 --fail 2>/dev/null
+}
+
 elastic_fleet_integration_check() {
 
     AGENT_POLICY=$1
@@ -39,7 +46,7 @@ elastic_fleet_integration_create() {
 
     JSON_STRING=$1
 
-    if ! curl -sK /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING" --retry 3 --fail 2>/dev/null; then
+    if ! fleet_api "localhost:5601/api/fleet/package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -XPOST -d "$JSON_STRING"; then
         return 1
     fi
 }
@@ -67,7 +74,7 @@ elastic_fleet_integration_update() {
 
     JSON_STRING=$2
 
-    if ! curl -sK /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fleet/package_policies/$UPDATE_ID" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING" --retry 3 --fail 2>/dev/null; then
+    if ! fleet_api "localhost:5601/api/fleet/package_policies/$UPDATE_ID" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -XPUT -d "$JSON_STRING"; then
         return 1
     fi
 }
@@ -81,7 +88,7 @@ elastic_fleet_integration_policy_upgrade() {
                     '{"packagePolicyIds":[$INTEGRATIONID]}'
                     )
 
-    if ! curl -sK /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/package_policies/upgrade" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING" --retry 3 --fail 2>/dev/null; then
+    if ! fleet_api "localhost:5601/api/fleet/package_policies/upgrade" -XPOST -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"; then
         return 1
     fi
 }
@@ -90,7 +97,7 @@ elastic_fleet_integration_policy_upgrade() {
 elastic_fleet_package_version_check() {
     PACKAGE=$1
 
-    if output=$(curl -sK /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X GET "localhost:5601/api/fleet/epm/packages/$PACKAGE" --retry 3 --fail 2>/dev/null); then
+    if output=$(fleet_api "localhost:5601/api/fleet/epm/packages/$PACKAGE"); then
         echo $output | jq -r '.item.version'
     else
         return 1
@@ -99,7 +106,7 @@ elastic_fleet_package_version_check() {
 
 elastic_fleet_package_latest_version_check() {
     PACKAGE=$1
-    if output=$(curl -s -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X GET "localhost:5601/api/fleet/epm/packages/$PACKAGE" --retry 3 --fail 2>/dev/null); then
+    if output=$(fleet_api "localhost:5601/api/fleet/epm/packages/$PACKAGE"); then
         if version=$(jq -e -r '.item.latestVersion' <<< $output); then
             echo "$version"
         fi
@@ -112,26 +119,26 @@ elastic_fleet_package_latest_version_check() {
 elastic_fleet_package_install() {
     PKG=$1
     VERSION=$2
-    if ! curl -sK /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST -H 'kbn-xsrf: true' -H 'Content-Type: application/json'  -d '{"force":true}' "localhost:5601/api/fleet/epm/packages/$PKG/$VERSION" --retry 3 --fail 2>/dev/null; then
+    if ! fleet_api "localhost:5601/api/fleet/epm/packages/$PKG/$VERSION" -XPOST -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d '{"force":true}'; then
         return 1
     fi
 }
 
 elastic_fleet_bulk_package_install() {
     BULK_PKG_LIST=$1
-    if ! curl -sK /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X POST -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d@$1 "localhost:5601/api/fleet/epm/packages/_bulk" --retry 3 --fail 2>/dev/null; then
+    if ! fleet_api "localhost:5601/api/fleet/epm/packages/_bulk" -XPOST -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d@$BULK_PKG_LIST; then
         return 1
     fi
 }
 
 elastic_fleet_installed_packages() {
-    if ! curl -sK /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X GET -H 'kbn-xsrf: true' -H 'Content-Type: application/json' "localhost:5601/api/fleet/epm/packages/installed?perPage=500" --retry 3 --fail 2>/dev/null; then
+    if ! fleet_api "localhost:5601/api/fleet/epm/packages/installed?perPage=500"; then
         return 1
     fi
 }
 
 elastic_fleet_agent_policy_ids() {
-    if output=$(curl -s -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X GET "localhost:5601/api/fleet/agent_policies" --retry 3 --fail 2>/dev/null);
+    if output=$(fleet_api "localhost:5601/api/fleet/agent_policies");
         echo "$output" | jq -r .items[].id
     else
         echo "Error: Failed to retrieve agent policies."
@@ -141,7 +148,7 @@ elastic_fleet_agent_policy_ids() {
 
 elastic_fleet_integration_policy_names() {
     AGENT_POLICY=$1
-    if output=$(curl -sK /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X GET "localhost:5601/api/fleet/agent_policies/$AGENT_POLICY" --retry 3 --fail 2>/dev/null); then
+    if output=$(fleet_api "localhost:5601/api/fleet/agent_policies/$AGENT_POLICY"); then
         echo "$output" | jq -r .item.package_policies[].name
     else
         echo "Error: Failed to retrieve integrations for '$AGENT_POLICY'."
@@ -152,7 +159,7 @@ elastic_fleet_integration_policy_names() {
 elastic_fleet_integration_policy_package_name() {
     AGENT_POLICY=$1
     INTEGRATION=$2
-    if output=$(curl -sK /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X GET "localhost:5601/api/fleet/agent_policies/$AGENT_POLICY" --retry 3 --fail 2>/dev/null); then
+    if output=$(fleet_api "localhost:5601/api/fleet/agent_policies/$AGENT_POLICY"); then
         echo "$output" | jq -r --arg INTEGRATION "$INTEGRATION" '.item.package_policies[] | select(.name==$INTEGRATION)| .package.name'
     else
         echo "Error: Failed to retrieve package name for '$INTEGRATION' in '$AGENT_POLICY'."
