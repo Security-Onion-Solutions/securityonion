@@ -152,10 +152,11 @@ elastic_fleet_integration_policy_names() {
 elastic_fleet_integration_policy_package_name() {
     AGENT_POLICY=$1
     INTEGRATION=$2
-    curl -s -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X GET "localhost:5601/api/fleet/agent_policies/$AGENT_POLICY" | jq -r --arg INTEGRATION "$INTEGRATION" '.item.package_policies[] | select(.name==$INTEGRATION)| .package.name'
-    if [ $? -ne 0 ]; then
+    if output=$(curl -sK /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X GET "localhost:5601/api/fleet/agent_policies/$AGENT_POLICY" --retry 3 --fail 2>/dev/null); then
+        echo "$output" | jq -r --arg INTEGRATION "$INTEGRATION" '.item.package_policies[] | select(.name==$INTEGRATION)| .package.name'
+    else
         echo "Error: Failed to retrieve package name for '$INTEGRATION' in '$AGENT_POLICY'."
-        exit 1
+        return 1
     fi
 }
 

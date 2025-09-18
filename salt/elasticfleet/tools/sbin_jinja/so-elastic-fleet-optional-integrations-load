@@ -69,7 +69,10 @@ for AGENT_POLICY in $agent_policies; do
         continue
     fi
     for INTEGRATION in $integrations; do
-        PACKAGE_NAME=$(elastic_fleet_integration_policy_package_name "$AGENT_POLICY" "$INTEGRATION")
+        if ! PACKAGE_NAME=$(elastic_fleet_integration_policy_package_name "$AGENT_POLICY" "$INTEGRATION")
+            echo  "Not adding $INTEGRATION, couldn't get package name"
+            continue
+        fi
         # non-default integrations that are in-use in any policy
         if ! [[ " ${default_packages[@]} " =~ " $PACKAGE_NAME " ]]; then
             in_use_integrations+=("$PACKAGE_NAME")

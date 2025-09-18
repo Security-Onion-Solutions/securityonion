@@ -162,6 +162,7 @@ so-elastic-fleet-integration-upgrade:
         attempts: 3
         interval: 10
 
+{# Optional integrations script doesn't need the retries like so-elastic-fleet-integration-upgrade which loads the default integrations #}
 so-elastic-fleet-addon-integrations:
   cmd.run:
     - name: /usr/sbin/so-elastic-fleet-optional-integrations-load

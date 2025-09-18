@@ -32,7 +32,9 @@ for AGENT_POLICY in $agent_policies; do
     for INTEGRATION in $integrations; do
         if ! [[ "$INTEGRATION" == "elastic-defend-endpoints" ]] && ! [[ "$INTEGRATION" == "fleet_server-"* ]]; then
             # Get package name so we know what package to look for when checking the current and latest available version
-            PACKAGE_NAME=$(elastic_fleet_integration_policy_package_name "$AGENT_POLICY" "$INTEGRATION")
+            if ! PACKAGE_NAME=$(elastic_fleet_integration_policy_package_name "$AGENT_POLICY" "$INTEGRATION"); then
+                exit 1
+            fi
             {%- if not AUTO_UPGRADE_INTEGRATIONS %}
             if [[ " ${default_packages[@]} " =~ " $PACKAGE_NAME " ]]; then
             {%- endif %}
