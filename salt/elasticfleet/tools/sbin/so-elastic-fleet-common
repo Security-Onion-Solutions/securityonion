@@ -184,10 +184,11 @@ elastic_fleet_integration_policy_package_version() {
 elastic_fleet_integration_id() {
     AGENT_POLICY=$1
     INTEGRATION=$2
-    curl -s -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -L -X GET "localhost:5601/api/fleet/agent_policies/$AGENT_POLICY" | jq -r --arg INTEGRATION "$INTEGRATION" '.item.package_policies[] | select(.name==$INTEGRATION)| .id'
-    if [ $? -ne 0 ]; then
+    if output=$(fleet_api "localhost:5601/api/fleet/agent_policies/$AGENT_POLICY"); then
+        echo "$output" | jq -r --arg INTEGRATION "$INTEGRATION" '.item.package_policies[] | select(.name==$INTEGRATION)| .id'
+    else
         echo "Error: Failed to retrieve integration ID for '$INTEGRATION' in '$AGENT_POLICY'."
-        exit 1
+        return 1
     fi
 }
 
