@@ -184,7 +184,7 @@ JSON_STRING=$( jq -n \
                 '{"name":$NAME,"host":$URL,"is_default":true}'
                 )
 
-if ! fleet_api "agent_download_sources" -XPOST-H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"; then
+if ! fleet_api "agent_download_sources" -XPOST -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"; then
     echo -e "\nFailed to update Elastic Agent artifact URL"
     exit 1
 fi
@@ -192,7 +192,7 @@ fi
 ### Finalization ###
 
 # Query for Enrollment Tokens for default policies
-if ENDPOINTSENROLLMENTOKEN_RAW=$(fleet_api "/enrollment_api_keys" -H 'kbn-xsrf: true' -H 'Content-Type: application/json'); then
+if ENDPOINTSENROLLMENTOKEN_RAW=$(fleet_api "enrollment_api_keys" -H 'kbn-xsrf: true' -H 'Content-Type: application/json'); then
     ENDPOINTSENROLLMENTOKEN=$(echo "$ENDPOINTSENROLLMENTOKEN_RAW" | jq .list | jq -r -c '.[] | select(.policy_id | contains("endpoints-initial")) | .api_key')
 else
     echo -e "\nFailed to query for Endpoints enrollment token"
