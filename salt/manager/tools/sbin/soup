@@ -611,7 +611,7 @@ post_to_2.4.180() {
 
 post_to_2.4.190() {
     # Only need to update import / eval nodes
-    if [[ "${MINIONID##*_}" == "import" ]] || [[ "${MINIONID##*_}" == "eval" ]]; then
+    if [[ "$MINION_ROLE" == "import" ]] || [[ "$MINION_ROLE" == "eval" ]]; then
         update_import_fleet_output
     fi
 
@@ -1387,6 +1387,7 @@ main() {
   fi
 
   set_minionid
+  MINION_ROLE=$(lookup_role)
   echo "Found that Security Onion $INSTALLEDVERSION is currently installed."
   echo ""
   if [[ $is_airgap -eq 0 ]]; then
@@ -1429,7 +1430,7 @@ main() {
   if [ "$is_hotfix" == "true" ]; then
     echo "Applying $HOTFIXVERSION hotfix"
     # since we don't run the backup.config_backup state on import we wont snapshot previous version states and pillars
-    if [[ ! "${MINIONID##*_}" == "import" ]]; then
+    if [[ ! "$MINION_ROLE" == "import" ]]; then
       backup_old_states_pillars
     fi
     copy_new_files
@@ -1492,7 +1493,7 @@ main() {
     fi
 
     # since we don't run the backup.config_backup state on import we wont snapshot previous version states and pillars
-    if [[ ! "${MINIONID##*_}" == "import" ]]; then
+    if [[ ! "$MINION_ROLE" == "import" ]]; then
       echo ""
       echo "Creating snapshots of default and local Salt states and pillars and saving to /nsm/backup/"
       backup_old_states_pillars
