@@ -35,13 +35,9 @@ wait_for_br0_ip:
       - file: salt_minion_service_unit_file
       - file: mine_functions
 
-{% if grains.role in ['so-hypervisor', 'so-managerhype'] %}
-
 restart_salt_minion_service:
   service.running:
     - name: salt-minion
     - enable: True
     - listen:
       - file: mine_functions
-
-{% endif %}
