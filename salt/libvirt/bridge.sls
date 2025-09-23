@@ -5,7 +5,11 @@
 
 # We do not import GLOBALS in this state because it is called during setup
 include:
+{# If we update the mine functions for the so-hypervisor node, then it will not be able to update the mine when the state run. #}
+{# This state is called from so-functions during setup and the so-hypervisor node would not have an accepted minion key and therefore couldn't update mine #}
+{% if grains.role == 'so-managerhype '%}
   - salt.mine_functions
+{% endif %}
   - salt.minion.service_file
 
 down_original_mgmt_interface:
@@ -33,11 +37,15 @@ wait_for_br0_ip:
       - cmd: down_original_mgmt_interface
     - onchanges_in:
       - file: salt_minion_service_unit_file
+{% if grains.role == 'so-managerhype '%}
       - file: mine_functions
+{% endif %}
 
+{% if grains.role == 'so-managerhype '%}
 restart_salt_minion_service:
   service.running:
     - name: salt-minion
     - enable: True
     - listen:
       - file: mine_functions
+{% endif %}
