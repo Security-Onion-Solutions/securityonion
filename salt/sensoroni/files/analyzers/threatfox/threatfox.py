@@ -2,6 +2,8 @@ import requests
 import helpers
 import json
 import sys
+import argparse
+import os
 
 
 def buildReq(observ_type, observ_value):
@@ -13,10 +15,20 @@ def buildReq(observ_type, observ_value):
     return qterms
 
 
-def sendReq(meta, query):
+def checkConfigRequirements(conf):
+    if not conf.get('api_key'):
+        sys.exit(126)
+    else:
+        return True
+
+
+def sendReq(conf, meta, query):
     # send a post request based off of our compiled query
     url = meta['baseUrl']
-    response = requests.post(url, json.dumps(query))
+    headers = {}
+    if conf.get('api_key'):
+        headers['Auth-Key'] = conf['api_key']
+    response = requests.post(url, json.dumps(query), headers=headers)
     return response.json()
 
 
@@ -51,23 +63,30 @@ def prepareResults(raw):
     return results
 
 
-def analyze(input):
+def analyze(conf, input):
     # put all of our methods together, pass them input, and return
     # properly formatted json/python dict output
-    data = json.loads(input)
+    checkConfigRequirements(conf)
     meta = helpers.loadMetadata(__file__)
+    data = helpers.parseArtifact(input)
     helpers.checkSupportedType(meta, data["artifactType"])
     query = buildReq(data['artifactType'], data['value'])
-    response = sendReq(meta, query)
+    response = sendReq(conf, meta, query)
     return prepareResults(response)
 
 
 def main():
-    if len(sys.argv) == 2:
-        results = analyze(sys.argv[1])
+    dir = os.path.dirname(os.path.realpath(__file__))
+    parser = argparse.ArgumentParser(
+        description='Search ThreatFox for a given artifact')
+    parser.add_argument(
+        'artifact', help='the artifact represented in JSON format')
+    parser.add_argument('-c', '--config', metavar='CONFIG_FILE', default=dir + '/threatfox.yaml',
+                        help='optional config file to use instead of the default config file')
+    args = parser.parse_args()
+    if args.artifact:
+        results = analyze(helpers.loadConfig(args.config), args.artifact)
         print(json.dumps(results))
-    else:
-        print("ERROR: Input is not in proper JSON format")
 
 
 if __name__ == '__main__':

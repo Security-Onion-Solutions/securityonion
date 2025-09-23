@@ -4,6 +4,9 @@
 # Elastic License 2.0.
 
 # We do not import GLOBALS in this state because it is called during setup
+include:
+  - salt.mine_functions
+  - salt.minion.service_file
 
 down_original_mgmt_interface:
   cmd.run:
@@ -28,29 +31,13 @@ wait_for_br0_ip:
     - timeout: 95
     - onchanges:
       - cmd: down_original_mgmt_interface
-
-{% if grains.role == 'so-hypervisor' %}
-
-update_mine_functions:
-  file.managed:
-    - name: /etc/salt/minion.d/mine_functions.conf
-    - contents: |
-        mine_interval: 25
-        mine_functions:
-          network.ip_addrs:
-            - interface: br0
-        {%- if role in ['so-eval','so-import','so-manager','so-managerhype','so-managersearch','so-standalone'] %}
-          x509.get_pem_entries:
-            - glob_path: '/etc/pki/ca.crt'
-        {% endif %}
-    - onchanges:
-      - cmd: wait_for_br0_ip
+    - onchanges_in:
+      - file: salt_minion_service_unit_file
+      - file: mine_functions
 
 restart_salt_minion_service:
   service.running:
     - name: salt-minion
     - enable: True
     - listen:
-      - file: update_mine_functions
-
-{% endif %}
+      - file: mine_functions
