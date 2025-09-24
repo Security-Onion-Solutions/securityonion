@@ -6,6 +6,7 @@
 # We do not import GLOBALS in this state because it is called during setup
 include:
   - salt.minion.service_file
+  - salt.mine_functions
 
 down_original_mgmt_interface:
   cmd.run:
@@ -32,6 +33,7 @@ wait_for_br0_ip:
       - cmd: down_original_mgmt_interface
     - onchanges_in:
       - file: salt_minion_service_unit_file
+      - file: mine_functions
 
 restart_salt_minion_service:
   service.running:
@@ -39,3 +41,4 @@ restart_salt_minion_service:
     - enable: True
     - listen:
       - file: salt_minion_service_unit_file
+      - file: mine_functions
