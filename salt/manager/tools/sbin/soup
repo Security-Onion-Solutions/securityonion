@@ -1162,7 +1162,7 @@ update_import_fleet_output() {
     if output=$(curl -sK /opt/so/conf/elasticsearch/curl.config -L "localhost:5601/api/fleet/outputs/so-manager_elasticsearch" --retry 3 --fail 2>/dev/null); then
         # Update the current config of so-manager_elasticsearch output policy in place (leaving any customizations like having changed the preset value from 'balanced' to 'performance')
         CAFINGERPRINT=$(openssl x509 -in /etc/pki/tls/certs/intca.crt -outform DER | sha256sum | cut -d' ' -f1 | tr '[:lower:]' '[:upper:]')
-        updated_policy=$(jq --args CAFINGERPRINT "$CAFINGERPRINT" '.item | (del(.id) | .ca_trusted_fingerprint = $CAFINGERPRINT)' <<< "$output")
+        updated_policy=$(jq --arg CAFINGERPRINT "$CAFINGERPRINT" '.item | (del(.id) | .ca_trusted_fingerprint = $CAFINGERPRINT)' <<< "$output")
         if curl -sK /opt/so/conf/elasticsearch/curl.config -L "localhost:5601/api/fleet/outputs/so-manager_elasticsearch" -XPUT -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$updated_policy" --retry 3 --fail 2>/dev/null; then
             echo "Successfully updated so-manager_elasticsearch fleet output policy"
         else
