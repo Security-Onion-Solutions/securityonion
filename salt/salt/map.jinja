@@ -4,7 +4,10 @@
    Elastic License 2.0. #}
 
 {% set role = salt['grains.get']('role', '') %}
-{% if role in ['so-hypervisor','so-managerhype'] %}
+{# We are using usebr0 mostly for setup of the so-managerhype node and controlling when we use br0 vs the physical interface #}
+{% set usebr0 = salt['pillar.get']('usebr0', True) %}
+
+{% if role in ['so-hypervisor','so-managerhype'] and usebr0 %}
 {%   set interface = 'br0' %}
 {% else %}
 {%   set interface = pillar.host.mainint %}

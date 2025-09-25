@@ -541,8 +541,15 @@ configure_minion() {
 		"log_file: /opt/so/log/salt/minion"\
 		"#startup_states: highstate" >> "$minion_config"
 
-	info "Running: salt-call state.apply salt.mine_functions --local --file-root=../salt/ -l info pillar='{"host": {"mainint": "$MNIC"}}'"
-	salt-call state.apply salt.mine_functions --local --file-root=../salt/ -l info pillar="{'host': {'mainint': $MNIC}}"
+	# At the time the so-managerhype node does not yet have the bridge configured.
+	# The so-hypervisor node doesn't either, but it doesn't cause issues here.
+	local usebr0=false
+	if [ "$minion_type" == 'hypervisor' ]; then
+    	usebr0=true
+	fi
+	local pillar_json="{\"host\": {\"mainint\": \"$MNIC\"}, \"usebr0\": $usebr0}"
+	info "Running: salt-call state.apply salt.mine_functions --local --file-root=../salt/ -l info pillar='$pillar_json'"
+	salt-call state.apply salt.mine_functions --local --file-root=../salt/ -l info pillar="$pillar_json"
 
 	{
 		logCmd "systemctl enable salt-minion";
@@ -1195,9 +1202,9 @@ hypervisor_local_states() {
         logCmd "salt-call state.apply libvirt.64962 --local --file-root=../salt/ -l info queue=True"
         info "Setting up bridge for $MNIC"
 		salt-call state.apply libvirt.bridge --local --file-root=../salt/ -l info pillar='{"host": {"mainint": "'$MNIC'"}}' queue=True
-		if [ $is_managerhype ]; then
-	    	logCmd "salt-call state.apply salt.minion queue=True"
-		fi
+		#if [ $is_managerhype ]; then
+	    #	logCmd "salt-call state.apply salt.minion queue=True"
+		#fi
     fi
 }
 
