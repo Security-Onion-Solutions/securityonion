@@ -23,18 +23,17 @@ if [[ "$RETURN_CODE" != "0" ]]; then
     exit 1
 fi
 
-ALIASES=".fleet-servers .fleet-policies-leader .fleet-policies .fleet-agents .fleet-artifacts .fleet-enrollment-api-keys .kibana_ingest"
-for ALIAS in ${ALIASES}
-do
+ALIASES=(.fleet-servers .fleet-policies-leader .fleet-policies .fleet-agents .fleet-artifacts .fleet-enrollment-api-keys .kibana_ingest)
+for ALIAS in "${ALIASES[@]}"; do
     # Get all concrete indices from alias
-    INDXS=$(curl -K /opt/so/conf/kibana/curl.config -s -k -L -H "Content-Type: application/json" "https://localhost:9200/_resolve/index/${ALIAS}"  | jq -r '.aliases[].indices[]')
-
-    # Delete all resolved indices
-    for INDX in ${INDXS}
-    do
+    if INDXS_RAW=$(curl -sK /opt/so/conf/kibana/curl.config -s -k -L -H "Content-Type: application/json" "https://localhost:9200/_resolve/index/${ALIAS}" --fail 2>/dev/null); then
+        INDXS=$(echo "$INDXS_RAW" | jq -r '.aliases[].indices[]')
+        # Delete all resolved indices
+        for INDX in ${INDXS}; do
             status "Deleting $INDX"
             curl -K /opt/so/conf/kibana/curl.config -s -k -L -H "Content-Type: application/json" "https://localhost:9200/${INDX}" -XDELETE
-    done
+        done
+    fi
 done
 
 # Restarting Kibana...
@@ -51,22 +50,54 @@ if [[ "$RETURN_CODE" != "0" ]]; then
 fi
 
 printf "\n### Create ES Token ###\n"
-ESTOKEN=$(curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/service_tokens" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' |  jq -r .value)
+if ESTOKEN_RAW=$(fleet_api "service_tokens" -XPOST -H 'kbn-xsrf: true' -H 'Content-Type: application/json'); then
+    ESTOKEN=$(echo "$ESTOKEN_RAW" | jq -r .value)
+else
+    echo -e "\nFailed to create ES token..."
+    exit 1
+fi
 
 ### Create Outputs, Fleet Policy and Fleet URLs ###
 # Create the Manager Elasticsearch Output first and set it as the default output
 printf "\nAdd Manager Elasticsearch Output...\n"
-ESCACRT=$(openssl x509 -in  $INTCA)
-JSON_STRING=$( jq -n \
-                  --arg ESCACRT "$ESCACRT" \
-                  '{"name":"so-manager_elasticsearch","id":"so-manager_elasticsearch","type":"elasticsearch","hosts":["https://{{ GLOBALS.manager_ip }}:9200","https://{{ GLOBALS.manager }}:9200"],"is_default":true,"is_default_monitoring":true,"config_yaml":"","ssl":{"certificate_authorities": [$ESCACRT]}}' )
-curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/outputs" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
+ESCACRT=$(openssl x509 -in "$INTCA" -outform DER | sha256sum | cut -d' ' -f1 | tr '[:lower:]' '[:upper:]')
+JSON_STRING=$(jq -n \
+    --arg ESCACRT "$ESCACRT" \
+        '{"name":"so-manager_elasticsearch","id":"so-manager_elasticsearch","type":"elasticsearch","hosts":["https://{{ GLOBALS.manager_ip }}:9200","https://{{ GLOBALS.manager }}:9200"],"is_default":true,"is_default_monitoring":true,"config_yaml":"","ca_trusted_fingerprint": $ESCACRT}')
+
+if ! fleet_api "outputs" -XPOST -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"; then
+    echo -e "\nFailed to create so-elasticsearch_manager policy..."
+    exit 1
+fi
 printf "\n\n"
+
+# At this point there should only be two policies. fleet-default-output & so-manager_elasticsearch
+status "Verifying so-manager_elasticsearch policy is configured as the current default"
+
+# Grab the fleet-default-output policy instead of so-manager_elasticsearch, because a weird state can exist where both fleet-default-output & so-elasticsearch_manager can be set as the active default output for logs / metrics. Resulting in logs not ingesting on import/eval nodes
+if DEFAULTPOLICY=$(fleet_api "outputs/fleet-default-output"); then
+    fleet_default=$(echo "$DEFAULTPOLICY" | jq -er '.item.is_default')
+    fleet_default_monitoring=$(echo "$DEFAULTPOLICY" | jq -er '.item.is_default_monitoring')
+#   Check that fleet-default-output isn't configured as a default for anything ( both variables return false )
+    if [[ ! $fleet_default ]] && [[ ! $fleet_default_monitoring ]]; then
+        echo -e "\nso-manager_elasticsearch is configured as the current default policy..."
+    else
+        echo -e "\nVerification of so-manager_elasticsearch policy failed... The default 'fleet-default-output' output is still active..."
+        exit 1
+    fi
+else
+    # fleet-output-policy is created automatically by fleet when started. Should always exist on any installation type
+    echo -e "\nDefault fleet-default-output policy doesn't exist...\n"
+    exit 1
+fi
 
 # Create the Manager Fleet Server Host Agent Policy
 # This has to be done while the Elasticsearch Output is set to the default Output
 printf "Create Manager Fleet Server Policy...\n"
-elastic_fleet_policy_create "FleetServer_{{ GLOBALS.hostname }}" "Fleet Server - {{ GLOBALS.hostname }}" "false" "120"
+if ! elastic_fleet_policy_create "FleetServer_{{ GLOBALS.hostname }}" "Fleet Server - {{ GLOBALS.hostname }}" "false" "120"; then
+    echo -e "\n Failed to create Manager fleet server policy..."
+    exit 1
+fi
 
 # Modify the default integration policy to update the policy_id with the correct naming
 UPDATED_INTEGRATION_POLICY=$(jq --arg policy_id "FleetServer_{{ GLOBALS.hostname }}" --arg name "fleet_server-{{ GLOBALS.hostname }}" '
@@ -74,7 +105,10 @@ UPDATED_INTEGRATION_POLICY=$(jq --arg policy_id "FleetServer_{{ GLOBALS.hostname
 .name = $name' /opt/so/conf/elastic-fleet/integrations/fleet-server/fleet-server.json)
 
 # Add the Fleet Server Integration to the new Fleet Policy
-elastic_fleet_integration_create "$UPDATED_INTEGRATION_POLICY"
+if ! elastic_fleet_integration_create "$UPDATED_INTEGRATION_POLICY"; then
+    echo -e "\nFailed to create Fleet server integration for Manager.."
+    exit 1
+fi
 
 # Now we can create the Logstash Output and set it to to be the default Output
 printf "\n\nCreate Logstash Output Config if node is not an Import or Eval install\n"
@@ -88,7 +122,10 @@ JSON_STRING=$( jq -n \
                   --arg LOGSTASHCA "$LOGSTASHCA" \
                   '{"name":"grid-logstash","is_default":true,"is_default_monitoring":true,"id":"so-manager_logstash","type":"logstash","hosts":["{{ GLOBALS.manager_ip }}:5055", "{{ GLOBALS.manager }}:5055"],"config_yaml":"","ssl":{"certificate": $LOGSTASHCRT,"key": $LOGSTASHKEY,"certificate_authorities":[ $LOGSTASHCA ]},"proxy_id":null}'
                   )
-curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/outputs" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
+if ! fleet_api "outputs" -XPOST -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"; then
+    echo -e "\nFailed to create logstash fleet output"
+    exit 1
+fi
 printf "\n\n"
 {%- endif %}
 
@@ -106,7 +143,10 @@ else
 fi
 
 ## This array replaces whatever URLs are currently configured
-curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/fleet_server_hosts" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d  "$JSON_STRING"
+if ! fleet_api "fleet_server_hosts" -XPOST -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d  "$JSON_STRING"; then
+    echo -e "\nFailed to add manager fleet URL"
+    exit 1
+fi
 printf "\n\n"
 
 ### Create Policies & Associated Integration Configuration ###
@@ -117,13 +157,22 @@ printf "\n\n"
 /usr/sbin/so-elasticsearch-templates-load
 
 # Initial Endpoints Policy
-elastic_fleet_policy_create "endpoints-initial" "Initial Endpoint Policy" "false" "1209600"
+if ! elastic_fleet_policy_create "endpoints-initial" "Initial Endpoint Policy" "false" "1209600"; then
+    echo -e "\nFailed to create endpoints-initial policy..."
+    exit 1
+fi
 
 # Grid Nodes - General Policy
-elastic_fleet_policy_create "so-grid-nodes_general" "SO Grid Nodes - General Purpose" "false" "1209600"
+if ! elastic_fleet_policy_create "so-grid-nodes_general" "SO Grid Nodes - General Purpose" "false" "1209600"; then
+    echo -e "\nFailed to create so-grid-nodes_general policy..."
+    exit 1
+fi
 
 # Grid Nodes - Heavy Node Policy
-elastic_fleet_policy_create "so-grid-nodes_heavy" "SO Grid Nodes - Heavy Node" "false" "1209600"
+if ! elastic_fleet_policy_create "so-grid-nodes_heavy" "SO Grid Nodes - Heavy Node" "false" "1209600"; then
+    echo -e "\nFailed to create so-grid-nodes_heavy policy..."
+    exit 1
+fi
 
 # Load Integrations for default policies
 so-elastic-fleet-integration-policy-load
@@ -135,14 +184,34 @@ JSON_STRING=$( jq -n \
                 '{"name":$NAME,"host":$URL,"is_default":true}'
                 )
 
-curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "localhost:5601/api/fleet/agent_download_sources" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
+if ! fleet_api "agent_download_sources" -XPOST -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"; then
+    echo -e "\nFailed to update Elastic Agent artifact URL"
+    exit 1
+fi
 
 ### Finalization ###
 
 # Query for Enrollment Tokens for default policies
-ENDPOINTSENROLLMENTOKEN=$(curl -K /opt/so/conf/elasticsearch/curl.config -L "localhost:5601/api/fleet/enrollment_api_keys" -H 'kbn-xsrf: true' -H 'Content-Type: application/json'  | jq .list | jq -r -c '.[] | select(.policy_id | contains("endpoints-initial")) | .api_key')
-GRIDNODESENROLLMENTOKENGENERAL=$(curl -K /opt/so/conf/elasticsearch/curl.config -L "localhost:5601/api/fleet/enrollment_api_keys" -H 'kbn-xsrf: true' -H 'Content-Type: application/json'  | jq .list | jq -r -c '.[] | select(.policy_id | contains("so-grid-nodes_general")) | .api_key')
-GRIDNODESENROLLMENTOKENHEAVY=$(curl -K /opt/so/conf/elasticsearch/curl.config -L "localhost:5601/api/fleet/enrollment_api_keys" -H 'kbn-xsrf: true' -H 'Content-Type: application/json'  | jq .list | jq -r -c '.[] | select(.policy_id | contains("so-grid-nodes_heavy")) | .api_key')
+if ENDPOINTSENROLLMENTOKEN_RAW=$(fleet_api "enrollment_api_keys" -H 'kbn-xsrf: true' -H 'Content-Type: application/json'); then
+    ENDPOINTSENROLLMENTOKEN=$(echo "$ENDPOINTSENROLLMENTOKEN_RAW" | jq .list | jq -r -c '.[] | select(.policy_id | contains("endpoints-initial")) | .api_key')
+else
+    echo -e "\nFailed to query for Endpoints enrollment token"
+    exit 1
+fi
+
+if GRIDNODESENROLLMENTOKENGENERAL_RAW=$(fleet_api "enrollment_api_keys" -H 'kbn-xsrf: true' -H 'Content-Type: application/json'); then
+    GRIDNODESENROLLMENTOKENGENERAL=$(echo "$GRIDNODESENROLLMENTOKENGENERAL_RAW" | jq .list | jq -r -c '.[] | select(.policy_id | contains("so-grid-nodes_general")) | .api_key')
+else
+    echo -e "\nFailed to query for Grid nodes - General enrollment token"
+    exit 1
+fi
+
+if GRIDNODESENROLLMENTOKENHEAVY_RAW=$(fleet_api "enrollment_api_keys" -H 'kbn-xsrf: true' -H 'Content-Type: application/json'); then
+    GRIDNODESENROLLMENTOKENHEAVY=$(echo "$GRIDNODESENROLLMENTOKENHEAVY_RAW" | jq .list | jq -r -c '.[] | select(.policy_id | contains("so-grid-nodes_heavy")) | .api_key')
+else
+    echo -e "\nFailed to query for Grid nodes - Heavy enrollment token"
+    exit 1
+fi
 
 # Store needed data in minion pillar
 pillar_file=/opt/so/saltstack/local/pillar/minions/{{ GLOBALS.minion_id }}.sls

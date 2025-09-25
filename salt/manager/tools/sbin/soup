@@ -450,6 +450,7 @@ postupgrade_changes() {
     [[ "$POSTVERSION"  == 2.4.150 ]] && post_to_2.4.160
     [[ "$POSTVERSION"  == 2.4.160 ]] && post_to_2.4.170
     [[ "$POSTVERSION"  == 2.4.170 ]] && post_to_2.4.180
+    [[ "$POSTVERSION"  == 2.4.180 ]] && post_to_2.4.190
     true
 }
 
@@ -606,6 +607,15 @@ post_to_2.4.180() {
   /usr/sbin/so-kafka-fleet-output-policy --force
 
   POSTVERSION=2.4.180
+}
+
+post_to_2.4.190() {
+    # Only need to update import / eval nodes
+    if [[ "$MINION_ROLE" == "import" ]] || [[ "$MINION_ROLE" == "eval" ]]; then
+        update_import_fleet_output
+    fi
+
+  POSTVERSION=2.4.190
 }
 
 repo_sync() {
@@ -868,6 +878,11 @@ up_to_2.4.180() {
   determine_elastic_agent_upgrade
 
   INSTALLEDVERSION=2.4.180
+}
+
+up_to_2.4.190() {
+  echo "Nothing to do for 2.4.190"
+  INSTALLEDVERSION=2.4.190
 }
 
 add_hydra_pillars() {
@@ -1143,6 +1158,19 @@ update_elasticsearch_index_settings() {
   done
 }
 
+update_import_fleet_output() {
+    if output=$(curl -sK /opt/so/conf/elasticsearch/curl.config -L "localhost:5601/api/fleet/outputs/so-manager_elasticsearch" --retry 3 --fail 2>/dev/null); then
+        # Update the current config of so-manager_elasticsearch output policy in place (leaving any customizations like having changed the preset value from 'balanced' to 'performance')
+        CAFINGERPRINT=$(openssl x509 -in /etc/pki/tls/certs/intca.crt -outform DER | sha256sum | cut -d' ' -f1 | tr '[:lower:]' '[:upper:]')
+        updated_policy=$(jq --arg CAFINGERPRINT "$CAFINGERPRINT" '.item | (del(.id) | .ca_trusted_fingerprint = $CAFINGERPRINT)' <<< "$output")
+        if curl -sK /opt/so/conf/elasticsearch/curl.config -L "localhost:5601/api/fleet/outputs/so-manager_elasticsearch" -XPUT -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$updated_policy" --retry 3 --fail 2>/dev/null; then
+            echo "Successfully updated so-manager_elasticsearch fleet output policy"
+        else
+            fail "Failed to update so-manager_elasticsearch fleet output policy"
+        fi
+    fi
+}
+
 update_salt_mine() {
     echo "Populating the mine with mine_functions for each host."
     set +e
@@ -1359,6 +1387,7 @@ main() {
   fi
 
   set_minionid
+  MINION_ROLE=$(lookup_role)
   echo "Found that Security Onion $INSTALLEDVERSION is currently installed."
   echo ""
   if [[ $is_airgap -eq 0 ]]; then
@@ -1401,7 +1430,7 @@ main() {
   if [ "$is_hotfix" == "true" ]; then
     echo "Applying $HOTFIXVERSION hotfix"
     # since we don't run the backup.config_backup state on import we wont snapshot previous version states and pillars
-    if [[ ! "$MINIONID" =~ "_import" ]]; then
+    if [[ ! "$MINION_ROLE" == "import" ]]; then
       backup_old_states_pillars
     fi
     copy_new_files
@@ -1464,7 +1493,7 @@ main() {
     fi
 
     # since we don't run the backup.config_backup state on import we wont snapshot previous version states and pillars
-    if [[ ! "$MINIONID" =~ "_import" ]]; then
+    if [[ ! "$MINION_ROLE" == "import" ]]; then
       echo ""
       echo "Creating snapshots of default and local Salt states and pillars and saving to /nsm/backup/"
       backup_old_states_pillars
