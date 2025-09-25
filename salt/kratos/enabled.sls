@@ -54,6 +54,9 @@ so-kratos:
       - file: kratosconfig
       - file: kratoslogdir
       - file: kratosdir
+    - retry:
+        attempts: 10
+        interval: 10
 
 delete_so-kratos_so-status.disabled:
   file.uncomment:
