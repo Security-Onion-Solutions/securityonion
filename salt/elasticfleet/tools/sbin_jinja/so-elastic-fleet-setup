@@ -63,13 +63,20 @@ printf "\nAdd Manager Elasticsearch Output...\n"
 ESCACRT=$(openssl x509 -in "$INTCA" -outform DER | sha256sum | cut -d' ' -f1 | tr '[:lower:]' '[:upper:]')
 JSON_STRING=$(jq -n \
     --arg ESCACRT "$ESCACRT" \
-        '{"name":"so-manager_elasticsearch","id":"so-manager_elasticsearch","type":"elasticsearch","hosts":["https://{{ GLOBALS.manager_ip }}:9200","https://{{ GLOBALS.manager }}:9200"],"is_default":true,"is_default_monitoring":true,"config_yaml":"","ca_trusted_fingerprint": $ESCACRT}')
+        '{"name":"so-manager_elasticsearch","id":"so-manager_elasticsearch","type":"elasticsearch","hosts":["https://{{ GLOBALS.manager_ip }}:9200","https://{{ GLOBALS.manager }}:9200"],"is_default":false,"is_default_monitoring":false,"config_yaml":"","ca_trusted_fingerprint": $ESCACRT}')
 
 if ! fleet_api "outputs" -XPOST -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"; then
     echo -e "\nFailed to create so-elasticsearch_manager policy..."
     exit 1
 fi
 printf "\n\n"
+
+# so-manager_elasticsearch should exist and be disabled. Now update it before checking its the only default policy
+MANAGER_OUTPUT_ENABLED=$(echo "$JSON_STRING" | jq 'del(.id) | .is_default = true | .is_default_monitoring = true')
+if ! curl -sK /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fleet/outputs/so-manager_elasticsearch" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$MANAGER_OUTPUT_ENABLED"; then
+    echo -e "\n failed to update so-manager_elasticsearch"
+    exit 1
+fi
 
 # At this point there should only be two policies. fleet-default-output & so-manager_elasticsearch
 status "Verifying so-manager_elasticsearch policy is configured as the current default"
@@ -79,7 +86,7 @@ if DEFAULTPOLICY=$(fleet_api "outputs/fleet-default-output"); then
     fleet_default=$(echo "$DEFAULTPOLICY" | jq -er '.item.is_default')
     fleet_default_monitoring=$(echo "$DEFAULTPOLICY" | jq -er '.item.is_default_monitoring')
 #   Check that fleet-default-output isn't configured as a default for anything ( both variables return false )
-    if [[ ! $fleet_default ]] && [[ ! $fleet_default_monitoring ]]; then
+    if [[ $fleet_default == "false" ]] && [[ $fleet_default_monitoring == "false" ]]; then
         echo -e "\nso-manager_elasticsearch is configured as the current default policy..."
     else
         echo -e "\nVerification of so-manager_elasticsearch policy failed... The default 'fleet-default-output' output is still active..."
