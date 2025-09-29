@@ -3,7 +3,7 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-# this state was seperated from salt.minion state since it is called during setup
+# this state was separated from salt.minion state since it is called during setup
 # GLOBALS are imported in the salt.minion state and that is not available at that point in setup
 # this state is included in the salt.minion state
 
