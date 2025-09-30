@@ -17,7 +17,6 @@ if [ ! -f /opt/so/state/eaintegrations.txt ]; then
 
   # Third, configure Elastic Defend Integration seperately
   /usr/sbin/so-elastic-fleet-integration-policy-elastic-defend
-
   # Initial Endpoints
   for INTEGRATION in /opt/so/conf/elastic-fleet/integrations/endpoints-initial/*.json
   do
@@ -27,13 +26,15 @@ if [ ! -f /opt/so/state/eaintegrations.txt ]; then
       printf "\n\nIntegration $NAME exists - Updating integration\n"
       if ! elastic_fleet_integration_update "$INTEGRATION_ID" "@$INTEGRATION"; then
         echo -e "\nFailed to update integration for ${INTEGRATION##*/}"
-        exit 1
+        RETURN_CODE=1
+        continue
       fi
     else
       printf "\n\nIntegration does not exist - Creating integration\n"
       if ! elastic_fleet_integration_create "@$INTEGRATION"; then
         echo -e "\nFailed to create integration for ${INTEGRATION##*/}"
-        exit 1
+        RETURN_CODE=1
+        continue
       fi
     fi
   done
@@ -47,13 +48,15 @@ if [ ! -f /opt/so/state/eaintegrations.txt ]; then
       printf "\n\nIntegration $NAME exists - Updating integration\n"
       if ! elastic_fleet_integration_update "$INTEGRATION_ID" "@$INTEGRATION"; then
         echo -e "\nFailed to update integration for ${INTEGRATION##*/}"
-        exit 1
+        RETURN_CODE=1
+        continue
       fi
     else
       printf "\n\nIntegration does not exist - Creating integration\n"
       if ! elastic_fleet_integration_create "@$INTEGRATION"; then
         echo -e "\nFailed to create integration for ${INTEGRATION##*/}"
-        exit 1
+        RETURN_CODE=1
+        continue
       fi
     fi
   done
@@ -70,14 +73,16 @@ if [ ! -f /opt/so/state/eaintegrations.txt ]; then
       printf "\n\nIntegration $NAME exists - Updating integration\n"
       if ! elastic_fleet_integration_update "$INTEGRATION_ID" "@$INTEGRATION"; then
         echo -e "\nFailed to update integration for ${INTEGRATION##*/}"
-        exit 1
+        RETURN_CODE=1
+        continue
       fi
     else
       printf "\n\nIntegration does not exist - Creating integration\n"
       if [ "$NAME" != "elasticsearch-logs" ]; then
         if ! elastic_fleet_integration_create "@$INTEGRATION"; then
           echo -e "\nFailed to create integration for ${INTEGRATION##*/}"
-          exit 1
+          RETURN_CODE=1
+          continue
         fi
       fi
     fi
@@ -97,14 +102,16 @@ if [ ! -f /opt/so/state/eaintegrations.txt ]; then
         printf "\n\nIntegration $NAME exists - Updating integration\n"
         if ! elastic_fleet_integration_update "$INTEGRATION_ID" "@$INTEGRATION"; then
           echo -e "\nFailed to update integration for ${INTEGRATION##*/}"
-          exit 1
+          RETURN_CODE=1
+          continue
         fi
       else
         printf "\n\nIntegration does not exist - Creating integration\n"
         if [ "$NAME" != "elasticsearch-logs" ]; then
           if ! elastic_fleet_integration_create "@$INTEGRATION"; then
             echo -e "\nFailed to create integration for ${INTEGRATION##*/}"
-            exit 1
+            RETURN_CODE=1
+            continue
           fi
         fi
       fi

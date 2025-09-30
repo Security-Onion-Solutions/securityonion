@@ -24,6 +24,7 @@ fi
 
 default_packages=({% for pkg in SUPPORTED_PACKAGES %}"{{ pkg }}"{% if not loop.last %} {% endif %}{% endfor %})
 
+ERROR=false
 for AGENT_POLICY in $agent_policies; do
     if ! integrations=$(elastic_fleet_integration_policy_names "$AGENT_POLICY"); then
         # this script upgrades default integration packages, exit 1 and let salt handle retrying
@@ -73,11 +74,13 @@ for AGENT_POLICY in $agent_policies; do
                         echo "No errors detected. Proceeding with upgrade..."
                         if ! elastic_fleet_integration_policy_upgrade "$INTEGRATION_ID"; then
                             echo "Error: Upgrade failed for $PACKAGE_NAME with integration ID '$INTEGRATION_ID'."
-                            exit 1
+                            ERROR=true
+                            continue
                         fi
                     else
                         echo "Errors detected during dry run for $PACKAGE_NAME policy upgrade..."
-                        exit 1
+                        ERROR=true
+                        continue
                     fi
                 fi
             {%- if not AUTO_UPGRADE_INTEGRATIONS %}
@@ -86,4 +89,7 @@ for AGENT_POLICY in $agent_policies; do
         fi
     done
 done
+if [[ "$ERROR" == "true" ]]; then
+    exit 1
+fi
 echo
