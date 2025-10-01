@@ -1,0 +1,29 @@
+### Log filter by JA3S md5 hash:
+hook SSL::log_policy(rec: SSL::Info, id: Log::ID, filter: Log::Filter)
+    {
+       # SSL log filter Ja3s by md5           
+           if (rec?c$ssl$ja3s_cipher && ( /623de93db17d313345d7ea481e7443cf/ )in rec$c$ssl$ja3s_cipher)
+               break;
+    }
+
+event zeek_init()
+{
+    Log::remove_default_filter(SSL::LOG);
+    local filter: Log::Filter = [$name="ssl-filter"];
+    Log::add_filter(SSL::LOG, filter);
+}
+
+### Log filter by server name:
+hook SSL::log_policy(rec: SSL::Info, id: Log::ID, filter: Log::Filter)
+  {
+    # SSL log filter by server name
+    if (rec?$server_name && ( /api.github.com$/ ) in rec$server_name)
+       break;
+  }
+
+event zeek_init()
+{
+   Log::remove_default_filter(SSL::LOG);
+   local filter: Log::Filter = [$name="ssl-filter"];
+   Log::add_filter(SSL::LOG, filter);
+}

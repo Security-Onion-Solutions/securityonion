@@ -1,0 +1,17 @@
+global tunnel_subnet: set[subnet]={
+									
+	10.19.0.0/24
+			
+};
+
+hook Tunnel::log_policy(rec: Tunnel::Info, id: Log::ID, Filter: Log::Filter)
+	{
+	if (rec$id$orig_h in tunnel_subnet || rec$id$resp_h in tunnel_subnet)
+		break;
+	}
+event zeek_init()
+{
+    Log::remove_default_filter(Tunnel::LOG);
+    local filter: Log::Filter = [$name="tunnel-filter"];
+    Log::add_filter(Tunnel::LOG, filter);
+}
