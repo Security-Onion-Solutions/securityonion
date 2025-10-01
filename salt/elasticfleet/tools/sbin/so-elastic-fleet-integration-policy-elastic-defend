@@ -8,6 +8,7 @@
 
 . /usr/sbin/so-elastic-fleet-common
 
+ERROR=false
 # Manage Elastic Defend Integration for Initial Endpoints Policy
 for INTEGRATION in /opt/so/conf/elastic-fleet/integrations/elastic-defend/*.json
 do
@@ -17,13 +18,18 @@ do
       printf "\n\nIntegration $NAME exists - Upgrading integration policy\n"
       if ! elastic_fleet_integration_policy_upgrade "$INTEGRATION_ID"; then
         echo -e "\nFailed to upgrade integration policy for ${INTEGRATION##*/}"
-        exit 1
+        ERROR=true
+        continue
       fi
   else
     printf "\n\nIntegration does not exist - Creating integration\n"
     if ! elastic_fleet_integration_create "@$INTEGRATION"; then
         echo -e "\nFailed to create integration for ${INTEGRATION##*/}"
-        exit 1
+        ERROR=true
+        continue
     fi
   fi
 done
+if [[ "$ERROR" == "true" ]]; then
+    exit 1
+fi

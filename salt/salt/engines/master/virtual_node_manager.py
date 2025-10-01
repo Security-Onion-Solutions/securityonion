@@ -271,7 +271,7 @@ def parse_hardware_indices(hw_value: Any) -> List[int]:
     return indices
 
 def get_hypervisor_model(hypervisor: str) -> str:
-    """Get sosmodel from hypervisor grains."""
+    """Get sosmodel or byodmodel from hypervisor grains."""
     try:
         # Get cached grains using Salt runner
         grains = runner.cmd(
@@ -283,9 +283,9 @@ def get_hypervisor_model(hypervisor: str) -> str:
             
         # Get the first minion ID that matches our hypervisor
         minion_id = next(iter(grains.keys()))
-        model = grains[minion_id].get('sosmodel')
+        model = grains[minion_id].get('sosmodel', grains[minion_id].get('byodmodel', ''))
         if not model:
-            raise ValueError(f"No sosmodel grain found for hypervisor {hypervisor}")
+            raise ValueError(f"No sosmodel or byodmodel grain found for hypervisor {hypervisor}")
             
         log.debug("Found model %s for hypervisor %s", model, hypervisor)
         return model
