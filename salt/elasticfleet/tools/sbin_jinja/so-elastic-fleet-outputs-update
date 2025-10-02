@@ -19,11 +19,14 @@ function update_logstash_outputs() {
         SSL_CONFIG=$(echo "$logstash_policy" | jq -r '.item.ssl')
         if SECRETS=$(echo "$logstash_policy" | jq -er '.item.secrets' 2>/dev/null); then
             JSON_STRING=$(jq -n \
-                --arg UPDATEDLIST $NEW_LIST_JSON \
+                --arg UPDATEDLIST "$NEW_LIST_JSON" \
+                --argjson SECRETS "$SECRETS" \
+                --argjson SSL_CONFIG "$SSL_CONFIG" \
                 '{"name":"grid-logstash","type":"logstash","hosts": $UPDATEDLIST,"is_default":true,"is_default_monitoring":true,"config_yaml":"","ssl": $SSL_CONFIG,"secrets": $SECRETS}')
         else
             JSON_STRING=$(jq -n \
-                --arg UPDATEDLIST $NEW_LIST_JSON \
+                --arg UPDATEDLIST "$NEW_LIST_JSON" \
+                --argjson SSL_CONFIG "$SSL_CONFIG" \
                 '{"name":"grid-logstash","type":"logstash","hosts": $UPDATEDLIST,"is_default":true,"is_default_monitoring":true,"config_yaml":"","ssl": $SSL_CONFIG}')
         fi
     fi
