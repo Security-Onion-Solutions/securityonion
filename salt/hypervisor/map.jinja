@@ -13,6 +13,7 @@
 
 {# Import defaults.yaml for model hardware capabilities #}
 {% import_yaml 'hypervisor/defaults.yaml' as DEFAULTS %}
+{% set HYPERVISORMERGED = salt['pillar.get']('hypervisor', default=DEFAULTS.hypervisor, merge=True) %}
 
 {# Get hypervisor nodes from pillar #}
 {% set NODES = salt['pillar.get']('hypervisor:nodes', {}) %}
@@ -30,9 +31,10 @@
     {% set model = '' %}
     {% if grains %}
       {% set minion_id = grains.keys() | first %}
-      {% set model = grains[minion_id].get('sosmodel', '') %}
+      {% set model = grains[minion_id].get('sosmodel', grains[minion_id].get('byodmodel', '')) %}
     {% endif %}
-    {% set model_config = DEFAULTS.hypervisor.model.get(model, {}) %}
+
+    {% set model_config = HYPERVISORMERGED.model.get(model, {}) %}
     
     {# Get VM list from VMs file #}
     {% set vms = {} %}

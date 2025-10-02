@@ -161,6 +161,7 @@ DEFAULT_BASE_PATH = '/opt/so/saltstack/local/salt/hypervisor/hosts'
 VALID_ROLES = ['sensor', 'searchnode', 'idh', 'receiver', 'heavynode', 'fleet']
 LICENSE_PATH = '/opt/so/saltstack/local/pillar/soc/license.sls'
 DEFAULTS_PATH = '/opt/so/saltstack/default/salt/hypervisor/defaults.yaml'
+HYPERVISOR_PILLAR_PATH = '/opt/so/saltstack/local/pillar/hypervisor/soc_hypervisor.sls'
 # Define the retention period for destroyed VMs (in hours)
 DESTROYED_VM_RETENTION_HOURS = 48
 
@@ -271,7 +272,7 @@ def parse_hardware_indices(hw_value: Any) -> List[int]:
     return indices
 
 def get_hypervisor_model(hypervisor: str) -> str:
-    """Get sosmodel from hypervisor grains."""
+    """Get sosmodel or byodmodel from hypervisor grains."""
     try:
         # Get cached grains using Salt runner
         grains = runner.cmd(
@@ -283,9 +284,9 @@ def get_hypervisor_model(hypervisor: str) -> str:
             
         # Get the first minion ID that matches our hypervisor
         minion_id = next(iter(grains.keys()))
-        model = grains[minion_id].get('sosmodel')
+        model = grains[minion_id].get('sosmodel', grains[minion_id].get('byodmodel', ''))
         if not model:
-            raise ValueError(f"No sosmodel grain found for hypervisor {hypervisor}")
+            raise ValueError(f"No sosmodel or byodmodel grain found for hypervisor {hypervisor}")
             
         log.debug("Found model %s for hypervisor %s", model, hypervisor)
         return model
@@ -295,16 +296,48 @@ def get_hypervisor_model(hypervisor: str) -> str:
         raise
 
 def load_hardware_defaults(model: str) -> dict:
-    """Load hardware configuration from defaults.yaml."""
+    """Load hardware configuration from defaults.yaml and optionally override with pillar configuration."""
+    config = None
+    config_source = None
+    
     try:
+        # First, try to load from defaults.yaml
+        log.debug("Checking for model %s in %s", model, DEFAULTS_PATH)
         defaults = read_yaml_file(DEFAULTS_PATH)
         if not defaults or 'hypervisor' not in defaults:
             raise ValueError("Invalid defaults.yaml structure")
         if 'model' not in defaults['hypervisor']:
             raise ValueError("No model configurations found in defaults.yaml")
-        if model not in defaults['hypervisor']['model']:
-            raise ValueError(f"Model {model} not found in defaults.yaml")
-        return defaults['hypervisor']['model'][model]
+        
+        # Check if model exists in defaults
+        if model in defaults['hypervisor']['model']:
+            config = defaults['hypervisor']['model'][model]
+            config_source = DEFAULTS_PATH
+            log.debug("Found model %s in %s", model, DEFAULTS_PATH)
+        
+        # Then, try to load from pillar file (if it exists)
+        try:
+            log.debug("Checking for model %s in %s", model, HYPERVISOR_PILLAR_PATH)
+            pillar_config = read_yaml_file(HYPERVISOR_PILLAR_PATH)
+            if pillar_config and 'hypervisor' in pillar_config:
+                if 'model' in pillar_config['hypervisor']:
+                    if model in pillar_config['hypervisor']['model']:
+                        # Override with pillar configuration
+                        config = pillar_config['hypervisor']['model'][model]
+                        config_source = HYPERVISOR_PILLAR_PATH
+                        log.debug("Found model %s in %s (overriding defaults)", model, HYPERVISOR_PILLAR_PATH)
+        except FileNotFoundError:
+            log.debug("Pillar file %s not found, using defaults only", HYPERVISOR_PILLAR_PATH)
+        except Exception as e:
+            log.warning("Failed to read pillar file %s: %s (using defaults)", HYPERVISOR_PILLAR_PATH, str(e))
+        
+        # If model was not found in either file, raise an error
+        if config is None:
+            raise ValueError(f"Model {model} not found in {DEFAULTS_PATH} or {HYPERVISOR_PILLAR_PATH}")
+        
+        log.debug("Using hardware configuration for model %s from %s", model, config_source)
+        return config
+        
     except Exception as e:
         log.error("Failed to load hardware defaults: %s", str(e))
         raise
