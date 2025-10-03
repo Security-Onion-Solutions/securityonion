@@ -127,7 +127,7 @@ JSON_STRING=$( jq -n \
                   --arg LOGSTASHCRT "$LOGSTASHCRT" \
                   --arg LOGSTASHKEY "$LOGSTASHKEY" \
                   --arg LOGSTASHCA "$LOGSTASHCA" \
-                  '{"name":"grid-logstash","is_default":true,"is_default_monitoring":true,"id":"so-manager_logstash","type":"logstash","hosts":["{{ GLOBALS.manager_ip }}:5055", "{{ GLOBALS.manager }}:5055"],"config_yaml":"","ssl":{"certificate": $LOGSTASHCRT,"key": $LOGSTASHKEY,"certificate_authorities":[ $LOGSTASHCA ]},"proxy_id":null}'
+                  '{"name":"grid-logstash","is_default":true,"is_default_monitoring":true,"id":"so-manager_logstash","type":"logstash","hosts":["{{ GLOBALS.manager_ip }}:5055", "{{ GLOBALS.manager }}:5055"],"config_yaml":"","ssl":{"certificate": $LOGSTASHCRT,"certificate_authorities":[ $LOGSTASHCA ]},"secrets":{"ssl":{"key": $LOGSTASHKEY }},"proxy_id":null}'
                   )
 if ! fleet_api "outputs" -XPOST -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"; then
     echo -e "\nFailed to create logstash fleet output"

@@ -422,6 +422,7 @@ preupgrade_changes() {
     [[ "$INSTALLEDVERSION" == 2.4.150 ]] && up_to_2.4.160
     [[ "$INSTALLEDVERSION" == 2.4.160 ]] && up_to_2.4.170
     [[ "$INSTALLEDVERSION" == 2.4.170 ]] && up_to_2.4.180
+    [[ "$INSTALLEDVERSION" == 2.4.180 ]] && up_to_2.4.190
     true
 }
 
@@ -615,6 +616,16 @@ post_to_2.4.190() {
     # Only need to update import / eval nodes
     if [[ "$MINION_ROLE" == "import" ]] || [[ "$MINION_ROLE" == "eval" ]]; then
         update_import_fleet_output
+    fi
+
+    # Check if expected default policy is logstash (global.pipeline is REDIS or "")
+    pipeline=$(lookup_pillar "pipeline" "global")
+    if [[ -z "$pipeline" ]] || [[ "$pipeline" == "REDIS" ]]; then
+        # Check if this grid is currently affected by corrupt fleet output policy
+        if elastic-agent status | grep "config: key file not configured" > /dev/null 2>&1; then
+            echo "Elastic Agent shows an ssl error connecting to logstash output. Updating output policy..."
+            update_default_logstash_output
+        fi
     fi
 
   POSTVERSION=2.4.190
@@ -1170,6 +1181,31 @@ update_import_fleet_output() {
         else
             fail "Failed to update so-manager_elasticsearch fleet output policy"
         fi
+    fi
+}
+
+update_default_logstash_output() {
+    echo "Updating fleet logstash output policy grid-logstash"
+    if logstash_policy=$(curl -K /opt/so/conf/elasticsearch/curl.config -L "http://localhost:5601/api/fleet/outputs/so-manager_logstash" --retry 3 --retry-delay 10 --fail 2>/dev/null); then
+        # Keep already configured hosts for this update, subsequent host updates come from so-elastic-fleet-outputs-update
+        HOSTS=$(echo "$logstash_policy" | jq -r '.item.hosts')
+        DEFAULT_ENABLED=$(echo "$logstash_policy" | jq -r '.item.is_default')
+        DEFAULT_MONITORING_ENABLED=$(echo "$logstash_policy" | jq -r '.item.is_default_monitoring')
+        LOGSTASHKEY=$(openssl rsa -in  /etc/pki/elasticfleet-logstash.key)
+        LOGSTASHCRT=$(openssl x509 -in /etc/pki/elasticfleet-logstash.crt)
+        LOGSTASHCA=$(openssl x509 -in  /etc/pki/tls/certs/intca.crt)
+        JSON_STRING=$(jq -n \
+            --argjson HOSTS "$HOSTS" \
+            --arg DEFAULT_ENABLED "$DEFAULT_ENABLED" \
+            --arg DEFAULT_MONITORING_ENABLED "$DEFAULT_MONITORING_ENABLED" \
+            --arg LOGSTASHKEY "$LOGSTASHKEY" \
+            --arg LOGSTASHCRT "$LOGSTASHCRT" \
+            --arg LOGSTASHCA "$LOGSTASHCA" \
+            '{"name":"grid-logstash","type":"logstash","hosts": $HOSTS,"is_default": $DEFAULT_ENABLED,"is_default_monitoring": $DEFAULT_MONITORING_ENABLED,"config_yaml":"","ssl":{"certificate": $LOGSTASHCRT,"certificate_authorities":[ $LOGSTASHCA ]},"secrets":{"ssl":{"key": $LOGSTASHKEY }}}')
+    fi
+
+    if curl -K /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fleet/outputs/so-manager_logstash" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING" --retry 3 --retry-delay 10 --fail; then
+        echo "Successfully updated grid-logstash fleet output policy"
     fi
 }
 
