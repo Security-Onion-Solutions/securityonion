@@ -334,6 +334,34 @@ def attach_volume_to_vm(conn, vm_name, volume_path, logger):
             logger.error("VM: Could not find <devices> element in XML")
             raise VolumeAttachmentError("Could not find <devices> element in VM XML")
         
+        # Log ALL devices with PCI addresses to find conflicts
+        logger.info("DISK_DEBUG: Examining ALL devices with PCI addresses")
+        for device in devices_elem:
+            address = device.find('./address')
+            if address is not None and address.get('type') == 'pci':
+                bus = address.get('bus', 'unknown')
+                slot = address.get('slot', 'unknown')
+                function = address.get('function', 'unknown')
+                logger.info(f"DISK_DEBUG: Device {device.tag}: bus={bus}, slot={slot}, function={function}")
+        
+        # Log existing disk configuration for debugging
+        logger.info("DISK_DEBUG: Examining existing disk configuration")
+        existing_disks = devices_elem.findall('./disk')
+        for idx, disk in enumerate(existing_disks):
+            target = disk.find('./target')
+            source = disk.find('./source')
+            address = disk.find('./address')
+            
+            dev_name = target.get('dev') if target is not None else 'unknown'
+            source_file = source.get('file') if source is not None else 'unknown'
+            
+            if address is not None:
+                slot = address.get('slot', 'unknown')
+                bus = address.get('bus', 'unknown')
+                logger.info(f"DISK_DEBUG: Disk {idx}: dev={dev_name}, source={source_file}, slot={slot}, bus={bus}")
+            else:
+                logger.info(f"DISK_DEBUG: Disk {idx}: dev={dev_name}, source={source_file}, no address element")
+        
         # Check if vdb already exists
         for disk in devices_elem.findall('./disk'):
             target = disk.find('./target')
@@ -369,15 +397,37 @@ def attach_volume_to_vm(conn, vm_name, volume_path, logger):
         })
         
         # Add address element
+        # Use bus 0x07 with slot 0x00 to ensure NSM volume appears after OS disk (which is on bus 0x04)
+        # Bus 0x05 is used by memballoon, bus 0x06 is used by rng device
+        # Libvirt requires slot <= 0 for non-zero buses
+        # This ensures vda = OS disk, vdb = NSM volume
         ET.SubElement(disk_elem, 'address', attrib={
             'type': 'pci',
             'domain': '0x0000',
-            'bus': '0x00',
-            'slot': '0x07',
+            'bus': '0x07',
+            'slot': '0x00',
             'function': '0x0'
         })
         
         logger.info(f"HARDWARE: Added disk configuration for vdb")
+        
+        # Log disk ordering after adding new disk
+        logger.info("DISK_DEBUG: Disk configuration after adding NSM volume")
+        all_disks = devices_elem.findall('./disk')
+        for idx, disk in enumerate(all_disks):
+            target = disk.find('./target')
+            source = disk.find('./source')
+            address = disk.find('./address')
+            
+            dev_name = target.get('dev') if target is not None else 'unknown'
+            source_file = source.get('file') if source is not None else 'unknown'
+            
+            if address is not None:
+                slot = address.get('slot', 'unknown')
+                bus = address.get('bus', 'unknown')
+                logger.info(f"DISK_DEBUG: Disk {idx}: dev={dev_name}, source={source_file}, slot={slot}, bus={bus}")
+            else:
+                logger.info(f"DISK_DEBUG: Disk {idx}: dev={dev_name}, source={source_file}, no address element")
         
         # Convert XML back to string
         new_xml_desc = ET.tostring(root, encoding='unicode')
