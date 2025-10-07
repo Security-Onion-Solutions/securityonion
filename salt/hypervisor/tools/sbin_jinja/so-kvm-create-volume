@@ -242,16 +242,7 @@ def create_volume_file(vm_name, size_gb, logger):
     Raises:
         VolumeCreationError: If volume creation fails
     """
-    # Create volume directory if it doesn't exist
-    try:
-        if not os.path.exists(VOLUME_DIR):
-            os.makedirs(VOLUME_DIR, mode=0o755)
-            logger.info(f"VOLUME: Created volume directory: {VOLUME_DIR}")
-    except OSError as e:
-        logger.error(f"VOLUME: Failed to create volume directory: {e}")
-        raise VolumeCreationError(f"Failed to create volume directory: {e}")
-    
-    # Define volume path
+    # Define volume path (directory already created in main())
     volume_path = os.path.join(VOLUME_DIR, f"{vm_name}-nsm.img")
     
     # Check if volume already exists
@@ -448,6 +439,18 @@ def main():
         
         # Emit start status event
         emit_status_event(vm_name, 'Volume Creation')
+        
+        # Ensure volume directory exists before checking disk space
+        try:
+            os.makedirs(VOLUME_DIR, mode=0o755, exist_ok=True)
+            socore_uid = pwd.getpwnam('socore').pw_uid
+            socore_gid = grp.getgrnam('socore').gr_gid
+            os.chown(VOLUME_DIR, socore_uid, socore_gid)
+            logger.debug(f"VOLUME: Ensured volume directory exists: {VOLUME_DIR}")
+        except Exception as e:
+            logger.error(f"VOLUME: Failed to create volume directory: {e}")
+            emit_status_event(vm_name, 'Volume Configuration Failed')
+            sys.exit(1)
         
         # Check disk space
         check_disk_space(size_gb, logger)
