@@ -633,6 +633,35 @@ def process_vm_creation(hypervisor_path: str, vm_config: dict) -> None:
         except subprocess.CalledProcessError as e:
             logger.error(f"Failed to emit success status event: {e}")
 
+        # Validate nsm_size if present
+        if 'nsm_size' in vm_config:
+            try:
+                size = int(vm_config['nsm_size'])
+                if size <= 0:
+                    log.error("VM: %s - nsm_size must be a positive integer, got: %d", vm_name, size)
+                    mark_invalid_hardware(hypervisor_path, vm_name, vm_config,
+                                        {'nsm_size': 'Invalid nsm_size: must be positive integer'})
+                    return
+                if size > 10000:  # 10TB reasonable maximum
+                    log.error("VM: %s - nsm_size %dGB exceeds reasonable maximum (10000GB)", vm_name, size)
+                    mark_invalid_hardware(hypervisor_path, vm_name, vm_config,
+                                        {'nsm_size': f'Invalid nsm_size: {size}GB exceeds maximum (10000GB)'})
+                    return
+                log.debug("VM: %s - nsm_size validated: %dGB", vm_name, size)
+            except (ValueError, TypeError) as e:
+                log.error("VM: %s - nsm_size must be a valid integer, got: %s", vm_name, vm_config.get('nsm_size'))
+                mark_invalid_hardware(hypervisor_path, vm_name, vm_config,
+                                    {'nsm_size': 'Invalid nsm_size: must be valid integer'})
+                return
+
+        # Check for conflicting storage configurations
+        has_disk = 'disk' in vm_config and vm_config['disk']
+        has_nsm_size = 'nsm_size' in vm_config and vm_config['nsm_size']
+
+        if has_disk and has_nsm_size:
+            log.warning("VM: %s - Both disk and nsm_size specified. disk takes precedence, nsm_size will be ignored.",
+                       vm_name)
+
         # Initial hardware validation against model
         is_valid, errors = validate_hardware_request(model_config, vm_config)
         if not is_valid:
@@ -668,6 +697,11 @@ def process_vm_creation(hypervisor_path: str, vm_config: dict) -> None:
         if 'memory' in vm_config:
             memory_mib = int(vm_config['memory']) * 1024
             cmd.extend(['-m', str(memory_mib)])
+
+        # Add nsm_size if specified and disk is not specified
+        if 'nsm_size' in vm_config and vm_config['nsm_size'] and not ('disk' in vm_config and vm_config['disk']):
+            cmd.extend(['--nsm-size', str(vm_config['nsm_size'])])
+            log.debug("VM: %s - Adding nsm_size parameter: %s", vm_name, vm_config['nsm_size'])
             
         # Add PCI devices
         for hw_type in ['disk', 'copper', 'sfp']:

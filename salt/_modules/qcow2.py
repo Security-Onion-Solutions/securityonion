@@ -7,12 +7,14 @@
 
 """
 Salt module for managing QCOW2 image configurations and VM hardware settings. This module provides functions
-for modifying network configurations within QCOW2 images and adjusting virtual machine hardware settings.
-It serves as a Salt interface to the so-qcow2-modify-network and so-kvm-modify-hardware scripts.
+for modifying network configurations within QCOW2 images, adjusting virtual machine hardware settings, and
+creating virtual storage volumes. It serves as a Salt interface to the so-qcow2-modify-network,
+so-kvm-modify-hardware, and so-kvm-create-volume scripts.
 
-The module offers two main capabilities:
+The module offers three main capabilities:
 1. Network Configuration: Modify network settings (DHCP/static IP) within QCOW2 images
 2. Hardware Configuration: Adjust VM hardware settings (CPU, memory, PCI passthrough)
+3. Volume Management: Create and attach virtual storage volumes for NSM data
 
 This module is intended to work with Security Onion's virtualization infrastructure and is typically
 used in conjunction with salt-cloud for VM provisioning and management.
@@ -226,6 +228,93 @@ def modify_hardware_config(vm_name, cpu=None, memory=None, pci=None, start=False
             cmd.extend(['-p', str(device)])
     if start:
         cmd.append('-s')
+
+    log.info('qcow2 module: Executing command: {}'.format(' '.join(shlex.quote(arg) for arg in cmd)))
+
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+        ret = {
+            'retcode': result.returncode,
+            'stdout': result.stdout,
+            'stderr': result.stderr
+        }
+        if result.returncode != 0:
+            log.error('qcow2 module: Script execution failed with return code {}: {}'.format(result.returncode, result.stderr))
+        else:
+            log.info('qcow2 module: Script executed successfully.')
+        return ret
+    except Exception as e:
+        log.error('qcow2 module: An error occurred while executing the script: {}'.format(e))
+        raise
+
+def create_volume_config(vm_name, size_gb, start=False):
+    '''
+    Usage:
+        salt '*' qcow2.create_volume_config vm_name=<name> size_gb=<size> [start=<bool>]
+
+    Options:
+        vm_name
+            Name of the virtual machine to attach the volume to
+        size_gb
+            Volume size in GB (positive integer)
+            This determines the capacity of the virtual storage volume
+        start
+            Boolean flag to start the VM after volume creation
+            Optional - defaults to False
+
+    Examples:
+        1. **Create 500GB Volume:**
+            ```bash
+            salt '*' qcow2.create_volume_config vm_name='sensor1_sensor' size_gb=500
+            ```
+            This creates a 500GB virtual volume for NSM storage
+
+        2. **Create 1TB Volume and Start VM:**
+            ```bash
+            salt '*' qcow2.create_volume_config vm_name='sensor1_sensor' size_gb=1000 start=True
+            ```
+            This creates a 1TB volume and starts the VM after attachment
+
+    Notes:
+        - VM must be stopped before volume creation
+        - Volume is created as a qcow2 image and attached to the VM
+        - This is an alternative to disk passthrough via modify_hardware_config
+        - Volume is automatically attached to the VM's libvirt configuration
+        - Requires so-kvm-create-volume script to be installed
+        - Volume files are stored in the hypervisor's VM storage directory
+
+    Description:
+        This function creates and attaches a virtual storage volume to a KVM virtual machine
+        using the so-kvm-create-volume script. It creates a qcow2 disk image of the specified
+        size and attaches it to the VM for NSM (Network Security Monitoring) storage purposes.
+        This provides an alternative to physical disk passthrough, allowing flexible storage
+        allocation without requiring dedicated hardware. The VM can optionally be started
+        after the volume is successfully created and attached.
+
+    Exit Codes:
+        0: Success
+        1: Invalid parameters
+        2: VM state error (running when should be stopped)
+        3: Volume creation error
+        4: System command error
+        255: Unexpected error
+
+    Logging:
+        - All operations are logged to the salt minion log
+        - Log entries are prefixed with 'qcow2 module:'
+        - Volume creation and attachment operations are logged
+        - Errors include detailed messages and stack traces
+        - Final status of volume creation is logged
+    '''
+
+    # Validate size_gb parameter
+    if not isinstance(size_gb, int) or size_gb <= 0:
+        raise ValueError('size_gb must be a positive integer.')
+
+    cmd = ['/usr/sbin/so-kvm-create-volume', '-v', vm_name, '-s', str(size_gb)]
+
+    if start:
+        cmd.append('-S')
 
     log.info('qcow2 module: Executing command: {}'.format(' '.join(shlex.quote(arg) for arg in cmd)))
 
