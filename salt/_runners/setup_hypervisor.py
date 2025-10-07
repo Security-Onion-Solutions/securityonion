@@ -38,7 +38,7 @@ Examples:
     Notes:
         - Verifies Security Onion license
         - Downloads and validates Oracle Linux KVM image if needed
-        - Generates Ed25519 SSH keys if not present
+        - Generates ECDSA SSH keys if not present
         - Creates/recreates VM based on environment changes
         - Forces hypervisor configuration via highstate after successful setup (when minion_id provided)
 
@@ -46,7 +46,7 @@ Examples:
         The setup process includes:
         1. License validation
         2. Oracle Linux KVM image download and checksum verification
-        3. SSH key generation for secure VM access
+        3. ECDSA SSH key generation for secure VM access
         4. Cloud-init configuration for VM provisioning
         5. VM creation with specified disk size
         6. Hypervisor configuration via highstate (when minion_id provided and setup successful)
@@ -74,7 +74,7 @@ import sys
 import time
 import yaml
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import ed25519
+from cryptography.hazmat.primitives.asymmetric import ec
 # Configure logging
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
@@ -232,7 +232,7 @@ def _check_ssh_keys_exist():
         bool: True if both private and public keys exist, False otherwise
     """
     key_dir = '/etc/ssh/auth_keys/soqemussh'
-    key_path = f'{key_dir}/id_ed25519'
+    key_path = f'{key_dir}/id_ecdsa'
     pub_key_path = f'{key_path}.pub'
     dest_dir = '/opt/so/saltstack/local/salt/libvirt/ssh/keys'
     dest_path = os.path.join(dest_dir, os.path.basename(pub_key_path))
@@ -250,7 +250,7 @@ def _setup_ssh_keys():
     """
     try:
         key_dir = '/etc/ssh/auth_keys/soqemussh'
-        key_path = f'{key_dir}/id_ed25519'
+        key_path = f'{key_dir}/id_ecdsa'
         pub_key_path = f'{key_path}.pub'
 
         # Check if keys already exist
@@ -266,9 +266,9 @@ def _setup_ssh_keys():
         os.makedirs(key_dir, exist_ok=True)
         os.chmod(key_dir, 0o700)
 
-        # Generate new ed25519 key pair
+        # Generate new ECDSA key pair using SECP256R1 curve
         log.info("Generating new SSH keys")
-        private_key = ed25519.Ed25519PrivateKey.generate()
+        private_key = ec.generate_private_key(ec.SECP256R1())
         public_key = private_key.public_key()
 
         # Serialize private key
@@ -540,7 +540,7 @@ def setup_environment(vm_name: str = 'sool9', disk_size: str = '220G', minion_id
     Notes:
         - Verifies Security Onion license
         - Downloads and validates Oracle Linux KVM image if needed
-        - Generates Ed25519 SSH keys if not present
+        - Generates ECDSA SSH keys if not present
         - Creates/recreates VM based on environment changes
         - Forces hypervisor configuration via highstate after successful setup
           (when minion_id is provided)
@@ -765,7 +765,7 @@ def create_vm(vm_name: str, disk_size: str = '220G'):
         _set_ownership_and_perms(vm_dir, mode=0o750)
 
         # Read the SSH public key
-        pub_key_path = '/opt/so/saltstack/local/salt/libvirt/ssh/keys/id_ed25519.pub'
+        pub_key_path = '/opt/so/saltstack/local/salt/libvirt/ssh/keys/id_ecdsa.pub'
         try:
             with salt.utils.files.fopen(pub_key_path, 'r') as f:
                 ssh_pub_key = f.read().strip()
@@ -844,7 +844,7 @@ output:
   all: ">> /var/log/cloud-init.log"
 
 # configure interaction with ssh server
-ssh_genkeytypes: ['ed25519', 'rsa']
+ssh_genkeytypes: ['ecdsa', 'rsa']
 
 # set timezone for VM
 timezone: UTC
@@ -1038,7 +1038,7 @@ def regenerate_ssh_keys():
     Notes:
         - Validates Security Onion license
         - Removes existing keys if present
-        - Generates new Ed25519 key pair
+        - Generates new ECDSA key pair
         - Sets secure permissions (600 for private, 644 for public)
         - Distributes public key to required locations
 
@@ -1048,7 +1048,7 @@ def regenerate_ssh_keys():
         2. Checks for existing SSH keys
         3. Removes old keys if present
         4. Creates required directories with secure permissions
-        5. Generates new Ed25519 key pair
+        5. Generates new ECDSA key pair
         6. Sets appropriate file permissions
         7. Distributes public key to required locations
 
@@ -1067,7 +1067,7 @@ def regenerate_ssh_keys():
 
         # Remove existing keys
         key_dir = '/etc/ssh/auth_keys/soqemussh'
-        key_path = f'{key_dir}/id_ed25519'
+        key_path = f'{key_dir}/id_ecdsa'
         pub_key_path = f'{key_path}.pub'
         dest_dir = '/opt/so/saltstack/local/salt/libvirt/ssh/keys'
         dest_path = os.path.join(dest_dir, os.path.basename(pub_key_path))

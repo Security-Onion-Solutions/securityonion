@@ -86,7 +86,7 @@ idh_sbin:
   file.recurse:
     - name: /usr/sbin
     - source: salt://idh/tools/sbin
-    - user: 934
+    - user: 939
     - group: 939
     - file_mode: 755
 

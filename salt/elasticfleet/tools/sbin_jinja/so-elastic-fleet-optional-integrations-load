@@ -62,9 +62,17 @@ default_packages=({% for pkg in SUPPORTED_PACKAGES %}"{{ pkg }}"{% if not loop.l
 in_use_integrations=()
 
 for AGENT_POLICY in $agent_policies; do
-    integrations=$(elastic_fleet_integration_policy_names "$AGENT_POLICY")
+
+    if ! integrations=$(elastic_fleet_integration_policy_names "$AGENT_POLICY"); then
+        # skip the agent policy if we can't get required info, let salt retry. Integrations loaded by this script are non-default integrations.
+        echo "Skipping $AGENT_POLICY.. "
+        continue
+    fi
     for INTEGRATION in $integrations; do
-        PACKAGE_NAME=$(elastic_fleet_integration_policy_package_name "$AGENT_POLICY" "$INTEGRATION")
+        if ! PACKAGE_NAME=$(elastic_fleet_integration_policy_package_name "$AGENT_POLICY" "$INTEGRATION"); then
+            echo  "Not adding $INTEGRATION, couldn't get package name"
+            continue
+        fi
         # non-default integrations that are in-use in any policy
         if ! [[ " ${default_packages[@]} " =~ " $PACKAGE_NAME " ]]; then
             in_use_integrations+=("$PACKAGE_NAME")
@@ -160,7 +168,11 @@ if [[ -f $STATE_FILE_SUCCESS  ]]; then
 
             for file in "${pkg_filename}_"*.json; do
                 [ -e "$file" ] || continue
-                elastic_fleet_bulk_package_install $file >> $BULK_INSTALL_OUTPUT
+                if ! elastic_fleet_bulk_package_install $file >> $BULK_INSTALL_OUTPUT; then
+                    # integrations loaded my this script are non-essential and shouldn't cause exit, skip them for now next highstate run can retry
+                    echo "Failed to complete a chunk of bulk package installs -- $file "
+                    continue
+                fi
             done
             # cleanup any temp files for chunked package install
             rm -f ${pkg_filename}_*.json $BULK_INSTALL_PACKAGE_LIST
@@ -168,8 +180,9 @@ if [[ -f $STATE_FILE_SUCCESS  ]]; then
             echo "Elastic integrations don't appear to need installation/updating..."
         fi
         # Write out file for generating index/component/ilm templates
-        latest_installed_package_list=$(elastic_fleet_installed_packages)
-        echo $latest_installed_package_list | jq '[.items[] | {name: .name, es_index_patterns: .dataStreams}]' > $PACKAGE_COMPONENTS
+        if latest_installed_package_list=$(elastic_fleet_installed_packages); then
+            echo $latest_installed_package_list | jq '[.items[] | {name: .name, es_index_patterns: .dataStreams}]' > $PACKAGE_COMPONENTS
+        fi
         if retry 3 1 "so-elasticsearch-query / --fail --output /dev/null"; then
             # Refresh installed component template list
             latest_component_templates_list=$(so-elasticsearch-query _component_template | jq '.component_templates[] | .name' | jq -s '.')

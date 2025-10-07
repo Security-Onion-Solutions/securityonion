@@ -28,13 +28,16 @@ class TestSpamhausMethods(unittest.TestCase):
 
     def test_main_success(self):
         output = {"foo": "bar"}
+        conf = {"nameservers": ["1.2.3.4"], "lookup_host": "some.host"}
         with patch('sys.stdout', new=StringIO()) as mock_stdout:
             with patch('spamhaus.spamhaus.analyze', new=MagicMock(return_value=output)) as mock:
-                sys.argv = ["cmd", "input"]
-                spamhaus.main()
-                expected = '{"foo": "bar"}\n'
-                self.assertEqual(mock_stdout.getvalue(), expected)
-                mock.assert_called_once()
+                with patch('helpers.loadConfig', new=MagicMock(return_value=conf)) as lcmock:
+                    sys.argv = ["cmd", "input"]
+                    spamhaus.main()
+                    expected = '{"foo": "bar"}\n'
+                    self.assertEqual(mock_stdout.getvalue(), expected)
+                    mock.assert_called_once()
+                    lcmock.assert_called_once()
 
     def test_resolve(self):
         with patch('dns.resolver.Resolver.resolve', new=MagicMock(return_value=MagicMock())) as mock:

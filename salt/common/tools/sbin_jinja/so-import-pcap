@@ -173,7 +173,7 @@ for PCAP in $INPUT_FILES; do
   status "- assigning unique identifier to import: $HASH"
 
   pcap_data=$(pcapinfo "${PCAP}")
-  if ! echo "$pcap_data" | grep -q "First packet time:" || echo "$pcap_data" |egrep -q "Last packet time:    1970-01-01|Last packet time:    n/a"; then
+  if ! echo "$pcap_data" | grep -q "Earliest packet time:" || echo "$pcap_data" |egrep -q "Latest packet time:   1970-01-01|Latest packet time:   n/a"; then
     status "- this PCAP file is invalid; skipping"
     INVALID_PCAPS_COUNT=$((INVALID_PCAPS_COUNT + 1))
   else
@@ -205,8 +205,8 @@ for PCAP in $INPUT_FILES; do
       HASHES="${HASHES} ${HASH}"
     fi
 
-    START=$(pcapinfo "${PCAP}" -a |grep "First packet time:" | awk '{print $4}')
-    END=$(pcapinfo "${PCAP}" -e |grep "Last packet time:" | awk '{print $4}')
+    START=$(pcapinfo "${PCAP}" -a |grep "Earliest packet time:" | awk '{print $4}')
+    END=$(pcapinfo "${PCAP}" -e |grep "Latest packet time:" | awk '{print $4}')
     status "- found PCAP data spanning dates $START through $END"
 
     # compare $START to $START_OLDEST
@@ -248,7 +248,7 @@ fi
 START_OLDEST_SLASH=$(echo $START_OLDEST | sed -e 's/-/%2F/g')
 END_NEWEST_SLASH=$(echo $END_NEWEST | sed -e 's/-/%2F/g')
 if [[ $VALID_PCAPS_COUNT -gt 0 ]] || [[ $SKIPPED_PCAPS_COUNT -gt 0 ]]; then
-  URL="https://{{ URLBASE }}/#/dashboards?q=$HASH_FILTERS%20%7C%20groupby%20event.module*%20%7C%20groupby%20-sankey%20event.module*%20event.dataset%20%7C%20groupby%20event.dataset%20%7C%20groupby%20source.ip%20%7C%20groupby%20destination.ip%20%7C%20groupby%20destination.port%20%7C%20groupby%20network.protocol%20%7C%20groupby%20rule.name%20rule.category%20event.severity_label%20%7C%20groupby%20dns.query.name%20%7C%20groupby%20file.mime_type%20%7C%20groupby%20http.virtual_host%20http.uri%20%7C%20groupby%20notice.note%20notice.message%20notice.sub_message%20%7C%20groupby%20ssl.server_name%20%7C%20groupby%20source_geo.organization_name%20source.geo.country_name%20%7C%20groupby%20destination_geo.organization_name%20destination.geo.country_name&t=${START_OLDEST_SLASH}%2000%3A00%3A00%20AM%20-%20${END_NEWEST_SLASH}%2000%3A00%3A00%20AM&z=UTC"
+  URL="https://{{ URLBASE }}/#/dashboards?q=$HASH_FILTERS%20%7C%20groupby%20event.module*%20%7C%20groupby%20-sankey%20event.module*%20event.dataset%20%7C%20groupby%20event.dataset%20%7C%20groupby%20source.ip%20%7C%20groupby%20destination.ip%20%7C%20groupby%20destination.port%20%7C%20groupby%20network.protocol%20%7C%20groupby%20rule.name%20rule.category%20event.severity_label%20%7C%20groupby%20dns.query.name%20%7C%20groupby%20file.mime_type%20%7C%20groupby%20http.virtual_host%20http.uri%20%7C%20groupby%20notice.note%20notice.message%20notice.sub_message%20%7C%20groupby%20ssl.server_name%20%7C%20groupby%20source.as.organization.name%20source.geo.country_name%20%7C%20groupby%20destination.as.organization.name%20destination.geo.country_name&t=${START_OLDEST_SLASH}%2000%3A00%3A00%20AM%20-%20${END_NEWEST_SLASH}%2000%3A00%3A00%20AM&z=UTC"
 
   status "Import complete!"
   status

@@ -4,7 +4,10 @@
    Elastic License 2.0. #}
 
 {% set role = salt['grains.get']('role', '') %}
-{% if role in ['so-hypervisor','so-managerhype'] and salt['network.ip_addrs']('br0')|length > 0 %}
+{# We are using usebr0 mostly for setup of the so-managerhype node and controlling when we use br0 vs the physical interface #}
+{% set usebr0 = salt['pillar.get']('usebr0', True) %}
+
+{% if role in ['so-hypervisor','so-managerhype'] and usebr0 %}
 {%   set interface = 'br0' %}
 {% else %}
 {%   set interface = pillar.host.mainint %}
@@ -26,9 +29,9 @@
 
 {% if INSTALLEDSALTVERSION != SALTVERSION %}
   {% if grains.os_family|lower == 'redhat' %}
-      {% set UPGRADECOMMAND = 'yum clean all ; /usr/sbin/bootstrap-salt.sh -s 120 -r -F stable ' ~ SALTVERSION %}
+      {% set UPGRADECOMMAND = 'yum clean all ; /usr/sbin/bootstrap-salt.sh -X -r -F stable ' ~ SALTVERSION %}
   {% elif grains.os_family|lower == 'debian' %}
-    {% set UPGRADECOMMAND = '/usr/sbin/bootstrap-salt.sh -s 120 -F stable ' ~ SALTVERSION %}
+    {% set UPGRADECOMMAND = '/usr/sbin/bootstrap-salt.sh -X -F stable ' ~ SALTVERSION %}
   {% endif %}
 {% else %}
   {% set UPGRADECOMMAND = 'echo Already running Salt Minion version ' ~ SALTVERSION %}

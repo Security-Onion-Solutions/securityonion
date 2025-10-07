@@ -35,15 +35,15 @@ Many analyzers require authentication, via an API key or similar. The table belo
 [EchoTrail](https://www.echotrail.io/docs/quickstart)            |&check;|
 [EmailRep](https://emailrep.io/key)                  |&check;|
 [Elasticsearch](https://www.elastic.co/guide/en/elasticsearch/reference/7.17/setting-up-authentication.html)            |&check;|
-[GreyNoise](https://www.greynoise.io/plans/community)                 |&check;|
+[GreyNoise (community)](https://www.greynoise.io/plans/community)                 |&cross;|
 [LocalFile](https://github.com/Security-Onion-Solutions/securityonion/tree/fix/sublime_analyzer_documentation/salt/sensoroni/files/analyzers/localfile)                 |&cross;|
 [Malware Hash Registry](https://hash.cymru.com/docs_whois)    |&cross;|
-[MalwareBazaar](https://bazaar.abuse.ch/)            |&cross;|
+[MalwareBazaar](https://bazaar.abuse.ch/)            |&check;|
 [Pulsedive](https://pulsedive.com/api/)                 |&check;|
 [Spamhaus](https://www.spamhaus.org/dbl/)                  |&cross;|
 [Sublime Platform](https://sublime.security)              |&check;| 
-[ThreatFox](https://threatfox.abuse.ch/)            |&cross;|
-[Urlhaus](https://urlhaus.abuse.ch/)                   |&cross;|
+[ThreatFox](https://threatfox.abuse.ch/)            |&check;|
+[Urlhaus](https://urlhaus.abuse.ch/)                   |&check;|
 [Urlscan](https://urlscan.io/docs/api/)                   |&check;|
 [VirusTotal](https://developers.virustotal.com/reference/overview)                |&check;|
 [WhoisLookup](https://github.com/meeb/whoisit)           |&cross;|

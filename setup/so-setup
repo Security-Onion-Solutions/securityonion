@@ -755,13 +755,14 @@ if ! [[ -f $install_opt_file ]]; then
 		logCmd "salt-key -ya $MINION_ID"
 		logCmd "salt-call saltutil.sync_all"
 		# we need to sync the runner and generate the soqemussh user keys so that first highstate after license created
-		# doesnt have a state failure for soqemussh_pub_key source for id_ed25519.pub missing
+		# doesnt have a state failure for soqemussh_pub_key source for id_ecdsa.pub missing
 		if [[ $is_manager || $is_managerhype ]]; then
 			logCmd "salt-run saltutil.sync_all"
 			logCmd "salt-run setup_hypervisor.regenerate_ssh_keys"
 		fi
 		logCmd "salt-call state.apply common.packages"
 		logCmd "salt-call state.apply common"
+		hypervisor_local_states
 		# this will apply the salt.minion state first since salt.master includes salt.minion
 		logCmd "salt-call state.apply salt.master"
 		# wait here until we get a response from the salt-master since it may have just restarted
@@ -826,7 +827,6 @@ if ! [[ -f $install_opt_file ]]; then
 		checkin_at_boot
 		set_initial_firewall_access
 		logCmd "salt-call schedule.enable -linfo --local"
-		hypervisor_local_states
 		verify_setup
 	else
 		touch /root/accept_changes

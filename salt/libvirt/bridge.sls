@@ -3,8 +3,10 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-{%  from 'libvirt/map.jinja' import LIBVIRTMERGED %}
-{%  from 'salt/map.jinja' import SYSTEMD_UNIT_FILE %}
+# We do not import GLOBALS in this state because it is called during setup
+include:
+  - salt.minion.service_file
+  - salt.mine_functions
 
 down_original_mgmt_interface:
   cmd.run:
@@ -29,21 +31,14 @@ wait_for_br0_ip:
     - timeout: 95
     - onchanges:
       - cmd: down_original_mgmt_interface
-
-update_mine_functions:
-  file.managed:
-    - name: /etc/salt/minion.d/mine_functions.conf
-    - contents: |
-        mine_interval: 25
-        mine_functions:
-          network.ip_addrs:
-            - interface: br0
-    - onchanges:
-      - cmd: wait_for_br0_ip
+    - onchanges_in:
+      - file: salt_minion_service_unit_file
+      - file: mine_functions
 
 restart_salt_minion_service:
   service.running:
     - name: salt-minion
     - enable: True
     - listen:
-      - file: update_mine_functions
+      - file: salt_minion_service_unit_file
+      - file: mine_functions

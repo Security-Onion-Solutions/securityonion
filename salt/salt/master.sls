@@ -23,11 +23,6 @@ sync_runners:
     - name: saltutil.sync_runners
 {% endif %}
 
-hold_salt_master_package:
-  module.run:
-    - pkg.hold:
-      - name: salt-master
-
 # prior to 2.4.30 this engine ran on the manager with salt-minion
 # this has changed to running with the salt-master in 2.4.30
 remove_engines_config:

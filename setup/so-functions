@@ -29,7 +29,7 @@ title() {
 }
 
 fail_setup() {
-	error "Setup encounted an unrecoverable failure, exiting"
+	error "Setup encountered an unrecoverable failure, exiting"
 	touch /root/failure
 	exit 1
 }
@@ -541,8 +541,15 @@ configure_minion() {
 		"log_file: /opt/so/log/salt/minion"\
 		"#startup_states: highstate" >> "$minion_config"
 
-	info "Running: salt-call state.apply salt.mine_functions --local --file-root=../salt/ -l info pillar='{"host": {"mainint": "$MNIC"}}'"
-	salt-call state.apply salt.mine_functions --local --file-root=../salt/ -l info pillar="{'host': {'mainint': $MNIC}}"
+	# At the time the so-managerhype node does not yet have the bridge configured.
+	# The so-hypervisor node doesn't either, but it doesn't cause issues here.
+	local usebr0=false
+	if [ "$minion_type" == 'hypervisor' ]; then
+    	usebr0=true
+	fi
+	local pillar_json="{\"host\": {\"mainint\": \"$MNIC\"}, \"usebr0\": $usebr0}"
+	info "Running: salt-call state.apply salt.mine_functions --local --file-root=../salt/ -l info pillar='$pillar_json'"
+	salt-call state.apply salt.mine_functions --local --file-root=../salt/ -l info pillar="$pillar_json"
 
 	{
 		logCmd "systemctl enable salt-minion";
@@ -1187,12 +1194,15 @@ get_minion_type() {
 }
 
 hypervisor_local_states() {
-	# these states need to run before the first highstate so that we dont deal with the salt-minion restarting
-	# and we need these setup prior to the highstate
-	if [ $is_hypervisor ] || [ $is_managerhype ]; then
-        salt-call state.apply libvirt.64962 --local --file-root=../salt/ -l info
-        salt-call state.apply libvirt.bridge --local --file-root=../salt/ -l info pillar='{"host": {"mainint": "enp1s0"}}'
-	fi
+    # these states need to run before the first highstate so that we dont deal with the salt-minion restarting
+    # and we need these setup prior to the highstate
+    info "Check if hypervisor or managerhype"
+    if [ $is_hypervisor ] || [ $is_managerhype ]; then
+        info "Running libvirt states for hypervisor"
+        logCmd "salt-call state.apply libvirt.64962 --local --file-root=../salt/ -l info queue=True"
+        info "Setting up bridge for $MNIC"
+		salt-call state.apply libvirt.bridge --local --file-root=../salt/ -l info pillar='{"host": {"mainint": "'$MNIC'"}}' queue=True
+    fi
 }
 
 install_cleanup() {
@@ -1639,7 +1649,7 @@ reserve_ports() {
 reinstall_init() {
 	info "Putting system in state to run setup again"
 
-	if [[ $install_type =~ ^(MANAGER|EVAL|MANAGERSEARCH|STANDALONE|FLEET|IMPORT)$ ]]; then
+	if [[ $install_type =~ ^(MANAGER|EVAL|MANAGERSEARCH|MANAGERHYPE|STANDALONE|FLEET|IMPORT)$ ]]; then
 		local salt_services=( "salt-master" "salt-minion" )
 	else
 		local salt_services=( "salt-minion" )

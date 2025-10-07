@@ -67,6 +67,8 @@ so-elastic-fleet-auto-configure-artifact-urls:
 elasticagent_syncartifacts:
   file.recurse:
     - name: /nsm/elastic-fleet/artifacts/beats
+    - user: 947
+    - group: 947
     - source: salt://beats
 {% endif %}
 
@@ -133,12 +135,18 @@ so-elastic-fleet-package-statefile:
 so-elastic-fleet-package-upgrade:
   cmd.run:
     - name: /usr/sbin/so-elastic-fleet-package-upgrade
+    - retry:
+        attempts: 3
+        interval: 10
     - onchanges:
       - file: /opt/so/state/elastic_fleet_packages.txt
 
 so-elastic-fleet-integrations:
   cmd.run:
     - name: /usr/sbin/so-elastic-fleet-integration-policy-load
+    - retry:
+        attempts: 3
+        interval: 10
 
 so-elastic-agent-grid-upgrade:
   cmd.run:
@@ -150,7 +158,11 @@ so-elastic-agent-grid-upgrade:
 so-elastic-fleet-integration-upgrade:
   cmd.run:
     - name: /usr/sbin/so-elastic-fleet-integration-upgrade
+    - retry:
+        attempts: 3
+        interval: 10
 
+{# Optional integrations script doesn't need the retries like so-elastic-fleet-integration-upgrade which loads the default integrations #}
 so-elastic-fleet-addon-integrations:
   cmd.run:
     - name: /usr/sbin/so-elastic-fleet-optional-integrations-load

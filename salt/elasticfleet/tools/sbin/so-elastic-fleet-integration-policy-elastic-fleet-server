@@ -25,5 +25,9 @@ for POLICYNAME in $POLICY; do
     .name = $name' /opt/so/conf/elastic-fleet/integrations/fleet-server/fleet-server.json)
 
     # Now update the integration policy using the modified JSON
-    elastic_fleet_integration_update "$INTEGRATION_ID" "$UPDATED_INTEGRATION_POLICY"
+    if ! elastic_fleet_integration_update "$INTEGRATION_ID" "$UPDATED_INTEGRATION_POLICY"; then
+        # exit 1 on failure to update fleet integration policies, let salt handle retries
+        echo "Failed to update $POLICYNAME.."
+        exit 1
+    fi
 done

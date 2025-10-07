@@ -77,10 +77,10 @@ Examples:
 1. Static IP Configuration with Multiple PCI Devices:
 
     Command:
-    so-salt-cloud -p sool9-hyper1 vm1_sensor --static4 --ip4 192.168.1.10/24 --gw4 192.168.1.1 \
+    so-salt-cloud -p sool9_hyper1 vm1_sensor --static4 --ip4 192.168.1.10/24 --gw4 192.168.1.1 \
         --dns4 192.168.1.1,192.168.1.2 --search4 example.local -c 4 -m 8192 -P 0000:c7:00.0 -P 0000:c4:00.0
 
-    This command provisions a VM named vm1_sensor using the sool9-hyper1 profile with the following settings:
+    This command provisions a VM named vm1_sensor using the sool9_hyper1 profile with the following settings:
 
     - Static IPv4 configuration:
         - IP Address: 192.168.1.10/24
@@ -95,21 +95,21 @@ Examples:
 2. DHCP Configuration with Default Hardware Settings:
 
     Command:
-    so-salt-cloud -p sool9-hyper1 vm2_master --dhcp4
+    so-salt-cloud -p sool9_hyper1 vm2_master --dhcp4
 
-    This command provisions a VM named vm2_master using the sool9-hyper1 profile with DHCP for network configuration and default hardware settings.
+    This command provisions a VM named vm2_master using the sool9_hyper1 profile with DHCP for network configuration and default hardware settings.
 
 3. Static IP Configuration without Hardware Specifications:
 
     Command:
-    so-salt-cloud -p sool9-hyper1 vm3_search --static4 --ip4 192.168.1.20/24 --gw4 192.168.1.1
+    so-salt-cloud -p sool9_hyper1 vm3_search --static4 --ip4 192.168.1.20/24 --gw4 192.168.1.1
 
     This command provisions a VM named vm3_search with a static IP configuration and default hardware settings.
 
 4. DHCP Configuration with Custom Hardware Specifications and Multiple PCI Devices:
 
     Command:
-    so-salt-cloud -p sool9-hyper1 vm4_node --dhcp4 -c 8 -m 16384 -P 0000:c7:00.0 -P 0000:c4:00.0 -P 0000:c4:00.1
+    so-salt-cloud -p sool9_hyper1 vm4_node --dhcp4 -c 8 -m 16384 -P 0000:c7:00.0 -P 0000:c4:00.0 -P 0000:c4:00.1
 
     This command provisions a VM named vm4_node using DHCP for network configuration and custom hardware settings:
 
@@ -120,9 +120,9 @@ Examples:
 5. Static IP Configuration with DNS and Search Domain:
 
     Command:
-    so-salt-cloud -p sool9-hyper1 vm1_sensor --static4 --ip4 192.168.1.10/24 --gw4 192.168.1.1 --dns4 192.168.1.1 --search4 example.local
+    so-salt-cloud -p sool9_hyper1 vm1_sensor --static4 --ip4 192.168.1.10/24 --gw4 192.168.1.1 --dns4 192.168.1.1 --search4 example.local
 
-    This command provisions a VM named vm1_sensor using the sool9-hyper1 profile with static IPv4 configuration:
+    This command provisions a VM named vm1_sensor using the sool9_hyper1 profile with static IPv4 configuration:
 
     - Static IPv4 configuration:
         - IP Address: 192.168.1.10/24
@@ -133,14 +133,14 @@ Examples:
 6. Delete a VM with Confirmation:
 
     Command:
-    so-salt-cloud -p sool9-hyper1 vm1_sensor -d
+    so-salt-cloud -p sool9_hyper1 vm1_sensor -d
 
     This command deletes the VM named vm1_sensor and will prompt for confirmation before proceeding.
 
 7. Delete a VM without Confirmation:
 
     Command:
-    so-salt-cloud -p sool9-hyper1 vm1_sensor -yd
+    so-salt-cloud -p sool9_hyper1 vm1_sensor -yd
 
     This command deletes the VM named vm1_sensor without prompting for confirmation.
 
@@ -439,8 +439,8 @@ def call_salt_cloud(profile, vm_name, destroy=False, assume_yes=False):
             delete_vm(profile, vm_name, assume_yes)
             return
 
-        # Extract hypervisor hostname from profile (e.g., sool9-jpphype1 -> jpphype1)
-        hypervisor = profile.split('-', 1)[1] if '-' in profile else None
+        # Extract hypervisor hostname from profile (e.g., sool9_hype1 -> hype1)
+        hypervisor = profile.split('_', 1)[1] if '_' in profile else None
         if hypervisor:
             logger.info("Ensuring host key exists for hypervisor %s", hypervisor)
             if not _add_hypervisor_host_key(hypervisor):
@@ -512,7 +512,7 @@ def format_qcow2_output(operation, result):
             logger.info(f"{operation} result from {host}: {host_result}")
 
 def run_qcow2_modify_hardware_config(profile, vm_name, cpu=None, memory=None, pci_list=None, start=False):
-    hv_name = profile.split('-')[1]
+    hv_name = profile.split('_')[1]
     target = hv_name + "_*"
 
     try:
@@ -592,7 +592,7 @@ def run_qcow2_create_volume_config(profile, vm_name, size_gb, cpu=None, memory=N
         logger.error(f"An error occurred while creating volume and configuring hardware: {e}")
 
 def run_qcow2_modify_network_config(profile, vm_name, mode, ip=None, gateway=None, dns=None, search_domain=None):
-    hv_name = profile.split('-')[1]
+    hv_name = profile.split('_')[1]
     target = hv_name + "_*"
     image = '/nsm/libvirt/images/sool9/sool9.qcow2'
     interface = 'enp1s0'

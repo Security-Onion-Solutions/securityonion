@@ -169,6 +169,8 @@ airgap_update_dockers() {
       tar xf "$AGDOCKER/registry.tar" -C /nsm/docker-registry/docker
       echo "Add Registry back"
       docker load -i "$AGDOCKER/registry_image.tar"
+      echo "Restart registry container"
+      salt-call state.apply registry queue=True
     fi
   fi
 }
@@ -419,6 +421,8 @@ preupgrade_changes() {
     [[ "$INSTALLEDVERSION" == 2.4.141 ]] && up_to_2.4.150
     [[ "$INSTALLEDVERSION" == 2.4.150 ]] && up_to_2.4.160
     [[ "$INSTALLEDVERSION" == 2.4.160 ]] && up_to_2.4.170
+    [[ "$INSTALLEDVERSION" == 2.4.170 ]] && up_to_2.4.180
+    [[ "$INSTALLEDVERSION" == 2.4.180 ]] && up_to_2.4.190
     true
 }
 
@@ -448,6 +452,8 @@ postupgrade_changes() {
     [[ "$POSTVERSION"  == 2.4.141 ]] && post_to_2.4.150
     [[ "$POSTVERSION"  == 2.4.150 ]] && post_to_2.4.160
     [[ "$POSTVERSION"  == 2.4.160 ]] && post_to_2.4.170
+    [[ "$POSTVERSION"  == 2.4.170 ]] && post_to_2.4.180
+    [[ "$POSTVERSION"  == 2.4.180 ]] && post_to_2.4.190
     true
 }
 
@@ -588,15 +594,41 @@ post_to_2.4.160() {
 }
 
 post_to_2.4.170() {
-  echo "Regenerating Elastic Agent Installers"
-  /sbin/so-elastic-agent-gen-installers
-
   # Update kibana default space
   salt-call state.apply kibana.config queue=True
   echo "Updating Kibana default space"
   /usr/sbin/so-kibana-space-defaults
 
   POSTVERSION=2.4.170
+}
+
+post_to_2.4.180() {
+  echo "Regenerating Elastic Agent Installers"
+  /sbin/so-elastic-agent-gen-installers
+
+  # Force update to Kafka output policy
+  /usr/sbin/so-kafka-fleet-output-policy --force
+
+  POSTVERSION=2.4.180
+}
+
+post_to_2.4.190() {
+    # Only need to update import / eval nodes
+    if [[ "$MINION_ROLE" == "import" ]] || [[ "$MINION_ROLE" == "eval" ]]; then
+        update_import_fleet_output
+    fi
+
+    # Check if expected default policy is logstash (global.pipeline is REDIS or "")
+    pipeline=$(lookup_pillar "pipeline" "global")
+    if [[ -z "$pipeline" ]] || [[ "$pipeline" == "REDIS" ]]; then
+        # Check if this grid is currently affected by corrupt fleet output policy
+        if elastic-agent status | grep "config: key file not configured" > /dev/null 2>&1; then
+            echo "Elastic Agent shows an ssl error connecting to logstash output. Updating output policy..."
+            update_default_logstash_output
+        fi
+    fi
+
+  POSTVERSION=2.4.190
 }
 
 repo_sync() {
@@ -850,10 +882,20 @@ up_to_2.4.170() {
     touch /opt/so/saltstack/local/pillar/$state/adv_$state.sls /opt/so/saltstack/local/pillar/$state/soc_$state.sls
   done
 
+
+  INSTALLEDVERSION=2.4.170
+}
+
+up_to_2.4.180() {
   # Elastic Update for this release, so download Elastic Agent files
   determine_elastic_agent_upgrade
 
-  INSTALLEDVERSION=2.4.170
+  INSTALLEDVERSION=2.4.180
+}
+
+up_to_2.4.190() {
+  echo "Nothing to do for 2.4.190"
+  INSTALLEDVERSION=2.4.190
 }
 
 add_hydra_pillars() {
@@ -1129,6 +1171,44 @@ update_elasticsearch_index_settings() {
   done
 }
 
+update_import_fleet_output() {
+    if output=$(curl -sK /opt/so/conf/elasticsearch/curl.config -L "localhost:5601/api/fleet/outputs/so-manager_elasticsearch" --retry 3 --fail 2>/dev/null); then
+        # Update the current config of so-manager_elasticsearch output policy in place (leaving any customizations like having changed the preset value from 'balanced' to 'performance')
+        CAFINGERPRINT=$(openssl x509 -in /etc/pki/tls/certs/intca.crt -outform DER | sha256sum | cut -d' ' -f1 | tr '[:lower:]' '[:upper:]')
+        updated_policy=$(jq --arg CAFINGERPRINT "$CAFINGERPRINT" '.item | (del(.id) | .ca_trusted_fingerprint = $CAFINGERPRINT)' <<< "$output")
+        if curl -sK /opt/so/conf/elasticsearch/curl.config -L "localhost:5601/api/fleet/outputs/so-manager_elasticsearch" -XPUT -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$updated_policy" --retry 3 --fail 2>/dev/null; then
+            echo "Successfully updated so-manager_elasticsearch fleet output policy"
+        else
+            fail "Failed to update so-manager_elasticsearch fleet output policy"
+        fi
+    fi
+}
+
+update_default_logstash_output() {
+    echo "Updating fleet logstash output policy grid-logstash"
+    if logstash_policy=$(curl -K /opt/so/conf/elasticsearch/curl.config -L "http://localhost:5601/api/fleet/outputs/so-manager_logstash" --retry 3 --retry-delay 10 --fail 2>/dev/null); then
+        # Keep already configured hosts for this update, subsequent host updates come from so-elastic-fleet-outputs-update
+        HOSTS=$(echo "$logstash_policy" | jq -r '.item.hosts')
+        DEFAULT_ENABLED=$(echo "$logstash_policy" | jq -r '.item.is_default')
+        DEFAULT_MONITORING_ENABLED=$(echo "$logstash_policy" | jq -r '.item.is_default_monitoring')
+        LOGSTASHKEY=$(openssl rsa -in  /etc/pki/elasticfleet-logstash.key)
+        LOGSTASHCRT=$(openssl x509 -in /etc/pki/elasticfleet-logstash.crt)
+        LOGSTASHCA=$(openssl x509 -in  /etc/pki/tls/certs/intca.crt)
+        JSON_STRING=$(jq -n \
+            --argjson HOSTS "$HOSTS" \
+            --arg DEFAULT_ENABLED "$DEFAULT_ENABLED" \
+            --arg DEFAULT_MONITORING_ENABLED "$DEFAULT_MONITORING_ENABLED" \
+            --arg LOGSTASHKEY "$LOGSTASHKEY" \
+            --arg LOGSTASHCRT "$LOGSTASHCRT" \
+            --arg LOGSTASHCA "$LOGSTASHCA" \
+            '{"name":"grid-logstash","type":"logstash","hosts": $HOSTS,"is_default": $DEFAULT_ENABLED,"is_default_monitoring": $DEFAULT_MONITORING_ENABLED,"config_yaml":"","ssl":{"certificate": $LOGSTASHCRT,"certificate_authorities":[ $LOGSTASHCA ]},"secrets":{"ssl":{"key": $LOGSTASHKEY }}}')
+    fi
+
+    if curl -K /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fleet/outputs/so-manager_logstash" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING" --retry 3 --retry-delay 10 --fail; then
+        echo "Successfully updated grid-logstash fleet output policy"
+    fi
+}
+
 update_salt_mine() {
     echo "Populating the mine with mine_functions for each host."
     set +e
@@ -1345,6 +1425,7 @@ main() {
   fi
 
   set_minionid
+  MINION_ROLE=$(lookup_role)
   echo "Found that Security Onion $INSTALLEDVERSION is currently installed."
   echo ""
   if [[ $is_airgap -eq 0 ]]; then
@@ -1387,7 +1468,7 @@ main() {
   if [ "$is_hotfix" == "true" ]; then
     echo "Applying $HOTFIXVERSION hotfix"
     # since we don't run the backup.config_backup state on import we wont snapshot previous version states and pillars
-    if [[ ! "$MINIONID" =~ "_import" ]]; then
+    if [[ ! "$MINION_ROLE" == "import" ]]; then
       backup_old_states_pillars
     fi
     copy_new_files
@@ -1450,7 +1531,7 @@ main() {
     fi
 
     # since we don't run the backup.config_backup state on import we wont snapshot previous version states and pillars
-    if [[ ! "$MINIONID" =~ "_import" ]]; then
+    if [[ ! "$MINION_ROLE" == "import" ]]; then
       echo ""
       echo "Creating snapshots of default and local Salt states and pillars and saving to /nsm/backup/"
       backup_old_states_pillars

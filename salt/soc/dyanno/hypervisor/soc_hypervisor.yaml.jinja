@@ -22,7 +22,7 @@
 |           | CPU Cores | Memory (GB) | Disk        | Copper      | SFP         |
 |-----------|-----------|-------------|-------------|-------------|-------------|
 | Available | {{ cpu_free }}      | {{ mem_free }}        | {{ disk_free | replace('\n', ',') if disk_free else 'None' }} | {{ copper_free | replace('\n', ',') if copper_free else 'None' }} | {{ sfp_free | replace('\n', ',') if sfp_free else 'None' }} |
-| Total     | {{ cpu_total }}      | {{ mem_total }}        | {{ disk_total | replace('\n', ',') }} | {{ copper_total | replace('\n', ',') }} | {{ sfp_total | replace('\n', ',') }} |
+| Total     | {{ cpu_total }}      | {{ mem_total }}        | {{ disk_total | replace('\n', ',') if disk_total else 'None' }} | {{ copper_total | replace('\n', ',') if copper_total else 'None' }} | {{ sfp_total | replace('\n', ',') if sfp_total else 'None' }} |
 
 {%- if baseDomainStatus == 'Initialized' %}
 {%-   if vm_list %}
@@ -60,7 +60,8 @@ Base domain has not been initialized.
 
 {%- macro get_available_pci(hw_config, device_type, used_indices) -%}
 {%- set available = [] -%}
-{%- for idx in hw_config.get(device_type, {}).keys() -%}
+{%- set device_config = hw_config.get(device_type, {}) or {} -%}
+{%- for idx in device_config.keys() -%}
   {%- if idx | string not in used_indices -%}
     {%- do available.append(idx) -%}
   {%- endif -%}
@@ -69,41 +70,7 @@ Base domain has not been initialized.
 {%- endmacro -%}
 
 {%- macro update_resource_field(field, free_value, total_value, unit_label) -%}
-{%-   set resource_regex = '' -%}
-{%-   if free_value < 10 -%}
-{%-     set resource_regex = '^[1-' ~ free_value ~ ']$' -%}
-{%-   elif free_value < 100 -%}
-{%-     set tens_digit = free_value // 10 -%}
-{%-     set ones_digit = free_value % 10 -%}
-{%-     if ones_digit == 0 -%}
-{%-       set resource_regex = '^([1-9]|[1-' ~ (tens_digit-1) ~ '][0-9]|' ~ tens_digit ~ '0)$' -%}
-{%-     else -%}
-{%-       set resource_regex = '^([1-9]|[1-' ~ (tens_digit-1) ~ '][0-9]|' ~ tens_digit ~ '[0-' ~ ones_digit ~ '])$' -%}
-{%-     endif -%}
-{%-   elif free_value < 1000 -%}
-{%-     set hundreds_digit = free_value // 100 -%}
-{%-     set tens_digit = (free_value % 100) // 10 -%}
-{%-     set ones_digit = free_value % 10 -%}
-{%-     if hundreds_digit == 1 -%}
-{%-       if tens_digit == 0 and ones_digit == 0 -%}
-{%-         set resource_regex = '^([1-9]|[1-9][0-9]|100)$' -%}
-{%-       elif tens_digit == 0 -%}
-{%-         set resource_regex = '^([1-9]|[1-9][0-9]|10[0-' ~ ones_digit ~ '])$' -%}
-{%-       elif ones_digit == 0 -%}
-{%-         set resource_regex = '^([1-9]|[1-9][0-9]|10[0-9]|1[1-' ~ tens_digit ~ ']0)$' -%}
-{%-       else -%}
-{%-         set resource_regex = '^([1-9]|[1-9][0-9]|10[0-9]|1[1-' ~ (tens_digit-1) ~ '][0-9]|1' ~ tens_digit ~ '[0-' ~ ones_digit ~ '])$' -%}
-{%-       endif -%}
-{%-     else -%}
-{%-       if tens_digit == 0 and ones_digit == 0 -%}
-{%-         set resource_regex = '^([1-9]|[1-9][0-9]|[1-9][0-9][0-9]|[1-' ~ (hundreds_digit-1) ~ '][0-9][0-9]|' ~ hundreds_digit ~ '00)$' -%}
-{%-       elif ones_digit == 0 -%}
-{%-         set resource_regex = '^([1-9]|[1-9][0-9]|[1-9][0-9][0-9]|[1-' ~ (hundreds_digit-1) ~ '][0-9][0-9]|' ~ hundreds_digit ~ '[0-' ~ tens_digit ~ ']0)$' -%}
-{%-       else -%}
-{%-         set resource_regex = '^([1-9]|[1-9][0-9]|[1-9][0-9][0-9]|[1-' ~ (hundreds_digit-1) ~ '][0-9][0-9]|' ~ hundreds_digit ~ '[0-' ~ (tens_digit-1) ~ '][0-9]|' ~ hundreds_digit ~ tens_digit ~ '[0-' ~ ones_digit ~ '])$' -%}
-{%-       endif -%}
-{%-     endif -%}
-{%-   endif -%}
+{%-   set resource_regex = '^[0-9]{1,3}$' -%}
 {%-   do field.update({
         'label': field.label | replace('FREE', free_value | string) | replace('TOTAL', total_value | string),
         'regex': resource_regex,
@@ -155,9 +122,9 @@ Base domain has not been initialized.
 {# Get total resources #}
 {%-     set cpu_total = hw_config.cpu -%}
 {%-     set mem_total = hw_config.memory -%}
-{%-     set disk_total = hw_config.disk.keys() | join('\n') -%}
-{%-     set copper_total = hw_config.copper.keys() | join('\n') -%}
-{%-     set sfp_total = hw_config.sfp.keys() | join('\n') -%}
+{%-     set disk_total = (hw_config.get('disk', {}) or {}).keys() | join('\n') if hw_config.get('disk', {}) else '' -%}
+{%-     set copper_total = (hw_config.get('copper', {}) or {}).keys() | join('\n') if hw_config.get('copper', {}) else '' -%}
+{%-     set sfp_total = (hw_config.get('sfp', {}) or {}).keys() | join('\n') if hw_config.get('sfp', {}) else '' -%}
 
 {# Update field labels with total and free values #}
 {%-     set updated_template = TEMPLATE.copy() -%}
@@ -170,20 +137,26 @@ Base domain has not been initialized.
 {%-         do update_resource_field(updated_field, mem_free, mem_total, 'GB') -%}
 {%-       elif field.field == 'disk' -%}
 {%-         set disk_free_list = disk_free.split(',') if disk_free else [] -%}
+{%-         set disk_free_safe = disk_free if disk_free is defined else '' -%}
+{%-         set disk_total_safe = disk_total if disk_total is defined else '' -%}
 {%-         do updated_field.update({
-              'label': field.label | replace('FREE', disk_free) | replace('TOTAL', disk_total | replace('\n', ',')),
+              'label': field.label | replace('FREE', disk_free_safe) | replace('TOTAL', disk_total_safe | replace('\n', ',')),
               'options': disk_free_list
             }) -%}
 {%-       elif field.field == 'copper' -%}
 {%-         set copper_free_list = copper_free.split(',') if copper_free else [] -%}
+{%-         set copper_free_safe = copper_free if copper_free is defined else '' -%}
+{%-         set copper_total_safe = copper_total if copper_total is defined else '' -%}
 {%-         do updated_field.update({
-              'label': field.label | replace('FREE', copper_free) | replace('TOTAL', copper_total | replace('\n', ',')),
+              'label': field.label | replace('FREE', copper_free_safe) | replace('TOTAL', copper_total_safe | replace('\n', ',')),
               'options': copper_free_list
             }) -%}
 {%-       elif field.field == 'sfp' -%}
 {%-         set sfp_free_list = sfp_free.split(',') if sfp_free else [] -%}
+{%-         set sfp_free_safe = sfp_free if sfp_free is defined else '' -%}
+{%-         set sfp_total_safe = sfp_total if sfp_total is defined else '' -%}
 {%-         do updated_field.update({
-              'label': field.label | replace('FREE', sfp_free) | replace('TOTAL', sfp_total | replace('\n', ',')),
+              'label': field.label | replace('FREE', sfp_free_safe) | replace('TOTAL', sfp_total_safe | replace('\n', ',')),
               'options': sfp_free_list
             }) -%}
 {%-       endif -%}

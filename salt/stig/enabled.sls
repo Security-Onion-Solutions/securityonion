@@ -13,7 +13,11 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states and GLOBALS.os == 'OEL' %}
 {%   if 'stg' in salt['pillar.get']('features', []) %}
-  {% set OSCAP_PROFILE_NAME = 'xccdf_org.ssgproject.content_profile_stig' %}
+  {%   if GLOBALS.role != 'so-desktop' %}
+  {%     set OSCAP_PROFILE_NAME = 'xccdf_org.ssgproject.content_profile_stig' %}
+  {%   else %}
+  {%     set OSCAP_PROFILE_NAME = 'xccdf_org.ssgproject.content_profile_stig_gui' %}
+  {%   endif %}
   {% set OSCAP_PROFILE_LOCATION = '/opt/so/conf/stig/sos-oscap.xml' %}
   {% set OSCAP_OUTPUT_DIR = '/opt/so/log/stig' %}
 oscap_packages:
@@ -43,13 +47,14 @@ update_stig_profile:
     - name: /opt/so/conf/stig/sos-oscap.xml
     - source: salt://stig/files/sos-oscap.xml
     - user: socore
+    - show_changes: False
     - group: socore
     - mode: 0644
 
 {% if not salt['file.file_exists'](OSCAP_OUTPUT_DIR ~ '/pre-oscap-report.html') %}
 run_initial_scan:
   cmd.run:
-    - name: 'oscap xccdf eval --profile {{ OSCAP_PROFILE_NAME }} --results {{ OSCAP_OUTPUT_DIR }}/pre-oscap-results.xml --report {{ OSCAP_OUTPUT_DIR }}/pre-oscap-report.html {{ OSCAP_PROFILE_LOCATION }}'
+    - name: 'oscap xccdf eval --profile {{ OSCAP_PROFILE_NAME }} --results {{ OSCAP_OUTPUT_DIR }}/pre-oscap-results.xml --report {{ OSCAP_OUTPUT_DIR }}/pre-oscap-report.html /usr/share/xml/scap/ssg/content/ssg-ol9-ds.xml'
     - success_retcodes:
       - 2
 {% endif %}

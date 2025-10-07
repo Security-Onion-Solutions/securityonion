@@ -31,13 +31,31 @@ class TestGreynoiseMethods(unittest.TestCase):
             greynoise.checkConfigRequirements(conf)
         self.assertEqual(cm.exception.code, 126)
 
+    def test_checkConfigRequirements_community_no_key(self):
+        conf = {"api_version": "community"}
+        # Should not raise exception for community version
+        result = greynoise.checkConfigRequirements(conf)
+        self.assertTrue(result)
+
+    def test_checkConfigRequirements_investigate_no_key(self):
+        conf = {"api_version": "investigate"}
+        with self.assertRaises(SystemExit) as cm:
+            greynoise.checkConfigRequirements(conf)
+        self.assertEqual(cm.exception.code, 126)
+
+    def test_checkConfigRequirements_investigate_with_key(self):
+        conf = {"api_version": "investigate", "api_key": "test_key"}
+        result = greynoise.checkConfigRequirements(conf)
+        self.assertTrue(result)
+
     def test_sendReq_community(self):
         with patch('requests.request', new=MagicMock(return_value=MagicMock())) as mock:
             meta = {}
-            conf = {"base_url": "https://myurl/", "api_key": "abcd1234", "api_version": "community"}
+            conf = {"base_url": "https://myurl/", "api_version": "community"}
             ip = "192.168.1.1"
             response = greynoise.sendReq(conf=conf, meta=meta, ip=ip)
-            mock.assert_called_once_with("GET", headers={'key': 'abcd1234'}, url="https://myurl/v3/community/192.168.1.1")
+            # Community API should not include headers
+            mock.assert_called_once_with("GET", url="https://myurl/v3/community/192.168.1.1")
             self.assertIsNotNone(response)
 
     def test_sendReq_investigate(self):
@@ -114,4 +132,17 @@ class TestGreynoiseMethods(unittest.TestCase):
         with patch('greynoise.greynoise.sendReq', new=MagicMock(return_value=output)) as mock:
             results = greynoise.analyze(conf, artifactInput)
             self.assertEqual(results["summary"], "suspicious")
+            mock.assert_called_once()
+
+    def test_analyze_community_no_key(self):
+        output = {"ip": "8.8.8.8", "noise": "false", "riot": "true",
+                  "classification": "benign", "name": "Google Public DNS",
+                  "link": "https://viz.gn.io", "last_seen": "2022-04-26",
+                  "message": "Success"}
+        artifactInput = '{"value":"8.8.8.8","artifactType":"ip"}'
+        conf = {"base_url": "myurl/", "api_version": "community"}
+        with patch('greynoise.greynoise.sendReq', new=MagicMock(return_value=output)) as mock:
+            results = greynoise.analyze(conf, artifactInput)
+            self.assertEqual(results["summary"], "harmless")
+            self.assertEqual(results["status"], "ok")
             mock.assert_called_once()

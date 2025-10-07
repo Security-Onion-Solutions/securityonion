@@ -13,11 +13,12 @@ class TestThreatfoxMethods(unittest.TestCase):
     # DOES NOT WORK WITH ARGPARSE/MAIN METHOD
 
     def test_main_missing_input(self):
-        with patch('sys.stdout', new=StringIO()) as mock_cmd:
-            sys.argv = ["cmd"]
-            threatfox.main()
-            self.assertEqual(mock_cmd.getvalue(),
-                             'ERROR: Input is not in proper JSON format\n')
+        with patch('sys.exit', new=MagicMock()) as sysmock:
+            with patch('sys.stderr', new=StringIO()) as mock_stderr:
+                sys.argv = ["cmd"]
+                threatfox.main()
+                self.assertEqual(mock_stderr.getvalue(), "usage: cmd [-h] [-c CONFIG_FILE] artifact\ncmd: error: the following arguments are required: artifact\n")
+                sysmock.assert_called_once_with(2)
 
     # This should 1. create a fake cmd input with 1 arg
     # and 2. hit the if statement in main which runs a mock
@@ -26,13 +27,17 @@ class TestThreatfoxMethods(unittest.TestCase):
     # which is then asserted equal against an expected value.
 
     def test_main_success(self):
-        with patch('sys.stdout', new=StringIO()) as mock_cmd:
-            with patch('threatfox.analyze', new=MagicMock(return_value={'test': 'val'})) as mock:
-                sys.argv = ["cmd", "input"]
-                threatfox.main()
-                expected = '{"test": "val"}\n'
-                self.assertEqual(mock_cmd.getvalue(), expected)
-                mock.assert_called_once()
+        output = {"test": "val"}
+        conf = {"api_key": "test_key"}
+        with patch('sys.stdout', new=StringIO()) as mock_stdout:
+            with patch('threatfox.analyze', new=MagicMock(return_value=output)) as mock:
+                with patch('helpers.loadConfig', new=MagicMock(return_value=conf)) as lcmock:
+                    sys.argv = ["cmd", "input"]
+                    threatfox.main()
+                    expected = '{"test": "val"}\n'
+                    self.assertEqual(mock_stdout.getvalue(), expected)
+                    mock.assert_called_once()
+                    lcmock.assert_called_once()
 
     # result stores the output of the buildReq method
     # comparing result with expected output
@@ -58,8 +63,10 @@ class TestThreatfoxMethods(unittest.TestCase):
     # simulate API response and makes sure sendReq gives a response, we are just checking if sendReq gives back anything
     def test_sendReq(self):
         with patch('requests.post', new=MagicMock(return_value=MagicMock())) as mock:
-            response = threatfox.sendReq(
-                {'baseUrl': 'https://www.randurl.xyz'}, 'example_data')
+            conf = {'api_key': 'test_key'}
+            meta = {'baseUrl': 'https://www.randurl.xyz'}
+            query = {'query': 'search_hash', 'hash': 'test_hash'}
+            response = threatfox.sendReq(conf, meta, query)
             self.assertIsNotNone(response)
             mock.assert_called_once()
 
@@ -153,11 +160,23 @@ class TestThreatfoxMethods(unittest.TestCase):
             input created for analyze method call and then we compared results['summary'] with 'no result' """
         sendReqOutput = {'threat': 'no_result'}
         input = '{"artifactType":"hash", "value":"1234"}'
+        conf = {'api_key': 'test_key'}
         prepareResultOutput = {'response': '',
                                'summary': 'no result', 'status': ''}
         with patch('threatfox.sendReq', new=MagicMock(return_value=sendReqOutput)) as mock:
             with patch('threatfox.prepareResults', new=MagicMock(return_value=prepareResultOutput)) as mock2:
-                results = threatfox.analyze(input)
+                results = threatfox.analyze(conf, input)
                 self.assertEqual(results["summary"], "no result")
                 mock.assert_called_once()
                 mock2.assert_called_once()
+
+    def test_checkConfigRequirements_with_api_key(self):
+        conf = {'api_key': 'test_key'}
+        result = threatfox.checkConfigRequirements(conf)
+        self.assertTrue(result)
+
+    def test_checkConfigRequirements_no_api_key(self):
+        conf = {}
+        with self.assertRaises(SystemExit) as cm:
+            threatfox.checkConfigRequirements(conf)
+        self.assertEqual(cm.exception.code, 126)
