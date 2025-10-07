@@ -1,0 +1,13 @@
+hook Files::log_policy(rec: Files::Info, id: Log::ID, filter: Log::Filter)
+    {
+       # Turn off a specific mimetype
+           if (rec?$mime_type && ( /soap+xml/ | /json/ | /xml/ | /x509/ )in rec$mime_type)
+               break;
+    }
+
+event zeek_init()
+{
+    Log::remove_default_filter(Files::LOG);
+    local filter: Log::Filter = [$name="files-filter"];
+    Log::add_filter(Files::LOG, filter);
+}

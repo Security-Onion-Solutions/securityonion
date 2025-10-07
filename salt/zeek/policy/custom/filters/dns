@@ -1,0 +1,30 @@
+hook DNS::log_policy(rec: DNS::Info, id: Log::ID, filter: Log::Filter)
+    {
+       # Only put a single name per line otherwise there will be memory issues!
+       # If the query comes back blank don't log
+       if (!rec?$query)
+          break;
+
+       # If the query comes back with one of these don't log
+       if (rec?$query && /google.com$/ in rec$query)
+           break;
+
+       # If the query comes back with one of these don't log
+       if (rec?$query && /.apple.com$/ in rec$query)
+           break;
+
+       # Don't log reverse lookups
+       if (rec?$query && /.in-addr.arpa/ in to_lower(rec$query))
+           break;
+
+       # Don't log netbios lookups. This generates a cray amount of logs
+       if (rec?$qtype_name && /NB/ in rec$qtype_name)
+           break;
+    }
+
+event zeek_init()
+{
+    Log::remove_default_filter(DNS::LOG);
+    local filter: Log::Filter = [$name="dns-filter"];
+    Log::add_filter(DNS::LOG, filter);
+}
