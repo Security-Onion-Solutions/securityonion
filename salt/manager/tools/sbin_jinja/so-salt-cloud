@@ -712,7 +712,7 @@ def main():
             # Priority: disk passthrough > volume creation (but volume can coexist with copper/sfp NICs)
             # Note: virtual_node_manager.py already filters out --nsm-size when disk is present,
             # so if both --pci and --nsm-size are present here, the PCI devices are copper/sfp NICs
-            use_disk_passthrough = False
+            use_passthrough = False
             use_volume_creation = False
             has_nic_passthrough = False
             
@@ -730,9 +730,11 @@ def main():
                     has_nic_passthrough = True
                     logger.info(f"PCI devices (copper/sfp NICs) will be passed through along with volume: {', '.join(args.pci)}")
             elif args.pci:
-                # Only PCI devices, no nsm_size - this is disk passthrough
-                use_disk_passthrough = True
-                logger.info(f"Using disk passthrough (--pci parameter specified without --nsm-size)")
+                # Only PCI devices, no nsm_size - could be disk or NICs
+                # this script is called by virtual_node_manager and that strips any possibility that nsm_size and the disk pci slot is sent to this script
+                # we might have not specified a disk passthrough or nsm_size, but pass another pci slot and we end up here
+                use_passthrough = True
+                logger.info(f"Configuring PCI device passthrough.(--pci parameter specified without --nsm-size)")
             
             # Step 4: Configure hardware based on storage approach
             if use_volume_creation:
@@ -747,8 +749,8 @@ def main():
                     # No NICs, just start the VM
                     logger.info(f"Starting VM {args.vm_name}")
                     run_qcow2_modify_hardware_config(args.profile, args.vm_name, cpu=None, memory=None, pci_list=None, start=True)
-            elif use_disk_passthrough:
-                # Use existing disk passthrough logic via modify_hardware_config
+            elif use_passthrough:
+                # Use existing passthrough logic via modify_hardware_config
                 run_qcow2_modify_hardware_config(args.profile, args.vm_name, cpu=args.cpu, memory=args.memory, pci_list=args.pci, start=True)
             else:
                 # No storage configuration, just configure CPU/memory if specified
