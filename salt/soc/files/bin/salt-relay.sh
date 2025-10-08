@@ -237,10 +237,22 @@ function manage_salt() {
 
   case "$op" in
     state)
-      log "Performing '$op' for '$state' on minion '$minion'"
       state=$(echo "$request" | jq -r .state)
-      response=$(salt --async "$minion" state.apply "$state" queue=2)
+      async=$(echo "$request" | jq -r .async)
+      if [[ $async == "true" ]]; then
+        log "Performing async '$op' on minion $minion with state '$state'"
+        response=$(salt --async "$minion" state.apply "$state" queue=2)
+      else
+        log "Performing '$op' on minion $minion with state '$state'"
+        response=$(salt "$minion" state.apply "$state")
+      fi
+     
       exit_code=$?
+      if [[ $exit_code -ne 0 && "$response" =~ "is running as PID" ]]; then
+        log "Salt already running: $response ($exit_code)"
+        respond "$id" "ERROR_SALT_ALREADY_RUNNING"
+        return
+      fi
       ;;
     highstate)
       log "Performing '$op' on minion $minion"
@@ -259,7 +271,7 @@ function manage_salt() {
       ;;
   esac
 
-  if [[ exit_code -eq 0 ]]; then
+  if [[ $exit_code -eq 0 ]]; then
     log "Successful command execution: $response"
     respond "$id" "true"
   else

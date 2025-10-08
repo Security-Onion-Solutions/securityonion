@@ -1,0 +1,20 @@
+### HTTP filter by host entries by string #####
+ 
+module Filterhttp;
+ 
+export {
+    global remove_host_entries: set[string] = {"www.genevalab.com", "www.google.com"};
+ }
+ 
+hook HTTP::log_policy(rec: HTTP::Info, id: Log::ID, filter: Log::Filter)
+   {
+   # Remove HTTP host entries
+ if ( ! rec?$host || rec$host in remove_host_entries )
+       break;
+   }
+event zeek_init()
+{
+   Log::remove_default_filter(HTTP::LOG);
+   local filter: Log::Filter = [$name="http-filter"];
+   Log::add_filter(HTTP::LOG, filter);
+}
