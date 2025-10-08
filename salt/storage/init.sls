@@ -4,10 +4,17 @@
 # Elastic License 2.0.
 
 
-{% set nvme_devices = salt['cmd.shell']("find /dev -name 'nvme*n1' 2>/dev/null") %}
+{% set nvme_devices = salt['cmd.shell']("ls /dev/nvme*n1 2>/dev/null || echo ''") %}
+{% set virtio_devices = salt['cmd.shell']("test -b /dev/vdb && echo '/dev/vdb' || echo ''") %}
+
 {% if nvme_devices %}
 
 include:
-  - storage.nsm_mount
+  - storage.nsm_mount_nvme
+
+{% elif virtio_devices %}
+
+include:
+  - storage.nsm_mount_virtio
 
 {% endif %}

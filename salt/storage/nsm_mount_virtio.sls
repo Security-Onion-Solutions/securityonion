@@ -4,14 +4,13 @@
 # Elastic License 2.0.
 
 # Install required packages
-storage_nsm_mount_packages:
+storage_nsm_mount_virtio_packages:
   pkg.installed:
     - pkgs:
-      - lvm2
       - xfsprogs
 
 # Ensure log directory exists
-storage_nsm_mount_logdir:
+storage_nsm_mount_virtio_logdir:
   file.directory:
     - name: /opt/so/log
     - makedirs: True
@@ -20,21 +19,21 @@ storage_nsm_mount_logdir:
     - mode: 755
 
 # Install the NSM mount script
-storage_nsm_mount_script:
+storage_nsm_mount_virtio_script:
   file.managed:
-    - name: /usr/sbin/so-nsm-mount
-    - source: salt://storage/tools/sbin/so-nsm-mount
+    - name: /usr/sbin/so-nsm-mount-virtio
+    - source: salt://storage/tools/sbin/so-nsm-mount-virtio
     - mode: 755
     - user: root
     - group: root
     - require:
-      - pkg: storage_nsm_mount_packages
-      - file: storage_nsm_mount_logdir
+      - pkg: storage_nsm_mount_virtio_packages
+      - file: storage_nsm_mount_virtio_logdir
 
 # Execute the mount script if not already mounted
-storage_nsm_mount_execute:
+storage_nsm_mount_virtio_execute:
   cmd.run:
-    - name: /usr/sbin/so-nsm-mount
+    - name: /usr/sbin/so-nsm-mount-virtio
     - unless: mountpoint -q /nsm
     - require:
-      - file: storage_nsm_mount_script
+      - file: storage_nsm_mount_virtio_script
