@@ -1,0 +1,14 @@
+### HTTP filter by uri using pattern ####
+ 
+hook HTTP::log_policy(rec: HTTP::Info, id: Log::ID, filter: Log::Filter)
+   {
+   # Remove HTTP uri entries by regex
+ if ( rec?$uri && /^\/kratos\// in rec$uri )
+       break;
+   }
+event zeek_init()
+{
+   Log::remove_default_filter(HTTP::LOG);
+   local filter: Log::Filter = [$name="http-filter"];
+   Log::add_filter(HTTP::LOG, filter);
+}

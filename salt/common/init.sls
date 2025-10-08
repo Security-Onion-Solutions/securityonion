@@ -4,6 +4,7 @@
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 
 include:
+  - common.grains
   - common.packages
 {% if GLOBALS.role in GLOBALS.manager_roles %}
   - manager.elasticsearch # needed for elastic_curl_config state

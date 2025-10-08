@@ -516,22 +516,84 @@ def run_qcow2_modify_hardware_config(profile, vm_name, cpu=None, memory=None, pc
     target = hv_name + "_*"
 
     try:
-        args_list = [
-            'vm_name=' + vm_name,
-            'cpu=' + str(cpu) if cpu else '',
-            'memory=' + str(memory) if memory else '',
-            'start=' + str(start)
-        ]
-
+        args_list = ['vm_name=' + vm_name]
+        
+        # Only add parameters that are actually specified
+        if cpu is not None:
+            args_list.append('cpu=' + str(cpu))
+        if memory is not None:
+            args_list.append('memory=' + str(memory))
+        
         # Add PCI devices if provided
         if pci_list:
             # Pass all PCI devices as a comma-separated list
             args_list.append('pci=' + ','.join(pci_list))
+        
+        # Always add start parameter
+        args_list.append('start=' + str(start))
 
         result = local.cmd(target, 'qcow2.modify_hardware_config', args_list)
         format_qcow2_output('Hardware configuration', result)
     except Exception as e:
         logger.error(f"An error occurred while running qcow2.modify_hardware_config: {e}")
+
+def run_qcow2_create_volume_config(profile, vm_name, size_gb, cpu=None, memory=None, start=False):
+    """Create a volume for the VM and optionally configure CPU/memory.
+    
+    Args:
+        profile (str): The cloud profile name
+        vm_name (str): The name of the VM
+        size_gb (int): Size of the volume in GB
+        cpu (int, optional): Number of CPUs to assign
+        memory (int, optional): Amount of memory in MiB
+        start (bool): Whether to start the VM after configuration
+    """
+    hv_name = profile.split('_')[1]
+    target = hv_name + "_*"
+
+    try:
+        # Step 1: Create the volume
+        logger.info(f"Creating {size_gb}GB volume for VM {vm_name}")
+        volume_result = local.cmd(
+            target,
+            'qcow2.create_volume_config',
+            kwarg={
+                'vm_name': vm_name,
+                'size_gb': size_gb,
+                'start': False  # Don't start yet if we need to configure CPU/memory
+            }
+        )
+        format_qcow2_output('Volume creation', volume_result)
+        
+        # Step 2: Configure CPU and memory if specified
+        if cpu or memory:
+            logger.info(f"Configuring hardware for VM {vm_name}: CPU={cpu}, Memory={memory}MiB")
+            hw_result = local.cmd(
+                target,
+                'qcow2.modify_hardware_config',
+                kwarg={
+                    'vm_name': vm_name,
+                    'cpu': cpu,
+                    'memory': memory,
+                    'start': start
+                }
+            )
+            format_qcow2_output('Hardware configuration', hw_result)
+        elif start:
+            # If no CPU/memory config needed but we need to start the VM
+            logger.info(f"Starting VM {vm_name}")
+            start_result = local.cmd(
+                target,
+                'qcow2.modify_hardware_config',
+                kwarg={
+                    'vm_name': vm_name,
+                    'start': True
+                }
+            )
+            format_qcow2_output('VM startup', start_result)
+            
+    except Exception as e:
+        logger.error(f"An error occurred while creating volume and configuring hardware: {e}")
 
 def run_qcow2_modify_network_config(profile, vm_name, mode, ip=None, gateway=None, dns=None, search_domain=None):
     hv_name = profile.split('_')[1]
@@ -586,6 +648,7 @@ def parse_arguments():
     network_group.add_argument('-c', '--cpu', type=int, help='Number of virtual CPUs to assign.')
     network_group.add_argument('-m', '--memory', type=int, help='Amount of memory to assign in MiB.')
     network_group.add_argument('-P', '--pci', action='append', help='PCI hardware ID(s) to passthrough to the VM (e.g., 0000:c7:00.0). Can be specified multiple times.')
+    network_group.add_argument('--nsm-size', type=int, help='Size in GB for NSM volume creation. Can be used with copper/sfp NICs (--pci). Only disk passthrough (without --nsm-size) prevents volume creation.')
 
     args = parser.parse_args()
 
@@ -621,6 +684,8 @@ def main():
                 hw_config.append(f"{args.memory}MB RAM")
             if args.pci:
                 hw_config.append(f"PCI devices: {', '.join(args.pci)}")
+            if args.nsm_size:
+                hw_config.append(f"NSM volume: {args.nsm_size}GB")
             hw_string = f" and hardware config: {', '.join(hw_config)}" if hw_config else ""
             
             logger.info(f"Received request to create VM '{args.vm_name}' using profile '{args.profile}' {network_config}{hw_string}")
@@ -643,8 +708,58 @@ def main():
             # Step 2: Provision the VM (without starting it)
             call_salt_cloud(args.profile, args.vm_name)
 
-            # Step 3: Modify hardware configuration
-            run_qcow2_modify_hardware_config(args.profile, args.vm_name, cpu=args.cpu, memory=args.memory, pci_list=args.pci, start=True)
+            # Step 3: Determine storage configuration approach
+            # Priority: disk passthrough > volume creation (but volume can coexist with copper/sfp NICs)
+            # Note: virtual_node_manager.py already filters out --nsm-size when disk is present,
+            # so if both --pci and --nsm-size are present here, the PCI devices are copper/sfp NICs
+            use_passthrough = False
+            use_volume_creation = False
+            has_nic_passthrough = False
+            
+            if args.nsm_size:
+                # Validate nsm_size
+                if args.nsm_size <= 0:
+                    logger.error(f"Invalid nsm_size value: {args.nsm_size}. Must be a positive integer.")
+                    sys.exit(1)
+                use_volume_creation = True
+                logger.info(f"Using volume creation with size {args.nsm_size}GB (--nsm-size parameter specified)")
+                
+                if args.pci:
+                    # If both nsm_size and PCI are present, PCI devices are copper/sfp NICs
+                    # (virtual_node_manager.py filters out nsm_size when disk is present)
+                    has_nic_passthrough = True
+                    logger.info(f"PCI devices (copper/sfp NICs) will be passed through along with volume: {', '.join(args.pci)}")
+            elif args.pci:
+                # Only PCI devices, no nsm_size - could be disk or NICs
+                # this script is called by virtual_node_manager and that strips any possibility that nsm_size and the disk pci slot is sent to this script
+                # we might have not specified a disk passthrough or nsm_size, but pass another pci slot and we end up here
+                use_passthrough = True
+                logger.info(f"Configuring PCI device passthrough.(--pci parameter specified without --nsm-size)")
+            
+            # Step 4: Configure hardware based on storage approach
+            if use_volume_creation:
+                # Create volume first
+                run_qcow2_create_volume_config(args.profile, args.vm_name, size_gb=args.nsm_size, cpu=args.cpu, memory=args.memory, start=False)
+                
+                # Then configure NICs if present
+                if has_nic_passthrough:
+                    logger.info(f"Configuring NIC passthrough for VM {args.vm_name}")
+                    run_qcow2_modify_hardware_config(args.profile, args.vm_name, cpu=None, memory=None, pci_list=args.pci, start=True)
+                else:
+                    # No NICs, just start the VM
+                    logger.info(f"Starting VM {args.vm_name}")
+                    run_qcow2_modify_hardware_config(args.profile, args.vm_name, cpu=None, memory=None, pci_list=None, start=True)
+            elif use_passthrough:
+                # Use existing passthrough logic via modify_hardware_config
+                run_qcow2_modify_hardware_config(args.profile, args.vm_name, cpu=args.cpu, memory=args.memory, pci_list=args.pci, start=True)
+            else:
+                # No storage configuration, just configure CPU/memory if specified
+                if args.cpu or args.memory:
+                    run_qcow2_modify_hardware_config(args.profile, args.vm_name, cpu=args.cpu, memory=args.memory, pci_list=None, start=True)
+                else:
+                    # No hardware configuration needed, just start the VM
+                    logger.info(f"No hardware configuration specified, starting VM {args.vm_name}")
+                    run_qcow2_modify_hardware_config(args.profile, args.vm_name, cpu=None, memory=None, pci_list=None, start=True)
 
     except KeyboardInterrupt:
         logger.error("so-salt-cloud: Operation cancelled by user.")
