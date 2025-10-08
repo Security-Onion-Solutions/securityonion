@@ -516,17 +516,21 @@ def run_qcow2_modify_hardware_config(profile, vm_name, cpu=None, memory=None, pc
     target = hv_name + "_*"
 
     try:
-        args_list = [
-            'vm_name=' + vm_name,
-            'cpu=' + str(cpu) if cpu else '',
-            'memory=' + str(memory) if memory else '',
-            'start=' + str(start)
-        ]
-
+        args_list = ['vm_name=' + vm_name]
+        
+        # Only add parameters that are actually specified
+        if cpu is not None:
+            args_list.append('cpu=' + str(cpu))
+        if memory is not None:
+            args_list.append('memory=' + str(memory))
+        
         # Add PCI devices if provided
         if pci_list:
             # Pass all PCI devices as a comma-separated list
             args_list.append('pci=' + ','.join(pci_list))
+        
+        # Always add start parameter
+        args_list.append('start=' + str(start))
 
         result = local.cmd(target, 'qcow2.modify_hardware_config', args_list)
         format_qcow2_output('Hardware configuration', result)
@@ -644,7 +648,7 @@ def parse_arguments():
     network_group.add_argument('-c', '--cpu', type=int, help='Number of virtual CPUs to assign.')
     network_group.add_argument('-m', '--memory', type=int, help='Amount of memory to assign in MiB.')
     network_group.add_argument('-P', '--pci', action='append', help='PCI hardware ID(s) to passthrough to the VM (e.g., 0000:c7:00.0). Can be specified multiple times.')
-    network_group.add_argument('--nsm-size', type=int, help='Size in GB for NSM volume creation. If both --pci and --nsm-size are specified, --pci takes precedence.')
+    network_group.add_argument('--nsm-size', type=int, help='Size in GB for NSM volume creation. Can be used with copper/sfp NICs (--pci). Only disk passthrough (without --nsm-size) prevents volume creation.')
 
     args = parser.parse_args()
 
@@ -705,30 +709,47 @@ def main():
             call_salt_cloud(args.profile, args.vm_name)
 
             # Step 3: Determine storage configuration approach
-            # Priority: disk passthrough (--pci) > volume creation (--nsm-size)
+            # Priority: disk passthrough > volume creation (but volume can coexist with copper/sfp NICs)
+            # Note: virtual_node_manager.py already filters out --nsm-size when disk is present,
+            # so if both --pci and --nsm-size are present here, the PCI devices are copper/sfp NICs
             use_disk_passthrough = False
             use_volume_creation = False
+            has_nic_passthrough = False
             
-            if args.pci:
-                use_disk_passthrough = True
-                logger.info("Using disk passthrough (--pci parameter specified)")
-                if args.nsm_size:
-                    logger.warning(f"Both --pci and --nsm-size specified. Using --pci (disk passthrough) and ignoring --nsm-size={args.nsm_size}GB")
-            elif args.nsm_size:
-                use_volume_creation = True
+            if args.nsm_size:
                 # Validate nsm_size
                 if args.nsm_size <= 0:
                     logger.error(f"Invalid nsm_size value: {args.nsm_size}. Must be a positive integer.")
                     sys.exit(1)
+                use_volume_creation = True
                 logger.info(f"Using volume creation with size {args.nsm_size}GB (--nsm-size parameter specified)")
+                
+                if args.pci:
+                    # If both nsm_size and PCI are present, PCI devices are copper/sfp NICs
+                    # (virtual_node_manager.py filters out nsm_size when disk is present)
+                    has_nic_passthrough = True
+                    logger.info(f"PCI devices (copper/sfp NICs) will be passed through along with volume: {', '.join(args.pci)}")
+            elif args.pci:
+                # Only PCI devices, no nsm_size - this is disk passthrough
+                use_disk_passthrough = True
+                logger.info(f"Using disk passthrough (--pci parameter specified without --nsm-size)")
             
             # Step 4: Configure hardware based on storage approach
-            if use_disk_passthrough:
+            if use_volume_creation:
+                # Create volume first
+                run_qcow2_create_volume_config(args.profile, args.vm_name, size_gb=args.nsm_size, cpu=args.cpu, memory=args.memory, start=False)
+                
+                # Then configure NICs if present
+                if has_nic_passthrough:
+                    logger.info(f"Configuring NIC passthrough for VM {args.vm_name}")
+                    run_qcow2_modify_hardware_config(args.profile, args.vm_name, cpu=None, memory=None, pci_list=args.pci, start=True)
+                else:
+                    # No NICs, just start the VM
+                    logger.info(f"Starting VM {args.vm_name}")
+                    run_qcow2_modify_hardware_config(args.profile, args.vm_name, cpu=None, memory=None, pci_list=None, start=True)
+            elif use_disk_passthrough:
                 # Use existing disk passthrough logic via modify_hardware_config
                 run_qcow2_modify_hardware_config(args.profile, args.vm_name, cpu=args.cpu, memory=args.memory, pci_list=args.pci, start=True)
-            elif use_volume_creation:
-                # Use new volume creation logic
-                run_qcow2_create_volume_config(args.profile, args.vm_name, size_gb=args.nsm_size, cpu=args.cpu, memory=args.memory, start=True)
             else:
                 # No storage configuration, just configure CPU/memory if specified
                 if args.cpu or args.memory:
