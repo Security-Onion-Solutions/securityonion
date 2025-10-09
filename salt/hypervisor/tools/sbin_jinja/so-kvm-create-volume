@@ -78,7 +78,7 @@ used during VM provisioning to add dedicated NSM storage volumes.
 - Volume files are stored in `/nsm/libvirt/volumes/` with naming pattern `<vm_name>-nsm.img`.
 - Volumes are attached as `/dev/vdb` using virtio-blk for high performance.
 - The script checks available disk space before creating the volume.
-- Ownership is set to `socore:socore` with permissions `644`.
+- Ownership is set to `qemu:qemu` with permissions `640`.
 - Without the `-S` flag, the VM remains stopped after volume attachment.
 
 **Description:**
@@ -98,7 +98,7 @@ The `so-kvm-create-volume` script creates and attaches NSM storage volumes using
 3. **Volume Creation:**
    - Creates volume directory if it doesn't exist
    - Uses `qemu-img create` with full pre-allocation
-   - Sets proper ownership (socore:socore) and permissions (644)
+   - Sets proper ownership (qemu:qemu) and permissions (640)
    - Validates volume creation success
 
 4. **Volume Attachment:**
@@ -279,20 +279,20 @@ def create_volume_file(vm_name, size_gb, logger):
             logger.error(f"VOLUME: qemu-img error: {e.stderr.strip()}")
         raise VolumeCreationError(f"Failed to create volume: {e}")
     
-    # Set ownership to socore:socore
+    # Set ownership to qemu:qemu
     try:
-        socore_uid = pwd.getpwnam('socore').pw_uid
-        socore_gid = grp.getgrnam('socore').gr_gid
-        os.chown(volume_path, socore_uid, socore_gid)
-        logger.info(f"VOLUME: Set ownership to socore:socore")
+        qemu_uid = pwd.getpwnam('qemu').pw_uid
+        qemu_gid = grp.getgrnam('qemu').gr_gid
+        os.chown(volume_path, qemu_uid, qemu_gid)
+        logger.info(f"VOLUME: Set ownership to qemu:qemu")
     except (KeyError, OSError) as e:
         logger.error(f"VOLUME: Failed to set ownership: {e}")
         raise VolumeCreationError(f"Failed to set ownership: {e}")
     
-    # Set permissions to 644
+    # Set permissions to 640
     try:
-        os.chmod(volume_path, 0o644)
-        logger.info(f"VOLUME: Set permissions to 644")
+        os.chmod(volume_path, 0o640)
+        logger.info(f"VOLUME: Set permissions to 640")
     except OSError as e:
         logger.error(f"VOLUME: Failed to set permissions: {e}")
         raise VolumeCreationError(f"Failed to set permissions: {e}")
@@ -492,10 +492,10 @@ def main():
         
         # Ensure volume directory exists before checking disk space
         try:
-            os.makedirs(VOLUME_DIR, mode=0o755, exist_ok=True)
-            socore_uid = pwd.getpwnam('socore').pw_uid
-            socore_gid = grp.getgrnam('socore').gr_gid
-            os.chown(VOLUME_DIR, socore_uid, socore_gid)
+            os.makedirs(VOLUME_DIR, mode=0o754, exist_ok=True)
+            qemu_uid = pwd.getpwnam('qemu').pw_uid
+            qemu_gid = grp.getgrnam('qemu').gr_gid
+            os.chown(VOLUME_DIR, qemu_uid, qemu_gid)
             logger.debug(f"VOLUME: Ensured volume directory exists: {VOLUME_DIR}")
         except Exception as e:
             logger.error(f"VOLUME: Failed to create volume directory: {e}")
