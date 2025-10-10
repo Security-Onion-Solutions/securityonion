@@ -831,13 +831,13 @@ def process_vm_creation(hypervisor_path: str, vm_config: dict) -> None:
             if not has_space:
                 log.error("VM: %s - %s", vm_name, space_error)
                 
-                # Send Volume nsm Create Failed status event
+                # Send Hypervisor NSM Disk Full status event
                 try:
                     subprocess.run([
                         'so-salt-emit-vm-deployment-status-event',
                         '-v', vm_name,
                         '-H', hypervisor,
-                        '-s', 'Volume nsm Create Failed'
+                        '-s', 'Hypervisor NSM Disk Full'
                     ], check=True)
                 except subprocess.CalledProcessError as e:
                     log.error("Failed to emit volume create failed event for %s: %s", vm_name, str(e))
