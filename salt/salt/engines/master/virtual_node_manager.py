@@ -1176,6 +1176,14 @@ def process_hypervisor(hypervisor_path: str) -> None:
                     if os.path.exists(status_file):
                         os.remove(status_file)
                         log.info(f"Removed .status file for unconfigured VM: {vm_name}")
+                    
+                    # Trigger hypervisor annotation update to reflect the removal
+                    try:
+                        log.info(f"Triggering hypervisor annotation update after removing failed VM: {vm_name}")
+                        runner.cmd('state.orch', ['orch.dyanno_hypervisor'])
+                    except Exception as e:
+                        log.error(f"Failed to trigger hypervisor annotation update for {vm_name}: {str(e)}")
+                    
                     continue
             log.info(f"Initiating deletion process for VM: {vm_name}")
             process_vm_deletion(hypervisor_path, vm_name)
