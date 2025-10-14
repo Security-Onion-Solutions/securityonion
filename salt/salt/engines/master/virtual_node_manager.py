@@ -117,7 +117,7 @@ Exit Codes:
     4: VM provisioning failure (so-salt-cloud execution failed)
 
 Logging:
-    Log files are written to /opt/so/log/salt/engines/virtual_node_manager.log
+    Log files are written to /opt/so/log/salt/engines/virtual_node_manager
     Comprehensive logging includes:
     - Hardware validation details
     - PCI ID conversion process
@@ -138,22 +138,48 @@ import pwd
 import grp
 import salt.config
 import salt.runner
+import salt.client
 from typing import Dict, List, Optional, Tuple, Any
 from datetime import datetime, timedelta
 from threading import Lock
 
-# Get socore uid/gid
-SOCORE_UID = pwd.getpwnam('socore').pw_uid
-SOCORE_GID = grp.getgrnam('socore').gr_gid
-
-# Initialize Salt runner once
+# Initialize Salt runner and local client once
 opts = salt.config.master_config('/etc/salt/master')
 opts['output'] = 'json'
 runner = salt.runner.RunnerClient(opts)
+local = salt.client.LocalClient()
+
+# Get socore uid/gid for file ownership
+SOCORE_UID = pwd.getpwnam('socore').pw_uid
+SOCORE_GID = grp.getgrnam('socore').gr_gid
 
 # Configure logging
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
+
+# Prevent propagation to parent loggers to avoid duplicate log entries
+log.propagate = False
+
+# Add file handler for dedicated log file
+log_dir = '/opt/so/log/salt'
+log_file = os.path.join(log_dir, 'virtual_node_manager')
+
+# Create log directory if it doesn't exist
+os.makedirs(log_dir, exist_ok=True)
+
+# Create file handler
+file_handler = logging.FileHandler(log_file)
+file_handler.setLevel(logging.DEBUG)
+
+# Create formatter
+formatter = logging.Formatter(
+    '%(asctime)s [%(name)s:%(lineno)d][%(levelname)-8s][%(process)d] %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+file_handler.setFormatter(formatter)
+
+# Add handler to logger
+log.addHandler(file_handler)
 
 # Constants
 DEFAULT_INTERVAL = 30
@@ -203,6 +229,39 @@ def write_json_file(file_path: str, data: Any) -> None:
     except Exception as e:
         log.error("Failed to write JSON file %s: %s", file_path, str(e))
         raise
+def remove_vm_from_vms_file(vms_file_path: str, vm_hostname: str, vm_role: str) -> bool:
+    """
+    Remove a VM entry from the hypervisorVMs file.
+    
+    Args:
+        vms_file_path: Path to the hypervisorVMs file
+        vm_hostname: Hostname of the VM to remove (without role suffix)
+        vm_role: Role of the VM
+        
+    Returns:
+        bool: True if VM was removed, False otherwise
+    """
+    try:
+        # Read current VMs
+        vms = read_json_file(vms_file_path)
+        
+        # Find and remove the VM entry
+        original_count = len(vms)
+        vms = [vm for vm in vms if not (vm.get('hostname') == vm_hostname and vm.get('role') == vm_role)]
+        
+        if len(vms) < original_count:
+            # VM was found and removed, write back to file
+            write_json_file(vms_file_path, vms)
+            log.info("Removed VM %s_%s from %s", vm_hostname, vm_role, vms_file_path)
+            return True
+        else:
+            log.warning("VM %s_%s not found in %s", vm_hostname, vm_role, vms_file_path)
+            return False
+            
+    except Exception as e:
+        log.error("Failed to remove VM %s_%s from %s: %s", vm_hostname, vm_role, vms_file_path, str(e))
+        return False
+
 
 def read_yaml_file(file_path: str) -> dict:
     """Read and parse a YAML file."""
@@ -558,6 +617,13 @@ def mark_vm_failed(vm_file: str, error_code: int, message: str) -> None:
             # Remove the original file since we'll create an error file
             os.remove(vm_file)
 
+        # Clear hardware resource claims so failed VMs don't consume resources
+        # Keep nsm_size for reference but clear cpu, memory, sfp, copper
+        config.pop('cpu', None)
+        config.pop('memory', None)
+        config.pop('sfp', None)
+        config.pop('copper', None)
+
         # Create error file
         error_file = f"{vm_file}.error"
         data = {
@@ -586,8 +652,16 @@ def mark_invalid_hardware(hypervisor_path: str, vm_name: str, config: dict, erro
         # Join all messages with proper sentence structure
         full_message = "Hardware validation failure: " + " ".join(error_messages)
         
+        # Clear hardware resource claims so failed VMs don't consume resources
+        # Keep nsm_size for reference but clear cpu, memory, sfp, copper
+        config_copy = config.copy()
+        config_copy.pop('cpu', None)
+        config_copy.pop('memory', None)
+        config_copy.pop('sfp', None)
+        config_copy.pop('copper', None)
+        
         data = {
-            'config': config,
+            'config': config_copy,
             'status': 'error',
             'timestamp': datetime.now().isoformat(),
             'error_details': {
@@ -634,6 +708,61 @@ def validate_vrt_license() -> bool:
         log.error("Error reading license file: %s", str(e))
         return False
 
+def check_hypervisor_disk_space(hypervisor: str, size_gb: int) -> Tuple[bool, Optional[str]]:
+    """
+    Check if hypervisor has sufficient disk space for volume creation.
+    
+    Args:
+        hypervisor: Hypervisor hostname
+        size_gb: Required size in GB
+        
+    Returns:
+        Tuple of (has_space, error_message)
+    """
+    try:
+        # Get hypervisor minion ID
+        hypervisor_minion = f"{hypervisor}_hypervisor"
+        
+        # Check disk space on /nsm/libvirt/volumes using LocalClient
+        result = local.cmd(
+            hypervisor_minion,
+            'cmd.run',
+            ["df -BG /nsm/libvirt/volumes | tail -1 | awk '{print $4}' | sed 's/G//'"]
+        )
+        
+        if not result or hypervisor_minion not in result:
+            log.error("Failed to check disk space on hypervisor %s", hypervisor)
+            return False, "Failed to check disk space on hypervisor"
+        
+        available_gb_str = result[hypervisor_minion].strip()
+        if not available_gb_str:
+            log.error("Empty disk space response from hypervisor %s", hypervisor)
+            return False, "Failed to get disk space information"
+            
+        try:
+            available_gb = float(available_gb_str)
+        except ValueError:
+            log.error("Invalid disk space value from hypervisor %s: %s", hypervisor, available_gb_str)
+            return False, f"Invalid disk space value: {available_gb_str}"
+        
+        # Add 10% buffer for filesystem overhead
+        required_gb = size_gb * 1.1
+        
+        log.debug("Hypervisor %s disk space check: Available=%.2fGB, Required=%.2fGB",
+                 hypervisor, available_gb, required_gb)
+        
+        if available_gb < required_gb:
+            error_msg = f"Insufficient disk space on hypervisor {hypervisor}. Available: {available_gb:.2f}GB, Required: {required_gb:.2f}GB (including 10% overhead)"
+            log.error(error_msg)
+            return False, error_msg
+        
+        log.info("Hypervisor %s has sufficient disk space for %dGB volume", hypervisor, size_gb)
+        return True, None
+        
+    except Exception as e:
+        log.error("Error checking disk space on hypervisor %s: %s", hypervisor, str(e))
+        return False, f"Error checking disk space: {str(e)}"
+
 def process_vm_creation(hypervisor_path: str, vm_config: dict) -> None:
     """
     Process a single VM creation request.
@@ -665,6 +794,62 @@ def process_vm_creation(hypervisor_path: str, vm_config: dict) -> None:
             ], check=True)
         except subprocess.CalledProcessError as e:
             logger.error(f"Failed to emit success status event: {e}")
+
+        # Validate nsm_size if present
+        if 'nsm_size' in vm_config:
+            try:
+                size = int(vm_config['nsm_size'])
+                if size <= 0:
+                    log.error("VM: %s - nsm_size must be a positive integer, got: %d", vm_name, size)
+                    mark_invalid_hardware(hypervisor_path, vm_name, vm_config,
+                                        {'nsm_size': 'Invalid nsm_size: must be positive integer'})
+                    return
+                if size > 10000:  # 10TB reasonable maximum
+                    log.error("VM: %s - nsm_size %dGB exceeds reasonable maximum (10000GB)", vm_name, size)
+                    mark_invalid_hardware(hypervisor_path, vm_name, vm_config,
+                                        {'nsm_size': f'Invalid nsm_size: {size}GB exceeds maximum (10000GB)'})
+                    return
+                log.debug("VM: %s - nsm_size validated: %dGB", vm_name, size)
+            except (ValueError, TypeError) as e:
+                log.error("VM: %s - nsm_size must be a valid integer, got: %s", vm_name, vm_config.get('nsm_size'))
+                mark_invalid_hardware(hypervisor_path, vm_name, vm_config,
+                                    {'nsm_size': 'Invalid nsm_size: must be valid integer'})
+                return
+
+        # Check for conflicting storage configurations
+        has_disk = 'disk' in vm_config and vm_config['disk']
+        has_nsm_size = 'nsm_size' in vm_config and vm_config['nsm_size']
+
+        if has_disk and has_nsm_size:
+            log.warning("VM: %s - Both disk and nsm_size specified. disk takes precedence, nsm_size will be ignored.",
+                       vm_name)
+
+        # Check disk space BEFORE creating VM if nsm_size is specified
+        if has_nsm_size and not has_disk:
+            size_gb = int(vm_config['nsm_size'])
+            has_space, space_error = check_hypervisor_disk_space(hypervisor, size_gb)
+            if not has_space:
+                log.error("VM: %s - %s", vm_name, space_error)
+                
+                # Send Hypervisor NSM Disk Full status event
+                try:
+                    subprocess.run([
+                        'so-salt-emit-vm-deployment-status-event',
+                        '-v', vm_name,
+                        '-H', hypervisor,
+                        '-s', 'Hypervisor NSM Disk Full'
+                    ], check=True)
+                except subprocess.CalledProcessError as e:
+                    log.error("Failed to emit volume create failed event for %s: %s", vm_name, str(e))
+                
+                mark_invalid_hardware(
+                    hypervisor_path,
+                    vm_name,
+                    vm_config,
+                    {'disk_space': f"Insufficient disk space for {size_gb}GB volume: {space_error}"}
+                )
+                return
+            log.debug("VM: %s - Hypervisor has sufficient space for %dGB volume", vm_name, size_gb)
 
         # Initial hardware validation against model
         is_valid, errors = validate_hardware_request(model_config, vm_config)
@@ -701,6 +886,11 @@ def process_vm_creation(hypervisor_path: str, vm_config: dict) -> None:
         if 'memory' in vm_config:
             memory_mib = int(vm_config['memory']) * 1024
             cmd.extend(['-m', str(memory_mib)])
+
+        # Add nsm_size if specified and disk is not specified
+        if 'nsm_size' in vm_config and vm_config['nsm_size'] and not ('disk' in vm_config and vm_config['disk']):
+            cmd.extend(['--nsm-size', str(vm_config['nsm_size'])])
+            log.debug("VM: %s - Adding nsm_size parameter: %s", vm_name, vm_config['nsm_size'])
             
         # Add PCI devices
         for hw_type in ['disk', 'copper', 'sfp']:
@@ -933,12 +1123,21 @@ def process_hypervisor(hypervisor_path: str) -> None:
         if not nodes_config:
             log.debug("Empty VMs configuration in %s", vms_file)
             
-        # Get existing VMs
+        # Get existing VMs and track failed VMs separately
         existing_vms = set()
+        failed_vms = set()  # VMs with .error files
         for file_path in glob.glob(os.path.join(hypervisor_path, '*_*')):
             basename = os.path.basename(file_path)
-            # Skip error and status files
-            if not basename.endswith('.error') and not basename.endswith('.status'):
+            # Skip status files
+            if basename.endswith('.status'):
+                continue
+            # Track VMs with .error files separately
+            if basename.endswith('.error'):
+                vm_name = basename[:-6]  # Remove '.error' suffix
+                failed_vms.add(vm_name)
+                existing_vms.add(vm_name)  # Also add to existing to prevent recreation
+                log.debug(f"Found failed VM with .error file: {vm_name}")
+            else:
                 existing_vms.add(basename)
                 
         # Process new VMs
@@ -955,12 +1154,37 @@ def process_hypervisor(hypervisor_path: str) -> None:
                 # process_vm_creation handles its own locking
                 process_vm_creation(hypervisor_path, vm_config)
                 
-        # Process VM deletions
+        # Process VM deletions (but skip failed VMs that only have .error files)
         vms_to_delete = existing_vms - configured_vms
         log.debug(f"Existing VMs: {existing_vms}")
         log.debug(f"Configured VMs: {configured_vms}")
+        log.debug(f"Failed VMs: {failed_vms}")
         log.debug(f"VMs to delete: {vms_to_delete}")
         for vm_name in vms_to_delete:
+            # Skip deletion if VM only has .error file (no actual VM to delete)
+            if vm_name in failed_vms:
+                error_file = os.path.join(hypervisor_path, f"{vm_name}.error")
+                base_file = os.path.join(hypervisor_path, vm_name)
+                # Only skip if there's no base file (VM never successfully created)
+                if not os.path.exists(base_file):
+                    log.info(f"Skipping deletion of failed VM {vm_name} (VM never successfully created)")
+                    # Clean up the .error and .status files since VM is no longer configured
+                    if os.path.exists(error_file):
+                        os.remove(error_file)
+                        log.info(f"Removed .error file for unconfigured VM: {vm_name}")
+                    status_file = os.path.join(hypervisor_path, f"{vm_name}.status")
+                    if os.path.exists(status_file):
+                        os.remove(status_file)
+                        log.info(f"Removed .status file for unconfigured VM: {vm_name}")
+                    
+                    # Trigger hypervisor annotation update to reflect the removal
+                    try:
+                        log.info(f"Triggering hypervisor annotation update after removing failed VM: {vm_name}")
+                        runner.cmd('state.orch', ['orch.dyanno_hypervisor'])
+                    except Exception as e:
+                        log.error(f"Failed to trigger hypervisor annotation update for {vm_name}: {str(e)}")
+                    
+                    continue
             log.info(f"Initiating deletion process for VM: {vm_name}")
             process_vm_deletion(hypervisor_path, vm_name)
             

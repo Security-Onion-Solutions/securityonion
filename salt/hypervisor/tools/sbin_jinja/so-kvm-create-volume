@@ -1,0 +1,586 @@
+#!/usr/bin/python3
+
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+#
+# Note: Per the Elastic License 2.0, the second limitation states:
+#
+#   "You may not move, change, disable, or circumvent the license key functionality
+#    in the software, and you may not remove or obscure any functionality in the
+#    software that is protected by the license key."
+
+{% if 'vrt' in salt['pillar.get']('features', []) %}
+
+"""
+Script for creating and attaching virtual volumes to KVM virtual machines for NSM storage.
+This script provides functionality to create pre-allocated raw disk images and attach them
+to VMs as virtio-blk devices for high-performance network security monitoring data storage.
+
+The script handles the complete volume lifecycle:
+1. Volume Creation: Creates pre-allocated raw disk images using qemu-img
+2. Volume Attachment: Attaches volumes to VMs as virtio-blk devices
+3. VM Management: Stops/starts VMs as needed during the process
+
+This script is designed to work with Security Onion's virtualization infrastructure and is typically
+used during VM provisioning to add dedicated NSM storage volumes.
+
+**Usage:**
+    so-kvm-create-volume -v <vm_name> -s <size_gb> [-S]
+
+**Options:**
+    -v, --vm          Name of the virtual machine to attach the volume to (required).
+    -s, --size        Size of the volume in GB (required, must be a positive integer).
+    -S, --start       Start the VM after volume creation and attachment (optional).
+
+**Examples:**
+
+1. **Create and Attach 500GB Volume:**
+
+    ```bash
+    so-kvm-create-volume -v vm1_sensor -s 500
+    ```
+
+    This command creates and attaches a volume with the following settings:
+    - VM Name: `vm1_sensor`
+    - Volume Size: `500` GB
+    - Volume Path: `/nsm/libvirt/volumes/vm1_sensor-nsm.img`
+    - Device: `/dev/vdb` (virtio-blk)
+    - VM remains stopped after attachment
+
+2. **Create Volume and Start VM:**
+
+    ```bash
+    so-kvm-create-volume -v vm2_sensor -s 1000 -S
+    ```
+
+    This command creates a volume and starts the VM:
+    - VM Name: `vm2_sensor`
+    - Volume Size: `1000` GB (1 TB)
+    - VM is started after volume attachment due to the `-S` flag
+
+3. **Create Large Volume for Heavy Traffic:**
+
+    ```bash
+    so-kvm-create-volume -v vm3_sensor -s 2000 -S
+    ```
+
+    This command creates a large volume for high-traffic environments:
+    - VM Name: `vm3_sensor`
+    - Volume Size: `2000` GB (2 TB)
+    - VM is started after attachment
+
+**Notes:**
+
+- The script automatically stops the VM if it's running before creating and attaching the volume.
+- Volumes are created with full pre-allocation for optimal performance.
+- Volume files are stored in `/nsm/libvirt/volumes/` with naming pattern `<vm_name>-nsm.img`.
+- Volumes are attached as `/dev/vdb` using virtio-blk for high performance.
+- The script checks available disk space before creating the volume.
+- Ownership is set to `qemu:qemu` with permissions `640`.
+- Without the `-S` flag, the VM remains stopped after volume attachment.
+
+**Description:**
+
+The `so-kvm-create-volume` script creates and attaches NSM storage volumes using the following process:
+
+1. **Pre-flight Checks:**
+   - Validates input parameters (VM name, size)
+   - Checks available disk space in `/nsm/libvirt/volumes/`
+   - Ensures sufficient space for the requested volume size
+
+2. **VM State Management:**
+   - Connects to the local libvirt daemon
+   - Stops the VM if it's currently running
+   - Retrieves current VM configuration
+
+3. **Volume Creation:**
+   - Creates volume directory if it doesn't exist
+   - Uses `qemu-img create` with full pre-allocation
+   - Sets proper ownership (qemu:qemu) and permissions (640)
+   - Validates volume creation success
+
+4. **Volume Attachment:**
+   - Modifies VM's libvirt XML configuration
+   - Adds disk element with virtio-blk driver
+   - Configures cache='none' and io='native' for performance
+   - Attaches volume as `/dev/vdb`
+
+5. **VM Redefinition:**
+   - Applies the new configuration by redefining the VM
+   - Optionally starts the VM if requested
+   - Emits deployment status events for monitoring
+
+6. **Error Handling:**
+   - Validates all input parameters
+   - Checks disk space before creation
+   - Handles volume creation failures
+   - Handles volume attachment failures
+   - Provides detailed error messages for troubleshooting
+
+**Exit Codes:**
+
+- `0`: Success
+- `1`: An error occurred during execution
+
+**Logging:**
+
+- Logs are written to `/opt/so/log/hypervisor/so-kvm-create-volume.log`
+- Both file and console logging are enabled for real-time monitoring
+- Log entries include timestamps and severity levels
+- Log prefixes: VOLUME:, VM:, HARDWARE:, SPACE:
+- Detailed error messages are logged for troubleshooting
+"""
+
+import argparse
+import sys
+import os
+import libvirt
+import logging
+import socket
+import subprocess
+import pwd
+import grp
+import xml.etree.ElementTree as ET
+from io import StringIO
+from so_vm_utils import start_vm, stop_vm
+from so_logging_utils import setup_logging
+
+# Get hypervisor name from local hostname
+HYPERVISOR = socket.gethostname()
+
+# Volume storage directory
+VOLUME_DIR = '/nsm/libvirt/volumes'
+
+# Custom exception classes
+class InsufficientSpaceError(Exception):
+    """Raised when there is insufficient disk space for volume creation."""
+    pass
+
+class VolumeCreationError(Exception):
+    """Raised when volume creation fails."""
+    pass
+
+class VolumeAttachmentError(Exception):
+    """Raised when volume attachment fails."""
+    pass
+
+# Custom log handler to capture output
+class StringIOHandler(logging.Handler):
+    def __init__(self):
+        super().__init__()
+        self.strio = StringIO()
+
+    def emit(self, record):
+        msg = self.format(record)
+        self.strio.write(msg + '\n')
+
+    def get_value(self):
+        return self.strio.getvalue()
+
+def parse_arguments():
+    """Parse command-line arguments."""
+    parser = argparse.ArgumentParser(description='Create and attach a virtual volume to a KVM virtual machine for NSM storage.')
+    parser.add_argument('-v', '--vm', required=True, help='Name of the virtual machine to attach the volume to.')
+    parser.add_argument('-s', '--size', type=int, required=True, help='Size of the volume in GB (must be a positive integer).')
+    parser.add_argument('-S', '--start', action='store_true', help='Start the VM after volume creation and attachment.')
+    args = parser.parse_args()
+    
+    # Validate size is positive
+    if args.size <= 0:
+        parser.error("Volume size must be a positive integer.")
+    
+    return args
+
+def check_disk_space(size_gb, logger):
+    """
+    Check if there is sufficient disk space available for volume creation.
+    
+    Args:
+        size_gb: Size of the volume in GB
+        logger: Logger instance
+        
+    Raises:
+        InsufficientSpaceError: If there is not enough disk space
+    """
+    try:
+        stat = os.statvfs(VOLUME_DIR)
+        # Available space in bytes
+        available_bytes = stat.f_bavail * stat.f_frsize
+        # Required space in bytes (add 10% buffer)
+        required_bytes = size_gb * 1024 * 1024 * 1024 * 1.1
+        
+        available_gb = available_bytes / (1024 * 1024 * 1024)
+        required_gb = required_bytes / (1024 * 1024 * 1024)
+        
+        logger.info(f"SPACE: Available: {available_gb:.2f} GB, Required: {required_gb:.2f} GB")
+        
+        if available_bytes < required_bytes:
+            raise InsufficientSpaceError(
+                f"Insufficient disk space. Available: {available_gb:.2f} GB, Required: {required_gb:.2f} GB"
+            )
+        
+        logger.info(f"SPACE: Sufficient disk space available for {size_gb} GB volume")
+        
+    except OSError as e:
+        logger.error(f"SPACE: Failed to check disk space: {e}")
+        raise
+
+def create_volume_file(vm_name, size_gb, logger):
+    """
+    Create a pre-allocated raw disk image for the VM.
+    
+    Args:
+        vm_name: Name of the VM
+        size_gb: Size of the volume in GB
+        logger: Logger instance
+        
+    Returns:
+        Path to the created volume file
+        
+    Raises:
+        VolumeCreationError: If volume creation fails
+    """
+    # Define volume path (directory already created in main())
+    volume_path = os.path.join(VOLUME_DIR, f"{vm_name}-nsm.img")
+    
+    # Check if volume already exists
+    if os.path.exists(volume_path):
+        logger.error(f"VOLUME: Volume already exists: {volume_path}")
+        raise VolumeCreationError(f"Volume already exists: {volume_path}")
+    
+    logger.info(f"VOLUME: Creating {size_gb} GB volume at {volume_path}")
+    
+    # Create volume using qemu-img with full pre-allocation
+    try:
+        cmd = [
+            'qemu-img', 'create',
+            '-f', 'raw',
+            '-o', 'preallocation=full',
+            volume_path,
+            f"{size_gb}G"
+        ]
+        
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        
+        logger.info(f"VOLUME: Volume created successfully")
+        if result.stdout:
+            logger.debug(f"VOLUME: qemu-img output: {result.stdout.strip()}")
+        
+    except subprocess.CalledProcessError as e:
+        logger.error(f"VOLUME: Failed to create volume: {e}")
+        if e.stderr:
+            logger.error(f"VOLUME: qemu-img error: {e.stderr.strip()}")
+        raise VolumeCreationError(f"Failed to create volume: {e}")
+    
+    # Set ownership to qemu:qemu
+    try:
+        qemu_uid = pwd.getpwnam('qemu').pw_uid
+        qemu_gid = grp.getgrnam('qemu').gr_gid
+        os.chown(volume_path, qemu_uid, qemu_gid)
+        logger.info(f"VOLUME: Set ownership to qemu:qemu")
+    except (KeyError, OSError) as e:
+        logger.error(f"VOLUME: Failed to set ownership: {e}")
+        raise VolumeCreationError(f"Failed to set ownership: {e}")
+    
+    # Set permissions to 640
+    try:
+        os.chmod(volume_path, 0o640)
+        logger.info(f"VOLUME: Set permissions to 640")
+    except OSError as e:
+        logger.error(f"VOLUME: Failed to set permissions: {e}")
+        raise VolumeCreationError(f"Failed to set permissions: {e}")
+    
+    # Verify volume was created
+    if not os.path.exists(volume_path):
+        logger.error(f"VOLUME: Volume file not found after creation: {volume_path}")
+        raise VolumeCreationError(f"Volume file not found after creation: {volume_path}")
+    
+    volume_size = os.path.getsize(volume_path)
+    logger.info(f"VOLUME: Volume created: {volume_path} ({volume_size} bytes)")
+    
+    return volume_path
+
+def attach_volume_to_vm(conn, vm_name, volume_path, logger):
+    """
+    Attach the volume to the VM's libvirt XML configuration.
+    
+    Args:
+        conn: Libvirt connection
+        vm_name: Name of the VM
+        volume_path: Path to the volume file
+        logger: Logger instance
+        
+    Raises:
+        VolumeAttachmentError: If volume attachment fails
+    """
+    try:
+        # Get the VM domain
+        dom = conn.lookupByName(vm_name)
+        
+        # Get the XML description of the VM
+        xml_desc = dom.XMLDesc()
+        root = ET.fromstring(xml_desc)
+        
+        # Find the devices element
+        devices_elem = root.find('./devices')
+        if devices_elem is None:
+            logger.error("VM: Could not find <devices> element in XML")
+            raise VolumeAttachmentError("Could not find <devices> element in VM XML")
+        
+        # Log ALL devices with PCI addresses to find conflicts
+        logger.info("DISK_DEBUG: Examining ALL devices with PCI addresses")
+        for device in devices_elem:
+            address = device.find('./address')
+            if address is not None and address.get('type') == 'pci':
+                bus = address.get('bus', 'unknown')
+                slot = address.get('slot', 'unknown')
+                function = address.get('function', 'unknown')
+                logger.info(f"DISK_DEBUG: Device {device.tag}: bus={bus}, slot={slot}, function={function}")
+        
+        # Log existing disk configuration for debugging
+        logger.info("DISK_DEBUG: Examining existing disk configuration")
+        existing_disks = devices_elem.findall('./disk')
+        for idx, disk in enumerate(existing_disks):
+            target = disk.find('./target')
+            source = disk.find('./source')
+            address = disk.find('./address')
+            
+            dev_name = target.get('dev') if target is not None else 'unknown'
+            source_file = source.get('file') if source is not None else 'unknown'
+            
+            if address is not None:
+                slot = address.get('slot', 'unknown')
+                bus = address.get('bus', 'unknown')
+                logger.info(f"DISK_DEBUG: Disk {idx}: dev={dev_name}, source={source_file}, slot={slot}, bus={bus}")
+            else:
+                logger.info(f"DISK_DEBUG: Disk {idx}: dev={dev_name}, source={source_file}, no address element")
+        
+        # Check if vdb already exists
+        for disk in devices_elem.findall('./disk'):
+            target = disk.find('./target')
+            if target is not None and target.get('dev') == 'vdb':
+                logger.error("VM: Device vdb already exists in VM configuration")
+                raise VolumeAttachmentError("Device vdb already exists in VM configuration")
+        
+        logger.info(f"VM: Attaching volume to {vm_name} as /dev/vdb")
+        
+        # Create disk element
+        disk_elem = ET.SubElement(devices_elem, 'disk', attrib={
+            'type': 'file',
+            'device': 'disk'
+        })
+        
+        # Add driver element
+        ET.SubElement(disk_elem, 'driver', attrib={
+            'name': 'qemu',
+            'type': 'raw',
+            'cache': 'none',
+            'io': 'native'
+        })
+        
+        # Add source element
+        ET.SubElement(disk_elem, 'source', attrib={
+            'file': volume_path
+        })
+        
+        # Add target element
+        ET.SubElement(disk_elem, 'target', attrib={
+            'dev': 'vdb',
+            'bus': 'virtio'
+        })
+        
+        # Add address element
+        # Use bus 0x07 with slot 0x00 to ensure NSM volume appears after OS disk (which is on bus 0x04)
+        # Bus 0x05 is used by memballoon, bus 0x06 is used by rng device
+        # Libvirt requires slot <= 0 for non-zero buses
+        # This ensures vda = OS disk, vdb = NSM volume
+        ET.SubElement(disk_elem, 'address', attrib={
+            'type': 'pci',
+            'domain': '0x0000',
+            'bus': '0x07',
+            'slot': '0x00',
+            'function': '0x0'
+        })
+        
+        logger.info(f"HARDWARE: Added disk configuration for vdb")
+        
+        # Log disk ordering after adding new disk
+        logger.info("DISK_DEBUG: Disk configuration after adding NSM volume")
+        all_disks = devices_elem.findall('./disk')
+        for idx, disk in enumerate(all_disks):
+            target = disk.find('./target')
+            source = disk.find('./source')
+            address = disk.find('./address')
+            
+            dev_name = target.get('dev') if target is not None else 'unknown'
+            source_file = source.get('file') if source is not None else 'unknown'
+            
+            if address is not None:
+                slot = address.get('slot', 'unknown')
+                bus = address.get('bus', 'unknown')
+                logger.info(f"DISK_DEBUG: Disk {idx}: dev={dev_name}, source={source_file}, slot={slot}, bus={bus}")
+            else:
+                logger.info(f"DISK_DEBUG: Disk {idx}: dev={dev_name}, source={source_file}, no address element")
+        
+        # Convert XML back to string
+        new_xml_desc = ET.tostring(root, encoding='unicode')
+        
+        # Redefine the VM with the new XML
+        conn.defineXML(new_xml_desc)
+        logger.info(f"VM: VM redefined with volume attached")
+        
+    except libvirt.libvirtError as e:
+        logger.error(f"VM: Failed to attach volume: {e}")
+        raise VolumeAttachmentError(f"Failed to attach volume: {e}")
+    except Exception as e:
+        logger.error(f"VM: Failed to attach volume: {e}")
+        raise VolumeAttachmentError(f"Failed to attach volume: {e}")
+
+def emit_status_event(vm_name, status):
+    """
+    Emit a deployment status event.
+    
+    Args:
+        vm_name: Name of the VM
+        status: Status message
+    """
+    try:
+        subprocess.run([
+            'so-salt-emit-vm-deployment-status-event',
+            '-v', vm_name,
+            '-H', HYPERVISOR,
+            '-s', status
+        ], check=True)
+    except subprocess.CalledProcessError as e:
+        # Don't fail the entire operation if status event fails
+        pass
+
+def main():
+    """Main function to orchestrate volume creation and attachment."""
+    # Set up logging using the so_logging_utils library
+    string_handler = StringIOHandler()
+    string_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+    logger = setup_logging(
+        logger_name='so-kvm-create-volume',
+        log_file_path='/opt/so/log/hypervisor/so-kvm-create-volume.log',
+        log_level=logging.INFO,
+        format_str='%(asctime)s - %(levelname)s - %(message)s'
+    )
+    logger.addHandler(string_handler)
+
+    vm_name = None
+    
+    try:
+        # Parse arguments
+        args = parse_arguments()
+        
+        vm_name = args.vm
+        size_gb = args.size
+        start_vm_flag = args.start
+        
+        logger.info(f"VOLUME: Starting volume creation for VM '{vm_name}' with size {size_gb} GB")
+        
+        # Emit start status event
+        emit_status_event(vm_name, 'Volume Creation')
+        
+        # Ensure volume directory exists before checking disk space
+        try:
+            os.makedirs(VOLUME_DIR, mode=0o754, exist_ok=True)
+            qemu_uid = pwd.getpwnam('qemu').pw_uid
+            qemu_gid = grp.getgrnam('qemu').gr_gid
+            os.chown(VOLUME_DIR, qemu_uid, qemu_gid)
+            logger.debug(f"VOLUME: Ensured volume directory exists: {VOLUME_DIR}")
+        except Exception as e:
+            logger.error(f"VOLUME: Failed to create volume directory: {e}")
+            emit_status_event(vm_name, 'Volume Configuration Failed')
+            sys.exit(1)
+        
+        # Check disk space
+        check_disk_space(size_gb, logger)
+        
+        # Connect to libvirt
+        try:
+            conn = libvirt.open(None)
+            logger.info("VM: Connected to libvirt")
+        except libvirt.libvirtError as e:
+            logger.error(f"VM: Failed to open connection to libvirt: {e}")
+            emit_status_event(vm_name, 'Volume Configuration Failed')
+            sys.exit(1)
+        
+        # Stop VM if running
+        dom = stop_vm(conn, vm_name, logger)
+        
+        # Create volume file
+        volume_path = create_volume_file(vm_name, size_gb, logger)
+        
+        # Attach volume to VM
+        attach_volume_to_vm(conn, vm_name, volume_path, logger)
+        
+        # Start VM if -S or --start argument is provided
+        if start_vm_flag:
+            dom = conn.lookupByName(vm_name)
+            start_vm(dom, logger)
+            logger.info(f"VM: VM '{vm_name}' started successfully")
+        else:
+            logger.info("VM: Start flag not provided; VM will remain stopped")
+        
+        # Close connection
+        conn.close()
+        
+        # Emit success status event
+        emit_status_event(vm_name, 'Volume Configuration')
+        
+        logger.info(f"VOLUME: Volume creation and attachment completed successfully for VM '{vm_name}'")
+        
+    except KeyboardInterrupt:
+        error_msg = "Operation cancelled by user"
+        logger.error(error_msg)
+        if vm_name:
+            emit_status_event(vm_name, 'Volume Configuration Failed')
+        sys.exit(1)
+        
+    except InsufficientSpaceError as e:
+        error_msg = f"SPACE: {str(e)}"
+        logger.error(error_msg)
+        if vm_name:
+            emit_status_event(vm_name, 'Volume Configuration Failed')
+        sys.exit(1)
+        
+    except VolumeCreationError as e:
+        error_msg = f"VOLUME: {str(e)}"
+        logger.error(error_msg)
+        if vm_name:
+            emit_status_event(vm_name, 'Volume Configuration Failed')
+        sys.exit(1)
+        
+    except VolumeAttachmentError as e:
+        error_msg = f"VM: {str(e)}"
+        logger.error(error_msg)
+        if vm_name:
+            emit_status_event(vm_name, 'Volume Configuration Failed')
+        sys.exit(1)
+        
+    except Exception as e:
+        error_msg = f"An error occurred: {str(e)}"
+        logger.error(error_msg)
+        if vm_name:
+            emit_status_event(vm_name, 'Volume Configuration Failed')
+        sys.exit(1)
+
+if __name__ == '__main__':
+    main()
+
+{%- else -%}
+
+echo "Hypervisor nodes are a feature supported only for customers with a valid license. \
+      Contact Security Onion Solutions, LLC via our website at https://securityonionsolutions.com \
+      for more information about purchasing a license to enable this feature."
+
+{% endif -%}
