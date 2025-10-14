@@ -58,10 +58,26 @@
       {% set role = vm.get('role', '') %}
       {% do salt.log.debug('salt/hypervisor/map.jinja: Processing VM - hostname: ' ~ hostname ~ ', role: ' ~ role) %}
       
-      {# Load VM configuration from config file #}
+      {# Try to load VM configuration from config file first, then .error file if config doesn't exist #}
       {% set vm_file = 'hypervisor/hosts/' ~ hypervisor ~ '/' ~ hostname ~ '_' ~ role %}
+      {% set vm_error_file = vm_file ~ '.error' %}
       {% do salt.log.debug('salt/hypervisor/map.jinja: VM config file: ' ~ vm_file) %}
-      {% import_json vm_file as vm_state %}
+      
+      {# Check if base config file exists #}
+      {% set config_exists = salt['file.file_exists']('/opt/so/saltstack/local/salt/' ~ vm_file) %}
+      {% set error_exists = salt['file.file_exists']('/opt/so/saltstack/local/salt/' ~ vm_error_file) %}
+      
+      {% set vm_state = none %}
+      {% if config_exists %}
+        {% import_json vm_file as vm_state %}
+        {% do salt.log.debug('salt/hypervisor/map.jinja: Loaded VM config from base file') %}
+      {% elif error_exists %}
+        {% import_json vm_error_file as vm_state %}
+        {% do salt.log.debug('salt/hypervisor/map.jinja: Loaded VM config from .error file') %}
+      {% else %}
+        {% do salt.log.warning('salt/hypervisor/map.jinja: No config or error file found for VM ' ~ hostname ~ '_' ~ role) %}
+      {% endif %}
+      
       {% if vm_state %}
         {% do salt.log.debug('salt/hypervisor/map.jinja: VM config content: ' ~ vm_state | tojson) %}
         {% set vm_data = {'config': vm_state.config} %}
@@ -85,7 +101,7 @@
         {% endif %}
         {% do vms.update({hostname ~ '_' ~ role: vm_data}) %}
       {% else %}
-        {% do salt.log.debug('salt/hypervisor/map.jinja: Config file empty: ' ~ vm_file) %}
+        {% do salt.log.debug('salt/hypervisor/map.jinja: Skipping VM ' ~ hostname ~ '_' ~ role ~ ' - no config available') %}
       {% endif %}
     {% endfor %}
     

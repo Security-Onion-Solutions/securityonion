@@ -1,0 +1,171 @@
+#!/bin/bash
+
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+# Usage:
+#     so-nsm-mount-virtio
+#
+# Options:
+#     None - script automatically configures /dev/vdb
+#
+# Examples:
+#     1. Configure and mount virtio-blk device:
+#         ```bash
+#         sudo so-nsm-mount-virtio
+#         ```
+#
+# Notes:
+#     - Requires root privileges
+#     - Mounts /dev/vdb as /nsm
+#     - Creates XFS filesystem if needed
+#     - Configures persistent mount via /etc/fstab
+#     - Safe to run multiple times
+#
+# Description:
+#     This script automates the configuration and mounting of virtio-blk devices
+#     as /nsm in Security Onion virtual machines. It performs these steps:
+#
+# Dependencies:
+#     - xfsprogs: Required for XFS filesystem operations
+#
+#     1. Safety Checks:
+#        - Verifies root privileges
+#        - Checks if /nsm is already mounted
+#        - Verifies /dev/vdb exists
+#
+#     2. Filesystem Creation:
+#        - Creates XFS filesystem on /dev/vdb if not already formatted
+#
+#     3. Mount Configuration:
+#        - Creates /nsm directory if needed
+#        - Adds entry to /etc/fstab for persistence
+#        - Mounts the filesystem as /nsm
+#
+# Exit Codes:
+#     0: Success conditions:
+#        - Device configured and mounted
+#        - Already properly mounted
+#     1: Error conditions:
+#        - Must be run as root
+#        - Device /dev/vdb not found
+#        - Filesystem creation failed
+#        - Mount operation failed
+#
+# Logging:
+#     - All operations logged to /opt/so/log/so-nsm-mount-virtio
+
+set -e
+
+LOG_FILE="/opt/so/log/so-nsm-mount-virtio"
+DEVICE="/dev/vdb"
+MOUNT_POINT="/nsm"
+
+# Function to log messages
+log() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') $1" | tee -a "$LOG_FILE"
+}
+
+# Function to log errors
+log_error() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') ERROR: $1" | tee -a "$LOG_FILE" >&2
+}
+
+# Function to check if running as root
+check_root() {
+    if [ "$EUID" -ne 0 ]; then
+        log_error "Must be run as root"
+        exit 1
+    fi
+}
+
+# Main execution
+main() {
+    log "=========================================="
+    log "Starting virtio-blk NSM mount process"
+    log "=========================================="
+    
+    # Check root privileges
+    check_root
+    
+    # Check if already mounted
+    if mountpoint -q "$MOUNT_POINT"; then
+        log "$MOUNT_POINT is already mounted"
+        log "=========================================="
+        exit 0
+    fi
+    
+    # Check if device exists
+    if [ ! -b "$DEVICE" ]; then
+        log_error "Device $DEVICE not found"
+        log "=========================================="
+        exit 1
+    fi
+    
+    log "Found device: $DEVICE"
+    
+    # Get device size
+    local size=$(lsblk -dbn -o SIZE "$DEVICE" 2>/dev/null | numfmt --to=iec)
+    log "Device size: $size"
+    
+    # Check if device has filesystem
+    if ! blkid "$DEVICE" | grep -q 'TYPE="xfs"'; then
+        log "Creating XFS filesystem on $DEVICE"
+        if ! mkfs.xfs -f "$DEVICE" 2>&1 | tee -a "$LOG_FILE"; then
+            log_error "Failed to create filesystem"
+            log "=========================================="
+            exit 1
+        fi
+        log "Filesystem created successfully"
+    else
+        log "Device already has XFS filesystem"
+    fi
+    
+    # Create mount point
+    if [ ! -d "$MOUNT_POINT" ]; then
+        log "Creating mount point $MOUNT_POINT"
+        mkdir -p "$MOUNT_POINT"
+    fi
+    
+    # Add to fstab if not present
+    if ! grep -q "$DEVICE.*$MOUNT_POINT" /etc/fstab; then
+        log "Adding entry to /etc/fstab"
+        echo "$DEVICE $MOUNT_POINT xfs defaults 0 0" >> /etc/fstab
+        log "Entry added to /etc/fstab"
+    else
+        log "Entry already exists in /etc/fstab"
+    fi
+    
+    # Mount the filesystem
+    log "Mounting $DEVICE to $MOUNT_POINT"
+    if mount "$MOUNT_POINT" 2>&1 | tee -a "$LOG_FILE"; then
+        log "Successfully mounted $DEVICE to $MOUNT_POINT"
+        
+        # Verify mount
+        if mountpoint -q "$MOUNT_POINT"; then
+            log "Mount verified successfully"
+            
+            # Display mount information
+            log "Mount details:"
+            df -h "$MOUNT_POINT" | tail -n 1 | tee -a "$LOG_FILE"
+        else
+            log_error "Mount verification failed"
+            log "=========================================="
+            exit 1
+        fi
+    else
+        log_error "Failed to mount $DEVICE"
+        log "=========================================="
+        exit 1
+    fi
+    
+    log "=========================================="
+    log "Virtio-blk NSM mount process completed successfully"
+    log "=========================================="
+    exit 0
+}
+
+# Run main function
+main
