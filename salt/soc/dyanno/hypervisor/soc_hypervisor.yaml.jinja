@@ -93,9 +93,21 @@ Base domain has not been initialized.
 {%-       endif -%}
 {%-     endfor -%}
 
-{# Calculate available resources #}
-{%-     set cpu_free = hw_config.cpu - ns.used_cpu -%}
-{%-     set mem_free = hw_config.memory - ns.used_memory -%}
+{# Determine host OS overhead based on role #}
+{%-     if role == 'hypervisor' -%}
+{%-       set host_os_cpu = 8 -%}
+{%-       set host_os_memory = 16 -%}
+{%-     elif role == 'managerhype' -%}
+{%-       set host_os_cpu = 16 -%}
+{%-       set host_os_memory = 32 -%}
+{%-     else -%}
+{%-       set host_os_cpu = 0 -%}
+{%-       set host_os_memory = 0 -%}
+{%-     endif -%}
+
+{# Calculate available resources (subtract both VM usage and host OS overhead) #}
+{%-     set cpu_free = hw_config.cpu - ns.used_cpu - host_os_cpu -%}
+{%-     set mem_free = hw_config.memory - ns.used_memory - host_os_memory -%}
 
 {# Get used PCI indices #}
 {%-     set used_disk = [] -%}
