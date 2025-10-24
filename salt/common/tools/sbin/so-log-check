@@ -222,6 +222,7 @@ if [[ $EXCLUDE_KNOWN_ERRORS == 'Y' ]]; then
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|Initialized license manager"  # SOC log: before fields.status was changed to fields.licenseStatus
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|from NIC checksum offloading" # zeek reporter.log
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|marked for removal"           # docker container getting recycled
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|tcp 127.0.0.1:6791: bind: address already in use" # so-elastic-fleet agent restarting. Seen starting w/ 8.18.8 https://github.com/elastic/kibana/issues/201459
 fi
 
 RESULT=0
@@ -268,6 +269,13 @@ for log_file in $(cat /tmp/log_check_files); do
     tail -n $RECENT_LOG_LINES $log_file > /tmp/log_check
     check_for_errors
 done
+# Look for OOM specific errors in /var/log/messages which can lead to odd behavior / test failures
+if [[ -f /var/log/messages ]]; then
+    status "Checking log file /var/log/messages"
+    if journalctl --since "24 hours ago" | grep -iE 'out of memory|oom-kill'; then
+        RESULT=1
+    fi
+fi
 
 # Cleanup temp files
 rm -f /tmp/log_check_files

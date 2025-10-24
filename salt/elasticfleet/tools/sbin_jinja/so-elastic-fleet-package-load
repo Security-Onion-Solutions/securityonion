@@ -10,8 +10,16 @@
 
 {%- for PACKAGE in SUPPORTED_PACKAGES %}
 echo "Setting up {{ PACKAGE }} package..."
-VERSION=$(elastic_fleet_package_version_check "{{ PACKAGE }}")
-elastic_fleet_package_install "{{ PACKAGE }}" "$VERSION"
+if VERSION=$(elastic_fleet_package_version_check "{{ PACKAGE }}"); then
+    if ! elastic_fleet_package_install "{{ PACKAGE }}" "$VERSION"; then
+        # packages loaded by this script should never fail to install and REQUIRED before an installation of SO can be considered successful
+        echo -e "\nERROR: Failed to install default integration package -- $PACKAGE $VERSION"
+        exit 1
+    fi
+else
+    echo -e "\nERROR: Failed to get version information for integration $PACKAGE"
+    exit 1
+fi
 echo
 {%- endfor %}
 echo
