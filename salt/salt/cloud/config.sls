@@ -13,6 +13,7 @@
 {% if '.'.join(sls.split('.')[:2]) in allowed_states %}
 {%   if 'vrt' in salt['pillar.get']('features', []) %}
 {%     set HYPERVISORS = salt['pillar.get']('hypervisor:nodes', {} ) %}
+{%     from 'salt/map.jinja' import SALTVERSION %}
 
 {%     if HYPERVISORS %}
 cloud_providers:
@@ -32,6 +33,7 @@ cloud_profiles:
         HYPERVISORS: {{HYPERVISORS}}
         MANAGERHOSTNAME: {{ grains.host }}
         MANAGERIP: {{ pillar.host.mainip }}
+        SALTVERSION: {{ SALTVERSION }}
     - template: jinja
     - makedirs: True
 {%     endif %}
