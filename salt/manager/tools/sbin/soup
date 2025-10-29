@@ -1265,19 +1265,36 @@ upgrade_salt() {
   echo ""
   # If rhel family
   if [[ $is_rpm ]]; then
+    # Check if salt-cloud is installed
+    local salt_cloud_installed=false
+    if rpm -q salt-cloud &>/dev/null; then
+      salt_cloud_installed=true
+    fi
+    
     echo "Removing yum versionlock for Salt."
     echo ""
     yum versionlock delete "salt"
     yum versionlock delete "salt-minion"
     yum versionlock delete "salt-master"
+    # Remove salt-cloud versionlock if installed
+    if [[ $salt_cloud_installed == true ]]; then
+      yum versionlock delete "salt-cloud"
+    fi
     echo "Updating Salt packages."
     echo ""
     set +e
     # if oracle run with -r to ignore repos set by bootstrap
     if [[ $OS == 'oracle' ]]; then
-      run_check_net_err \
-      "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -X -r -F -M stable \"$NEWSALTVERSION\"" \
-      "Could not update salt, please check $SOUP_LOG for details."
+      # Add -L flag only if salt-cloud is already installed
+      if [[ $salt_cloud_installed == true ]]; then
+        run_check_net_err \
+        "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -X -r -L -F -M stable \"$NEWSALTVERSION\"" \
+        "Could not update salt, please check $SOUP_LOG for details."
+      else
+        run_check_net_err \
+        "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -X -r -F -M stable \"$NEWSALTVERSION\"" \
+        "Could not update salt, please check $SOUP_LOG for details."
+      fi
     # if another rhel family variant we want to run without -r to allow the bootstrap script to manage repos
     else
       run_check_net_err \
@@ -1290,6 +1307,10 @@ upgrade_salt() {
     yum versionlock add "salt-0:$NEWSALTVERSION-0.*"
     yum versionlock add "salt-minion-0:$NEWSALTVERSION-0.*"
     yum versionlock add "salt-master-0:$NEWSALTVERSION-0.*"
+    # Add salt-cloud versionlock if installed
+    if [[ $salt_cloud_installed == true ]]; then
+      yum versionlock add "salt-cloud-0:$NEWSALTVERSION-0.*"
+    fi
   # Else do Ubuntu things
   elif [[ $is_deb ]]; then
     echo "Removing apt hold for Salt."
