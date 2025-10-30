@@ -21,6 +21,8 @@ whiptail_title='Security Onion UPdater'
 NOTIFYCUSTOMELASTICCONFIG=false
 TOPFILE=/opt/so/saltstack/default/salt/top.sls
 BACKUPTOPFILE=/opt/so/saltstack/default/salt/top.sls.backup
+SALTUPGRADED=false
+SALT_CLOUD_INSTALLED=false
 # used to display messages to the user at the end of soup
 declare -a FINAL_MESSAGE_QUEUE=()
 
@@ -1260,15 +1262,13 @@ upgrade_check_salt() {
 }
 
 upgrade_salt() {
-  SALTUPGRADED=True
   echo "Performing upgrade of Salt from $INSTALLEDSALTVERSION to $NEWSALTVERSION."
   echo ""
   # If rhel family
   if [[ $is_rpm ]]; then
     # Check if salt-cloud is installed
-    local salt_cloud_installed=false
     if rpm -q salt-cloud &>/dev/null; then
-      salt_cloud_installed=true
+      SALT_CLOUD_INSTALLED=true
     fi
     
     echo "Removing yum versionlock for Salt."
@@ -1277,7 +1277,7 @@ upgrade_salt() {
     yum versionlock delete "salt-minion"
     yum versionlock delete "salt-master"
     # Remove salt-cloud versionlock if installed
-    if [[ $salt_cloud_installed == true ]]; then
+    if [[ $SALT_CLOUD_INSTALLED == true ]]; then
       yum versionlock delete "salt-cloud"
     fi
     echo "Updating Salt packages."
@@ -1286,7 +1286,7 @@ upgrade_salt() {
     # if oracle run with -r to ignore repos set by bootstrap
     if [[ $OS == 'oracle' ]]; then
       # Add -L flag only if salt-cloud is already installed
-      if [[ $salt_cloud_installed == true ]]; then
+      if [[ $SALT_CLOUD_INSTALLED == true ]]; then
         run_check_net_err \
         "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -X -r -L -F -M stable \"$NEWSALTVERSION\"" \
         "Could not update salt, please check $SOUP_LOG for details."
@@ -1308,7 +1308,7 @@ upgrade_salt() {
     yum versionlock add "salt-minion-0:$NEWSALTVERSION-0.*"
     yum versionlock add "salt-master-0:$NEWSALTVERSION-0.*"
     # Add salt-cloud versionlock if installed
-    if [[ $salt_cloud_installed == true ]]; then
+    if [[ $SALT_CLOUD_INSTALLED == true ]]; then
       yum versionlock add "salt-cloud-0:$NEWSALTVERSION-0.*"
     fi
   # Else do Ubuntu things
@@ -1343,14 +1343,9 @@ upgrade_salt() {
     echo ""
     exit 1
   else
+    SALTUPGRADED=true
     echo "Salt upgrade success."
     echo ""
-    if [[ $salt_cloud_installed == true ]]; then
-      echo "Updating salt-cloud config to use the new Salt version"
-      # neither salt-minion or salt-master is running so we need to run with --local
-      # the Salt upgrade happens before we copy the new code to default so we need to point the file root to the new code
-      salt-call state.apply salt.cloud.config --local --file-root=$UPDATE_DIR/salt pillar='{"passedVersion": "'$NEWSALTVERSION'"}' concurrent=True
-    fi
   fi
 
 }
@@ -1591,6 +1586,11 @@ main() {
 
     # ensure the mine is updated and populated before highstates run, following the salt-master restart
     update_salt_mine
+
+    if [[ $SALT_CLOUD_INSTALLED == true && $SALTUPGRADED == true ]]; then
+      echo "Updating salt-cloud config to use the new Salt version"
+      salt-call state.apply salt.cloud.config concurrent=True
+    fi
 
     enable_highstate
 
