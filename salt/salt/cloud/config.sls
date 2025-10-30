@@ -21,7 +21,7 @@ cloud_providers:
     - name: /etc/salt/cloud.providers.d/libvirt.conf
     - source: salt://salt/cloud/cloud.providers.d/libvirt.conf.jinja
     - defaults:
-        HYPERVISORS: {{HYPERVISORS}}
+        HYPERVISORS: {{ HYPERVISORS }}
     - template: jinja
     - makedirs: True
 
@@ -30,7 +30,7 @@ cloud_profiles:
     - name: /etc/salt/cloud.profiles.d/socloud.conf
     - source: salt://salt/cloud/cloud.profiles.d/socloud.conf.jinja
     - defaults:
-        HYPERVISORS: {{HYPERVISORS}}
+        HYPERVISORS: {{ HYPERVISORS }}
         MANAGERHOSTNAME: {{ grains.host }}
         MANAGERIP: {{ pillar.host.mainip }}
         SALTVERSION: {{ SALTVERSION }}
