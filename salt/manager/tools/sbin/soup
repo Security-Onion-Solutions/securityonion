@@ -1347,7 +1347,9 @@ upgrade_salt() {
     echo ""
     if [[ $salt_cloud_installed == true ]]; then
       echo "Updating salt-cloud config to use the new Salt version"
-      salt-call state.apply salt.cloud.config pillar='{"passedVersion": "'$NEWSALTVERSION'"}' concurrent=True
+      # neither salt-minion or salt-master is running so we need to run with --local
+      # the Salt upgrade happens before we copy the new code to default so we need to point the file root to the new code
+      salt-call state.apply salt.cloud.config --local --file-root=$UPDATE_DIR/salt pillar='{"passedVersion": "'$NEWSALTVERSION'"}' concurrent=True
     fi
   fi
 
