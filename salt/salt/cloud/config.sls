@@ -36,6 +36,11 @@ cloud_profiles:
         SALTVERSION: {{ SALTVERSION }}
     - template: jinja
     - makedirs: True
+{%     else %}
+no_hypervisors_configured:
+  test.succeed_without_changes:
+    - name: no_hypervisors_configured
+    - comment: No hypervisors are configured
 {%     endif %}
 
 {%   else %}

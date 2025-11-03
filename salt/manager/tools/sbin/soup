@@ -23,6 +23,7 @@ TOPFILE=/opt/so/saltstack/default/salt/top.sls
 BACKUPTOPFILE=/opt/so/saltstack/default/salt/top.sls.backup
 SALTUPGRADED=false
 SALT_CLOUD_INSTALLED=false
+SALT_CLOUD_CONFIGURED=false
 # used to display messages to the user at the end of soup
 declare -a FINAL_MESSAGE_QUEUE=()
 
@@ -1270,6 +1271,10 @@ upgrade_salt() {
     if rpm -q salt-cloud &>/dev/null; then
       SALT_CLOUD_INSTALLED=true
     fi
+    # Check if salt-cloud is configured
+    if [[ -f /etc/salt/cloud.profiles.d/socloud.conf ]]; then
+      SALT_CLOUD_CONFIGURED=true
+    fi
     
     echo "Removing yum versionlock for Salt."
     echo ""
@@ -1587,7 +1592,7 @@ main() {
     # ensure the mine is updated and populated before highstates run, following the salt-master restart
     update_salt_mine
 
-    if [[ $SALT_CLOUD_INSTALLED == true && $SALTUPGRADED == true ]]; then
+    if [[ $SALT_CLOUD_CONFIGURED == true && $SALTUPGRADED == true ]]; then
       echo "Updating salt-cloud config to use the new Salt version"
       salt-call state.apply salt.cloud.config concurrent=True
     fi
