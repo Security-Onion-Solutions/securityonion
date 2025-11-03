@@ -2,8 +2,10 @@
 # or more contributor license agreements. Licensed under the Elastic License 2.0; you may not use
 # this file except in compliance with the Elastic License 2.0.
 
-{%- set GRIDNODETOKENGENERAL = salt['pillar.get']('global:fleet_grid_enrollment_token_general') -%}
-{%- set GRIDNODETOKENHEAVY = salt['pillar.get']('global:fleet_grid_enrollment_token_heavy') -%}
+{% set GRIDNODETOKEN = salt['pillar.get']('global:fleet_grid_enrollment_token_general') -%}
+{% if grains.role == 'so-heavynode' %}
+{%   set GRIDNODETOKEN = salt['pillar.get']('global:fleet_grid_enrollment_token_heavy') -%}
+{% endif %}
 
 {% set AGENT_STATUS = salt['service.available']('elastic-agent') %}
 {% if not AGENT_STATUS  %}
@@ -15,19 +17,13 @@ pull_agent_installer:
     - mode: 755
     - makedirs: True
 
-{% if grains.role not in ['so-heavynode'] %}
 run_installer:
   cmd.run:
-    - name: ./so-elastic-agent_linux_amd64 -token={{ GRIDNODETOKENGENERAL }}
+    - name: ./so-elastic-agent_linux_amd64 -token={{ GRIDNODETOKEN }}
     - cwd: /opt/so
-    - retry: True
-{% else %} 
-run_installer:
-  cmd.run:
-    - name: ./so-elastic-agent_linux_amd64 -token={{ GRIDNODETOKENHEAVY }}
-    - cwd: /opt/so
-    - retry: True
-{% endif %}  
+    - retry:
+        attempts: 3
+        interval: 20
 
 cleanup_agent_installer:
   file.absent:
