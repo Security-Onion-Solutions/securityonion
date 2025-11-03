@@ -8,20 +8,28 @@
 {% set AGENT_STATUS = salt['service.available']('elastic-agent') %}
 {% if not AGENT_STATUS  %}
 
+pull_agent_installer:
+  file.managed:
+    - name: /opt/so/so-elastic-agent_linux_amd64
+    - source: salt://elasticfleet/files/so_agent-installers/so-elastic-agent_linux_amd64
+    - mode: 755
+    - makedirs: True
+
 {% if grains.role not in ['so-heavynode'] %}
 run_installer:
-  cmd.script:
-    - name: salt://elasticfleet/files/so_agent-installers/so-elastic-agent_linux_amd64
+  cmd.run:
+    - name: ./so-elastic-agent_linux_amd64 -token={{ GRIDNODETOKENGENERAL }}
     - cwd: /opt/so
-    - args: -token={{ GRIDNODETOKENGENERAL }}
     - retry: True
 {% else %} 
 run_installer:
-  cmd.script:
-    - name: salt://elasticfleet/files/so_agent-installers/so-elastic-agent_linux_amd64
+  cmd.run:
+    - name: ./so-elastic-agent_linux_amd64 -token={{ GRIDNODETOKENHEAVY }}
     - cwd: /opt/so
-    - args: -token={{ GRIDNODETOKENHEAVY }}
     - retry: True
 {% endif %}  
 
+cleanup_agent_installer:
+  file.absent:
+    - name: /opt/so/so-elastic-agent_linux_amd64
 {% endif %}
