@@ -5,10 +5,12 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-
 default_salt_dir=/opt/so/saltstack/default
-clone_to_tmp() {
+VERBOSE=0
+VERY_VERBOSE=0
+TEST_MODE=0
 
+clone_to_tmp() {
   # TODO Need to add a air gap option
   # Make a temp location for the files
   mkdir /tmp/sogh
@@ -16,19 +18,110 @@ clone_to_tmp() {
   #git clone -b dev https://github.com/Security-Onion-Solutions/securityonion.git
   git clone https://github.com/Security-Onion-Solutions/securityonion.git
   cd /tmp
+}
 
+show_file_changes() {
+  local source_dir="$1"
+  local dest_dir="$2"
+  local dir_type="$3"  # "salt" or "pillar"
+  
+  if [ $VERBOSE -eq 0 ]; then
+    return
+  fi
+  
+  echo "=== Changes for $dir_type directory ==="
+  
+  # Find all files in source directory
+  if [ -d "$source_dir" ]; then
+    find "$source_dir" -type f | while read -r source_file; do
+      # Get relative path
+      rel_path="${source_file#$source_dir/}"
+      dest_file="$dest_dir/$rel_path"
+      
+      if [ ! -f "$dest_file" ]; then
+        echo "ADDED: $dest_file"
+        if [ $VERY_VERBOSE -eq 1 ]; then
+          echo "  (New file - showing first 20 lines)"
+          head -n 20 "$source_file" | sed 's/^/  + /'
+          echo ""
+        fi
+      elif ! cmp -s "$source_file" "$dest_file"; then
+        echo "MODIFIED: $dest_file"
+        if [ $VERY_VERBOSE -eq 1 ]; then
+          echo "  (Changes:)"
+          diff -u "$dest_file" "$source_file" | sed 's/^/  /'
+          echo ""
+        fi
+      fi
+    done
+  fi
+  
+  # Find deleted files (exist in dest but not in source)
+  if [ -d "$dest_dir" ]; then
+    find "$dest_dir" -type f | while read -r dest_file; do
+      # Get relative path
+      rel_path="${dest_file#$dest_dir/}"
+      source_file="$source_dir/$rel_path"
+      
+      if [ ! -f "$source_file" ]; then
+        echo "DELETED: $dest_file"
+        if [ $VERY_VERBOSE -eq 1 ]; then
+          echo "  (File was deleted)"
+          echo ""
+        fi
+      fi
+    done
+  fi
+  
+  echo ""
 }
 
 copy_new_files() {
-
   # Copy new files over to the salt dir
   cd /tmp/sogh/securityonion
   git checkout $BRANCH
   VERSION=$(cat VERSION)
+  
+  if [ $TEST_MODE -eq 1 ]; then
+    echo "=== TEST MODE: Showing what would change without making changes ==="
+    echo "Branch: $BRANCH"
+    echo "Version: $VERSION"
+    echo ""
+  fi
+  
+  # Show changes before copying if verbose mode is enabled OR if in test mode
+  if [ $VERBOSE -eq 1 ] || [ $TEST_MODE -eq 1 ]; then
+    if [ $TEST_MODE -eq 1 ]; then
+      # In test mode, force at least basic verbose output
+      local old_verbose=$VERBOSE
+      if [ $VERBOSE -eq 0 ]; then
+        VERBOSE=1
+      fi
+    fi
+    
+    echo "Analyzing file changes..."
+    show_file_changes "$(pwd)/salt" "$default_salt_dir/salt" "salt"
+    show_file_changes "$(pwd)/pillar" "$default_salt_dir/pillar" "pillar"
+    
+    if [ $TEST_MODE -eq 1 ] && [ $old_verbose -eq 0 ]; then
+      # Restore original verbose setting
+      VERBOSE=$old_verbose
+    fi
+  fi
+  
+  # If in test mode, don't copy files
+  if [ $TEST_MODE -eq 1 ]; then
+    echo "=== TEST MODE: No files were modified ==="
+    echo "To apply these changes, run without --test option"
+    rm -rf /tmp/sogh
+    return
+  fi
+  
   # We need to overwrite if there is a repo file
   if [ -d /opt/so/repo ]; then
     tar -czf /opt/so/repo/"$VERSION".tar.gz -C "$(pwd)/.." .
   fi
+  
   rsync -a salt $default_salt_dir/
   rsync -a pillar $default_salt_dir/
   chown -R socore:socore $default_salt_dir/salt
@@ -45,11 +138,64 @@ got_root(){
     fi
 }
 
-got_root
-if [ $# -ne 1 ] ; then
+show_usage() {
+    echo "Usage: $0 [-v] [-vv] [--test] [branch]"
+    echo "  -v       Show verbose output (files changed/added/deleted)"
+    echo "  -vv      Show very verbose output (includes file diffs)"
+    echo "  --test   Test mode - show what would change without making changes"
+    echo "  branch   Git branch to checkout (default: 2.4/main)"
+    echo ""
+    echo "Examples:"
+    echo "  $0                    # Normal operation"
+    echo "  $0 -v                 # Show which files change"
+    echo "  $0 -vv                # Show files and their diffs"
+    echo "  $0 --test             # See what would change (dry run)"
+    echo "  $0 --test -vv         # Test mode with detailed diffs"
+    echo "  $0 -v dev-branch      # Use specific branch with verbose output"
+    exit 1
+}
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    -v)
+      VERBOSE=1
+      shift
+      ;;
+    -vv)
+      VERBOSE=1
+      VERY_VERBOSE=1
+      shift
+      ;;
+    --test)
+      TEST_MODE=1
+      shift
+      ;;
+    -h|--help)
+      show_usage
+      ;;
+    -*)
+      echo "Unknown option $1"
+      show_usage
+      ;;
+    *)
+      # This should be the branch name
+      if [ -z "$BRANCH" ]; then
+        BRANCH="$1"
+      else
+        echo "Too many arguments"
+        show_usage
+      fi
+      shift
+      ;;
+  esac
+done
+
+# Set default branch if not provided
+if [ -z "$BRANCH" ]; then
   BRANCH=2.4/main
-else
-  BRANCH=$1
 fi
+
+got_root
 clone_to_tmp
 copy_new_files

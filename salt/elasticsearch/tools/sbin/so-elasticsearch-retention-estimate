@@ -1,0 +1,1160 @@
+#!/bin/bash
+
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+INFLUX_URL="https://localhost:8086/api/v2"
+JSON_OUTPUT=false
+VERBOSE=false
+TEMP_FILES=()
+
+. /usr/sbin/so-common
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+BOLD='\033[1;37m'
+NC='\033[0m'
+REDBOLD='\033[1;31m'
+YELLOWBOLD='\033[1;33m'
+
+declare -a recommendation_lines
+declare -a recommendation_records
+
+cleanup_temp_files() {
+    local file
+    for file in "${TEMP_FILES[@]}"; do
+        [ -f "$file" ] && rm -f "$file" 2>/dev/null
+    done
+}
+
+trap cleanup_temp_files EXIT INT TERM
+
+create_temp_file() {
+    local tmpfile
+    tmpfile=$(mktemp)
+    TEMP_FILES+=("$tmpfile")
+    echo "$tmpfile"
+}
+
+log_title() {
+    if [ "$1" == "LOG" ]; then
+        echo -e "\n${BOLD}================ $2 ================${NC}\n"
+    elif [ "$1" == "OK" ]; then
+        echo -e "${GREEN} $2 ${NC}"
+    elif [ "$1" == "WARN" ]; then
+        echo -e "${YELLOW} $2 ${NC}"
+    elif [ "$1" == "ERROR" ]; then
+        echo -e "${RED} $2 ${NC}"
+    fi
+}
+
+usage() {
+    cat << EOF
+Usage: $(basename "$0") [OPTIONS]
+
+Estimate remaining days until Elasticsearch cluster reaches low watermark threshold.
+
+OPTIONS:
+    --json          Output results in JSON format
+    -v, --verbose   Show additional output
+    -h, --help      Show this help message
+
+EOF
+    exit 0
+}
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --json)
+            JSON_OUTPUT=true
+            shift
+            ;;
+        -v|--verbose)
+            VERBOSE=true
+            shift
+            ;;
+        -h|--help)
+            usage
+            ;;
+        *)
+            echo "Unknown option: $1" >&2
+            usage
+            ;;
+    esac
+done
+
+request() {
+    curl -skK /opt/so/conf/influxdb/curl.config "$INFLUX_URL/$@"
+}
+
+lookup_org_id() {
+    request "orgs?org=Security+Onion" | jq -r '.orgs[] | select(.name == "Security Onion").id'
+}
+
+run_flux_query() {
+    local query=$1
+    request "query?org=$ORG_ID" \
+        -H 'Accept:application/csv' \
+        -H 'Content-type:application/vnd.flux' \
+        -d "$query" -XPOST 2>/dev/null
+}
+
+read_csv_value() {
+    local input="$1"
+
+    printf '%s\n' "$input" | awk -F',' '
+        $0 ~ /^#/ { next }
+        NF < 1 { next }
+        {
+            gsub(/\r|\t/, "")
+            for (i = 1; i <= NF; i++) {
+                sub(/^[[:space:]]+/, "", $i)
+                sub(/[[:space:]]+$/, "", $i)
+            }
+            if (($2 == "_result" || $2 == "result") && $3 != "table" && $NF != "") {
+                print $NF
+                exit
+            }
+        }
+    '
+}
+
+normalize_number() {
+    local value="${1:-0}"
+    awk -v val="$value" 'BEGIN {
+        if (val == "" || val == "null") { printf "0"; exit }
+        if (val == val + 0) { printf "%.0f", val + 0; exit }
+        printf "0"
+    }'
+}
+
+bytes_to_gb() {
+    local bytes="${1:-0}"
+    awk -v b="$bytes" 'BEGIN {
+        if (b == "" || b == "null") { printf "0.00"; exit }
+        printf "%.2f", b / 1024 / 1024 / 1024
+    }'
+}
+
+expand_node_roles() {
+    local role_string="$1"
+    local -a roles=()
+
+    # Only show data-related roles: d=data, h=data_hot, w=data_warm, c=data_cold, s=data_content f=data_frozen
+    [[ "$role_string" =~ h ]] && roles+=("data_hot")
+    [[ "$role_string" =~ w ]] && roles+=("data_warm")
+    [[ "$role_string" =~ c ]] && roles+=("data_cold")
+    [[ "$role_string" =~ s ]] && roles+=("data_content")
+    [[ "$role_string" =~ f ]] && roles+=("data_frozen")
+    [[ "$role_string" =~ d ]] && roles+=("data")
+
+    local IFS=','
+    echo "${roles[*]}"
+}
+
+run_indices_growth() {
+    if ! command -v so-elasticsearch-indices-growth >/dev/null 2>&1; then
+        return 1
+    fi
+
+    if [ "$EUID" -ne 0 ] && command -v sudo >/dev/null 2>&1; then
+        sudo -n so-elasticsearch-indices-growth 2>/dev/null || so-elasticsearch-indices-growth 2>/dev/null
+    else
+        so-elasticsearch-indices-growth 2>/dev/null
+    fi
+}
+
+fetch_total_bytes() {
+    local start="$1"
+    local stop="$2"
+    local range_line
+
+    if [ -n "$stop" ]; then
+        range_line="  |> range(start: ${start}, stop: ${stop})"
+    else
+        range_line="  |> range(start: ${start})"
+    fi
+
+    local query
+    query=$(cat <<-EOF
+from(bucket: "telegraf/so_long_term")
+${range_line}
+  |> filter(fn: (r) => r._measurement == "elasticsearch_index_size")
+  |> last()
+  |> group()
+  |> sum()
+  |> keep(columns: ["_value"])
+EOF
+    )
+
+    local result value
+    result=$(run_flux_query "$query")
+    value=$(read_csv_value "$result")
+    normalize_number "$value"
+}
+
+fail() {
+    if [ "$JSON_OUTPUT" = true ]; then
+        jq -n --arg error "$1" '{error: $error}'
+    else
+        echo "ERROR: $1" >&2
+    fi
+    exit 1
+}
+
+echo -e "\nDISCLAIMER: Script output is based on current data patterns, but are approximations soley intended to assist with getting a general ILM policy configured."
+
+ORG_ID=$(lookup_org_id)
+[ -n "$ORG_ID" ] || fail "Unable to resolve InfluxDB org id"
+
+cluster_storage_size=0
+indexed_storage_source="elasticsearch"
+cluster_storage_size_output=$(so-elasticsearch-query '_cluster/stats?filter_path=indices.store.size_in_bytes' --fail 2>/dev/null || true)
+if [ -n "$cluster_storage_size_output" ]; then
+    cluster_storage_size=$(echo "$cluster_storage_size_output" | jq -r '.indices.store.size_in_bytes // 0' 2>/dev/null)
+    if ! printf '%s' "$cluster_storage_size" | grep -Eq '^[0-9]+$'; then
+        cluster_storage_size=0
+    fi
+fi
+
+# historical data from influxdb for growth calculation
+one_day_total=$(fetch_total_bytes "-25h" "-23h")
+seven_day_total=$(fetch_total_bytes "-7d8h" "-7d")
+thirty_day_total=$(fetch_total_bytes "-30d8h" "-30d")
+
+# available historical windows (prefer 30d/7d when available, to avoid using recent 24h traffic spike as true daily ingest rate)
+history_days=0
+historical_total=0
+
+if [ "$thirty_day_total" -gt 0 ]; then
+    history_days=30
+    history_label="30-day"
+    historical_total=$thirty_day_total
+elif [ "$seven_day_total" -gt 0 ]; then
+    history_days=7
+    history_label="7-day"
+    historical_total=$seven_day_total
+elif [ "$one_day_total" -gt 0 ]; then
+    history_days=1
+    history_label="24-hour"
+    historical_total=$one_day_total
+fi
+
+[ "$history_days" -gt 0 ] || fail "Historical InfluxDB data unavailable for growth calculation. If this a newer grid try re-running this script in a few days. Otherwise review /opt/so/log/telegraf/telegraf.log for errors with collecting required ES metrics."
+
+# Daily growth rate
+growth_bytes=$(( cluster_storage_size - historical_total ))
+daily_growth_bytes=$(awk -v diff="$growth_bytes" -v days="$history_days" 'BEGIN {
+    if (days <= 0) { print 0; exit }
+    printf "%.0f", diff / days
+}')
+
+# Daily shard creation rate using same time window (30d / 7d / 24h)
+daily_shard_creation=0
+now_ms=$(date +%s)000
+history_ago_ms=$(awk -v now="$now_ms" -v days="$history_days" 'BEGIN { printf "%.0f", now - (days * 86400 * 1000) }')
+shard_creation_output=$(so-elasticsearch-query "_cat/indices/.ds-*?format=json&h=index,pri,rep,creation.date" --fail 2>/dev/null || true)
+if [ -n "$shard_creation_output" ]; then
+    recent_shards=$(echo "$shard_creation_output" | jq --argjson cutoff "$history_ago_ms" '
+        [.[] |
+         select(.["creation.date"] != null and (.["creation.date"] | tonumber) >= $cutoff) |
+         (.pri | tonumber) + ((.pri | tonumber) * (.rep | tonumber))
+        ] | add // 0
+    ' 2>/dev/null)
+    if [ -n "$recent_shards" ] && [[ "$recent_shards" =~ ^[0-9]+$ ]]; then
+        daily_shard_creation=$(awk -v total="$recent_shards" -v days="$history_days" 'BEGIN {
+            if (days <= 0) { print 0; exit }
+            printf "%.1f", total / days
+        }')
+    fi
+fi
+
+# Find expected ILM deletions
+ilm_delete_7d=0
+ilm_delete_30d=0
+ilm_indices_7d=0
+ilm_indices_30d=0
+ilm_delete_immediate=0
+ilm_indices_immediate=0
+ilm_delete_scheduled_7d=0
+ilm_indices_scheduled_7d=0
+ilm_delete_scheduled_30d=0
+ilm_indices_scheduled_30d=0
+ilm_shards_7d=0
+ilm_shards_30d=0
+ilm_shards_immediate=0
+ilm_shards_scheduled_7d=0
+ilm_shards_scheduled_30d=0
+
+  # For verbose output
+declare -a scheduled_indices_names
+declare -a scheduled_indices_sizes
+declare -a scheduled_indices_days
+declare -a immediate_indices_names
+declare -a immediate_indices_sizes
+
+# Get ilm policy delete ages per policy
+  # example output 'so-logs-1password.audit_events-logs|365'
+tmpfile_policies=$(create_temp_file)
+so-elasticsearch-query '_ilm/policy' --fail 2>/dev/null | jq -r '
+    def age_to_days:
+        if type == "number" then .
+        elif type == "string" then
+            (ascii_downcase) as $s |
+            (try ($s | capture("^(?<num>-?[0-9.]+)(?<unit>[smhd]?)$")) catch {num:"0", unit:""}) as $m |
+            (($m.num | tonumber? // 0)) as $val |
+            (if $m.unit == "d" or $m.unit == "" then $val
+               elif $m.unit == "h" then $val / 24
+               elif $m.unit == "m" then $val / 1440
+               elif $m.unit == "s" then $val / 86400
+               else $val end)
+        else 0 end;
+    to_entries[] |
+    select(.value.policy.phases.delete.min_age?) |
+    "\(.key)|\((.value.policy.phases.delete.min_age | age_to_days))"
+' > "$tmpfile_policies" 2>/dev/null || true
+
+declare -A policy_ages
+
+if [ -s "$tmpfile_policies" ]; then
+    # create associative array of policy -> delete_age
+    while IFS='|' read -r policy age; do
+        policy_ages["$policy"]=$age
+    done < "$tmpfile_policies"
+
+    # Get ILM managed indices with their age and policy, figure days until deletion
+    tmpfile_indices=$(create_temp_file)
+    so-elasticsearch-query '_all/_ilm/explain' --fail 2>/dev/null | jq -r '
+        def age_to_days:
+            if type == "number" then .
+            elif type == "string" then
+                (ascii_downcase) as $s |
+                (try ($s | capture("^(?<num>-?[0-9.]+)(?<unit>[smhd]?)$")) catch {num:"0", unit:""}) as $m |
+                (($m.num | tonumber? // 0)) as $val |
+                (if $m.unit == "d" or $m.unit == "" then $val
+                   elif $m.unit == "h" then $val / 24
+                   elif $m.unit == "m" then $val / 1440
+                   elif $m.unit == "s" then $val / 86400
+                   else $val end)
+            else 0 end;
+        .indices | to_entries[] |
+        select(.value.managed == true and .value.policy) |
+        "\(.key)|\(.value.policy)|\(((.value.age? // "0") | age_to_days))|\(.value.phase? // "")"
+    ' > "$tmpfile_indices" 2>/dev/null || true
+
+    # Process each index and calculate totals
+    tmpfile_all=$(create_temp_file)
+    while IFS='|' read -r index policy age phase; do
+        if [ -n "${policy_ages[$policy]:-}" ]; then
+            delete_age=${policy_ages[$policy]}
+            delete_age=${delete_age:-0}
+            age=${age:-0}
+            days_until_ceiling=$(awk -v del="$delete_age" -v aged="$age" 'BEGIN {
+                diff = del - aged;
+                if (diff <= 0) {
+                    print 0;
+                    exit
+                }
+                base = int(diff);
+                if (diff > base) { base = base + 1 }
+                print base;
+            }')
+            if [ -z "$days_until_ceiling" ]; then
+                days_until_ceiling=0
+            fi
+            if [ "$days_until_ceiling" -lt 0 ]; then
+                days_until_ceiling=0
+            fi
+            bucket="scheduled"
+            if [ "$phase" = "delete" ]; then
+                days_until_ceiling=0
+                bucket="immediate"
+            fi
+            if [ "$days_until_ceiling" -le 30 ] 2>/dev/null; then
+                echo "$index|$days_until_ceiling|$bucket" >> "$tmpfile_all"
+            fi
+        fi
+    done < "$tmpfile_indices"
+
+    # Get size and shard counts for indices
+    if [ -s "$tmpfile_all" ]; then
+        candidate_indices=$(cut -d'|' -f1 "$tmpfile_all" | tr '\n' ',' | sed 's/,$//')
+        if [ -n "$candidate_indices" ]; then
+            tmpfile_sizes=$(create_temp_file)
+            so-elasticsearch-query "_cat/indices/${candidate_indices}?format=json&h=index,pri.store.size,pri,rep&bytes=b" --fail 2>/dev/null | \
+                jq -r '.[] | "\(.index)|\(.["pri.store.size"])|\(.pri)|\(.rep)"' > "$tmpfile_sizes" 2>/dev/null || true
+
+            # Build size and shard lookup
+            declare -A index_sizes
+            declare -A index_shards
+            while IFS='|' read -r idx size pri rep; do
+                index_sizes["$idx"]=$size
+                # Total shards = pri + (pri * rep)
+                total_shards=$(awk -v p="$pri" -v r="$rep" 'BEGIN { printf "%.0f", p + (p * r) }')
+                index_shards["$idx"]=$total_shards
+            done < "$tmpfile_sizes"
+
+            # Calculate totals for ilm deletes
+            while IFS='|' read -r index days_until bucket; do
+                size=${index_sizes[$index]:-0}
+                shards=${index_shards[$index]:-0}
+                if [ "$bucket" = "immediate" ]; then
+                    ilm_delete_immediate=$((ilm_delete_immediate + size))
+                    ilm_indices_immediate=$((ilm_indices_immediate + 1))
+                    ilm_shards_immediate=$((ilm_shards_immediate + shards))
+                    if [ "$VERBOSE" = true ]; then
+                        immediate_indices_names+=("$index")
+                        immediate_indices_sizes+=("$size")
+                    fi
+                else
+                    if [ "$days_until" -le 7 ] 2>/dev/null; then
+                        ilm_delete_scheduled_7d=$((ilm_delete_scheduled_7d + size))
+                        ilm_indices_scheduled_7d=$((ilm_indices_scheduled_7d + 1))
+                        ilm_shards_scheduled_7d=$((ilm_shards_scheduled_7d + shards))
+                        if [ "$VERBOSE" = true ]; then
+                            scheduled_indices_names+=("$index")
+                            scheduled_indices_sizes+=("$size")
+                            scheduled_indices_days+=("$days_until")
+                        fi
+                    fi
+                    ilm_delete_scheduled_30d=$((ilm_delete_scheduled_30d + size))
+                    ilm_indices_scheduled_30d=$((ilm_indices_scheduled_30d + 1))
+                    ilm_shards_scheduled_30d=$((ilm_shards_scheduled_30d + shards))
+                fi
+
+                if [ "$days_until" -le 7 ] 2>/dev/null; then
+                    ilm_delete_7d=$((ilm_delete_7d + size))
+                    ilm_indices_7d=$((ilm_indices_7d + 1))
+                    ilm_shards_7d=$((ilm_shards_7d + shards))
+                fi
+                ilm_delete_30d=$((ilm_delete_30d + size))
+                ilm_indices_30d=$((ilm_indices_30d + 1))
+                ilm_shards_30d=$((ilm_shards_30d + shards))
+            done < "$tmpfile_all"
+        fi
+    fi
+fi
+
+# Get the average daily ILM deletion rate (smooth out over 30d / 7d for consistency)
+daily_ilm_delete_bytes=0
+if [ "$ilm_delete_scheduled_30d" -gt 0 ] && [ "$ilm_indices_scheduled_30d" -gt 0 ]; then
+    daily_ilm_delete_bytes=$(awk -v total="$ilm_delete_scheduled_30d" 'BEGIN { printf "%.0f", total / 30 }')
+elif [ "$ilm_delete_scheduled_7d" -gt 0 ] && [ "$ilm_indices_scheduled_7d" -gt 0 ]; then
+    daily_ilm_delete_bytes=$(awk -v total="$ilm_delete_scheduled_7d" 'BEGIN { printf "%.0f", total / 7 }')
+fi
+
+# Net storage growth (growth - deletions)
+net_growth_bytes=$(awk -v growth="$daily_growth_bytes" -v deletions="$daily_ilm_delete_bytes" 'BEGIN {
+    printf "%.0f", growth - deletions
+}')
+
+ilm_delete_7d_gb=$(bytes_to_gb "$ilm_delete_7d")
+ilm_delete_30d_gb=$(bytes_to_gb "$ilm_delete_30d")
+ilm_delete_immediate_gb=$(bytes_to_gb "$ilm_delete_immediate")
+ilm_delete_scheduled_7d_gb=$(bytes_to_gb "$ilm_delete_scheduled_7d")
+ilm_delete_scheduled_30d_gb=$(bytes_to_gb "$ilm_delete_scheduled_30d")
+daily_ilm_delete_gb=$(bytes_to_gb "$daily_ilm_delete_bytes")
+
+ilm_impact_pct="0.0"
+if [ "$cluster_storage_size" -gt 0 ] && [ "$ilm_delete_7d" -gt 0 ]; then
+    ilm_impact_pct=$(awk -v ilm="$ilm_delete_7d" -v total="$cluster_storage_size" 'BEGIN {
+        if (total <= 0) { printf "0.0"; exit }
+        printf "%.1f", (ilm / total) * 100
+    }')
+fi
+
+ilm_window_daily_bytes=0
+ilm_window_daily_gb="0.00"
+if [ "$ilm_delete_7d" -gt 0 ]; then
+    ilm_window_daily_bytes=$(awk -v total="$ilm_delete_7d" 'BEGIN { printf "%.0f", total / 7 }')
+    ilm_window_daily_gb=$(awk -v total="$ilm_delete_7d" 'BEGIN { printf "%.2f", total / 7 / 1024 / 1024 / 1024 }')
+fi
+
+ilm_rate_variance_pct=""
+ilm_rate_variance_warning=false
+if [ "$daily_ilm_delete_bytes" -gt 0 ] && [ "$ilm_window_daily_bytes" -gt 0 ]; then
+    ilm_rate_variance_pct=$(awk -v window="$ilm_window_daily_bytes" -v daily="$daily_ilm_delete_bytes" 'BEGIN {
+        if (daily == 0) { print ""; exit }
+        diff = window - daily;
+        if (diff < 0) diff = -diff;
+        pct = diff / daily * 100;
+        if (pct < 0) pct = -pct;
+        printf "%.0f", pct
+    }')
+    if [ -n "$ilm_rate_variance_pct" ]; then
+        ilm_rate_flag=$(awk -v v="$ilm_rate_variance_pct" 'BEGIN { if (v + 0 > 30) print 1; else print 0 }')
+        if [ "$ilm_rate_flag" -eq 1 ] 2>/dev/null; then
+            ilm_rate_variance_warning=true
+        fi
+    fi
+fi
+
+ilm_rate_variance_warning_json="false"
+if [ "$ilm_rate_variance_warning" = true ]; then
+    ilm_rate_variance_warning_json="true"
+fi
+
+# Elasticsearch cluster disk watermark settings (fallback to 85/90/95 defaults)
+watermark_output=$(so-elasticsearch-query '_cluster/settings?include_defaults=true&filter_path=*.cluster.routing.allocation.disk.*' --fail 2>/dev/null) || fail "Failed to query Elasticsearch cluster settings"
+
+low=$(echo "$watermark_output" | jq -r '.transient.cluster.routing.allocation.disk.watermark.low // .persistent.cluster.routing.allocation.disk.watermark.low // .defaults.cluster.routing.allocation.disk.watermark.low // empty')
+high=$(echo "$watermark_output" | jq -r '.transient.cluster.routing.allocation.disk.watermark.high // .persistent.cluster.routing.allocation.disk.watermark.high // .defaults.cluster.routing.allocation.disk.watermark.high // empty')
+flood=$(echo "$watermark_output" | jq -r '.transient.cluster.routing.allocation.disk.watermark.flood_stage // .persistent.cluster.routing.allocation.disk.watermark.flood_stage // .defaults.cluster.routing.allocation.disk.watermark.flood_stage // empty')
+
+low=${low:-"85%"}
+high=${high:-"90%"}
+flood=${flood:-"95%"}
+
+low_percent=${low%\%}
+low_fraction=$(awk -v p="$low_percent" 'BEGIN {
+    if (p == "" || p + 0 <= 0) { printf "%.6f", 0.85; exit }
+    printf "%.6f", p / 100
+}')
+
+high_percent=${high%\%}
+high_fraction=$(awk -v p="$high_percent" 'BEGIN {
+    if (p == "" || p + 0 <= 0) { printf "%.6f", 0.90; exit }
+    printf "%.6f", p / 100
+}')
+
+# Cluster shard total
+cluster_shards_output=$(so-elasticsearch-query '_cluster/stats?filter_path=indices.shards.total' --fail 2>/dev/null) || fail "Failed to query cluster shard stats"
+total_shards=$(echo "$cluster_shards_output" | jq -r '.indices.shards.total // 0' 2>/dev/null)
+
+# Get max shards per node setting (with default 1000)
+max_shards_per_node_output=$(so-elasticsearch-query '_cluster/settings?include_defaults=true&filter_path=*.cluster.max_shards_per_node' --fail 2>/dev/null) || fail "Failed to query cluster shard settings"
+max_shards_per_node=$(echo "$max_shards_per_node_output" | jq -r '.transient.cluster.max_shards_per_node // .persistent.cluster.max_shards_per_node // .defaults.cluster.max_shards_per_node // "1000"' 2>/dev/null)
+max_shards_per_node=${max_shards_per_node:-1000}
+
+# Get same disk usage metric ES uses for watermark (not only ES used storage, but OS level storage usage)
+nodes_output=$(so-elasticsearch-query '_cat/nodes?format=json&h=name,ip,node.role,disk.total,disk.used,disk.avail&bytes=b' --fail 2>/dev/null) || fail "Failed to query Elasticsearch node disk usage"
+
+# Parse nodes with data roles and calculate cluster totals
+# Only include nodes with data roles: d=data, h=data_hot, w=data_warm, c=data_cold, s=data_content, f=data_frozen
+cluster_stats=$(echo "$nodes_output" | jq --argjson low "$low_fraction" '
+    [ .[]
+      | select(.["node.role"] | test("[dhwcsf]"))
+      | .total = (.["disk.total"] | tostring | gsub("[^0-9.]"; "") | tonumber)
+      | .used = (.["disk.used"] | tostring | gsub("[^0-9.]"; "") | tonumber)
+      | .avail = (.["disk.avail"] | tostring | gsub("[^0-9.]"; "") | tonumber)
+      | select(.total? and .used?)
+      | .low_threshold = (.total * $low)
+      | .remaining = (.low_threshold - .used)
+    ]
+    | {
+        total: ([.[].total] | add // 0),
+        used: ([.[].used] | add // 0),
+        low_threshold: ([.[].low_threshold] | add // 0),
+        remaining: ([.[].remaining] | add // 0)
+      }
+')
+
+cluster_total=$(echo "$cluster_stats" | jq -r '.total')
+cluster_used=$(echo "$cluster_stats" | jq -r '.used')
+cluster_low_threshold=$(echo "$cluster_stats" | jq -r '.low_threshold')
+cluster_remaining=$(echo "$cluster_stats" | jq -r '.remaining')
+
+cluster_high_threshold=$(awk -v total="$cluster_total" -v frac="$high_fraction" 'BEGIN {
+    if (total == "" || frac == "" || total + 0 <= 0 || frac + 0 <= 0) { printf "0"; exit }
+    printf "%.0f", total * frac
+}')
+cluster_over_low_bytes=$(awk -v used="$cluster_used" -v threshold="$cluster_low_threshold" 'BEGIN {
+    if (used == "" || threshold == "") { printf "0"; exit }
+    diff = used - threshold;
+    if (diff < 0) diff = 0;
+    printf "%.0f", diff
+}')
+cluster_over_high_bytes=$(awk -v used="$cluster_used" -v threshold="$cluster_high_threshold" 'BEGIN {
+    if (used == "" || threshold == "") { printf "0"; exit }
+    diff = used - threshold;
+    if (diff < 0) diff = 0;
+    printf "%.0f", diff
+}')
+
+# Count data nodes and calculate shard capacity
+# Only count nodes with data roles: d=data, h=data_hot, w=data_warm, c=data_cold, s=data_content f=data_frozen
+data_node_count=$(echo "$nodes_output" | jq '[.[] | select(.["node.role"] | test("[dhwcsf]"))] | length')
+max_shard_capacity=$((data_node_count * max_shards_per_node))
+
+declare -a data_node_names
+declare -a data_node_roles
+if [ "$data_node_count" -gt 0 ]; then
+    while IFS='|' read -r node_name node_role; do
+        data_node_names+=("$node_name")
+        data_node_roles+=("$node_role")
+    done < <(echo "$nodes_output" | jq -r '.[] | select(.["node.role"] | test("[dhwcsf]")) | "\(.name)|\(.["node.role"])"')
+fi
+shard_usage_percent="0.0"
+if [ "$max_shard_capacity" -gt 0 ]; then
+    shard_usage_percent=$(awk -v current="$total_shards" -v max="$max_shard_capacity" 'BEGIN {
+        if (max <= 0) { printf "0.0"; exit }
+        printf "%.1f", (current / max) * 100
+    }')
+fi
+
+recommendations_triggered=false
+recommendations_ready=false
+recommendations_message=""
+recommendations_json='[]'
+recommendations_triggered_json=false
+recommendation_lines=()
+recommendation_records=()
+should_trigger_recommendations=false
+recommendations_reason=""
+
+days_to_low_numeric=""
+days_to_low_gross_numeric=""
+
+[ "$cluster_total" -gt 0 ] || fail "No Elasticsearch data nodes retrieved from _cat/nodes"
+
+# Calculate current retention period (age of oldest .ds-logs-* index)
+oldest_index_days=""
+oldest_index_name=""
+oldest_index_output=$(so-elasticsearch-query '_cat/indices/.ds-logs-*?format=json&h=index,creation.date&s=creation.date:asc' --fail 2>/dev/null | jq -r '.[0] // empty' 2>/dev/null || true)
+if [ -n "$oldest_index_output" ]; then
+    oldest_index_name=$(echo "$oldest_index_output" | jq -r '.index // empty' 2>/dev/null)
+    oldest_creation_ms=$(echo "$oldest_index_output" | jq -r '.["creation.date"] // empty' 2>/dev/null)
+    if [ -n "$oldest_creation_ms" ] && [[ "$oldest_creation_ms" =~ ^[0-9]+$ ]]; then
+        oldest_creation_sec=$((oldest_creation_ms / 1000))
+        if [ "$oldest_creation_sec" -gt 0 ]; then
+            now_sec=$(date +%s)
+            if [ "$now_sec" -ge "$oldest_creation_sec" ]; then
+                age_sec=$((now_sec - oldest_creation_sec))
+                oldest_index_days=$(awk -v age="$age_sec" 'BEGIN { printf "%.1f", age / 86400 }')
+            fi
+        fi
+    fi
+fi
+
+# Calculate days until low watermark using net growth
+days_to_low=""
+days_to_low_gross=""
+target_date=""
+
+# Calculate with gross growth
+if [ "$daily_growth_bytes" -gt 0 ] && [ "$(echo "$cluster_remaining > 0" | bc -l 2>/dev/null || awk -v r="$cluster_remaining" 'BEGIN { if (r > 0) print 1; else print 0 }')" -eq 1 ]; then
+    days_to_low_gross=$(awk -v rem="$cluster_remaining" -v perday="$daily_growth_bytes" 'BEGIN {
+        printf "%.2f", rem / perday
+    }')
+fi
+
+# Calculate with net growth (minus ILM deletions)
+if [ "$net_growth_bytes" -gt 0 ] && [ "$(echo "$cluster_remaining > 0" | bc -l 2>/dev/null || awk -v r="$cluster_remaining" 'BEGIN { if (r > 0) print 1; else print 0 }')" -eq 1 ]; then
+    days_to_low=$(awk -v rem="$cluster_remaining" -v perday="$net_growth_bytes" 'BEGIN {
+        printf "%.2f", rem / perday
+    }')
+    ceil_days=$(awk -v d="$days_to_low" 'BEGIN {
+        base = int(d);
+        if (d > base) { base = base + 1 }
+        if (base < 0) { base = 0 }
+        printf "%d", base
+    }')
+    target_date=$(date -d "+${ceil_days} days" +%F 2>/dev/null)
+elif [ "$(echo "$cluster_remaining > 0" | bc -l 2>/dev/null || awk -v r="$cluster_remaining" 'BEGIN { if (r > 0) print 1; else print 0 }')" -eq 1 ]; then
+    # Net growth is zero or negative, cluster is in equilibrium or shrinking
+    days_to_low="stable"
+fi
+
+if [ -n "$days_to_low" ] && [ "$days_to_low" != "stable" ] && [[ "$days_to_low" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+    days_to_low_numeric="$days_to_low"
+fi
+
+if [ -n "$days_to_low_gross" ] && [[ "$days_to_low_gross" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+    days_to_low_gross_numeric="$days_to_low_gross"
+fi
+
+# Calculate estimated retention (oldest index age + days until low watermark)
+estimated_retention_days=""
+if [ -n "$oldest_index_days" ] && [ -n "$days_to_low_numeric" ]; then
+    estimated_retention_days=$(awk -v oldest="$oldest_index_days" -v remaining="$days_to_low_numeric" 'BEGIN {
+        printf "%.1f", oldest + remaining
+    }')
+fi
+
+cluster_at_or_below_low=$(echo "$cluster_remaining <= 0" | bc -l 2>/dev/null || awk -v r="$cluster_remaining" 'BEGIN { if (r <= 0) print 1; else print 0 }')
+
+if [ "$cluster_at_or_below_low" -eq 1 ]; then
+    should_trigger_recommendations=true
+    if [ "$cluster_over_high_bytes" -gt 0 ] 2>/dev/null; then
+        recommendations_reason="Cluster is beyond the high watermark threshold. Reduce retention on the fastest-growing indices immediately."
+    else
+        recommendations_reason="Cluster is at or beyond the low watermark threshold. Reduce retention on the fastest-growing indices immediately."
+    fi
+elif [ -n "$days_to_low_numeric" ]; then
+    within_seven=$(awk -v d="$days_to_low_numeric" 'BEGIN { if (d <= 7) print 1; else print 0 }')
+    if [ "$within_seven" -eq 1 ]; then
+        should_trigger_recommendations=true
+        recommendations_reason="Projected low watermark breach in ~${days_to_low_numeric} days (${target_date:-N/A}). Reduce retention on the fastest-growing indices."
+    fi
+elif [ -n "$days_to_low_gross_numeric" ]; then
+    within_seven_gross=$(awk -v d="$days_to_low_gross_numeric" 'BEGIN { if (d <= 7) print 1; else print 0 }')
+    if [ "$within_seven_gross" -eq 1 ]; then
+        should_trigger_recommendations=true
+        recommendations_reason="Gross growth trend indicates a low watermark breach in ~${days_to_low_gross_numeric} days (${target_date:-N/A}). Reduce retention on the fastest-growing indices before ILM deletions."
+    fi
+fi
+
+cluster_over_high_flag=0
+if [ "$cluster_over_high_bytes" -gt 0 ] 2>/dev/null; then
+    cluster_over_high_flag=1
+fi
+
+cluster_over_low_flag=0
+if [ "$cluster_over_low_bytes" -gt 0 ] 2>/dev/null; then
+    cluster_over_low_flag=1
+fi
+
+cluster_high_threshold_gb=$(bytes_to_gb "$cluster_high_threshold")
+cluster_over_low_gb=$(bytes_to_gb "$cluster_over_low_bytes")
+cluster_over_high_gb=$(bytes_to_gb "$cluster_over_high_bytes")
+
+if [ "$should_trigger_recommendations" = true ]; then
+    recommendations_triggered=true
+    recommendations_triggered_json=true
+    if [ -n "$recommendations_reason" ]; then
+        recommendations_message="$recommendations_reason"
+    else
+        recommendations_message="Cluster is nearing the low watermark threshold. Reduce retention on the fastest-growing indices."
+    fi
+
+    growth_output=$(run_indices_growth || true)
+    if [ -n "${growth_output//[[:space:]]/}" ]; then
+        mapfile -t recommendation_source_lines < <(printf '%s\n' "$growth_output" | tail -n +3 | awk 'NF' | head -n 3)
+        for line in "${recommendation_source_lines[@]}"; do
+            index=$(echo "$line" | awk '{print $1}')
+            [ -n "$index" ] || continue
+
+            growth_24h_gb=$(echo "$line" | awk '{print $(NF-2)}')
+
+            creation_date_display=""
+            retention_days=""
+            policy=""
+            delete_min_age=""
+
+            index_info=$(so-elasticsearch-query "_cat/indices/${index}?format=json&h=index,creation.date,creation.date.string" --fail 2>/dev/null) || true
+            if [ -n "$index_info" ]; then
+                creation_epoch=$(echo "$index_info" | jq -r '.[0]."creation.date" // empty' 2>/dev/null)
+                creation_readable=$(echo "$index_info" | jq -r '.[0]."creation.date.string" // empty' 2>/dev/null)
+                if [ -n "$creation_epoch" ] && [[ "$creation_epoch" =~ ^[0-9]+$ ]]; then
+                    creation_seconds=$((creation_epoch / 1000))
+                    if [ "$creation_seconds" -gt 0 ]; then
+                        creation_date_display=$(date -u -d "@$creation_seconds" +%FT%TZ 2>/dev/null)
+                        now_seconds=$(date +%s)
+                        if [ "$now_seconds" -ge "$creation_seconds" ]; then
+                            retention_days=$(awk -v now="$now_seconds" -v created="$creation_seconds" 'BEGIN { diff = now - created; if (diff < 0) diff = 0; printf "%.1f", diff / 86400 }')
+                        fi
+                    fi
+                fi
+                if [ -z "$creation_date_display" ] && [ -n "$creation_readable" ] && [ "$creation_readable" != "null" ]; then
+                    creation_date_display="$creation_readable"
+                fi
+            fi
+
+            ilm_output=$(so-elasticsearch-query "${index}/_ilm/explain" --fail 2>/dev/null) || true
+            if [ -n "$ilm_output" ]; then
+                policy=$(echo "$ilm_output" | jq --arg idx "$index" -r ".indices[$idx].policy // empty" 2>/dev/null)
+            fi
+            if [ -n "$policy" ] && [ -n "${policy_ages[$policy]:-}" ]; then
+                delete_min_age=${policy_ages[$policy]}
+            fi
+
+            retention_days_display=${retention_days:-unknown}
+            retention_days_floor=""
+            if [ -n "$retention_days" ]; then
+                retention_days_floor=$(awk -v v="$retention_days" 'BEGIN { if (v == "" || v == "null") { print ""; exit } val = v + 0; if (val < 1) val = 1; printf "%d", int(val) }')
+                if [ -n "$retention_days_floor" ] && [ "$retention_days_floor" -lt 1 ]; then
+                    retention_days_floor=1
+                fi
+            fi
+
+            delete_min_age_numeric=""
+            if [ -n "$delete_min_age" ]; then
+                delete_min_age_numeric=$(awk -v v="$delete_min_age" 'BEGIN { if (v == "" || v == "null") { print ""; exit } val = v + 0; if (val < 1) val = 1; printf "%d", int(val) }')
+            fi
+
+            recommended_delete_min_age=""
+            if [ -n "$retention_days_floor" ]; then
+                recommended_delete_min_age="$retention_days_floor"
+            fi
+            if [ -n "$delete_min_age_numeric" ]; then
+                if [ -n "$recommended_delete_min_age" ]; then
+                    recommended_delete_min_age=$(awk -v rec="$recommended_delete_min_age" -v cur="$delete_min_age_numeric" 'BEGIN { rec += 0; cur += 0; if (cur < rec) printf "%d", cur; else printf "%d", rec }')
+                else
+                    recommended_delete_min_age="$delete_min_age_numeric"
+                fi
+            fi
+            if [ -z "$recommended_delete_min_age" ] && [ -n "$retention_days_floor" ]; then
+                recommended_delete_min_age="$retention_days_floor"
+            fi
+
+            action_phrase=""
+            if [ -n "$recommended_delete_min_age" ]; then
+                if [ -n "$delete_min_age_numeric" ] && [ "$recommended_delete_min_age" -lt "$delete_min_age_numeric" ]; then
+                    action_phrase="Lower delete.min_age to ~${recommended_delete_min_age}d"
+                else
+                    action_phrase="Cap delete.min_age at ~${recommended_delete_min_age}d"
+                fi
+                if [ -n "$retention_days_floor" ]; then
+                    action_phrase="${action_phrase} (observed retention ~${retention_days_floor}d)"
+                fi
+                action_phrase="${action_phrase}; consider whether a tighter cap (e.g., 30d) fits requirements."
+            else
+                action_phrase="Review ILM delete.min_age for this index; consider more aggressive retention if throughput stays high."
+            fi
+
+            policy_clause=""
+            if [ -n "$policy" ]; then
+                policy_clause=", policy ${policy}"
+            fi
+            if [ -n "$delete_min_age" ]; then
+                policy_clause="${policy_clause} (current delete.min_age ${delete_min_age}d)"
+            fi
+
+            recommendation_lines+=("  - ${BOLD}${index}${NC}: ~${growth_24h_gb} GB growth in last 24h, retention ~${retention_days_display} days (created ${creation_date_display:-unknown})${policy_clause}. ${action_phrase}")
+            record=$(jq -nc \
+                --arg index "$index" \
+                --arg growth "$growth_24h_gb" \
+                --arg retention "${retention_days:-}" \
+                --arg created "${creation_date_display:-}" \
+                --arg policy "$policy" \
+                --arg delete_age "${delete_min_age:-}" \
+                --arg suggested "${recommended_delete_min_age:-}" \
+                --arg action "$action_phrase" \
+                '{
+                    index: $index,
+                    growth_gb_last_24h: (if ($growth | length) > 0 then ($growth | tonumber) else null end),
+                    retention_days: (if ($retention | length) > 0 then ($retention | tonumber) else null end),
+                    creation_date: (if ($created | length) > 0 then $created else null end),
+                    ilm_policy: (if ($policy | length) > 0 then $policy else null end),
+                    delete_min_age_days: (if ($delete_age | length) > 0 then ($delete_age | tonumber) else null end),
+                    suggested_delete_min_age_days: (if ($suggested | length) > 0 then ($suggested | tonumber) else null end),
+                    recommendation: (if ($action | length) > 0 then $action else null end)
+                }')
+            recommendation_records+=("$record")
+        done
+    fi
+
+    if [ ${#recommendation_records[@]} -gt 0 ]; then
+        recommendations_ready=true
+        recommendations_json=$(printf '%s\n' "${recommendation_records[@]}" | jq -s '.')
+    else
+        if [ -n "$recommendations_reason" ]; then
+            recommendations_message="$recommendations_reason Unable to retrieve detailed growth data from so-elasticsearch-indices-growth."
+        else
+            recommendations_message="Unable to retrieve growth data from so-elasticsearch-indices-growth while near the low watermark threshold."
+        fi
+    fi
+fi
+
+if [ "$JSON_OUTPUT" = true ]; then
+    jq -n \
+        --arg indexed_storage_source "$indexed_storage_source" \
+        --arg current_gb "$(bytes_to_gb "$cluster_storage_size")" \
+        --arg oldest_index_days "$oldest_index_days" \
+        --arg estimated_retention_days "$estimated_retention_days" \
+        --arg daily_growth_gb "$(bytes_to_gb "$daily_growth_bytes")" \
+        --arg daily_ilm_delete_gb "$daily_ilm_delete_gb" \
+        --arg net_growth_gb "$(bytes_to_gb "$net_growth_bytes")" \
+        --arg ilm_delete_7d_gb "$ilm_delete_7d_gb" \
+        --arg ilm_delete_immediate_gb "$ilm_delete_immediate_gb" \
+        --arg ilm_delete_scheduled_7d_gb "$ilm_delete_scheduled_7d_gb" \
+        --arg ilm_delete_scheduled_30d_gb "$ilm_delete_scheduled_30d_gb" \
+        --arg ilm_delete_30d_gb "$ilm_delete_30d_gb" \
+        --arg ilm_window_daily_gb "$ilm_window_daily_gb" \
+        --arg ilm_impact_pct "$ilm_impact_pct" \
+        --arg ilm_rate_variance_pct "$ilm_rate_variance_pct" \
+        --arg growth_window "$history_label" \
+        --arg cluster_total_gb "$(bytes_to_gb "$cluster_total")" \
+        --arg cluster_used_gb "$(bytes_to_gb "$cluster_used")" \
+        --arg cluster_remaining_gb "$(bytes_to_gb "$cluster_remaining")" \
+        --arg cluster_low_threshold_gb "$(bytes_to_gb "$cluster_low_threshold")" \
+        --arg cluster_high_threshold_gb "$cluster_high_threshold_gb" \
+        --arg cluster_over_low_gb "$cluster_over_low_gb" \
+        --arg cluster_over_high_gb "$cluster_over_high_gb" \
+        --arg shard_usage_percent "$shard_usage_percent" \
+        --arg low_watermark "$low" \
+        --arg high_watermark "$high" \
+        --arg flood_watermark "$flood" \
+        --arg days_to_low "${days_to_low:-null}" \
+        --arg days_to_low_gross "${days_to_low_gross:-null}" \
+        --arg estimated_date "${target_date:-null}" \
+        --arg recommendation_message "$recommendations_message" \
+        --argjson total_shards "$total_shards" \
+        --argjson max_shard_capacity "$max_shard_capacity" \
+        --argjson data_node_count "$data_node_count" \
+        --argjson max_shards_per_node "$max_shards_per_node" \
+        --argjson ilm_indices_7d "$ilm_indices_7d" \
+        --argjson ilm_indices_immediate "$ilm_indices_immediate" \
+        --argjson ilm_indices_scheduled_7d "$ilm_indices_scheduled_7d" \
+        --argjson ilm_indices_scheduled_30d "$ilm_indices_scheduled_30d" \
+        --argjson ilm_indices_30d "$ilm_indices_30d" \
+        --argjson ilm_shards_7d "$ilm_shards_7d" \
+        --argjson ilm_shards_30d "$ilm_shards_30d" \
+        --argjson ilm_shards_immediate "$ilm_shards_immediate" \
+        --argjson ilm_shards_scheduled_7d "$ilm_shards_scheduled_7d" \
+        --argjson ilm_shards_scheduled_30d "$ilm_shards_scheduled_30d" \
+        --arg daily_shard_creation "$daily_shard_creation" \
+        --argjson recommendations "$recommendations_json" \
+        --argjson recommendations_triggered "$recommendations_triggered_json" \
+        ' {
+            indexed_storage_gb: ($current_gb | tonumber),
+            indexed_storage_source: $indexed_storage_source,
+            oldest_index_days: (if ($oldest_index_days | length) > 0 then ($oldest_index_days | tonumber) else null end),
+            estimated_retention_days: (if ($estimated_retention_days | length) > 0 then ($estimated_retention_days | tonumber) else null end),
+            growth: {
+                daily_growth_gb: ($daily_growth_gb | tonumber),
+                daily_ilm_delete_gb: (if ($daily_ilm_delete_gb | length) > 0 then ($daily_ilm_delete_gb | tonumber) else null end),
+                net_growth_gb: (if ($net_growth_gb | length) > 0 then ($net_growth_gb | tonumber) else null end),
+                daily_shard_creation: (if ($daily_shard_creation | length) > 0 then ($daily_shard_creation | tonumber) else null end),
+            },
+            ilm: {
+                deleting_now: {
+                    indices: $ilm_indices_immediate,
+                    storage_gb: (if ($ilm_delete_immediate_gb | length) > 0 then ($ilm_delete_immediate_gb | tonumber) else null end),
+                    shards: $ilm_shards_immediate
+                },
+                scheduled_7d: {
+                    indices: $ilm_indices_scheduled_7d,
+                    storage_gb: (if ($ilm_delete_scheduled_7d_gb | length) > 0 then ($ilm_delete_scheduled_7d_gb | tonumber) else null end),
+                    shards: $ilm_shards_scheduled_7d
+                },
+                scheduled_30d: {
+                    indices: $ilm_indices_scheduled_30d,
+                    storage_gb: (if ($ilm_delete_scheduled_30d_gb | length) > 0 then ($ilm_delete_scheduled_30d_gb | tonumber) else null end),
+                    shards: $ilm_shards_scheduled_30d
+                },
+                indices_to_delete_7d: $ilm_indices_7d,
+                storage_to_delete_7d_gb: (if ($ilm_delete_7d_gb | length) > 0 then ($ilm_delete_7d_gb | tonumber) else null end),
+                shards_to_delete_7d: $ilm_shards_7d,
+                total_30d_indices: $ilm_indices_30d,
+                total_30d_storage_gb: (if ($ilm_delete_30d_gb | length) > 0 then ($ilm_delete_30d_gb | tonumber) else null end),
+                total_30d_shards: $ilm_shards_30d,
+                percent_of_current_data: (if ($ilm_impact_pct | length) > 0 then ($ilm_impact_pct | tonumber) else null end),
+                windowed_daily_avg_gb: (if ($ilm_window_daily_gb | length) > 0 then ($ilm_window_daily_gb | tonumber) else null end),
+            },
+            cluster: {
+                total_gb: ($cluster_total_gb | tonumber),
+                used_gb: ($cluster_used_gb | tonumber),
+                remaining_before_low_watermark_gb: (if ($cluster_remaining_gb | length) > 0 then ($cluster_remaining_gb | tonumber) else null end),
+                low_watermark_threshold_gb: (if ($cluster_low_threshold_gb | length) > 0 then ($cluster_low_threshold_gb | tonumber) else null end),
+                high_watermark_threshold_gb: (if ($cluster_high_threshold_gb | length) > 0 then ($cluster_high_threshold_gb | tonumber) else null end),
+                over_low_watermark_gb: (if ($cluster_over_low_gb | length) > 0 then ($cluster_over_low_gb | tonumber) else null end),
+                over_high_watermark_gb: (if ($cluster_over_high_gb | length) > 0 then ($cluster_over_high_gb | tonumber) else null end),
+                low_watermark_setting: $low_watermark,
+                high_watermark_setting: $high_watermark,
+                flood_watermark_setting: $flood_watermark,
+                shards: {
+                    current: $total_shards,
+                    max_capacity: $max_shard_capacity,
+                    usage_percent: (if ($shard_usage_percent | length) > 0 then ($shard_usage_percent | tonumber) else null end),
+                    data_nodes: $data_node_count,
+                    max_shards_per_node: $max_shards_per_node
+                }
+            },
+            projection: {
+                days_to_low_watermark_net: (if $days_to_low == "null" or $days_to_low == "stable" then $days_to_low else ($days_to_low | tonumber) end),
+                days_to_low_watermark_gross: (if $days_to_low_gross == "null" then null else ($days_to_low_gross | tonumber) end),
+                estimated_breach_date: (if $estimated_date == "null" then null else $estimated_date end)
+            },
+            recommendations: {
+                triggered: $recommendations_triggered,
+                message: (if ($recommendation_message | length) > 0 then $recommendation_message else null end),
+                indices: $recommendations
+            }
+        }'
+else
+    log_title "LOG" "Storage Overview"
+
+    indexed_gb_display=$(bytes_to_gb "$cluster_storage_size")
+    echo -e "${BOLD}Indexed data size:${NC}       ${indexed_gb_display} GB (Elasticsearch)"
+    echo -e "${BOLD}Cluster capacity:${NC}        $(bytes_to_gb "$cluster_total") GB total"
+    echo -e "${BOLD}Cluster used:${NC}            $(bytes_to_gb "$cluster_used") GB"
+    echo -e "${BOLD}Low watermark:${NC}           $low ($(bytes_to_gb "$cluster_low_threshold") GB threshold)"
+    if [ "$cluster_over_low_flag" -eq 1 ]; then
+        if [ "$cluster_over_high_flag" -eq 1 ]; then
+            echo -e "${BOLD}Remaining space:${NC}         ${REDBOLD}${cluster_over_high_gb} GB${NC} OVER the high watermark"
+        else
+            echo -e "${BOLD}Remaining space:${NC}         ${YELLOWBOLD}${cluster_over_low_gb} GB${NC} OVER the low watermark"
+        fi
+    else
+        echo -e "${BOLD}Remaining space:${NC}         $(bytes_to_gb "$cluster_remaining") GB before low watermark"
+    fi
+
+    # Display shard capacity information
+    shard_warning_flag=$(awk -v pct="$shard_usage_percent" 'BEGIN { if (pct + 0 >= 80) print 1; else print 0 }')
+    if [ "$shard_warning_flag" -eq 1 ]; then
+        echo -e "${BOLD}Cluster shards:${NC}          ${YELLOW}${total_shards} / ${max_shard_capacity} (${shard_usage_percent}%)${NC}"
+    else
+        echo -e "${BOLD}Cluster shards:${NC}          ${total_shards} / ${max_shard_capacity} (${shard_usage_percent}%)"
+    fi
+
+    # Display data nodes with roles (only data-related roles)
+    if [ "$data_node_count" -gt 0 ]; then
+        echo -e "${BOLD}Cluster data nodes:${NC}      ${data_node_count}"
+        for i in "${!data_node_names[@]}"; do
+            node_name="${data_node_names[$i]}"
+            node_role="${data_node_roles[$i]}"
+            expanded_roles=$(expand_node_roles "$node_role")
+            echo -e "  ${node_name}: ${expanded_roles}"
+        done
+    fi
+
+    log_title "LOG" "ES Growth"
+
+    echo -e "${BOLD}Daily growth rate:${NC}       $(bytes_to_gb "$daily_growth_bytes") GB/day"
+
+    if [ "$daily_ilm_delete_bytes" -gt 0 ]; then
+        echo -e "${BOLD}ILM deletion rate:${NC}       ${daily_ilm_delete_gb} GB/day (scheduled)"
+        echo -e "${BOLD}Net growth rate:${NC}         $(bytes_to_gb "$net_growth_bytes") GB/day"
+    else
+        echo -e "${BOLD}ILM deletion rate:${NC}       0.00 GB/day (scheduled)"
+        echo -e "${BOLD}Net growth rate:${NC}         $(bytes_to_gb "$net_growth_bytes") GB/day"
+    fi
+
+    # Display daily shards
+    if [ -n "$daily_shard_creation" ] && [ "$(awk -v d="$daily_shard_creation" 'BEGIN { if (d > 0) print 1; else print 0 }')" -eq 1 ]; then
+        daily_shard_creation_rounded=$(awk -v d="$daily_shard_creation" 'BEGIN { printf "%.0f", d }')
+        echo -e "${BOLD}Daily shard creation:${NC}    ~${daily_shard_creation_rounded} shards/day"
+    fi
+
+    if [ "$ilm_indices_immediate" -gt 0 ]; then
+        echo -e "${BOLD}Deleting now:${NC}            $ilm_indices_immediate indices (~${ilm_delete_immediate_gb} GB, $ilm_shards_immediate shards)"
+    fi
+    if [ "$ilm_indices_7d" -gt 0 ]; then
+        echo -e "${BOLD}Storage to be freed (7d):${NC}  $ilm_indices_7d indices (~${ilm_delete_7d_gb} GB, $ilm_shards_7d shards)"
+    fi
+
+    log_title "LOG" "Retention Projection"
+
+    if [ -n "$oldest_index_days" ]; then
+        oldest_days_rounded=$(awk -v d="$oldest_index_days" 'BEGIN { printf "%.0f", d }')
+        if [ -n "$oldest_index_name" ]; then
+            echo -e "${BOLD}Oldest index:${NC}            ~${oldest_days_rounded} days (${oldest_index_name})"
+        else
+            echo -e "${BOLD}Oldest index:${NC}            ~${oldest_days_rounded} days (.ds-logs-* only)"
+        fi
+
+        if [ -n "$estimated_retention_days" ]; then
+            estimated_days_rounded=$(awk -v d="$estimated_retention_days" 'BEGIN { printf "%.0f", d }')
+            echo -e "${BOLD}Estimated retention:${NC}     ~${estimated_days_rounded} days (until configured low watermark setting)"
+        fi
+        echo
+    fi
+
+    if [ "$days_to_low" = "stable" ]; then
+        if [ "$net_growth_bytes" -lt 0 ]; then
+            shrink_rate_gb=$(bytes_to_gb "${net_growth_bytes#-}")
+            log_title "OK" "Cluster is shrinking - ILM deletions exceed growth"
+            echo
+            echo -e "${BOLD}Storage trend:${NC} Decreasing at ~${shrink_rate_gb} GB/day"
+            echo -e "${BOLD}Note:${NC} Current ILM policies are reclaiming more space than incoming data consumes."
+            if [ "$cluster_over_low_bytes" -gt 0 ] 2>/dev/null; then
+                recovery_days=$(awk -v excess="$cluster_over_low_bytes" -v rate="${net_growth_bytes#-}" 'BEGIN {
+                    if (rate <= 0) { print ""; exit }
+                    printf "%.1f", excess / rate
+                }')
+                if [ -n "$recovery_days" ]; then
+                    echo -e "${BOLD}Recovery time:${NC} Estimated ${recovery_days} days to fall below the low watermark if trend continues"
+                fi
+            fi
+        else
+            log_title "OK" "Cluster is in equilibrium - ILM deletions balance growth"
+            echo
+            echo -e "${BOLD}Storage trend:${NC} Stable (net growth ~0 GB/day)"
+            echo -e "${BOLD}Note:${NC} Current ILM policies are keeping storage steady."
+        fi
+    elif [ -z "$days_to_low" ]; then
+        if [ "$net_growth_bytes" -lt 0 ] && [ "$daily_ilm_delete_bytes" -gt 0 ]; then
+            shrink_rate_gb=$(bytes_to_gb "${net_growth_bytes#-}")
+            log_title "OK" "Cluster is shrinking - ILM deletions exceed growth"
+            echo
+            echo -e "${BOLD}Storage trend:${NC} Decreasing at ~${shrink_rate_gb} GB/day"
+            echo -e "${BOLD}Note:${NC} Storage is expected to continue decreasing due to ILM policies."
+        elif [ "$daily_growth_bytes" -le 0 ]; then
+            log_title "WARN" "Unable to project: Growth rate is zero or negative"
+        elif [ "$(echo "$cluster_remaining <= 0" | bc -l 2>/dev/null || awk -v r="$cluster_remaining" 'BEGIN { if (r <= 0) print 1; else print 0 }')" -eq 1 ]; then
+            log_title "ERROR" "Cluster already at low watermark threshold! Review recommendations below and consider updating ILM."
+        else
+            log_title "WARN" "Unable to calculate projection"
+        fi
+    else
+        if (( $(echo "$days_to_low < 7" | bc -l 2>/dev/null || awk -v d="$days_to_low" 'BEGIN { if (d < 7) print 1; else print 0 }') )); then
+            log_title "ERROR" "Low watermark breach estimated in ~$days_to_low days (${target_date:-N/A})"
+        elif (( $(echo "$days_to_low < 14" | bc -l 2>/dev/null || awk -v d="$days_to_low" 'BEGIN { if (d < 14) print 1; else print 0 }') )); then
+            log_title "WARN" "Low watermark breach estimated in ~$days_to_low days (${target_date:-N/A})"
+        else
+            log_title "OK" "Low watermark breach estimated in ~$days_to_low days (${target_date:-N/A})"
+        fi
+        echo
+    fi
+
+    if [ "$recommendations_triggered" = true ]; then
+        log_title "LOG" "Recommendations"
+        if [ "$recommendations_ready" = true ]; then
+            echo -e "${BOLD}Action:${NC} Reduce retention on the fastest-growing indices to reduce overall storage usage."
+            for rec_line in "${recommendation_lines[@]}"; do
+                echo -e "$rec_line"
+            done
+        else
+            if [ -n "$recommendations_message" ]; then
+                echo -e "${BOLD}Note:${NC} $recommendations_message"
+            fi
+        fi
+        echo
+    fi
+
+    if [ "$VERBOSE" = true ]; then
+        log_title "LOG" "Scheduled Deletions (Detailed)"
+
+        if [ ${#immediate_indices_names[@]} -gt 0 ]; then
+            echo -e "${BOLD}Deleting Now (in delete phase):${NC}"
+            echo
+            total_immediate_mb=0
+            for i in "${!immediate_indices_names[@]}"; do
+                index_name="${immediate_indices_names[$i]}"
+                size_bytes="${immediate_indices_sizes[$i]}"
+                size_mb=$(awk -v b="$size_bytes" 'BEGIN { printf "%.2f", b / 1024 / 1024 }')
+                total_immediate_mb=$(awk -v total="$total_immediate_mb" -v size="$size_mb" 'BEGIN { printf "%.2f", total + size }')
+                printf "  %-60s %10s MB\n" "$index_name" "$size_mb"
+            done
+            echo -e "${BOLD}Total:${NC} ${total_immediate_mb} MB (${#immediate_indices_names[@]} indices)"
+            echo
+        fi
+
+        if [ ${#scheduled_indices_names[@]} -gt 0 ]; then
+            echo -e "${BOLD}Scheduled for Deletion (≤7 days):${NC}"
+            echo
+            total_scheduled_mb=0
+            # Sort by days_until deletion
+            sorted_indices=()
+            for i in "${!scheduled_indices_names[@]}"; do
+                sorted_indices+=("${scheduled_indices_days[$i]}|${scheduled_indices_names[$i]}|${scheduled_indices_sizes[$i]}")
+            done
+            OLD_IFS="$IFS"
+            IFS=$'\n' sorted_indices=($(sort -t'|' -k1 -n <<<"${sorted_indices[*]}"))
+            IFS="$OLD_IFS"
+
+            for entry in "${sorted_indices[@]}"; do
+                IFS='|' read -r days_until index_name size_bytes <<< "$entry"
+                size_mb=$(awk -v b="$size_bytes" 'BEGIN { printf "%.2f", b / 1024 / 1024 }')
+                total_scheduled_mb=$(awk -v total="$total_scheduled_mb" -v size="$size_mb" 'BEGIN { printf "%.2f", total + size }')
+                days_display=$(awk -v d="$days_until" 'BEGIN { printf "%.1f", d }')
+                printf "  %-55s %10s MB (in ~%s days)\n" "$index_name" "$size_mb" "$days_display"
+            done
+            echo -e "${BOLD}Total:${NC} ${total_scheduled_mb} MB (${#scheduled_indices_names[@]} indices)"
+            echo
+        fi
+
+        if [ ${#immediate_indices_names[@]} -eq 0 ] && [ ${#scheduled_indices_names[@]} -eq 0 ]; then
+            echo -e "No indices scheduled for deletion within the next 7 days."
+            echo
+        fi
+    fi
+    echo
+fi
+
+exit 0

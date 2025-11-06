@@ -1,6 +1,6 @@
 elasticsearch:
   enabled: false
-  version: 8.18.6
+  version: 8.18.8
   index_clean: true
   config:
     action:
@@ -1955,6 +1955,70 @@ elasticsearch:
             index:
               lifecycle:
                 name: so-logs-elastic_agent.packetbeat-logs
+              mapping:
+                total_fields:
+                  limit: 5000
+              number_of_replicas: 0
+              sort:
+                field: '@timestamp'
+                order: desc
+      policy:
+        _meta:
+          managed: true
+          managed_by: security_onion
+          package:
+            name: elastic_agent
+        phases:
+          cold:
+            actions:
+              set_priority:
+                priority: 0
+            min_age: 60d
+          delete:
+            actions:
+              delete: {}
+            min_age: 365d
+          hot:
+            actions:
+              rollover:
+                max_age: 30d
+                max_primary_shard_size: 50gb
+              set_priority:
+                priority: 100
+            min_age: 0ms
+          warm:
+            actions:
+              set_priority:
+                priority: 50
+            min_age: 30d
+    so-logs-elasticsearch_x_server:
+      index_sorting: false
+      index_template:
+        composed_of:
+        - logs-elasticsearch.server@package
+        - logs-elasticsearch.server@custom
+        - so-fleet_integrations.ip_mappings-1
+        - so-fleet_globals-1
+        - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
+        ignore_missing_component_templates:
+        - logs-elasticsearch.server@custom
+        index_patterns:
+        - logs-elasticsearch.server-*
+        priority: 501
+        template:
+          mappings:
+            _meta:
+              managed: true
+              managed_by: security_onion
+              package:
+                name: elastic_agent
+          settings:
+            index:
+              lifecycle:
+                name: so-logs-elasticsearch.server-logs
               mapping:
                 total_fields:
                   limit: 5000

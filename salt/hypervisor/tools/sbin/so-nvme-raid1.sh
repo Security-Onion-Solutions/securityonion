@@ -30,7 +30,9 @@
 #
 # WARNING: This script will DESTROY all data on the target drives!
 #
-# USAGE: sudo ./so-nvme-raid1.sh
+# USAGE: 
+#   sudo ./so-nvme-raid1.sh              # Normal operation
+#   sudo ./so-nvme-raid1.sh --force-cleanup  # Force cleanup of existing RAID
 #
 #################################################################
 
@@ -41,6 +43,19 @@ set -e
 RAID_ARRAY_NAME="md0"
 RAID_DEVICE="/dev/${RAID_ARRAY_NAME}"
 MOUNT_POINT="/nsm"
+FORCE_CLEANUP=false
+
+# Parse command line arguments
+for arg in "$@"; do
+    case $arg in
+        --force-cleanup)
+            FORCE_CLEANUP=true
+            shift
+            ;;
+        *)
+            ;;
+    esac
+done
 
 # Function to log messages
 log() {
@@ -53,6 +68,91 @@ check_root() {
         log "Error: Please run as root"
         exit 1
     fi
+}
+
+# Function to force cleanup all RAID components
+force_cleanup_raid() {
+    log "=== FORCE CLEANUP MODE ==="
+    log "This will destroy all RAID configurations and data on target drives!"
+    
+    # Stop all MD arrays
+    log "Stopping all MD arrays"
+    mdadm --stop --scan 2>/dev/null || true
+    
+    # Wait for arrays to stop
+    sleep 2
+    
+    # Remove any running md devices
+    for md in /dev/md*; do
+        if [ -b "$md" ]; then
+            log "Stopping $md"
+            mdadm --stop "$md" 2>/dev/null || true
+        fi
+    done
+    
+    # Force cleanup both NVMe drives
+    for device in "/dev/nvme0n1" "/dev/nvme1n1"; do
+        log "Force cleaning $device"
+        
+        # Kill any processes using the device
+        fuser -k "${device}"* 2>/dev/null || true
+        
+        # Unmount any mounted partitions
+        for part in "${device}"*; do
+            if [ -b "$part" ]; then
+                umount -f "$part" 2>/dev/null || true
+            fi
+        done
+        
+        # Force zero RAID superblocks on partitions
+        for part in "${device}"p*; do
+            if [ -b "$part" ]; then
+                log "Zeroing RAID superblock on $part"
+                mdadm --zero-superblock --force "$part" 2>/dev/null || true
+            fi
+        done
+        
+        # Zero superblock on the device itself
+        log "Zeroing RAID superblock on $device"
+        mdadm --zero-superblock --force "$device" 2>/dev/null || true
+        
+        # Remove LVM physical volumes
+        pvremove -ff -y "$device" 2>/dev/null || true
+        
+        # Wipe all filesystem and partition signatures
+        log "Wiping all signatures from $device"
+        wipefs -af "$device" 2>/dev/null || true
+        
+        # Overwrite the beginning of the drive (partition table area)
+        log "Clearing partition table on $device"
+        dd if=/dev/zero of="$device" bs=1M count=10 2>/dev/null || true
+        
+        # Clear the end of the drive (backup partition table area)
+        local device_size=$(blockdev --getsz "$device" 2>/dev/null || echo "0")
+        if [ "$device_size" -gt 0 ]; then
+            dd if=/dev/zero of="$device" bs=512 seek=$(( device_size - 2048 )) count=2048 2>/dev/null || true
+        fi
+        
+        # Force kernel to re-read partition table
+        blockdev --rereadpt "$device" 2>/dev/null || true
+        partprobe -s "$device" 2>/dev/null || true
+    done
+    
+    # Clear mdadm configuration
+    log "Clearing mdadm configuration"
+    echo "DEVICE partitions" > /etc/mdadm.conf
+    
+    # Remove any fstab entries for the RAID device or mount point
+    log "Cleaning fstab entries"
+    sed -i "\|${RAID_DEVICE}|d" /etc/fstab
+    sed -i "\|${MOUNT_POINT}|d" /etc/fstab
+    
+    # Wait for system to settle
+    udevadm settle
+    sleep 5
+    
+    log "Force cleanup complete!"
+    log "Proceeding with RAID setup..."
 }
 
 # Function to find MD arrays using specific devices
@@ -205,10 +305,15 @@ check_existing_raid() {
             fi
             
             log "Error: $device appears to be part of an existing RAID array"
-            log "To reuse this device, you must first:"
-            log "1. Unmount any filesystems"
-            log "2. Stop the RAID array: mdadm --stop $array_name"
-            log "3. Zero the superblock: mdadm --zero-superblock ${device}p1"
+            log "Old RAID metadata detected but array is not running."
+            log ""
+            log "To fix this, run the script with --force-cleanup:"
+            log "  sudo $0 --force-cleanup"
+            log ""
+            log "Or manually clean up with:"
+            log "1. Stop any arrays: mdadm --stop --scan"
+            log "2. Zero superblocks: mdadm --zero-superblock --force ${device}p1"
+            log "3. Wipe signatures: wipefs -af $device"
             exit 1
         fi
     done
@@ -238,7 +343,7 @@ ensure_devices_free() {
     done
     
     # Clear MD superblock
-    mdadm --zero-superblock "${device}"* 2>/dev/null || true
+    mdadm --zero-superblock --force "${device}"* 2>/dev/null || true
     
     # Remove LVM PV if exists
     pvremove -ff -y "$device" 2>/dev/null || true
@@ -262,6 +367,11 @@ main() {
     
     # Check if running as root
     check_root
+    
+    # If force cleanup flag is set, do aggressive cleanup first
+    if [ "$FORCE_CLEANUP" = true ]; then
+        force_cleanup_raid
+    fi
     
     # Check for existing RAID setup
     check_existing_raid

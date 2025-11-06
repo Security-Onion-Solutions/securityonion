@@ -1,18 +1,22 @@
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 {% from 'salt/map.jinja' import UPGRADECOMMAND with context %}
 {% from 'salt/map.jinja' import SALTVERSION %}
 {% from 'salt/map.jinja' import INSTALLEDSALTVERSION %}
 {% from 'salt/map.jinja' import SALTPACKAGES %}
-{% from 'salt/map.jinja' import SYSTEMD_UNIT_FILE %}
 {% import_yaml 'salt/minion.defaults.yaml' as SALTMINION %}
 
 include:
   - salt.python_modules
   - salt.patch.x509_v2
   - salt
-  - systemd.reload
   - repo.client
   - salt.mine_functions
+  - salt.minion.service_file
 {% if GLOBALS.role in GLOBALS.manager_roles %}
   - ca
 {% endif %}
@@ -93,17 +97,6 @@ enable_startup_states:
     - name: /etc/salt/minion
     - regex: '^startup_states: highstate$'
     - unless: pgrep so-setup
-
-# prior to 2.4.30 this managed file would restart the salt-minion service when updated
-# since this file is currently only adding a delay service start
-# it is not required to restart the service
-salt_minion_service_unit_file:
-  file.managed:
-    - name: {{ SYSTEMD_UNIT_FILE }}
-    - source: salt://salt/service/salt-minion.service.jinja
-    - template: jinja
-    - onchanges_in:
-      - module: systemd_reload
 
 {% endif %}
 

@@ -132,6 +132,10 @@ if [[ -f /root/accept_changes ]]; then
 	reset_proxy
 fi
 
+# Previous setup attempts, even if setup doesn't actually start the installation,
+# can leave behind results that may interfere with the current setup attempt.
+clear_previous_setup_results
+
 title "Parsing Username for Install"
 parse_install_username
 
@@ -762,6 +766,7 @@ if ! [[ -f $install_opt_file ]]; then
 		fi
 		logCmd "salt-call state.apply common.packages"
 		logCmd "salt-call state.apply common"
+		hypervisor_local_states
 		# this will apply the salt.minion state first since salt.master includes salt.minion
 		logCmd "salt-call state.apply salt.master"
 		# wait here until we get a response from the salt-master since it may have just restarted
@@ -826,7 +831,6 @@ if ! [[ -f $install_opt_file ]]; then
 		checkin_at_boot
 		set_initial_firewall_access
 		logCmd "salt-call schedule.enable -linfo --local"
-		hypervisor_local_states
 		verify_setup
 	else
 		touch /root/accept_changes

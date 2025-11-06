@@ -220,12 +220,22 @@ compare_es_versions() {
 }
 
 copy_new_files() {
+  # Define files to exclude from deletion (relative to their respective base directories)
+  local EXCLUDE_FILES=(
+    "salt/hypervisor/soc_hypervisor.yaml"
+  )
+  
+  # Build rsync exclude arguments
+  local EXCLUDE_ARGS=()
+  for file in "${EXCLUDE_FILES[@]}"; do
+    EXCLUDE_ARGS+=(--exclude="$file")
+  done
+  
   # Copy new files over to the salt dir
   cd $UPDATE_DIR
-  rsync -a salt $DEFAULT_SALT_DIR/ --delete
-  rsync -a pillar $DEFAULT_SALT_DIR/ --delete
+  rsync -a salt $DEFAULT_SALT_DIR/ --delete "${EXCLUDE_ARGS[@]}"
+  rsync -a pillar $DEFAULT_SALT_DIR/ --delete "${EXCLUDE_ARGS[@]}"
   chown -R socore:socore $DEFAULT_SALT_DIR/
-  chmod 755 $DEFAULT_SALT_DIR/pillar/firewall/addfirewall.sh
   cd /tmp
 }
 
@@ -441,8 +451,7 @@ lookup_grain() {
 
 lookup_role() {
 	id=$(lookup_grain id)
-	pieces=($(echo $id | tr '_' ' '))
-	echo ${pieces[1]}
+	echo "${id##*_}"
 }
 
 is_feature_enabled() {
