@@ -756,7 +756,7 @@ if [ "$should_trigger_recommendations" = true ]; then
 
             ilm_output=$(so-elasticsearch-query "${index}/_ilm/explain" --fail 2>/dev/null) || true
             if [ -n "$ilm_output" ]; then
-                policy=$(echo "$ilm_output" | jq -r ".indices.\"$index\".policy // empty" 2>/dev/null)
+                policy=$(echo "$ilm_output" | jq -r '.indices | to_entries | .[0].value.policy // empty' 2>/dev/null)
             fi
             if [ -n "$policy" ] && [ -n "${policy_ages[$policy]:-}" ]; then
                 delete_min_age=${policy_ages[$policy]}
