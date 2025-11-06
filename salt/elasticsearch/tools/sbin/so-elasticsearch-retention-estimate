@@ -41,13 +41,13 @@ create_temp_file() {
 }
 
 log_title() {
-    if [ $1 == "LOG" ]; then
+    if [ "$1" == "LOG" ]; then
         echo -e "\n${BOLD}================ $2 ================${NC}\n"
-    elif [ $1 == "OK" ]; then
+    elif [ "$1" == "OK" ]; then
         echo -e "${GREEN} $2 ${NC}"
-    elif [ $1 == "WARN" ]; then
+    elif [ "$1" == "WARN" ]; then
         echo -e "${YELLOW} $2 ${NC}"
-    elif [ $1 == "ERROR" ]; then
+    elif [ "$1" == "ERROR" ]; then
         echo -e "${RED} $2 ${NC}"
     fi
 }
@@ -1138,8 +1138,9 @@ else
             for i in "${!scheduled_indices_names[@]}"; do
                 sorted_indices+=("${scheduled_indices_days[$i]}|${scheduled_indices_names[$i]}|${scheduled_indices_sizes[$i]}")
             done
+            OLD_IFS="$IFS"
             IFS=$'\n' sorted_indices=($(sort -t'|' -k1 -n <<<"${sorted_indices[*]}"))
-            unset IFS
+            IFS="$OLD_IFS"
 
             for entry in "${sorted_indices[@]}"; do
                 IFS='|' read -r days_until index_name size_bytes <<< "$entry"
