@@ -53,13 +53,15 @@ suridir:
   file.directory:
     - name: /opt/so/conf/suricata
     - user: 940
-    - group: 940
+    - group: 939
+    - mode: 775
 
 suriruledir:
   file.directory:
     - name: /opt/so/conf/suricata/rules
     - user: 940
-    - group: 940
+    - group: 939
+    - mode: 775
     - makedirs: True
 
 surilogdir:
@@ -124,10 +126,7 @@ suriconfig:
 surithresholding:
   file.managed:
     - name: /opt/so/conf/suricata/threshold.conf
-    - source: salt://suricata/files/threshold.conf.jinja
-    - user: 940
-    - group: 940
-    - template: jinja
+    - replace: False
 
 suriclassifications:
   file.managed:
