@@ -26,8 +26,8 @@ def showUsage(args):
     print('  Where:', file=sys.stderr)
     print('   YAML_FILE       - Path to the file that will be modified. Ex: /opt/so/conf/service/conf.yaml', file=sys.stderr)
     print('   KEY             - YAML key, does not support \' or " characters at this time. Ex: level1.level2', file=sys.stderr)
-    print('   VALUE           - Value to set for a given key', file=sys.stderr)
-    print('   LISTITEM        - Item to append to a given key\'s list value', file=sys.stderr)
+    print('   VALUE           - Value to set for a given key. Can be a literal value or file:<path> to load from a YAML file.', file=sys.stderr)
+    print('   LISTITEM        - Item to append to a given key\'s list value. Can be a literal value or file:<path> to load from a YAML file.', file=sys.stderr)
     sys.exit(1)
 
 
@@ -58,7 +58,13 @@ def appendItem(content, key, listItem):
 
 
 def convertType(value):
-    if isinstance(value, str) and len(value) > 0 and (not value.startswith("0") or len(value) == 1):
+    if isinstance(value, str) and value.startswith("file:"):
+        path = value[5:]  # Remove "file:" prefix
+        if not os.path.exists(path):
+            print(f"File '{path}' does not exist.", file=sys.stderr)
+            sys.exit(1)
+        return loadYaml(path)
+    elif isinstance(value, str) and len(value) > 0 and (not value.startswith("0") or len(value) == 1):
         if "." in value:
             try:
                 value = float(value)
