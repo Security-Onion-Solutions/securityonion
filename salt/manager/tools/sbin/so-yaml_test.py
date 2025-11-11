@@ -378,10 +378,10 @@ class TestRemove(unittest.TestCase):
             os.unlink(temp_file)
 
     def test_convert_file_nonexistent(self):
-        with patch('sys.exit', new=MagicMock()) as sysmock:
+        with self.assertRaises(SystemExit) as cm:
             with patch('sys.stderr', new=StringIO()) as mock_stderr:
                 soyaml.convertType("file:/nonexistent/file.yaml")
-                sysmock.assert_called_once_with(1)
+                self.assertEqual(cm.exception.code, 1)
                 self.assertIn("File '/nonexistent/file.yaml' does not exist.", mock_stderr.getvalue())
 
     def test_get_int(self):
