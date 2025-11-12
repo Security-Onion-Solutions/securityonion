@@ -7,9 +7,47 @@
 {% if sls.split('.')[0] in allowed_states %}
 
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
-{%   from 'bpf/suricata.map.jinja' import SURICATABPF %}
 {%   from 'suricata/map.jinja' import SURICATAMERGED %}
-{%   set BPF_STATUS = 0  %}
+{%   from 'bpf/suricata.map.jinja' import SURICATABPF, SURICATA_BPF_STATUS, SURICATA_BPF_CALC %}
+
+suridir:
+  file.directory:
+    - name: /opt/so/conf/suricata
+    - user: 940
+    - group: 940
+
+{%   if GLOBALS.pcap_engine in ["SURICATA", "TRANSITION"] %}
+{%     from 'bpf/pcap.map.jinja' import PCAPBPF, PCAP_BPF_STATUS, PCAP_BPF_CALC %}
+# BPF compilation and configuration
+{%     if PCAPBPF and not PCAP_BPF_STATUS %}
+suriPCAPbpfcompilationfailure:
+  test.configurable_test_state:
+    - changes: False
+    - result: False
+    - comment: "BPF Syntax Error - Discarding Specified BPF. Error: {{ PCAP_BPF_CALC['stderr'] }}"
+{%     endif %}
+{%   endif %}
+
+# BPF applied to all of Suricata - alerts/metadata/pcap
+suribpf:
+  file.managed:
+    - name: /opt/so/conf/suricata/bpf
+    - user: 940
+    - group: 940
+   {% if SURICATA_BPF_STATUS %}
+    - contents: {{ SURICATABPF }}
+   {% else %}
+    - contents:
+      - ""
+   {% endif %}
+
+{%   if SURICATABPF and not SURICATA_BPF_STATUS %}
+suribpfcompilationfailure:
+  test.configurable_test_state:
+    - changes: False
+    - result: False
+    - comment: "BPF Syntax Error - Discarding Specified BPF. Error: {{ SURICATA_BPF_CALC['stderr'] }}"
+{%   endif %}
 
 # Add Suricata Group
 suricatagroup:
@@ -134,32 +172,6 @@ suriclassifications:
     - source: salt://suricata/classification/classification.config
     - user: 940
     - group: 940
-
-# BPF compilation and configuration
-{% if SURICATABPF %}
-   {% set BPF_CALC = salt['cmd.script']('salt://common/tools/sbin/so-bpf-compile', GLOBALS.sensor.interface + ' ' + SURICATABPF|join(" "),cwd='/root') %}
-   {% if BPF_CALC['stderr'] == "" %}
-      {% set BPF_STATUS = 1  %}
-   {% else  %}
-suribpfcompilationfailure:
-  test.configurable_test_state:
-   - changes: False
-   - result: False
-   - comment: "BPF Syntax Error - Discarding Specified BPF"
-   {% endif %}
-{% endif %}
-
-suribpf:
-  file.managed:
-    - name: /opt/so/conf/suricata/bpf
-    - user: 940
-    - group: 940
-   {% if BPF_STATUS %}
-    - contents: {{ SURICATABPF }}
-   {% else %}
-    - contents:
-      - ""
-   {% endif %}
 
 so-suricata-eve-clean:
   file.managed:

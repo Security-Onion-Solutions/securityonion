@@ -8,12 +8,9 @@
 
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 {% from "pcap/config.map.jinja" import PCAPMERGED %}
-{% from 'bpf/pcap.map.jinja' import PCAPBPF %}
-
-{% set BPF_COMPILED = "" %}
+{% from 'bpf/pcap.map.jinja' import PCAPBPF, PCAP_BPF_STATUS, PCAP_BPF_CALC, STENO_BPF_COMPILED %}
 
 # PCAP Section
-
 stenographergroup:
   group.present:
     - name: stenographer
@@ -40,18 +37,12 @@ pcap_sbin:
     - group: 939
     - file_mode: 755
 
-{% if PCAPBPF %}
-   {% set BPF_CALC = salt['cmd.script']('salt://common/tools/sbin/so-bpf-compile', GLOBALS.sensor.interface + ' ' + PCAPBPF|join(" "),cwd='/root') %}
-   {% if BPF_CALC['stderr'] == "" %}
-      {% set BPF_COMPILED =  ",\\\"--filter=" + BPF_CALC['stdout'] + "\\\""  %}
-   {% else  %}
-
-bpfcompilationfailure:
+{% if PCAPBPF and not PCAP_BPF_STATUS %}
+stenoPCAPbpfcompilationfailure:
   test.configurable_test_state:
    - changes: False
    - result: False
-   - comment: "BPF Compilation Failed - Discarding Specified BPF"
-   {% endif %}
+  - comment: "BPF Syntax Error - Discarding Specified BPF. Error: {{ PCAP_BPF_CALC['stderr'] }}"
 {% endif %}
 
 stenoconf:
@@ -64,7 +55,7 @@ stenoconf:
     - template: jinja
     - defaults:
         PCAPMERGED: {{ PCAPMERGED }}
-        BPF_COMPILED: "{{ BPF_COMPILED }}"
+        STENO_BPF_COMPILED: "{{ STENO_BPF_COMPILED }}"
 
 stenoca:
   file.directory:

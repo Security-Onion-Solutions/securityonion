@@ -34,7 +34,7 @@ suricata:
       threads: 1
       tpacket-v3: "yes"
       ring-size: 5000
-      block-size: 32768
+      block-size: 69632
       block-timeout: 10
       use-emergency-flush: "yes"
       buffer-size: 32768
@@ -97,6 +97,11 @@ suricata:
           - 4789
         TEREDO_PORTS:
           - 3544
+        SIP_PORTS:
+          - 5060
+          - 5061
+        GENEVE_PORTS:
+          - 6081
     default-log-dir: /var/log/suricata/
     stats:
       enabled: "yes"
@@ -134,14 +139,6 @@ suricata:
               header: X-Forwarded-For
       unified2-alert:
         enabled: "no"
-      http-log:
-        enabled: "no"
-        filename: http.log
-        append: "yes"
-      tls-log:
-        enabled: "no"
-        filename: tls.log
-        append: "yes"
       tls-store:
         enabled: "no"
       pcap-log:
@@ -157,9 +154,6 @@ suricata:
         totals: "yes"
         threads: "no"
         null-values: "yes"
-      syslog:
-        enabled: "no"
-        facility: local5
       drop:
         enabled: "no"
       file-store:
@@ -206,6 +200,9 @@ suricata:
           enabled: "yes"
           detection-ports:
             dp: 443
+          ja3-fingerprints: auto
+          ja4-fingerprints: auto
+          encryption-handling: track-only
         dcerpc:
           enabled: "yes"
         ftp:
@@ -255,19 +252,21 @@ suricata:
           libhtp:
              default-config:
                personality: IDS
-               request-body-limit: 100kb
-               response-body-limit: 100kb
-               request-body-minimal-inspect-size: 32kb
-               request-body-inspect-window: 4kb
-               response-body-minimal-inspect-size: 40kb
-               response-body-inspect-window: 16kb
+               request-body-limit: 100 KiB
+               response-body-limit: 100 KiB
+               request-body-minimal-inspect-size: 32 KiB
+               request-body-inspect-window: 4 KiB
+               response-body-minimal-inspect-size: 40 KiB
+               response-body-inspect-window: 16 KiB
                response-body-decompress-layer-limit: 2
                http-body-inline: auto
                swf-decompression:
-                 enabled: "yes"
+                 enabled: "no"
                  type: both
-                 compress-depth: 0
-                 decompress-depth: 0
+                 compress-depth: 100 KiB
+                 decompress-depth: 100 KiB
+               randomize-inspection-sizes: "yes"
+               randomize-inspection-range: 10
                double-decode-path: "no"
                double-decode-query: "no"
              server-config:
@@ -401,8 +400,12 @@ suricata:
       vxlan:
         enabled: true
         ports: $VXLAN_PORTS
-      erspan:
+      geneve:
         enabled: true
+        ports: $GENEVE_PORTS
+        max-layers: 16
+      recursion-level:
+        use-for-tracking: true
     detect:
       profile: medium
       custom-values:
@@ -422,7 +425,12 @@ suricata:
     spm-algo: auto
     luajit:
       states: 128
-
+    security:
+      lua:
+        allow-rules: false
+        max-bytes: 500000 
+        max-instructions: 500000
+        allow-restricted-functions: false
     profiling:
       rules:
         enabled: "yes"
