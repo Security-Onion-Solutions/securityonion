@@ -10,12 +10,6 @@
 {%   from 'suricata/map.jinja' import SURICATAMERGED %}
 {%   from 'bpf/suricata.map.jinja' import SURICATABPF, SURICATA_BPF_STATUS, SURICATA_BPF_CALC %}
 
-suridir:
-  file.directory:
-    - name: /opt/so/conf/suricata
-    - user: 940
-    - group: 940
-
 {%   if GLOBALS.pcap_engine in ["SURICATA", "TRANSITION"] %}
 {%     from 'bpf/pcap.map.jinja' import PCAPBPF, PCAP_BPF_STATUS, PCAP_BPF_CALC %}
 # BPF compilation and configuration
