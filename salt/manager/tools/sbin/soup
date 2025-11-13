@@ -639,7 +639,9 @@ post_to_2.4.190() {
 }
 
 post_to_2.4.200() {
-  echo "Nothing to apply"
+  echo "Initiating Suricata idstools migration..."
+  suricata_idstools_removal_post
+
   POSTVERSION=2.4.200
 }
 
@@ -911,8 +913,8 @@ up_to_2.4.190() {
 }
 
 up_to_2.4.200() {
-  echo "Migrating idstools config"
-  suricata_idstools_removal
+  echo "Backing up idstools config..."
+  suricata_idstools_removal_pre
 
   INSTALLEDVERSION=2.4.200
 }
@@ -1102,116 +1104,127 @@ playbook_migration() {
   echo "Playbook Migration is complete...."
 }
 
-suricata_idstools_removal() {
-# For SOUPs beginning with 2.4.200
+suricata_idstools_removal_pre() {
+# For SOUPs beginning with 2.4.200 - pre SOUP checks
 
 # Create syncBlock file
 cat > /opt/so/conf/soc/fingerprints/suricataengine.syncBlock << EOF
-Suricata rulset sync is blocked until this file is removed. Make sure that you have manually added any custom Suricata rulesets via SOC config - review the documentation for more details: securityonion.net/docs
+Suricata ruleset sync is blocked until this file is removed. Make sure that you have manually added any custom Suricata rulesets via SOC config - review the documentation for more details: securityonion.net/docs
 EOF
 
-# Track if we have custom configs
-CUSTOM_CONFIGS_FOUND=0
+# TODO - backup custom rules & overrides
+mkdir -p /nsm/backup/detections-migration/2-4-200
+cp /usr/sbin/so-rule-update /nsm/backup/detections-migration/2-4-200
+cp /opt/so/conf/idstools/etc/rulecat.conf /nsm/backup/detections-migration/2-4-200
 
-# ETPRO Check
-ETPRO=$(grep "\--etpro" /usr/sbin/so-rule-update || true)
-if [[ -n "$ETPRO" ]]; then
-    ETPRO_KEY=$(echo "$ETPRO" | awk -F'--etpro=' '{print $2}' | awk '{print $1}')
-    echo "Grid is using ETPRO."
-    # Add ETPRO yaml to SOC pillar file
-    if [[ $is_airgap -eq 0 ]]; then
-        #TODO /opt/so/saltstack/local/pillar/soc/soc_soc.sls
-        echo "TODO"
-    else
-        #TODO /opt/so/saltstack/local/pillar/soc/soc_soc.sls
-        echo "TODO"
+}
+
+suricata_idstools_removal_post() {
+# For SOUPs beginning with 2.4.200 - post SOUP checks
+
+echo "Checking idstools configuration for custom modifications..."
+
+# Normalize file content for consistent hashing
+# Args: $1 - file path
+normalize_file() {
+    local file="$1"
+
+    if [[ ! -f "$file" ]]; then
+        echo "FILE_NOT_FOUND"
+        return 1
     fi
-fi
 
-#idstools conf parse
-RULECAT_CONF="/opt/so/conf/idstools/etc/rulecat.conf"
+    # Strip whitespace, normalize hostname, remove blank lines
+    sed -E \
+        -e 's/^[[:space:]]+//; s/[[:space:]]+$//' \
+        -e '/^$/d' \
+        -e 's|--url=http://[^:]+:7788|--url=http://MANAGER:7788|' \
+        "$file"
+}
 
-echo "Checking $RULECAT_CONF for custom configurations..."
+# Hash normalized content
+hash_file() {
+    local file="$1"
 
-# Parse RULECAT_CONF and check for custom configs
-if [[ ! -f "$RULECAT_CONF" ]]; then
-    echo "Warning: $RULECAT_CONF not found - leaving syncBlock."
-    return 0
-fi
+    local normalized=$(normalize_file "$file")
 
-echo "Parsing $RULECAT_CONF for custom configurations..."
+    if [[ "$normalized" == "FILE_NOT_FOUND" ]]; then
+        echo "FILE_NOT_FOUND"
+        return 1
+    fi
 
-# Default values to check against
-DEFAULT_URL="--url=http://MANAGER:7788/suricata/emerging-all.rules"
-DEFAULT_DISABLE="--disable=/opt/so/idstools/etc/disable.conf"
-DEFAULT_ENABLE="--enable=/opt/so/idstools/etc/enable.conf"
-DEFAULT_MODIFY="--modify=/opt/so/idstools/etc/modify.conf"
+    echo -n "$normalized" | sha256sum | awk '{print $1}'
+}
 
-# Valid --local patterns
-VALID_LOCAL_PATTERNS=(
-    "/opt/so/rules/nids/suri/local.rules" # 2/24
-    "/opt/so/rules/nids/suri/extraction.rules" # 2/24
-    "/opt/so/rules/nids/suri/filters.rules" # 2/24
-    "/opt/so/rules/nids/extraction.rules" # 9/23
-    "/opt/so/rules/nids/filters.rules" # 9/23
-    "/opt/so/rules/nids/local.rules" # 8/23
-    "/opt/so/rules/nids/sorules/extraction.rules" # 8/23
-    "/opt/so/rules/nids/sorules/filters.rules" # 8/23
-  )
+# Known-default hashes
+KNOWN_SO_RULE_UPDATE_HASHES=(
+    "8f1fe1cb65c08aab78830315b952785c7ccdcc108c5c0474f427e29d4e39ee5f"  # non-Airgap
+    "d23ac5a962c709dcb888103effb71444df72b46009b6c426e280dbfbc7d74d40"  # Airgap
+)
 
-# Parse each line in the config file
-while IFS= read -r line; do
-    # Skip empty lines and comments
-    [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
-    
-    # Check for non-default --local parameter
-    if [[ "$line" =~ ^--local= ]]; then
-        local_path="${line#--local=}"
-        is_valid=0
-        for pattern in "${VALID_LOCAL_PATTERNS[@]}"; do
-            if [[ "$local_path" == "$pattern" ]]; then
-                is_valid=1
-                break
-            fi
-        done
-        if [[ $is_valid -eq 0 ]]; then
-            echo "Custom --local parameter detected: $line"
-            echo "Custom configuration found: $line" >> /opt/so/conf/soc/fingerprints/suricataengine.syncBlock
-            return 0
+KNOWN_RULECAT_CONF_HASHES=(
+    "17fc663a83b30d4ba43ac6643666b0c96343c5ea6ea833fe6a8362fe415b666b"  # default
+)
+
+# Check a config file against known hashes
+# Args: $1 - file path, $2 - array name of known hashes
+check_config_file() {
+    local file="$1"
+    local known_hashes_array="$2"
+    local file_display_name=$(basename "$file")
+
+    if [[ ! -f "$file" ]]; then
+        echo "Warning: $file not found"
+        return 1
+    fi
+
+    echo "Hashing $file..."
+    local file_hash=$(hash_file "$file")
+
+    if [[ "$file_hash" == "FILE_NOT_FOUND" ]]; then
+        echo "Warning: Could not read $file"
+        return 1
+    fi
+
+    echo "  Hash: $file_hash"
+
+    # Check if hash matches any known default
+    local match_found=0
+    local -n known_hashes=$known_hashes_array
+    for known_hash in "${known_hashes[@]}"; do
+        if [[ "$file_hash" == "$known_hash" ]]; then
+            match_found=1
+            echo "  Matches known default configuration"
+            break
         fi
-    fi
-    
-    # Check for non-default --url parameter (default contains 7788)
-    if [[ "$line" =~ ^--url= ]] && [[ ! "$line" =~ 7788 ]]; then
-        echo "Custom --url parameter detected: $line"
-        echo "Custom configuration found: $line" >> /opt/so/conf/soc/fingerprints/suricataengine.syncBlock
-        return 0
-    fi
-    
-    # Sanity checks for other parameters
-    if [[ "$line" =~ ^--disable= ]] && [[ "$line" != "$DEFAULT_DISABLE" ]]; then
-        echo "Custom --disable parameter detected: $line"
-        echo "Custom configuration found: $line" >> /opt/so/conf/soc/fingerprints/suricataengine.syncBlock
-        return 0
-    fi
-    
-    if [[ "$line" =~ ^--enable= ]] && [[ "$line" != "$DEFAULT_ENABLE" ]]; then
-        echo "Custom --enable parameter detected: $line"
-        echo "Custom configuration found: $line" >> /opt/so/conf/soc/fingerprints/suricataengine.syncBlock
-        return 0
-    fi
-    
-    if [[ "$line" =~ ^--modify= ]] && [[ "$line" != "$DEFAULT_MODIFY" ]]; then
-        echo "Custom --modify parameter detected: $line"
-        echo "Custom configuration found: $line" >> /opt/so/conf/soc/fingerprints/suricataengine.syncBlock
-        return 0
-    fi
-    
-done < "$RULECAT_CONF"
+    done
 
-# If we reach here, no custom configs were found
-echo "idstools migration completed successfully - removing Suricata engine syncBlock"
-rm -f /opt/so/conf/soc/fingerprints/suricataengine.syncBlock
+    if [[ $match_found -eq 0 ]]; then
+        echo "Does not match known default - custom configuration detected"
+        echo "Custom $file_display_name detected (hash: $file_hash)" >> /opt/so/conf/soc/fingerprints/suricataengine.syncBlock
+        return 1
+    fi
+
+    return 0
+}
+
+# Check so-rule-update and rulecat.conf
+SO_RULE_UPDATE="/nsm/backup/detections-migration/2-4-200/so-rule-update"
+RULECAT_CONF="/nsm/backup/detections-migration/2-4-200/rulecat.conf"
+
+custom_found=0
+
+check_config_file "$SO_RULE_UPDATE" "KNOWN_SO_RULE_UPDATE_HASHES" || custom_found=1
+check_config_file "$RULECAT_CONF" "KNOWN_RULECAT_CONF_HASHES" || custom_found=1
+
+# If no custom configs found, remove syncBlock
+if [[ $custom_found -eq 0 ]]; then
+    echo "idstools migration completed successfully - removing Suricata engine syncBlock"
+    rm -f /opt/so/conf/soc/fingerprints/suricataengine.syncBlock
+else
+    echo "Custom idstools configuration detected - syncBlock remains in place"
+    echo "Review /opt/so/conf/soc/fingerprints/suricataengine.syncBlock for details"
+fi
 }
 
 determine_elastic_agent_upgrade() {
