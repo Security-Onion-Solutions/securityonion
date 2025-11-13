@@ -5,6 +5,7 @@
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
+{%   from 'vars/globals.map.jinja' import GLOBALS %}
 {%   from 'docker/docker.map.jinja' import DOCKER %}
 
 include:
@@ -56,6 +57,17 @@ so-dockerregistry:
       - file: dockerregistryconf
       - x509: registry_crt
       - x509: registry_key
+
+wait_for_so-dockerregistry:
+  http.wait_for_successful_query:
+    - name: 'https://{{ GLOBALS.registry_host }}:5000/v2/'
+    - ssl: True
+    - verify_ssl: False
+    - status: 200
+    - wait_for: 120
+    - request_interval: 5
+    - require:
+      -  docker_container: so-dockerregistry
 
 delete_so-dockerregistry_so-status.disabled:
   file.uncomment:
