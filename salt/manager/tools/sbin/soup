@@ -1112,10 +1112,34 @@ cat > /opt/so/conf/soc/fingerprints/suricataengine.syncBlock << EOF
 Suricata ruleset sync is blocked until this file is removed. Make sure that you have manually added any custom Suricata rulesets via SOC config - review the documentation for more details: securityonion.net/docs
 EOF
 
-# TODO - backup custom rules & overrides
+# Backup custom rules & overrides
 mkdir -p /nsm/backup/detections-migration/2-4-200
 cp /usr/sbin/so-rule-update /nsm/backup/detections-migration/2-4-200
 cp /opt/so/conf/idstools/etc/rulecat.conf /nsm/backup/detections-migration/2-4-200
+
+if [[ -f /opt/so/conf/soc/so-detections-backup.py ]]; then
+    python3 /opt/so/conf/soc/so-detections-backup.py
+
+    # Verify backup by comparing counts
+    echo "Verifying detection overrides backup..."
+    es_override_count=$(curl -s -K /opt/so/conf/elasticsearch/curl.config -k -L \
+      "https://localhost:9200/so-detection/_count" \
+      -H "Content-Type: application/json" \
+      -d '{"query": {"bool": {"must": [{"exists": {"field": "so_detection.overrides"}}]}}}' | jq -r '.count')
+
+    backup_override_count=$(find /nsm/backup/detections/repo/*/overrides -type f 2>/dev/null | wc -l)
+
+    echo "  Elasticsearch overrides: $es_override_count"
+    echo "  Backed up overrides: $backup_override_count"
+
+    if [[ "$es_override_count" -eq "$backup_override_count" ]]; then
+        echo "  Override backup verified successfully"
+    else
+        echo "  Warning: Override counts do not match"
+    fi
+else
+    echo "SOC Detections backup script not found, skipping detection backup"
+fi
 
 }
 
