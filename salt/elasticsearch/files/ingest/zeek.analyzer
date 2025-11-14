@@ -1,10 +1,10 @@
 {
-    "description": "zeek.dpd",
+    "description": "zeek.analyzer",
     "processors": [
         {
             "set": {
                 "field": "event.dataset",
-                "value": "dpd"
+                "value": "analyzer"
             }
         },
         {
@@ -23,73 +23,26 @@
             }
         },
         {
-            "dot_expander": {
-                "field": "id.orig_h",
-                "path": "message2",
+            "set": {
+                "field": "network.protocol",
+                "copy_from": "message2.analyzer_name",
+                "ignore_empty_value": true,
+                "if": "ctx?.message2?.analyzer_kind == 'protocol'"
+            }
+        },
+        {
+            "set": {
+                "field": "network.protocol",
+                "ignore_empty_value": true,
+                "if": "ctx?.message2?.analyzer_kind != 'protocol'",
+                "copy_from": "message2.proto"
+            }
+        },
+        {
+            "lowercase": {
+                "field": "network.protocol",
+                "ignore_missing": true,
                 "ignore_failure": true
-            }
-        },
-        {
-            "rename": {
-                "field": "message2.id.orig_h",
-                "target_field": "source.ip",
-                "ignore_missing": true
-            }
-        },
-        {
-            "dot_expander": {
-                "field": "id.orig_p",
-                "path": "message2",
-                "ignore_failure": true
-            }
-        },
-        {
-            "rename": {
-                "field": "message2.id.orig_p",
-                "target_field": "source.port",
-                "ignore_missing": true
-            }
-        },
-        {
-            "dot_expander": {
-                "field": "id.resp_h",
-                "path": "message2",
-                "ignore_failure": true
-            }
-        },
-        {
-            "rename": {
-                "field": "message2.id.resp_h",
-                "target_field": "destination.ip",
-                "ignore_missing": true
-            }
-        },
-        {
-            "dot_expander": {
-                "field": "id.resp_p",
-                "path": "message2",
-                "ignore_failure": true
-            }
-        },
-        {
-            "rename": {
-                "field": "message2.id.resp_p",
-                "target_field": "destination.port",
-                "ignore_missing": true
-            }
-        },
-        {
-            "rename": {
-                "field": "message2.proto",
-                "target_field": "network.protocol",
-                "ignore_missing": true
-            }
-        },
-        {
-            "rename": {
-                "field": "message2.analyzer",
-                "target_field": "observer.analyzer",
-                "ignore_missing": true
             }
         },
         {
