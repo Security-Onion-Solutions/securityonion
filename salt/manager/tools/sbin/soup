@@ -1134,10 +1134,15 @@ if [[ -f /opt/so/conf/soc/so-detections-backup.py ]]; then
     echo "  Elasticsearch overrides: $es_override_count"
     echo "  Backed up overrides: $backup_override_count"
 
-    if [[ "$es_override_count" -eq "$backup_override_count" ]]; then
-        echo "  Override backup verified successfully"
+    if [[ "$es_override_count" -gt 0 ]]; then
+        if [[ "$backup_override_count" -gt 0 ]]; then
+            echo "  Override backup verified successfully"
+        else
+            echo "  Error: Elasticsearch has $es_override_count overrides but backup has 0 files"
+            exit 1
+        fi
     else
-        echo "  Warning: Override counts do not match"
+        echo "  No overrides to backup"
     fi
 else
     echo "SOC Detections backup script not found, skipping detection backup"
@@ -1228,6 +1233,15 @@ check_config_file() {
     if [[ $match_found -eq 0 ]]; then
         echo "Does not match known default - custom configuration detected"
         echo "Custom $file_display_name detected (hash: $file_hash)" >> /opt/so/conf/soc/fingerprints/suricataengine.syncBlock
+
+        # If this is so-rule-update, check for ETPRO key
+        if [[ "$file_display_name" == "so-rule-update" ]]; then
+            etpro_key=$(grep -oP '\-\-etpro=\K[0-9a-fA-F]+' "$file" 2>/dev/null || true)
+            if [[ -n "$etpro_key" ]]; then
+                echo "ETPRO key found: $etpro_key" >> /opt/so/conf/soc/fingerprints/suricataengine.syncBlock
+            fi
+        fi
+
         return 1
     fi
 
