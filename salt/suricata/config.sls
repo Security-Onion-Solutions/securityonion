@@ -158,7 +158,10 @@ suriconfig:
 surithresholding:
   file.managed:
     - name: /opt/so/conf/suricata/threshold.conf
-    - replace: False
+    - source: salt://suricata/files/threshold.conf
+    - user: 940
+    - group: 940
+    - contents: 'This file is managed by Security Onion. Do not modify by hand.'
 
 suriclassifications:
   file.managed:

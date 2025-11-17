@@ -28,7 +28,8 @@ so-soc:
       - /opt/so/conf/sigma:/opt/sensoroni/sigma:rw
       - /opt/so/conf/suricata:/opt/sensoroni/suricata:rw
       - /opt/so/rules/elastalert/rules:/opt/sensoroni/elastalert:rw
-      - /opt/so/rules/nids/suri:/opt/sensoroni/nids:rw
+      - /opt/so/saltstack/local/salt/suricata/rules:/opt/sensoroni/suricata/rules:rw
+      - /opt/so/saltstack/local/salt/suricata/files:/opt/sensoroni/suricata/threshold:rw
       - /opt/so/conf/soc/fingerprints:/opt/sensoroni/fingerprints:rw
       - /nsm/soc/jobs:/opt/sensoroni/jobs:rw
       - /nsm/soc/uploads:/nsm/soc/uploads:rw
