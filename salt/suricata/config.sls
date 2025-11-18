@@ -90,7 +90,7 @@ suridir:
 
 suriruledir:
   file.directory:
-    - name: /opt/so/conf/suricata/rules
+    - name: /opt/so/rules/suricata
     - user: 940
     - group: 939
     - mode: 775
@@ -118,12 +118,10 @@ suridatadir:
     - mode: 770
     - makedirs: True
 
-# salt:// would resolve to /opt/so/rules/nids because of the defined file_roots and
-#  not existing under /opt/so/saltstack/local/salt or /opt/so/saltstack/default/salt
 surirulesync:
   file.recurse:
-    - name: /opt/so/conf/suricata/rules/
-    - source: salt://suri/
+    - name: /opt/so/rules/suricata/
+    - source: salt://suricata/rules/
     - user: 940
     - group: 940
     - show_changes: False
