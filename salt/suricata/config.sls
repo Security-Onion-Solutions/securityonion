@@ -159,7 +159,7 @@ surithresholding:
     - source: salt://suricata/files/threshold.conf
     - user: 940
     - group: 940
-    - contents: 'This file is managed by Security Onion. Do not modify by hand.'
+    - onlyif: salt://suricata/files/threshold.conf
 
 suriclassifications:
   file.managed:
