@@ -61,5 +61,92 @@
 {%       do settings.index_template.template.settings.index.pop('sort') %}
 {%     endif %}
 {%   endif %}
+
+{# advanced ilm actions #}
+{%   if settings.policy is defined and settings.policy.phases is defined %}
+{#     start HOT actions #}
+{#     only run if hot action is defined for this index #}
+{%     if settings.policy.phases.hot is defined and settings.policy.phases.hot.actions is defined %}
+{%       set HA = settings.policy.phases.hot.actions %}
+{%       if HA.shrink is defined %}
+{%         if HA.shrink.method is defined %}
+{%           if HA.shrink.method == 'COUNT' and HA.shrink.number_of_shards is defined and HA.shrink.number_of_shards %}
+{#             remove max_primary_shard_size value when doing shrink operation by count vs size #}
+{%             do HA.shrink.pop('max_primary_shard_size', none) %}
+{%           elif HA.shrink.method == 'SIZE' and HA.shrink.max_primary_shard_size is defined and HA.shrink.max_primary_shard_size %}
+{#             remove number_of_shards value when doing shrink operation by size vs count #}
+{%             do HA.shrink.pop('number_of_shards', none) %}
+{%           else %}
+{#             method isn't defined or missing a required config number_of_shards/max_primary_shard_size #}
+{%             do HA.pop('shrink', none) %}
+{%           endif %}
+{%         endif %}
+{%       endif %}
+{#       always remove method since its only used for SOC config, not in the actual ilm policy #}
+{%       if HA.shrink is defined %}
+{%          do HA.shrink.pop('method', none) %}
+{%       endif %}
+{#       end shrink action #}
+{#       start force merge #}
+{%       if HA.forcemerge is defined %}
+{%         if HA.forcemerge.index_codec is defined and HA.forcemerge.index_codec %}
+{%           do HA.forcemerge.update({'index_codec': 'best_compression'}) %}
+{%         else %}
+{%           do HA.forcemerge.pop('index_codec', none) %}
+{%         endif %}
+{%         if HA.forcemerge.max_num_segments is defined and not HA.forcemerge.max_num_segments %}
+{#           max_num_segments is empty, drop it #}
+{%           do HA.pop('forcemerge', none) %}
+{%         endif %}
+{%       endif %}
+{#       end force merge #}
+{%     endif %}
+{#     end HOT actions #}
+{#     Start WARM actions #}
+{#     only run if warm action is defined for this index #}
+{%     if settings.policy.phases.warm is defined and settings.policy.phases.warm.actions is defined %}
+{%       set WA = settings.policy.phases.warm.actions %}
+{#       start warm shrink action #}
+{%       if WA.shrink is defined %}
+{%         if WA.shrink.method is defined %}
+{%           if WA.shrink.method == 'COUNT' and WA.shrink.number_of_shards is defined and WA.shrink.number_of_shards %}
+{#             remove max_primary_shard_size value when doing shrink operation by count vs size #}
+{%             do WA.shrink.pop('max_primary_shard_size', none) %}
+{%           elif WA.shrink.method == 'SIZE' and WA.shrink.max_primary_shard_size is defined and WA.shrink.max_primary_shard_size %}
+{#             remove number_of_shards value when doing shrink operation by size vs count #}
+{%             do WA.shrink.pop('number_of_shards', none) %}
+{%           else %}
+{#             method isn't defined or missing a required config number_of_shards/max_primary_shard_size #}
+{%             do WA.pop('shrink', none) %}
+{%           endif %}
+{%         endif %}
+{%       endif %}
+{#       always remove method since its only used for SOC config, not in the actual ilm policy #}
+{%       if WA.shrink is defined %}
+{%         do WA.shrink.pop('method', none) %}
+{%       endif %}
+{#       end shrink action #}
+{#       start force merge #}
+{%       if WA.forcemerge is defined %}
+{%         if WA.forcemerge.index_codec is defined and WA.forcemerge.index_codec %}
+{%           do WA.forcemerge.update({'index_codec': 'best_compression'}) %}
+{%         else %}
+{%           do WA.forcemerge.pop('index_codec', none) %}
+{%         endif %}
+{%         if WA.forcemerge.max_num_segments is defined and not WA.forcemerge.max_num_segments %}
+{#           max_num_segments is empty, drop it #}
+{%           do WA.pop('forcemerge', none) %}
+{%         endif %}
+{%       endif %}
+{#       end force merge #}
+{%       if WA.allocate is defined %}
+{%         if WA.allocate.number_of_replicas is defined and not WA.allocate.number_of_replicas %}
+{%           do WA.pop('allocate', none) %}
+{%         endif %}
+{%       endif %}
+{%     endif %}
+{#     end WARM actions #}
+{%   endif %}
+
 {%   do ES_INDEX_SETTINGS.update({index | replace("_x_", "."): ES_INDEX_SETTINGS_GLOBAL_OVERRIDES[index]}) %}
 {% endfor %}
