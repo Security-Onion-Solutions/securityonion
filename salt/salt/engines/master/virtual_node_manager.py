@@ -727,7 +727,8 @@ def check_hypervisor_disk_space(hypervisor: str, size_gb: int) -> Tuple[bool, Op
         result = local.cmd(
             hypervisor_minion,
             'cmd.run',
-            ["df -BG /nsm/libvirt/volumes | tail -1 | awk '{print $4}' | sed 's/G//'"]
+            ["df -BG /nsm/libvirt/volumes | tail -1 | awk '{print $4}' | sed 's/G//'"],
+            kwarg={'python_shell': True}
         )
         
         if not result or hypervisor_minion not in result:
