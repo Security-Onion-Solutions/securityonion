@@ -497,8 +497,7 @@ def _apply_dyanno_hypervisor_state(status='Initialized'):
     to update the hypervisor annotation and ensure all hypervisor host directories exist.
     
     Args:
-        status: Status to set for the base domain (default: 'Initialized')
-                Valid values: 'PreInit', 'Initialized', 'ImageDownloadFailed', 'SSHKeySetupFailed'
+        status: Status passed to the hypervisor annotation state
     
     Returns:
         bool: True if state was applied successfully, False otherwise
