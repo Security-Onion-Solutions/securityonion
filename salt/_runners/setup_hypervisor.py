@@ -733,6 +733,10 @@ def setup_environment(vm_name: str = 'sool9', disk_size: str = '220G', minion_id
     success = vm_result.get('success', False)
     log.info("Setup environment completed with status: %s", "SUCCESS" if success else "FAILED")
     
+    # Update hypervisor annotation with success status
+    if success:
+        _apply_dyanno_hypervisor_state('Initialized')
+    
     # If setup was successful and we have a minion_id, run highstate
     if success and minion_id:
         log.info("Running highstate on hypervisor %s", minion_id)
