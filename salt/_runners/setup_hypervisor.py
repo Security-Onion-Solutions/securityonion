@@ -196,6 +196,7 @@ def _download_image():
     
     # Retry configuration
     max_attempts = 3
+    retry_delay = 5  # seconds to wait between retry attempts
     stall_timeout = 30  # seconds without progress before considering download stalled
     connection_timeout = 30  # seconds to establish connection
     read_timeout = 60  # seconds to wait for data chunks
@@ -267,7 +268,8 @@ def _download_image():
             if os.path.exists(IMAGE_PATH):
                 os.unlink(IMAGE_PATH)
             if attempt < max_attempts:
-                log.info("Will retry download...")
+                log.info("Will retry download in %d seconds...", retry_delay)
+                time.sleep(retry_delay)
             else:
                 log.error("All download attempts failed due to timeout")
                 
@@ -276,7 +278,8 @@ def _download_image():
             if os.path.exists(IMAGE_PATH):
                 os.unlink(IMAGE_PATH)
             if attempt < max_attempts:
-                log.info("Will retry download...")
+                log.info("Will retry download in %d seconds...", retry_delay)
+                time.sleep(retry_delay)
             else:
                 log.error("All download attempts failed due to network errors")
                 
@@ -285,7 +288,8 @@ def _download_image():
             if os.path.exists(IMAGE_PATH):
                 os.unlink(IMAGE_PATH)
             if attempt < max_attempts:
-                log.info("Will retry download...")
+                log.info("Will retry download in %d seconds...", retry_delay)
+                time.sleep(retry_delay)
             else:
                 log.error("All download attempts failed")
     
@@ -485,25 +489,29 @@ def _ensure_hypervisor_host_dir(minion_id: str = None):
         log.error(f"Error creating hypervisor host directory: {str(e)}")
         return False
 
-def _apply_dyanno_hypervisor_state():
+def _apply_dyanno_hypervisor_state(status='Initialized'):
     """
     Apply the soc.dyanno.hypervisor state on the salt master.
     
     This function applies the soc.dyanno.hypervisor state on the salt master
     to update the hypervisor annotation and ensure all hypervisor host directories exist.
     
+    Args:
+        status: Status to set for the base domain (default: 'Initialized')
+                Valid values: 'PreInit', 'Initialized', 'ImageDownloadFailed', 'SSHKeySetupFailed'
+    
     Returns:
         bool: True if state was applied successfully, False otherwise
     """
     try:
-        log.info("Applying soc.dyanno.hypervisor state on salt master")
+        log.info(f"Applying soc.dyanno.hypervisor state on salt master with status: {status}")
         
         # Initialize the LocalClient
         local = salt.client.LocalClient()
         
         # Target the salt master to apply the soc.dyanno.hypervisor state
         target = MANAGER_HOSTNAME + '_*'
-        state_result = local.cmd(target, 'state.apply', ['soc.dyanno.hypervisor', "pillar={'baseDomain': {'status': 'PreInit'}}", 'concurrent=True'], tgt_type='glob')
+        state_result = local.cmd(target, 'state.apply', ['soc.dyanno.hypervisor', f"pillar={{'baseDomain': {{'status': '{status}'}}}}", 'concurrent=True'], tgt_type='glob')
         log.debug(f"state_result: {state_result}")
         # Check if state was applied successfully
         if state_result:
@@ -520,17 +528,17 @@ def _apply_dyanno_hypervisor_state():
                         success = False
             
             if success:
-                log.info("Successfully applied soc.dyanno.hypervisor state")
+                log.info(f"Successfully applied soc.dyanno.hypervisor state with status: {status}")
                 return True
             else:
-                log.error("Failed to apply soc.dyanno.hypervisor state")
+                log.error(f"Failed to apply soc.dyanno.hypervisor state with status: {status}")
                 return False
         else:
-            log.error("No response from salt master when applying soc.dyanno.hypervisor state")
+            log.error(f"No response from salt master when applying soc.dyanno.hypervisor state with status: {status}")
             return False
             
     except Exception as e:
-        log.error(f"Error applying soc.dyanno.hypervisor state: {str(e)}")
+        log.error(f"Error applying soc.dyanno.hypervisor state with status: {status}: {str(e)}")
         return False
 
 def _apply_cloud_config_state():
@@ -664,8 +672,8 @@ def setup_environment(vm_name: str = 'sool9', disk_size: str = '220G', minion_id
         log.warning("Failed to apply salt.cloud.config state, continuing with setup")
         # We don't return an error here as we want to continue with the setup process
 
-    # Apply the soc.dyanno.hypervisor state on the salt master
-    if not _apply_dyanno_hypervisor_state():
+    # Apply the soc.dyanno.hypervisor state on the salt master with PreInit status
+    if not _apply_dyanno_hypervisor_state('PreInit'):
         log.warning("Failed to apply soc.dyanno.hypervisor state, continuing with setup")
         # We don't return an error here as we want to continue with the setup process
 
@@ -685,6 +693,8 @@ def setup_environment(vm_name: str = 'sool9', disk_size: str = '220G', minion_id
         log.info("Starting image download/validation process")
         if not _download_image():
             log.error("Image download failed")
+            # Update hypervisor annotation with failure status
+            _apply_dyanno_hypervisor_state('ImageDownloadFailed')
             return {
                 'success': False,
                 'error': 'Image download failed',
@@ -697,6 +707,8 @@ def setup_environment(vm_name: str = 'sool9', disk_size: str = '220G', minion_id
         log.info("Setting up SSH keys")
         if not _setup_ssh_keys():
             log.error("SSH key setup failed")
+            # Update hypervisor annotation with failure status
+            _apply_dyanno_hypervisor_state('SSHKeySetupFailed')
             return {
                 'success': False,
                 'error': 'SSH key setup failed',
