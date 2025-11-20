@@ -671,11 +671,6 @@ def setup_environment(vm_name: str = 'sool9', disk_size: str = '220G', minion_id
         log.warning("Failed to apply salt.cloud.config state, continuing with setup")
         # We don't return an error here as we want to continue with the setup process
 
-    # Apply the soc.dyanno.hypervisor state on the salt master with PreInit status
-    if not _apply_dyanno_hypervisor_state('PreInit'):
-        log.warning("Failed to apply soc.dyanno.hypervisor state, continuing with setup")
-        # We don't return an error here as we want to continue with the setup process
-
     log.info("Starting setup_environment in setup_hypervisor runner")
     
     # Check if environment is already set up
@@ -689,6 +684,7 @@ def setup_environment(vm_name: str = 'sool9', disk_size: str = '220G', minion_id
     
     # Handle image setup if needed
     if not image_valid:
+        _apply_dyanno_hypervisor_state('ImageDownloadStart')
         log.info("Starting image download/validation process")
         if not _download_image():
             log.error("Image download failed")
