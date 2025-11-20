@@ -489,7 +489,7 @@ def _ensure_hypervisor_host_dir(minion_id: str = None):
         log.error(f"Error creating hypervisor host directory: {str(e)}")
         return False
 
-def _apply_dyanno_hypervisor_state(status='Initialized'):
+def _apply_dyanno_hypervisor_state(status):
     """
     Apply the soc.dyanno.hypervisor state on the salt master.
     
@@ -734,7 +734,7 @@ def setup_environment(vm_name: str = 'sool9', disk_size: str = '220G', minion_id
     
     # Update hypervisor annotation with success status
     if success:
-        _apply_dyanno_hypervisor_state('Initialized')
+        _apply_dyanno_hypervisor_state('PreInit')
     else:
         _apply_dyanno_hypervisor_state('SetupFailed')
     
