@@ -3,11 +3,13 @@
 # Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
 # or more contributor license agreements. Licensed under the Elastic License 2.0; you may not use
 # this file except in compliance with the Elastic License 2.0.
-{% from 'vars/globals.map.jinja' import GLOBALS %}
-{% from 'elasticfleet/map.jinja' import ELASTICFLEETMERGED %}
+{%- from 'vars/globals.map.jinja' import GLOBALS %}
+{%- from 'elasticfleet/map.jinja' import ELASTICFLEETMERGED %}
+{%- from 'elasticfleet/config.map.jinja' import LOGSTASH_CONFIG_YAML %}
 
 . /usr/sbin/so-common
 
+FORCE_UPDATE=false
 # Only run on Managers
 if ! is_manager_node; then
     printf "Not a Manager Node... Exiting"
@@ -22,7 +24,7 @@ function update_logstash_outputs() {
                 --arg UPDATEDLIST "$NEW_LIST_JSON" \
                 --argjson SECRETS "$SECRETS" \
                 --argjson SSL_CONFIG "$SSL_CONFIG" \
-                '{"name":"grid-logstash","type":"logstash","hosts": $UPDATEDLIST,"is_default":true,"is_default_monitoring":true,"config_yaml":"","ssl": $SSL_CONFIG,"secrets": $SECRETS}')
+                '{"name":"grid-logstash","type":"logstash","hosts": $UPDATEDLIST,"is_default":true,"is_default_monitoring":true,"config_yaml":"{{ LOGSTASH_CONFIG_YAML }}","ssl": $SSL_CONFIG,"secrets": $SECRETS}')
         else
             JSON_STRING=$(jq -n \
                 --arg UPDATEDLIST "$NEW_LIST_JSON" \
@@ -97,9 +99,18 @@ function update_kafka_outputs() {
    exit 1
   fi
 
+  CURRENT_LOGSTASH_ADV_CONFIG=$(jq -r '.item.config_yaml // ""' <<< "$RAW_JSON")
+  CURRENT_LOGSTASH_ADV_CONFIG_HASH=$(sha256sum <<< "$CURRENT_LOGSTASH_ADV_CONFIG" | awk '{print $1}')
+  NEW_LOGSTASH_ADV_CONFIG=$'{{ LOGSTASH_CONFIG_YAML }}'
+  NEW_LOGSTASH_ADV_CONFIG_HASH=$(sha256sum <<< "$NEW_LOGSTASH_ADV_CONFIG" | awk '{print $1}')
+
+  if [ "$CURRENT_LOGSTASH_ADV_CONFIG_HASH" != "$NEW_LOGSTASH_ADV_CONFIG_HASH" ]; then
+    FORCE_UPDATE=true
+  fi
+
   # Get the current list of Logstash outputs & hash them
   CURRENT_LIST=$(jq -c -r '.item.hosts' <<<  "$RAW_JSON")
-  CURRENT_HASH=$(sha1sum <<< "$CURRENT_LIST" | awk '{print $1}')
+  CURRENT_HASH=$(sha256sum <<< "$CURRENT_LIST" | awk '{print $1}')
 
   declare -a NEW_LIST=()
 
@@ -148,10 +159,10 @@ function update_kafka_outputs() {
 
 # Sort & hash the new list of Logstash Outputs
 NEW_LIST_JSON=$(jq --compact-output --null-input '$ARGS.positional' --args -- "${NEW_LIST[@]}")
-NEW_HASH=$(sha1sum <<< "$NEW_LIST_JSON" | awk '{print $1}')
+NEW_HASH=$(sha256sum <<< "$NEW_LIST_JSON" | awk '{print $1}')
 
 # Compare the current & new list of outputs - if different, update the Logstash outputs
-if [ "$NEW_HASH" = "$CURRENT_HASH" ]; then
+if [[ "$NEW_HASH" = "$CURRENT_HASH" ]] && [[ "$FORCE_UPDATE" != "true" ]]; then
     printf "\nHashes match - no update needed.\n"
     printf "Current List: $CURRENT_LIST\nNew List: $NEW_LIST_JSON\n"
 
