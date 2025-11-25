@@ -274,7 +274,7 @@ check_os_updates() {
         if [[ "$confirm" == [cC] ]]; then
           echo "Continuing without updating packages"
         elif [[ "$confirm" == [uU] ]]; then
-          echo "Applying Grid Updates"
+          echo "Applying Grid Updates. The following patch.os salt state may take a while depending on how many packages need to be updated."
           update_flag=true
         else
           echo "Exiting soup"
@@ -1499,6 +1499,8 @@ upgrade_salt() {
     fi
   # Else do Ubuntu things
   elif [[ $is_deb ]]; then
+    # ensure these files don't exist when upgrading from 3006.9 to 3006.16
+    rm -f /etc/apt/keyrings/salt-archive-keyring-2023.pgp /etc/apt/sources.list.d/salt.list
     echo "Removing apt hold for Salt."
     echo ""
     apt-mark unhold "salt-common"

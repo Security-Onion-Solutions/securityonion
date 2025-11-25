@@ -1364,6 +1364,8 @@ soc:
         cases: soc
         filedatastore:
           jobDir: jobs
+          retryFailureIntervalMs: 600000
+          retryFailureMaxAttempts: 5
         kratos:
           hostUrl:
         hydra:
@@ -1838,7 +1840,7 @@ soc:
               showSubtitle: true
             - name: DPD
               description: Dynamic Protocol Detection errors
-              query: 'tags:dpd | groupby error.reason'
+              query: '(tags:dpd OR tags:analyzer) | groupby error.reason'
               showSubtitle: true
             - name: Files
               description: Files grouped by mimetype
@@ -2104,7 +2106,7 @@ soc:
               query: 'tags:dns | groupby dns.query.name | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby dns.highest_registered_domain | groupby dns.parent_domain | groupby dns.query.type_name | groupby dns.response.code_name | groupby dns.answers.name | groupby destination.as.organization.name'
             - name: DPD
               description: DPD (Dynamic Protocol Detection) errors
-              query: 'tags:dpd | groupby error.reason | groupby -sankey error.reason source.ip | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby network.protocol | groupby destination.as.organization.name'
+              query: '(tags:dpd OR tags:analyzer) | groupby error.reason | groupby -sankey error.reason source.ip | groupby source.ip | groupby -sankey source.ip destination.ip | groupby destination.ip | groupby destination.port | groupby network.protocol | groupby destination.as.organization.name'
             - name: Files
               description: Files seen in network traffic
               query: 'tags:file | groupby file.mime_type | groupby -sankey file.mime_type file.source | groupby file.source | groupby file.bytes.total | groupby source.ip | groupby destination.ip | groupby destination.as.organization.name'
@@ -2646,6 +2648,7 @@ soc:
         assistant:
           enabled: false
           investigationPrompt: Investigate Alert ID {socId}
+          compressContextPrompt: Summarize the conversation for context compaction
           thresholdColorRatioLow: 0.5
           thresholdColorRatioMed: 0.75
           thresholdColorRatioMax: 1
@@ -2655,18 +2658,22 @@ soc:
               contextLimitSmall: 200000
               contextLimitLarge: 1000000
               lowBalanceColorAlert: 500000
+              enabled: true
             - id: sonnet-4.5
               displayName: Claude Sonnet 4.5
               contextLimitSmall: 200000
               contextLimitLarge: 1000000
               lowBalanceColorAlert: 500000
+              enabled: true
             - id: gptoss-120b
               displayName: GPT-OSS 120B
               contextLimitSmall: 128000
               contextLimitLarge: 128000
               lowBalanceColorAlert: 500000
+              enabled: true
             - id: qwen-235b
               displayName: QWEN 235B
               contextLimitSmall: 256000
               contextLimitLarge: 256000
               lowBalanceColorAlert: 500000
+              enabled: true
