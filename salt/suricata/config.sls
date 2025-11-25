@@ -126,6 +126,20 @@ surirulesync:
     - group: 940
     - show_changes: False
 
+suriextractionrules:
+  file.managed:
+    - name: /nsm/rules/suricata/so_extraction.rules
+    - source: salt://suricata/files/so_extraction.rules
+    - user: 939
+    - group: 939
+
+surifiltersrules:
+  file.managed:
+    - name: /nsm/rules/suricata/so_filters.rules
+    - source: salt://suricata/files/so_filters.rules
+    - user: 939
+    - group: 939
+
 surilogscript:
   file.managed:
     - name: /usr/local/bin/surilogcompress

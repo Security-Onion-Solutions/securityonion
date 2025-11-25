@@ -215,7 +215,6 @@ socsensoronirepos:
     - mode: 775
     - makedirs: True
 
-
 create_custom_local_yara_repo_template:
   git.present:
     - name: /nsm/rules/custom-local-repos/local-yara
@@ -248,6 +247,39 @@ add_readme_custom_local_sigma_repo_template:
     - template: jinja
     - context:
         repo_type: "sigma"
+
+create_custom_local_suricata_repo_template:
+  git.present:
+    - name: /nsm/rules/custom-local-repos/local-suricata
+    - bare: False
+    - force: True
+
+add_readme_custom_local_suricata_repo_template:
+  file.managed:
+    - name: /nsm/rules/custom-local-repos/local-suricata/README
+    - source: salt://soc/files/soc/detections_custom_repo_template_readme.jinja
+    - user: 939
+    - group: 939
+    - template: jinja
+    - context:
+        repo_type: "suricata"
+
+etpro_airgap_folder:
+  file.directory:
+    - name: /nsm/rules/custom-local-repos/local-etpro-suricata
+    - user: 939
+    - group: 939
+    - makedirs: True
+
+add_readme_etpro_airgap_template:
+  file.managed:
+    - name: /nsm/rules/custom-local-repos/local-etpro-suricata/README
+    - source: salt://soc/files/soc/detections_custom_repo_template_readme.jinja
+    - user: 939
+    - group: 939
+    - template: jinja
+    - context:
+        repo_type: "suricata-etpro"
 
 socore_own_custom_repos:
   file.directory:

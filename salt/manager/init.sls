@@ -206,6 +206,7 @@ git_config_set_safe_dirs:
     - multivar:
       - /nsm/rules/custom-local-repos/local-sigma
       - /nsm/rules/custom-local-repos/local-yara
+      - /nsm/rules/custom-local-repos/local-suricata
       - /nsm/securityonion-resources
       - /opt/so/conf/soc/ai_summary_repos/securityonion-resources
       - /nsm/airgap-resources/playbooks

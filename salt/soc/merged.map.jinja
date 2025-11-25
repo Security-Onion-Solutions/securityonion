@@ -90,6 +90,17 @@
 {%   endif %}
 {% endif %}
 
+{# Enable SO_FILTERS and SO_EXTRACTIONS when Suricata is the metadata engine #}
+{% if SOCMERGED.config.server.modules.suricataengine is defined and SOCMERGED.config.server.modules.suricataengine.rulesetSources is defined %}
+{%   if SOCMERGED.config.server.modules.suricataengine.rulesetSources is not mapping %}
+{%     for ruleset in SOCMERGED.config.server.modules.suricataengine.rulesetSources %}
+{%       if ruleset.name in ['SO_FILTERS', 'SO_EXTRACTIONS'] and GLOBALS.md_engine == 'SURICATA' %}
+{%         do ruleset.update({'enabled': true}) %}
+{%       endif %}
+{%     endfor %}
+{%   endif %}
+{% endif %}
+
 {# Transform Emerging-Threats ruleset based on license key #}
 {% if SOCMERGED.config.server.modules.suricataengine is defined and SOCMERGED.config.server.modules.suricataengine.rulesetSources is defined %}
 {%   if SOCMERGED.config.server.modules.suricataengine.rulesetSources is not mapping %}
