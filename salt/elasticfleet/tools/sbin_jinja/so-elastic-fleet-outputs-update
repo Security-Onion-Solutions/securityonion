@@ -8,6 +8,22 @@
 
 . /usr/sbin/so-common
 
+FORCE_UPDATE=false
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    -f|--force)
+      FORCE_UPDATE=true
+      shift
+      ;;
+    *)
+      echo "Unknown option $1"
+      echo "Usage: $0 [-f|--force]"
+      exit 1
+      ;;
+  esac
+done
+
 # Only run on Managers
 if ! is_manager_node; then
     printf "Not a Manager Node... Exiting"
@@ -151,7 +167,7 @@ NEW_LIST_JSON=$(jq --compact-output --null-input '$ARGS.positional' --args -- "$
 NEW_HASH=$(sha1sum <<< "$NEW_LIST_JSON" | awk '{print $1}')
 
 # Compare the current & new list of outputs - if different, update the Logstash outputs
-if [ "$NEW_HASH" = "$CURRENT_HASH" ]; then
+if [[ "$NEW_HASH" = "$CURRENT_HASH" ]] && [[ "$FORCE_UPDATE" != "true" ]]; then
     printf "\nHashes match - no update needed.\n"
     printf "Current List: $CURRENT_LIST\nNew List: $NEW_LIST_JSON\n"
 

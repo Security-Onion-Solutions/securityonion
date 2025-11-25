@@ -32,6 +32,16 @@ so-elastic-fleet-auto-configure-logstash-outputs:
     - retry:
         attempts: 4
         interval: 30
+
+{# Separate from above in order to catch elasticfleet-logstash.crt changes and force update to fleet output policy #}
+so-elastic-fleet-auto-configure-logstash-outputs-force:
+  cmd.run:
+    - name: /usr/sbin/so-elastic-fleet-outputs-update --force
+    - retry:
+        attempts: 4
+        interval: 30
+    - onchanges:
+        - x509: etc_elasticfleet_logstash_crt
 {% endif %}
 
 # If enabled, automatically update Fleet Server URLs & ES Connection
