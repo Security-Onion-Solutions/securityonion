@@ -1124,10 +1124,17 @@ if [[ -f /opt/so/conf/soc/so-detections-backup.py ]]; then
 
     # Verify backup by comparing counts
     echo "Verifying detection overrides backup..."
-    es_override_count=$(curl -s -K /opt/so/conf/elasticsearch/curl.config -k -L \
-      "https://localhost:9200/so-detection/_count" \
-      -H "Content-Type: application/json" \
-      -d '{"query": {"bool": {"must": [{"exists": {"field": "so_detection.overrides"}}]}}}' | jq -r '.count')
+    es_override_count=$(/sbin/so-elasticsearch-query 'so-detection/_count' \
+       -H 'Content-Type: application/json' \
+       -d '{"query": {"bool": {"must": [{"exists": {"field": "so_detection.overrides"}}]}}}' | jq -r '.count') || {
+        echo "  Error: Failed to query Elasticsearch for override count"
+        exit 1
+    }
+
+    if [[ ! "$es_override_count" =~ ^[0-9]+$ ]]; then
+        echo "  Error: Invalid override count from Elasticsearch: '$es_override_count'"
+        exit 1
+    fi
 
     backup_override_count=$(find /nsm/backup/detections/repo/*/overrides -type f 2>/dev/null | wc -l)
 
