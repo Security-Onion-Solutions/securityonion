@@ -1162,36 +1162,22 @@ suricata_idstools_removal_post() {
 
 echo "Checking idstools configuration for custom modifications..."
 
-# Normalize file content for consistent hashing
+# Normalize and hash file content for consistent comparison
 # Args: $1 - file path
-normalize_file() {
+# Outputs: SHA256 hash to stdout
+# Returns: 0 on success, 1 on failure
+hash_normalized_file() {
     local file="$1"
 
-    if [[ ! -f "$file" ]]; then
-        echo "FILE_NOT_FOUND"
+    if [[ ! -r "$file" ]]; then
         return 1
     fi
 
-    # Strip whitespace, normalize hostname, remove blank lines
     sed -E \
         -e 's/^[[:space:]]+//; s/[[:space:]]+$//' \
         -e '/^$/d' \
         -e 's|--url=http://[^:]+:7788|--url=http://MANAGER:7788|' \
-        "$file"
-}
-
-# Hash normalized content
-hash_file() {
-    local file="$1"
-
-    local normalized=$(normalize_file "$file")
-
-    if [[ "$normalized" == "FILE_NOT_FOUND" ]]; then
-        echo "FILE_NOT_FOUND"
-        return 1
-    fi
-
-    echo -n "$normalized" | sha256sum | awk '{print $1}'
+        "$file" | sha256sum | awk '{print $1}'
 }
 
 # Known-default hashes
@@ -1213,47 +1199,44 @@ check_config_file() {
 
     if [[ ! -f "$file" ]]; then
         echo "Warning: $file not found"
+        echo "$file_display_name not found - manual verification required" >> /opt/so/conf/soc/fingerprints/suricataengine.syncBlock
         return 1
     fi
 
     echo "Hashing $file..."
-    local file_hash=$(hash_file "$file")
-
-    if [[ "$file_hash" == "FILE_NOT_FOUND" ]]; then
+    local file_hash
+    if ! file_hash=$(hash_normalized_file "$file"); then
         echo "Warning: Could not read $file"
+        echo "$file_display_name not readable - manual verification required" >> /opt/so/conf/soc/fingerprints/suricataengine.syncBlock
         return 1
     fi
 
     echo "  Hash: $file_hash"
 
     # Check if hash matches any known default
-    local match_found=0
     local -n known_hashes=$known_hashes_array
     for known_hash in "${known_hashes[@]}"; do
         if [[ "$file_hash" == "$known_hash" ]]; then
-            match_found=1
             echo "  Matches known default configuration"
-            break
+            return 0
         fi
     done
 
-    if [[ $match_found -eq 0 ]]; then
-        echo "Does not match known default - custom configuration detected"
-        echo "Custom $file_display_name detected (hash: $file_hash)" >> /opt/so/conf/soc/fingerprints/suricataengine.syncBlock
+    # No match - custom configuration detected
+    echo "Does not match known default - custom configuration detected"
+    echo "Custom $file_display_name detected (hash: $file_hash)" >> /opt/so/conf/soc/fingerprints/suricataengine.syncBlock
 
-        # If this is so-rule-update, check for ETPRO license code and write out to the syncBlock file
-        # If ETPRO is enabled, the license code already exists in the so-rule-update script, this is just making it easier to migrate
-        if [[ "$file_display_name" == "so-rule-update" ]]; then
-            etpro_code=$(grep -oP '\-\-etpro=\K[0-9a-fA-F]+' "$file" 2>/dev/null || true)
-            if [[ -n "$etpro_code" ]]; then
-                echo "ETPRO code found: $etpro_code" >> /opt/so/conf/soc/fingerprints/suricataengine.syncBlock
-            fi
+    # If this is so-rule-update, check for ETPRO license code and write out to the syncBlock file
+    # If ETPRO is enabled, the license code already exists in the so-rule-update script, this is just making it easier to migrate
+    if [[ "$file_display_name" == "so-rule-update" ]]; then
+        local etpro_code
+        etpro_code=$(grep -oP '\-\-etpro=\K[0-9a-fA-F]+' "$file" 2>/dev/null) || true
+        if [[ -n "$etpro_code" ]]; then
+            echo "ETPRO code found: $etpro_code" >> /opt/so/conf/soc/fingerprints/suricataengine.syncBlock
         fi
-
-        return 1
     fi
 
-    return 0
+    return 1
 }
 
 # Check so-rule-update and rulecat.conf
