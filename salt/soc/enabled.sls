@@ -26,7 +26,6 @@ so-soc:
       - /nsm/rules:/nsm/rules:rw
       - /opt/so/conf/strelka:/opt/sensoroni/yara:rw
       - /opt/so/conf/sigma:/opt/sensoroni/sigma:rw
-      - /opt/so/conf/suricata:/opt/sensoroni/suricata:rw
       - /opt/so/rules/elastalert/rules:/opt/sensoroni/elastalert:rw
       - /opt/so/saltstack/local/salt/suricata/rules:/opt/sensoroni/suricata/rules:rw
       - /opt/so/saltstack/local/salt/suricata/files:/opt/sensoroni/suricata/threshold:rw
