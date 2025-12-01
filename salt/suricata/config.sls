@@ -22,6 +22,14 @@ suriPCAPbpfcompilationfailure:
 {%     endif %}
 {%   endif %}
 
+suridir:
+  file.directory:
+    - name: /opt/so/conf/suricata
+    - user: 940
+    - group: 939
+    - mode: 775
+    - makedirs: True
+
 # BPF applied to all of Suricata - alerts/metadata/pcap
 suribpf:
   file.managed:
@@ -80,13 +88,6 @@ suricata_sbin_jinja:
     - group: 939 
     - file_mode: 755
     - template: jinja
-
-suridir:
-  file.directory:
-    - name: /opt/so/conf/suricata
-    - user: 940
-    - group: 939
-    - mode: 775
 
 suriruledir:
   file.directory:
