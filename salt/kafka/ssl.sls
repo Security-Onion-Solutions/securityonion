@@ -44,7 +44,7 @@ kafka_client_crt:
     - signing_policy: kafka
     - private_key: /etc/pki/kafka-client.key
     - CN: {{ GLOBALS.hostname }}
-    - days_remaining: 0
+    - days_remaining: 7
     - days_valid: 820
     - backup: True
     - timeout: 30
@@ -92,7 +92,7 @@ kafka_crt:
     - signing_policy: kafka
     - private_key: /etc/pki/kafka.key
     - CN: {{ GLOBALS.hostname }}
-    - days_remaining: 0
+    - days_remaining: 7
     - days_valid: 820
     - backup: True
     - timeout: 30
@@ -153,7 +153,7 @@ kafka_logstash_crt:
     - signing_policy: kafka
     - private_key: /etc/pki/kafka-logstash.key
     - CN: {{ GLOBALS.hostname }}
-    - days_remaining: 0
+    - days_remaining: 7
     - days_valid: 820
     - backup: True
     - timeout: 30

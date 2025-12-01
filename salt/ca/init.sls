@@ -40,7 +40,7 @@ pki_public_ca_crt:
     - subjectKeyIdentifier: hash
     - authorityKeyIdentifier: keyid:always, issuer
     - days_valid: 3650
-    - days_remaining: 0
+    - days_remaining: 7
     - backup: True
     - replace: False
     - require:
