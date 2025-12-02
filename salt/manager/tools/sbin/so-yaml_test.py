@@ -458,6 +458,7 @@ class TestRemove(unittest.TestCase):
                 self.assertIn("Missing filename or key arg", mock_stderr.getvalue())
                 sysmock.assert_called_once_with(1)
 
+
 class TestRemoveFromList(unittest.TestCase):
 
     def test_removefromlist_missing_arg(self):
