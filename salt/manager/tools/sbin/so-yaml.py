@@ -17,6 +17,7 @@ def showUsage(args):
     print('Usage: {} <COMMAND> <YAML_FILE> [ARGS...]'.format(sys.argv[0]), file=sys.stderr)
     print('  General commands:', file=sys.stderr)
     print('    append         - Append a list item to a yaml key, if it exists and is a list. Requires KEY and LISTITEM args.', file=sys.stderr)
+    print('    removefromlist - Remove a list item from a yaml key, if it exists and is a list. Requires KEY and LISTITEM args.', file=sys.stderr)
     print('    add            - Add a new key and set its value. Fails if key already exists. Requires KEY and VALUE args.', file=sys.stderr)
     print('    get            - Displays (to stdout) the value stored in the given key. Requires KEY arg.', file=sys.stderr)
     print('    remove         - Removes a yaml key, if it exists. Requires KEY arg.', file=sys.stderr)
@@ -50,6 +51,24 @@ def appendItem(content, key, listItem):
         try:
             content[key].append(listItem)
         except AttributeError:
+            print("The existing value for the given key is not a list. No action was taken on the file.", file=sys.stderr)
+            return 1
+        except KeyError:
+            print("The key provided does not exist. No action was taken on the file.", file=sys.stderr)
+            return 1
+
+
+def removeFromList(content, key, listItem):
+    pieces = key.split(".", 1)
+    if len(pieces) > 1:
+        removeFromList(content[pieces[0]], pieces[1], listItem)
+    else:
+        try:
+            if not isinstance(content[key], list):
+                raise AttributeError("Value is not a list")
+            if listItem in content[key]:
+                content[key].remove(listItem)
+        except (AttributeError, TypeError):
             print("The existing value for the given key is not a list. No action was taken on the file.", file=sys.stderr)
             return 1
         except KeyError:
@@ -98,6 +117,23 @@ def append(args):
 
     content = loadYaml(filename)
     appendItem(content, key, convertType(listItem))
+    writeYaml(filename, content)
+
+    return 0
+
+
+def removefromlist(args):
+    if len(args) != 3:
+        print('Missing filename, key arg, or list item to remove', file=sys.stderr)
+        showUsage(None)
+        return 1
+
+    filename = args[0]
+    key = args[1]
+    listItem = args[2]
+
+    content = loadYaml(filename)
+    removeFromList(content, key, convertType(listItem))
     writeYaml(filename, content)
 
     return 0
@@ -211,6 +247,7 @@ def main():
         "help": showUsage,
         "add": add,
         "append": append,
+        "removefromlist": removefromlist,
         "get": get,
         "remove": remove,
         "replace": replace,
