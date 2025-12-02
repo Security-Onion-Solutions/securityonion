@@ -36,7 +36,7 @@ so-elastic-fleet-auto-configure-logstash-outputs:
 {# Separate from above in order to catch elasticfleet-logstash.crt changes and force update to fleet output policy #}
 so-elastic-fleet-auto-configure-logstash-outputs-force:
   cmd.run:
-    - name: /usr/sbin/so-elastic-fleet-outputs-update --force --certs
+    - name: /usr/sbin/so-elastic-fleet-outputs-update --certs
     - retry:
         attempts: 4
         interval: 30
