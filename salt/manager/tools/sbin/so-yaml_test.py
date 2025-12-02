@@ -458,23 +458,24 @@ class TestRemove(unittest.TestCase):
                 self.assertIn("Missing filename or key arg", mock_stderr.getvalue())
                 sysmock.assert_called_once_with(1)
 
-class TestRemoveFromList(unittest.TestCase):
 
-    def test_removefromlist_missing_arg(self):
+class TestRemoveListItem(unittest.TestCase):
+
+    def test_removelistitem_missing_arg(self):
         with patch('sys.exit', new=MagicMock()) as sysmock:
             with patch('sys.stderr', new=StringIO()) as mock_stderr:
                 sys.argv = ["cmd", "help"]
-                soyaml.removefromlist(["file", "key"])
+                soyaml.removelistitem(["file", "key"])
                 sysmock.assert_called()
                 self.assertIn("Missing filename, key arg, or list item to remove", mock_stderr.getvalue())
 
-    def test_removefromlist(self):
-        filename = "/tmp/so-yaml_test-removefromlist.yaml"
+    def test_removelistitem(self):
+        filename = "/tmp/so-yaml_test-removelistitem.yaml"
         file = open(filename, "w")
         file.write("{key1: { child1: 123, child2: abc }, key2: false, key3: [a,b,c]}")
         file.close()
 
-        soyaml.removefromlist([filename, "key3", "b"])
+        soyaml.removelistitem([filename, "key3", "b"])
 
         file = open(filename, "r")
         actual = file.read()
@@ -483,13 +484,13 @@ class TestRemoveFromList(unittest.TestCase):
         expected = "key1:\n  child1: 123\n  child2: abc\nkey2: false\nkey3:\n- a\n- c\n"
         self.assertEqual(actual, expected)
 
-    def test_removefromlist_nested(self):
-        filename = "/tmp/so-yaml_test-removefromlist.yaml"
+    def test_removelistitem_nested(self):
+        filename = "/tmp/so-yaml_test-removelistitem.yaml"
         file = open(filename, "w")
         file.write("{key1: { child1: 123, child2: [a,b,c] }, key2: false, key3: [e,f,g]}")
         file.close()
 
-        soyaml.removefromlist([filename, "key1.child2", "b"])
+        soyaml.removelistitem([filename, "key1.child2", "b"])
 
         file = open(filename, "r")
         actual = file.read()
@@ -498,13 +499,13 @@ class TestRemoveFromList(unittest.TestCase):
         expected = "key1:\n  child1: 123\n  child2:\n  - a\n  - c\nkey2: false\nkey3:\n- e\n- f\n- g\n"
         self.assertEqual(actual, expected)
 
-    def test_removefromlist_nested_deep(self):
-        filename = "/tmp/so-yaml_test-removefromlist.yaml"
+    def test_removelistitem_nested_deep(self):
+        filename = "/tmp/so-yaml_test-removelistitem.yaml"
         file = open(filename, "w")
         file.write("{key1: { child1: 123, child2: { deep1: 45, deep2: [a,b,c] } }, key2: false, key3: [e,f,g]}")
         file.close()
 
-        soyaml.removefromlist([filename, "key1.child2.deep2", "b"])
+        soyaml.removelistitem([filename, "key1.child2.deep2", "b"])
 
         file = open(filename, "r")
         actual = file.read()
@@ -513,13 +514,13 @@ class TestRemoveFromList(unittest.TestCase):
         expected = "key1:\n  child1: 123\n  child2:\n    deep1: 45\n    deep2:\n    - a\n    - c\nkey2: false\nkey3:\n- e\n- f\n- g\n"
         self.assertEqual(actual, expected)
 
-    def test_removefromlist_item_not_in_list(self):
-        filename = "/tmp/so-yaml_test-removefromlist.yaml"
+    def test_removelistitem_item_not_in_list(self):
+        filename = "/tmp/so-yaml_test-removelistitem.yaml"
         file = open(filename, "w")
         file.write("{key1: [a,b,c]}")
         file.close()
 
-        soyaml.removefromlist([filename, "key1", "d"])
+        soyaml.removelistitem([filename, "key1", "d"])
 
         file = open(filename, "r")
         actual = file.read()
@@ -528,54 +529,54 @@ class TestRemoveFromList(unittest.TestCase):
         expected = "key1:\n- a\n- b\n- c\n"
         self.assertEqual(actual, expected)
 
-    def test_removefromlist_key_noexist(self):
-        filename = "/tmp/so-yaml_test-removefromlist.yaml"
+    def test_removelistitem_key_noexist(self):
+        filename = "/tmp/so-yaml_test-removelistitem.yaml"
         file = open(filename, "w")
         file.write("{key1: { child1: 123, child2: { deep1: 45, deep2: [a,b,c] } }, key2: false, key3: [e,f,g]}")
         file.close()
 
         with patch('sys.exit', new=MagicMock()) as sysmock:
             with patch('sys.stderr', new=StringIO()) as mock_stderr:
-                sys.argv = ["cmd", "removefromlist", filename, "key4", "h"]
+                sys.argv = ["cmd", "removelistitem", filename, "key4", "h"]
                 soyaml.main()
                 sysmock.assert_called()
                 self.assertEqual("The key provided does not exist. No action was taken on the file.\n", mock_stderr.getvalue())
 
-    def test_removefromlist_key_noexist_deep(self):
-        filename = "/tmp/so-yaml_test-removefromlist.yaml"
+    def test_removelistitem_key_noexist_deep(self):
+        filename = "/tmp/so-yaml_test-removelistitem.yaml"
         file = open(filename, "w")
         file.write("{key1: { child1: 123, child2: { deep1: 45, deep2: [a,b,c] } }, key2: false, key3: [e,f,g]}")
         file.close()
 
         with patch('sys.exit', new=MagicMock()) as sysmock:
             with patch('sys.stderr', new=StringIO()) as mock_stderr:
-                sys.argv = ["cmd", "removefromlist", filename, "key1.child2.deep3", "h"]
+                sys.argv = ["cmd", "removelistitem", filename, "key1.child2.deep3", "h"]
                 soyaml.main()
                 sysmock.assert_called()
                 self.assertEqual("The key provided does not exist. No action was taken on the file.\n", mock_stderr.getvalue())
 
-    def test_removefromlist_key_nonlist(self):
-        filename = "/tmp/so-yaml_test-removefromlist.yaml"
+    def test_removelistitem_key_nonlist(self):
+        filename = "/tmp/so-yaml_test-removelistitem.yaml"
         file = open(filename, "w")
         file.write("{key1: { child1: 123, child2: { deep1: 45, deep2: [a,b,c] } }, key2: false, key3: [e,f,g]}")
         file.close()
 
         with patch('sys.exit', new=MagicMock()) as sysmock:
             with patch('sys.stderr', new=StringIO()) as mock_stderr:
-                sys.argv = ["cmd", "removefromlist", filename, "key1", "h"]
+                sys.argv = ["cmd", "removelistitem", filename, "key1", "h"]
                 soyaml.main()
                 sysmock.assert_called()
                 self.assertEqual("The existing value for the given key is not a list. No action was taken on the file.\n", mock_stderr.getvalue())
 
-    def test_removefromlist_key_nonlist_deep(self):
-        filename = "/tmp/so-yaml_test-removefromlist.yaml"
+    def test_removelistitem_key_nonlist_deep(self):
+        filename = "/tmp/so-yaml_test-removelistitem.yaml"
         file = open(filename, "w")
         file.write("{key1: { child1: 123, child2: { deep1: 45, deep2: [a,b,c] } }, key2: false, key3: [e,f,g]}")
         file.close()
 
         with patch('sys.exit', new=MagicMock()) as sysmock:
             with patch('sys.stderr', new=StringIO()) as mock_stderr:
-                sys.argv = ["cmd", "removefromlist", filename, "key1.child2.deep1", "h"]
+                sys.argv = ["cmd", "removelistitem", filename, "key1.child2.deep1", "h"]
                 soyaml.main()
                 sysmock.assert_called()
                 self.assertEqual("The existing value for the given key is not a list. No action was taken on the file.\n", mock_stderr.getvalue())
