@@ -17,7 +17,7 @@ def showUsage(args):
     print('Usage: {} <COMMAND> <YAML_FILE> [ARGS...]'.format(sys.argv[0]), file=sys.stderr)
     print('  General commands:', file=sys.stderr)
     print('    append         - Append a list item to a yaml key, if it exists and is a list. Requires KEY and LISTITEM args.', file=sys.stderr)
-    print('    removefromlist - Remove a list item from a yaml key, if it exists and is a list. Requires KEY and LISTITEM args.', file=sys.stderr)
+    print('    removelistitem - Remove a list item from a yaml key, if it exists and is a list. Requires KEY and LISTITEM args.', file=sys.stderr)
     print('    add            - Add a new key and set its value. Fails if key already exists. Requires KEY and VALUE args.', file=sys.stderr)
     print('    get            - Displays (to stdout) the value stored in the given key. Requires KEY arg.', file=sys.stderr)
     print('    remove         - Removes a yaml key, if it exists. Requires KEY arg.', file=sys.stderr)
@@ -58,10 +58,10 @@ def appendItem(content, key, listItem):
             return 1
 
 
-def removeFromList(content, key, listItem):
+def removeListItem(content, key, listItem):
     pieces = key.split(".", 1)
     if len(pieces) > 1:
-        removeFromList(content[pieces[0]], pieces[1], listItem)
+        removeListItem(content[pieces[0]], pieces[1], listItem)
     else:
         try:
             if not isinstance(content[key], list):
@@ -122,7 +122,7 @@ def append(args):
     return 0
 
 
-def removefromlist(args):
+def removelistitem(args):
     if len(args) != 3:
         print('Missing filename, key arg, or list item to remove', file=sys.stderr)
         showUsage(None)
@@ -133,7 +133,7 @@ def removefromlist(args):
     listItem = args[2]
 
     content = loadYaml(filename)
-    removeFromList(content, key, convertType(listItem))
+    removeListItem(content, key, convertType(listItem))
     writeYaml(filename, content)
 
     return 0
@@ -247,7 +247,7 @@ def main():
         "help": showUsage,
         "add": add,
         "append": append,
-        "removefromlist": removefromlist,
+        "removelistitem": removelistitem,
         "get": get,
         "remove": remove,
         "replace": replace,
