@@ -45,7 +45,7 @@ used during VM provisioning to add dedicated NSM storage volumes.
     This command creates and attaches a volume with the following settings:
     - VM Name: `vm1_sensor`
     - Volume Size: `500` GB
-    - Volume Path: `/nsm/libvirt/volumes/vm1_sensor-nsm.img`
+    - Volume Path: `/nsm/libvirt/volumes/vm1_sensor-nsm-<epoch_timestamp>.img`
     - Device: `/dev/vdb` (virtio-blk)
     - VM remains stopped after attachment
 
@@ -75,7 +75,8 @@ used during VM provisioning to add dedicated NSM storage volumes.
 
 - The script automatically stops the VM if it's running before creating and attaching the volume.
 - Volumes are created with full pre-allocation for optimal performance.
-- Volume files are stored in `/nsm/libvirt/volumes/` with naming pattern `<vm_name>-nsm.img`.
+- Volume files are stored in `/nsm/libvirt/volumes/` with naming pattern `<vm_name>-nsm-<epoch_timestamp>.img`.
+- The epoch timestamp ensures unique volume names and prevents conflicts.
 - Volumes are attached as `/dev/vdb` using virtio-blk for high performance.
 - The script checks available disk space before creating the volume.
 - Ownership is set to `qemu:qemu` with permissions `640`.
@@ -142,6 +143,7 @@ import socket
 import subprocess
 import pwd
 import grp
+import time
 import xml.etree.ElementTree as ET
 from io import StringIO
 from so_vm_utils import start_vm, stop_vm
@@ -242,10 +244,13 @@ def create_volume_file(vm_name, size_gb, logger):
     Raises:
         VolumeCreationError: If volume creation fails
     """
-    # Define volume path (directory already created in main())
-    volume_path = os.path.join(VOLUME_DIR, f"{vm_name}-nsm.img")
+    # Generate epoch timestamp for unique volume naming
+    epoch_timestamp = int(time.time())
     
-    # Check if volume already exists
+    # Define volume path with epoch timestamp for uniqueness
+    volume_path = os.path.join(VOLUME_DIR, f"{vm_name}-nsm-{epoch_timestamp}.img")
+    
+    # Check if volume already exists (shouldn't be possible with timestamp)
     if os.path.exists(volume_path):
         logger.error(f"VOLUME: Volume already exists: {volume_path}")
         raise VolumeCreationError(f"Volume already exists: {volume_path}")

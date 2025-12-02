@@ -10,6 +10,26 @@
 . /usr/sbin/so-common
 
 FORCE_UPDATE=false
+UPDATE_CERTS=false
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    -f|--force)
+      FORCE_UPDATE=true
+      shift
+      ;;
+    -c| --certs)
+      UPDATE_CERTS=true
+      shift
+      ;;
+    *)
+      echo "Unknown option $1"
+      echo "Usage: $0 [-f|--force] [-c|--certs]"
+      exit 1
+      ;;
+  esac
+done
+
 # Only run on Managers
 if ! is_manager_node; then
     printf "Not a Manager Node... Exiting"
@@ -19,17 +39,42 @@ fi
 function update_logstash_outputs() {
     if logstash_policy=$(curl -K /opt/so/conf/elasticsearch/curl.config -L "http://localhost:5601/api/fleet/outputs/so-manager_logstash" --retry 3 --retry-delay 10 --fail 2>/dev/null); then
         SSL_CONFIG=$(echo "$logstash_policy" | jq -r '.item.ssl')
+        LOGSTASHKEY=$(openssl rsa -in  /etc/pki/elasticfleet-logstash.key)
+        LOGSTASHCRT=$(openssl x509 -in /etc/pki/elasticfleet-logstash.crt)
+        LOGSTASHCA=$(openssl x509 -in  /etc/pki/tls/certs/intca.crt)
         if SECRETS=$(echo "$logstash_policy" | jq -er '.item.secrets' 2>/dev/null); then
-            JSON_STRING=$(jq -n \
-                --arg UPDATEDLIST "$NEW_LIST_JSON" \
-                --argjson SECRETS "$SECRETS" \
-                --argjson SSL_CONFIG "$SSL_CONFIG" \
-                '{"name":"grid-logstash","type":"logstash","hosts": $UPDATEDLIST,"is_default":true,"is_default_monitoring":true,"config_yaml":"{{ LOGSTASH_CONFIG_YAML }}","ssl": $SSL_CONFIG,"secrets": $SECRETS}')
+            if [[ "$UPDATE_CERTS" != "true"  ]]; then
+                # Reuse existing secret
+                JSON_STRING=$(jq -n \
+                    --arg UPDATEDLIST "$NEW_LIST_JSON" \
+                    --argjson SECRETS "$SECRETS" \
+                    --argjson SSL_CONFIG "$SSL_CONFIG" \
+                    '{"name":"grid-logstash","type":"logstash","hosts": $UPDATEDLIST,"is_default":true,"is_default_monitoring":true,"config_yaml":"{{ LOGSTASH_CONFIG_YAML }}","ssl": $SSL_CONFIG,"secrets": $SECRETS}')
+            else
+                # Update certs, creating new secret
+                JSON_STRING=$(jq -n \
+                    --arg UPDATEDLIST "$NEW_LIST_JSON" \
+                    --arg LOGSTASHKEY "$LOGSTASHKEY" \
+                    --arg LOGSTASHCRT "$LOGSTASHCRT" \
+                    --arg LOGSTASHCA "$LOGSTASHCA" \
+                    '{"name":"grid-logstash","type":"logstash","hosts": $UPDATEDLIST,"is_default":true,"is_default_monitoring":true,"config_yaml":"{{ LOGSTASH_CONFIG_YAML }}","ssl": {"certificate": $LOGSTASHCRT,"certificate_authorities":[ $LOGSTASHCA ]},"secrets": {"ssl":{"key": $LOGSTASHKEY }}}')
+            fi
         else
-            JSON_STRING=$(jq -n \
-                --arg UPDATEDLIST "$NEW_LIST_JSON" \
-                --argjson SSL_CONFIG "$SSL_CONFIG" \
-                '{"name":"grid-logstash","type":"logstash","hosts": $UPDATEDLIST,"is_default":true,"is_default_monitoring":true,"config_yaml":"","ssl": $SSL_CONFIG}')
+            if [[ "$UPDATE_CERTS" != "true" ]]; then
+                # Reuse existing ssl config
+                JSON_STRING=$(jq -n \
+                    --arg UPDATEDLIST "$NEW_LIST_JSON" \
+                    --argjson SSL_CONFIG "$SSL_CONFIG" \
+                    '{"name":"grid-logstash","type":"logstash","hosts": $UPDATEDLIST,"is_default":true,"is_default_monitoring":true,"config_yaml":"{{ LOGSTASH_CONFIG_YAML }}","ssl": $SSL_CONFIG}')
+            else
+                # Update ssl config
+                JSON_STRING=$(jq -n \
+                    --arg UPDATEDLIST "$NEW_LIST_JSON" \
+                    --arg LOGSTASHKEY "$LOGSTASHKEY" \
+                    --arg LOGSTASHCRT "$LOGSTASHCRT" \
+                    --arg LOGSTASHCA "$LOGSTASHCA" \
+                    '{"name":"grid-logstash","type":"logstash","hosts": $UPDATEDLIST,"is_default":true,"is_default_monitoring":true,"config_yaml":"{{ LOGSTASH_CONFIG_YAML }}","ssl": {"certificate": $LOGSTASHCRT,"key": $LOGSTASHKEY,"certificate_authorities":[ $LOGSTASHCA ]}}')
+            fi
         fi
     fi
 
