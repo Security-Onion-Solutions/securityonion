@@ -1255,6 +1255,24 @@ else
     echo "Custom idstools configuration detected - syncBlock remains in place"
     echo "Review /opt/so/conf/soc/fingerprints/suricataengine.syncBlock for details"
 fi
+
+echo "Cleaning up idstools"
+echo "Stopping and removing the idstools container..."
+if [ -n "$(docker ps -q -f name=^so-idstools$)" ]; then
+    image_name=$(docker ps -a --filter name=^so-idstools$ --format '{{.Image}}' 2>/dev/null || true)
+    docker stop so-idstools || echo "Warning: failed to stop so-idstools container"
+    docker rm so-idstools || echo "Warning: failed to remove so-idstools container"
+
+    if [[ -n "$image_name" ]]; then
+        echo "Removing idstools image: $image_name"
+        docker rmi "$image_name" || echo "Warning: failed to remove image $image_name"
+    fi
+fi
+
+echo "Removing idstools symlink and scripts..."
+rm /opt/so/saltstack/local/salt/suricata/rules
+rm -rf /usr/sbin/so-idstools*
+
 }
 
 determine_elastic_agent_upgrade() {
