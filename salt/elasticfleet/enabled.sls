@@ -42,6 +42,7 @@ so-elastic-fleet-auto-configure-logstash-outputs-force:
         interval: 30
     - onchanges:
         - x509: etc_elasticfleet_logstash_crt
+        - x509: elasticfleet_kafka_crt
 {% endif %}
 
 # If enabled, automatically update Fleet Server URLs & ES Connection

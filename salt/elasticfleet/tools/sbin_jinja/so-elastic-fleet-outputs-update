@@ -85,19 +85,42 @@ function update_kafka_outputs() {
   # Make sure SSL configuration is included in policy updates for Kafka output. SSL is configured in so-elastic-fleet-setup
   if kafka_policy=$(curl -K /opt/so/conf/elasticsearch/curl.config -L "http://localhost:5601/api/fleet/outputs/so-manager_kafka" --fail 2>/dev/null); then
     SSL_CONFIG=$(echo "$kafka_policy" | jq -r '.item.ssl')
+    KAFKAKEY=$(openssl rsa -in  /etc/pki/elasticfleet-kafka.key)
+    KAFKACRT=$(openssl x509 -in /etc/pki/elasticfleet-kafka.crt)
+    KAFKACA=$(openssl x509 -in  /etc/pki/tls/certs/intca.crt)
     if SECRETS=$(echo "$kafka_policy" | jq -er '.item.secrets' 2>/dev/null); then
-      # Update policy when fleet has secrets enabled
-      JSON_STRING=$(jq -n \
-        --arg UPDATEDLIST "$NEW_LIST_JSON" \
-        --argjson SSL_CONFIG "$SSL_CONFIG" \
-        --argjson SECRETS "$SECRETS" \
-        '{"name": "grid-kafka","type": "kafka","hosts": $UPDATEDLIST,"is_default": true,"is_default_monitoring": true,"config_yaml": "","ssl": $SSL_CONFIG,"secrets": $SECRETS}')
+        if [[ "$UPDATE_CERTS" != "true" ]]; then
+            # Update policy when fleet has secrets enabled
+            JSON_STRING=$(jq -n \
+              --arg UPDATEDLIST "$NEW_LIST_JSON" \
+              --argjson SSL_CONFIG "$SSL_CONFIG" \
+              --argjson SECRETS "$SECRETS" \
+              '{"name": "grid-kafka","type": "kafka","hosts": $UPDATEDLIST,"is_default": true,"is_default_monitoring": true,"config_yaml": "","ssl": $SSL_CONFIG,"secrets": $SECRETS}')
+        else
+            # Update certs, creating new secret
+            JSON_STRING=$(jq -n \
+              --arg UPDATEDLIST "$NEW_LIST_JSON" \
+              --arg KAFKAKEY "$KAFKAKEY" \
+              --arg KAFKACRT "$KAFKACRT" \
+              --arg KAFKACA "$KAFKACA" \
+              '{"name": "grid-kafka","type": "kafka","hosts": $UPDATEDLIST,"is_default": true,"is_default_monitoring": true,"config_yaml": "","ssl": {"certificate_authorities":[ $KAFKACA ],"certificate": $KAFKACRT ,"key":"","verification_mode":"full"},"secrets": {"ssl":{"key": $KAFKAKEY }}}')
+        fi
     else
-      # Update policy when fleet has secrets disabled or policy hasn't been force updated
-      JSON_STRING=$(jq -n \
-        --arg UPDATEDLIST "$NEW_LIST_JSON" \
-        --argjson SSL_CONFIG "$SSL_CONFIG" \
-        '{"name": "grid-kafka","type": "kafka","hosts": $UPDATEDLIST,"is_default": true,"is_default_monitoring": true,"config_yaml": "","ssl": $SSL_CONFIG}')
+        if [[ "$UPDATE_CERTS" != "true" ]]; then
+            # Update policy when fleet has secrets disabled or policy hasn't been force updated
+            JSON_STRING=$(jq -n \
+              --arg UPDATEDLIST "$NEW_LIST_JSON" \
+              --argjson SSL_CONFIG "$SSL_CONFIG" \
+              '{"name": "grid-kafka","type": "kafka","hosts": $UPDATEDLIST,"is_default": true,"is_default_monitoring": true,"config_yaml": "","ssl": $SSL_CONFIG}')
+        else
+            # Update ssl config
+            JSON_STRING=$(jq -n \
+              --arg UPDATEDLIST "$NEW_LIST_JSON" \
+              --arg KAFKAKEY "$KAFKAKEY" \
+              --arg KAFKACRT "$KAFKACRT" \
+              --arg KAFKACA "$KAFKACA" \
+              '{"name": "grid-kafka","type": "kafka","hosts": $UPDATEDLIST,"is_default": true,"is_default_monitoring": true,"config_yaml": "","ssl": { "certificate_authorities": [ $KAFKACA ], "certificate": $KAFKACRT, "key": $KAFKAKEY, "verification_mode": "full" }}')
+        fi
     fi
     # Update Kafka outputs
     curl -K /opt/so/conf/elasticsearch/curl.config -L -X PUT "localhost:5601/api/fleet/outputs/so-manager_kafka" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING" | jq
@@ -120,7 +143,7 @@ function update_kafka_outputs() {
 
   # Get the current list of kafka outputs & hash them
   CURRENT_LIST=$(jq -c -r '.item.hosts' <<<  "$RAW_JSON")
-  CURRENT_HASH=$(sha1sum <<< "$CURRENT_LIST" | awk '{print $1}')
+  CURRENT_HASH=$(sha256sum <<< "$CURRENT_LIST" | awk '{print $1}')
 
   declare -a NEW_LIST=()
 
