@@ -90,6 +90,18 @@ clean_suricata_eve_files:
     - month: '*'
     - dayweek: '*'
 
+# Add rulestats cron - runs every minute to query Suricata for rule load status
+suricata_rulestats:
+  cron.present:
+    - name: /usr/sbin/so-suricata-rulestats > /dev/null 2>&1
+    - identifier: suricata_rulestats
+    - user: root
+    - minute: '*'
+    - hour: '*'
+    - daymonth: '*'
+    - month: '*'
+    - dayweek: '*'
+
 {% else %}
 
 {{sls}}_state_not_allowed:

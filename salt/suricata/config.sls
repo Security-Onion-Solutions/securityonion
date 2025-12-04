@@ -178,6 +178,14 @@ so-suricata-eve-clean:
     - template: jinja
     - source: salt://suricata/cron/so-suricata-eve-clean
 
+so-suricata-rulestats:
+  file.managed:
+    - name: /usr/sbin/so-suricata-rulestats
+    - user: root
+    - group: root
+    - mode: 755
+    - source: salt://suricata/cron/so-suricata-rulestats
+
 {% else %}
 
 {{sls}}_state_not_allowed:
