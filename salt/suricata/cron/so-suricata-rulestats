@@ -1,0 +1,30 @@
+#!/bin/bash
+#
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+# Query Suricata for ruleset stats and reload time, write to JSON file for Telegraf to consume
+
+OUTFILE="/opt/so/log/suricata/rulestats.json"
+SURICATASC="docker exec so-suricata /opt/suricata/bin/suricatasc"
+SOCKET="/var/run/suricata/suricata-command.socket"
+
+query() {
+    timeout 10 $SURICATASC -c "$1" "$SOCKET" 2>/dev/null
+}
+
+STATS=$(query "ruleset-stats")
+RELOAD=$(query "ruleset-reload-time")
+
+if echo "$STATS" | jq -e '.return == "OK"' > /dev/null 2>&1; then
+    LOADED=$(echo "$STATS" | jq -r '.message[0].rules_loaded')
+    FAILED=$(echo "$STATS" | jq -r '.message[0].rules_failed')
+    LAST_RELOAD=$(echo "$RELOAD" | jq -r '.message[0].last_reload')
+
+    jq -n --argjson loaded "$LOADED" --argjson failed "$FAILED" --arg reload "$LAST_RELOAD" \
+        '{rules_loaded: $loaded, rules_failed: $failed, last_reload: $reload, return: "OK"}' > "$OUTFILE"
+else
+    echo '{"return":"FAIL"}' > "$OUTFILE"
+fi

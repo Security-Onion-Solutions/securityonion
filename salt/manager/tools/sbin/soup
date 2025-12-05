@@ -639,7 +639,9 @@ post_to_2.4.190() {
 }
 
 post_to_2.4.200() {
-  echo "Nothing to apply"
+  echo "Initiating Suricata idstools migration..."
+  suricata_idstools_removal_post
+
   POSTVERSION=2.4.200
 }
 
@@ -911,6 +913,9 @@ up_to_2.4.190() {
 }
 
 up_to_2.4.200() {
+  echo "Backing up idstools config..."
+  suricata_idstools_removal_pre
+
   touch /opt/so/state/esfleet_logstash_config_pillar
 
   INSTALLEDVERSION=2.4.200
@@ -999,6 +1004,8 @@ rollover_index() {
 }
 
 suricata_idstools_migration() {
+  # For 2.4.70
+
   #Backup the pillars for idstools
   mkdir -p /nsm/backup/detections-migration/idstools
   rsync -av /opt/so/saltstack/local/pillar/idstools/* /nsm/backup/detections-migration/idstools
@@ -1097,6 +1104,209 @@ playbook_migration() {
 
   echo
   echo "Playbook Migration is complete...."
+}
+
+suricata_idstools_removal_pre() {
+# For SOUPs beginning with 2.4.200 - pre SOUP checks
+
+# Create syncBlock file
+install -d -o 939 -g 939 -m 755 /opt/so/conf/soc/fingerprints
+install -o 939 -g 939 -m 644 /dev/null /opt/so/conf/soc/fingerprints/suricataengine.syncBlock
+cat > /opt/so/conf/soc/fingerprints/suricataengine.syncBlock << EOF
+Suricata ruleset sync is blocked until this file is removed. Make sure that you have manually added any custom Suricata rulesets via SOC config - review the documentation for more details: securityonion.net/docs
+EOF
+
+# Backup custom rules & overrides
+mkdir -p /nsm/backup/detections-migration/2-4-200
+cp /usr/sbin/so-rule-update /nsm/backup/detections-migration/2-4-200
+cp /opt/so/conf/idstools/etc/rulecat.conf /nsm/backup/detections-migration/2-4-200
+
+if [[ -f /opt/so/conf/soc/so-detections-backup.py ]]; then
+    python3 /opt/so/conf/soc/so-detections-backup.py
+
+    # Verify backup by comparing counts
+    echo "Verifying detection overrides backup..."
+    es_override_count=$(/sbin/so-elasticsearch-query 'so-detection/_count' \
+       -d '{"query": {"bool": {"must": [{"exists": {"field": "so_detection.overrides"}}]}}}' | jq -r '.count') || {
+        echo "  Error: Failed to query Elasticsearch for override count"
+        exit 1
+    }
+
+    if [[ ! "$es_override_count" =~ ^[0-9]+$ ]]; then
+        echo "  Error: Invalid override count from Elasticsearch: '$es_override_count'"
+        exit 1
+    fi
+
+    backup_override_count=$(find /nsm/backup/detections/repo/*/overrides -type f 2>/dev/null | wc -l)
+
+    echo "  Elasticsearch overrides: $es_override_count"
+    echo "  Backed up overrides: $backup_override_count"
+
+    if [[ "$es_override_count" -gt 0 ]]; then
+        if [[ "$backup_override_count" -gt 0 ]]; then
+            echo "  Override backup verified successfully"
+        else
+            echo "  Error: Elasticsearch has $es_override_count overrides but backup has 0 files"
+            exit 1
+        fi
+    else
+        echo "  No overrides to backup"
+    fi
+else
+    echo "SOC Detections backup script not found, skipping detection backup"
+fi
+
+}
+
+suricata_idstools_removal_post() {
+# For SOUPs beginning with 2.4.200 - post SOUP checks
+
+echo "Checking idstools configuration for custom modifications..."
+
+# Normalize and hash file content for consistent comparison
+# Args: $1 - file path
+# Outputs: SHA256 hash to stdout
+# Returns: 0 on success, 1 on failure
+hash_normalized_file() {
+    local file="$1"
+
+    if [[ ! -r "$file" ]]; then
+        return 1
+    fi
+
+    sed -E \
+        -e 's/^[[:space:]]+//; s/[[:space:]]+$//' \
+        -e '/^$/d' \
+        -e 's|--url=http://[^:]+:7788|--url=http://MANAGER:7788|' \
+        "$file" | sha256sum | awk '{print $1}'
+}
+
+# Known-default hashes for so-rule-update (ETOPEN ruleset)
+KNOWN_SO_RULE_UPDATE_HASHES=(
+    # 2.4.100+ (suricata 7.0.3, non-airgap)
+    "5fbd067ced86c8ec72ffb7e1798aa624123b536fb9d78f4b3ad8d3b45db1eae7"  # 2.4.100-2.4.190 non-Airgap
+    # 2.4.90+ airgap (same for 2.4.90 and 2.4.100+)
+    "61f632c55791338c438c071040f1490066769bcce808b595b5cc7974a90e653a"  # 2.4.90+ Airgap
+    # 2.4.90 (suricata 6.0, non-airgap, comment inside proxy block)
+    "0380ec52a05933244ab0f0bc506576e1d838483647b40612d5fe4b378e47aedd"  # 2.4.90 non-Airgap
+    # 2.4.10-2.4.80 (suricata 6.0, non-airgap, comment outside proxy block)
+    "b6e4d1b5a78d57880ad038a9cd2cc6978aeb2dd27d48ea1a44dd866a2aee7ff4"  # 2.4.10-2.4.80 non-Airgap
+    # 2.4.10-2.4.80 airgap
+    "b20146526ace2b142fde4664f1386a9a1defa319b3a1d113600ad33a1b037dad"  # 2.4.10-2.4.80 Airgap
+    # 2.4.5 and earlier (no pidof check, non-airgap)
+    "d04f5e4015c348133d28a7840839e82d60009781eaaa1c66f7f67747703590dc"  # 2.4.5 non-Airgap
+)
+
+# Known-default hashes for rulecat.conf
+KNOWN_RULECAT_CONF_HASHES=(
+    # 2.4.100+ (suricata 7.0.3)
+    "302e75dca9110807f09ade2eec3be1fcfc8b2bf6cf2252b0269bb72efeefe67e"  # 2.4.100-2.4.190 without SURICATA md_engine
+    "8029b7718c324a9afa06a5cf180afde703da1277af4bdd30310a6cfa3d6398cb"  # 2.4.100-2.4.190 with SURICATA md_engine
+    # 2.4.80-2.4.90 (suricata 6.0, with --suricata-version and --output)
+    "4d8b318e6950a6f60b02f307cf27c929efd39652990c1bd0c8820aa8a307e1e7"  # 2.4.80-2.4.90 without SURICATA md_engine
+    "a1ddf264c86c4e91c81c5a317f745a19466d4311e4533ec3a3c91fed04c11678"  # 2.4.80-2.4.90 with SURICATA md_engine
+    # 2.4.50-2.4.70 (/suri/ path, no --suricata-version)
+    "86e3afb8d0f00c62337195602636864c98580a13ca9cc85029661a539deae6ae"  # 2.4.50-2.4.70 without SURICATA md_engine
+    "5a97604ca5b820a10273a2d6546bb5e00c5122ca5a7dfe0ba0bfbce5fc026f4b"  # 2.4.50-2.4.70 with SURICATA md_engine
+    # 2.4.20-2.4.40 (/nids/ path without /suri/)
+    "d098ea9ecd94b5cca35bf33543f8ea8f48066a0785221fabda7fef43d2462c29"  # 2.4.20-2.4.40 without SURICATA md_engine
+    "9dbc60df22ae20d65738ba42e620392577857038ba92278e23ec182081d191cd"  # 2.4.20-2.4.40 with SURICATA md_engine
+    # 2.4.5-2.4.10 (/sorules/ path for extraction/filters)
+    "490f6843d9fca759ee74db3ada9c702e2440b8393f2cfaf07bbe41aaa6d955c3"  # 2.4.5-2.4.10 with SURICATA md_engine
+    # Note: 2.4.5-2.4.10 without SURICATA md_engine has same hash as 2.4.20-2.4.40 without SURICATA md_engine
+)
+
+# Check a config file against known hashes
+# Args: $1 - file path, $2 - array name of known hashes
+check_config_file() {
+    local file="$1"
+    local known_hashes_array="$2"
+    local file_display_name=$(basename "$file")
+
+    if [[ ! -f "$file" ]]; then
+        echo "Warning: $file not found"
+        echo "$file_display_name not found - manual verification required" >> /opt/so/conf/soc/fingerprints/suricataengine.syncBlock
+        return 1
+    fi
+
+    echo "Hashing $file..."
+    local file_hash
+    if ! file_hash=$(hash_normalized_file "$file"); then
+        echo "Warning: Could not read $file"
+        echo "$file_display_name not readable - manual verification required" >> /opt/so/conf/soc/fingerprints/suricataengine.syncBlock
+        return 1
+    fi
+
+    echo "  Hash: $file_hash"
+
+    # Check if hash matches any known default
+    local -n known_hashes=$known_hashes_array
+    for known_hash in "${known_hashes[@]}"; do
+        if [[ "$file_hash" == "$known_hash" ]]; then
+            echo "  Matches known default configuration"
+            return 0
+        fi
+    done
+
+    # No match - custom configuration detected
+    echo "Does not match known default - custom configuration detected"
+    echo "Custom $file_display_name detected (hash: $file_hash)" >> /opt/so/conf/soc/fingerprints/suricataengine.syncBlock
+
+    # If this is so-rule-update, check for ETPRO license code and write out to the syncBlock file
+    # If ETPRO is enabled, the license code already exists in the so-rule-update script, this is just making it easier to migrate
+    if [[ "$file_display_name" == "so-rule-update" ]]; then
+        local etpro_code
+        etpro_code=$(grep -oP '\-\-etpro=\K[0-9a-fA-F]+' "$file" 2>/dev/null) || true
+        if [[ -n "$etpro_code" ]]; then
+            echo "ETPRO code found: $etpro_code" >> /opt/so/conf/soc/fingerprints/suricataengine.syncBlock
+        fi
+    fi
+
+    return 1
+}
+
+# Check so-rule-update and rulecat.conf
+SO_RULE_UPDATE="/usr/sbin/so-rule-update"
+RULECAT_CONF="/opt/so/conf/idstools/etc/rulecat.conf"
+
+custom_found=0
+
+check_config_file "$SO_RULE_UPDATE" "KNOWN_SO_RULE_UPDATE_HASHES" || custom_found=1
+check_config_file "$RULECAT_CONF" "KNOWN_RULECAT_CONF_HASHES" || custom_found=1
+
+# If no custom configs found, remove syncBlock
+if [[ $custom_found -eq 0 ]]; then
+    echo "idstools migration completed successfully - removing Suricata engine syncBlock"
+    rm -f /opt/so/conf/soc/fingerprints/suricataengine.syncBlock
+else
+    echo "Custom idstools configuration detected - syncBlock remains in place"
+    echo "Review /opt/so/conf/soc/fingerprints/suricataengine.syncBlock for details"
+fi
+
+echo "Cleaning up idstools"
+echo "Stopping and removing the idstools container..."
+if [ -n "$(docker ps -q -f name=^so-idstools$)" ]; then
+    image_name=$(docker ps -a --filter name=^so-idstools$ --format '{{.Image}}' 2>/dev/null || true)
+    docker stop so-idstools || echo "Warning: failed to stop so-idstools container"
+    docker rm so-idstools || echo "Warning: failed to remove so-idstools container"
+
+    if [[ -n "$image_name" ]]; then
+        echo "Removing idstools image: $image_name"
+        docker rmi "$image_name" || echo "Warning: failed to remove image $image_name"
+    fi
+fi
+
+echo "Removing idstools symlink and scripts..."
+rm /opt/so/saltstack/local/salt/suricata/rules
+rm -rf /usr/sbin/so-idstools*
+sed -i '/^#\?so-idstools$/d' /opt/so/conf/so-status/so-status.conf
+
+# Backup the salt master config & manager pillar before editing it
+cp /opt/so/saltstack/local/pillar/minions/$MINIONID.sls /nsm/backup/detections-migration/2-4-200/
+cp /etc/salt/master  /nsm/backup/detections-migration/2-4-200/
+so-yaml.py remove /opt/so/saltstack/local/pillar/minions/$MINIONID.sls idstools
+so-yaml.py removelistitem /etc/salt/master file_roots.base /opt/so/rules/nids
+
 }
 
 determine_elastic_agent_upgrade() {

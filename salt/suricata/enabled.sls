@@ -36,7 +36,7 @@ so-suricata:
       - /opt/so/conf/suricata/suricata.yaml:/etc/suricata/suricata.yaml:ro
       - /opt/so/conf/suricata/threshold.conf:/etc/suricata/threshold.conf:ro
       - /opt/so/conf/suricata/classification.config:/etc/suricata/classification.config:ro
-      - /opt/so/conf/suricata/rules:/etc/suricata/rules:ro
+      - /opt/so/rules/suricata:/etc/suricata/rules:ro
       - /opt/so/log/suricata/:/var/log/suricata/:rw
       - /nsm/suricata/:/nsm/:rw
       - /nsm/suricata/extracted:/var/log/suricata//filestore:rw
@@ -85,6 +85,18 @@ clean_suricata_eve_files:
     - identifier: clean_suricata_eve_files
     - user: root
     - minute: '*/5'
+    - hour: '*'
+    - daymonth: '*'
+    - month: '*'
+    - dayweek: '*'
+
+# Add rulestats cron - runs every minute to query Suricata for rule load status
+suricata_rulestats:
+  cron.present:
+    - name: /usr/sbin/so-suricata-rulestats > /dev/null 2>&1
+    - identifier: suricata_rulestats
+    - user: root
+    - minute: '*'
     - hour: '*'
     - daymonth: '*'
     - month: '*'
