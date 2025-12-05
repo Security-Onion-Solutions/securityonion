@@ -23,6 +23,11 @@ clean_suricata_eve_files:
   cron.absent:
     - identifier: clean_suricata_eve_files
 
+# Remove rulestats cron
+rulestats:
+  cron.absent:
+    - identifier: suricata_rulestats
+
 {% else %}
 
 {{sls}}_state_not_allowed:

@@ -124,7 +124,7 @@ surirulesync:
     - name: /opt/so/rules/suricata/
     - source: salt://suricata/rules/
     - user: 940
-    - group: 940
+    - group: 939
     - show_changes: False
 
 surilogscript:
