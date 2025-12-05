@@ -160,7 +160,6 @@ surithresholding:
     - source: salt://suricata/files/threshold.conf
     - user: 940
     - group: 940
-    - onlyif: salt://suricata/files/threshold.conf
 
 suriclassifications:
   file.managed:
