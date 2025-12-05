@@ -1,0 +1,34 @@
+{# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+   or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at 
+   https://securityonion.net/license; you may not use this file except in compliance with the
+   Elastic License 2.0. #}
+
+{% from 'elasticfleet/map.jinja' import ELASTICFLEETMERGED %}
+
+{# advanced config_yaml options for elasticfleet logstash output #}
+{% set ADV_OUTPUT_LOGSTASH_RAW = ELASTICFLEETMERGED.config.outputs.logstash %}
+{% set ADV_OUTPUT_LOGSTASH = {} %}
+{% for k, v in ADV_OUTPUT_LOGSTASH_RAW.items() %}
+{%   if v != "" and v is not none %}
+{%     if k == 'queue_mem_events' %}
+{#       rename queue_mem_events queue.mem.events #}
+{%       do ADV_OUTPUT_LOGSTASH.update({'queue.mem.events':v}) %}
+{%     elif k == 'loadbalance' %}
+{%       if v %}
+{#         only include loadbalance config when its True #}
+{%         do ADV_OUTPUT_LOGSTASH.update({k:v}) %}
+{%       endif %}
+{%     else %}
+{%       do ADV_OUTPUT_LOGSTASH.update({k:v}) %}
+{%     endif %}
+{%   endif %}
+{% endfor %}
+
+{% set LOGSTASH_CONFIG_YAML_RAW = [] %}
+{% if ADV_OUTPUT_LOGSTASH %}
+{%   for k, v in ADV_OUTPUT_LOGSTASH.items() %}
+{%     do LOGSTASH_CONFIG_YAML_RAW.append(k ~ ': ' ~ v) %}
+{%   endfor %}
+{% endif %}
+
+{% set LOGSTASH_CONFIG_YAML = LOGSTASH_CONFIG_YAML_RAW | join('\\n') if LOGSTASH_CONFIG_YAML_RAW else '' %}
