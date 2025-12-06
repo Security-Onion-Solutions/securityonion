@@ -214,7 +214,7 @@ git_config_set_safe_dirs:
 
 surinsmrulesdir:
   file.directory:
-    - name: /nsm/rules/suricata
+    - name: /nsm/rules/suricata/etopen
     - user: 939
     - group: 939
     - makedirs: True
