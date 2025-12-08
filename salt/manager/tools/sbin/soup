@@ -1116,7 +1116,8 @@ cat > /opt/so/conf/soc/fingerprints/suricataengine.syncBlock << EOF
 Suricata ruleset sync is blocked until this file is removed. Make sure that you have manually added any custom Suricata rulesets via SOC config - review the documentation for more details: securityonion.net/docs
 EOF
 
-# Create salt local rules dir
+# Remove possible symlink & create salt local rules dir
+[ -L /opt/so/saltstack/local/salt/suricata/rules ] && rm -f /opt/so/saltstack/local/salt/suricata/rules
 install -d -o 939 -g 939 /opt/so/saltstack/local/salt/suricata/rules/ || echo "Failed to create Suricata local rules directory"
 
 # Backup custom rules & overrides
@@ -1300,7 +1301,6 @@ if [ -n "$(docker ps -q -f name=^so-idstools$)" ]; then
 fi
 
 echo "Removing idstools symlink and scripts..."
-rm /opt/so/saltstack/local/salt/suricata/rules
 rm -rf /usr/sbin/so-idstools*
 sed -i '/^#\?so-idstools$/d' /opt/so/conf/so-status/so-status.conf
 
