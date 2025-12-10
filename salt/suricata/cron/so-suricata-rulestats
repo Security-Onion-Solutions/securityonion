@@ -17,14 +17,23 @@ query() {
 
 STATS=$(query "ruleset-stats")
 RELOAD=$(query "ruleset-reload-time")
+[ -z "$RELOAD" ] && RELOAD='{}'
 
-if echo "$STATS" | jq -e '.return == "OK"' > /dev/null 2>&1; then
-    LOADED=$(echo "$STATS" | jq -r '.message[0].rules_loaded')
-    FAILED=$(echo "$STATS" | jq -r '.message[0].rules_failed')
-    LAST_RELOAD=$(echo "$RELOAD" | jq -r '.message[0].last_reload')
+# Outputs valid JSON on success, empty on failure
+OUTPUT=$(jq -n \
+    --argjson stats "$STATS" \
+    --argjson reload "$RELOAD" \
+    'if $stats.return == "OK" and ($stats.message[0].rules_loaded | type) == "number" and ($stats.message[0].rules_failed | type) == "number" then
+        {
+            rules_loaded: $stats.message[0].rules_loaded,
+            rules_failed: $stats.message[0].rules_failed,
+            last_reload: ($reload.message[0].last_reload // ""),
+            return: "OK"
+        }
+    else empty end' 2>/dev/null)
 
-    jq -n --argjson loaded "$LOADED" --argjson failed "$FAILED" --arg reload "$LAST_RELOAD" \
-        '{rules_loaded: $loaded, rules_failed: $failed, last_reload: $reload, return: "OK"}' > "$OUTFILE"
+if [ -n "$OUTPUT" ]; then
+    echo "$OUTPUT" > "$OUTFILE"
 else
     echo '{"return":"FAIL"}' > "$OUTFILE"
 fi

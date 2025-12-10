@@ -18,11 +18,15 @@ if [[ ! "`pidof -x $(basename $0) -o %PPID`" ]]; then
     if [ -f "$STATSFILE" ] && [ $(($(date +%s) - $(stat -c %Y "$STATSFILE"))) -lt 90 ] && jq -e '.return == "OK" and .rules_loaded != null and .rules_failed != null' "$STATSFILE" > /dev/null 2>&1; then
         LOADED=$(jq -r '.rules_loaded' "$STATSFILE")
         FAILED=$(jq -r '.rules_failed' "$STATSFILE")
-        RELOAD_TIME=$(jq -r '.last_reload // ""' "$STATSFILE")
+        RELOAD_TIME=$(jq -r 'if .last_reload then .last_reload else "" end' "$STATSFILE")
 
-        echo "surirules loaded=${LOADED}i,failed=${FAILED}i,reload_time=\"${RELOAD_TIME}\",status=\"ok\""
+        if [ -n "$RELOAD_TIME" ]; then
+            echo "surirules loaded=${LOADED}i,failed=${FAILED}i,reload_time=\"${RELOAD_TIME}\",status=\"ok\""
+        else
+            echo "surirules loaded=${LOADED}i,failed=${FAILED}i,status=\"ok\""
+        fi
     else
-        echo "surirules loaded=0i,failed=0i,reload_time=\"\",status=\"unknown\""
+        echo "surirules loaded=0i,failed=0i,status=\"unknown\""
     fi
 
 fi
