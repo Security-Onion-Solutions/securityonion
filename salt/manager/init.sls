@@ -206,10 +206,33 @@ git_config_set_safe_dirs:
     - multivar:
       - /nsm/rules/custom-local-repos/local-sigma
       - /nsm/rules/custom-local-repos/local-yara
+      - /nsm/rules/custom-local-repos/local-suricata
       - /nsm/securityonion-resources
       - /opt/so/conf/soc/ai_summary_repos/securityonion-resources
       - /nsm/airgap-resources/playbooks
       - /opt/so/conf/soc/playbooks
+
+surinsmrulesdir:
+  file.directory:
+    - name: /nsm/rules/suricata/etopen
+    - user: 939
+    - group: 939
+    - makedirs: True
+
+suriextractionrules:
+  file.managed:
+    - name: /nsm/rules/suricata/so_extraction.rules
+    - source: salt://suricata/files/so_extraction.rules
+    - user: 939
+    - group: 939
+
+surifiltersrules:
+  file.managed:
+    - name: /nsm/rules/suricata/so_filters.rules
+    - source: salt://suricata/files/so_filters.rules
+    - user: 939
+    - group: 939
+
 {% else %}
 
 {{sls}}_state_not_allowed:

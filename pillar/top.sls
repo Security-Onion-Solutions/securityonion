@@ -44,8 +44,6 @@ base:
     - secrets
     - manager.soc_manager
     - manager.adv_manager
-    - idstools.soc_idstools
-    - idstools.adv_idstools
     - logstash.nodes
     - logstash.soc_logstash
     - logstash.adv_logstash
@@ -118,8 +116,6 @@ base:
     - elastalert.adv_elastalert
     - manager.soc_manager
     - manager.adv_manager
-    - idstools.soc_idstools
-    - idstools.adv_idstools
     - soc.soc_soc
     - soc.adv_soc
     - kibana.soc_kibana
@@ -159,8 +155,6 @@ base:
     {% endif %}
     - secrets
     - healthcheck.standalone
-    - idstools.soc_idstools
-    - idstools.adv_idstools
     - kratos.soc_kratos
     - kratos.adv_kratos
     - hydra.soc_hydra

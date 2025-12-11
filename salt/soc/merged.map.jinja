@@ -50,16 +50,103 @@
 {%   do SOCMERGED.config.server.modules.elastalertengine.update({'enabledSigmaRules': SOCMERGED.config.server.modules.elastalertengine.enabledSigmaRules.default}) %}
 {% endif %}
 
-{# set elastalertengine.rulesRepos and strelkaengine.rulesRepos based on airgap or not #}
+{# set elastalertengine.rulesRepos, strelkaengine.rulesRepos, and suricataengine.rulesetSources based on airgap or not #}
 {% if GLOBALS.airgap %}
 {%   do SOCMERGED.config.server.modules.elastalertengine.update({'rulesRepos': SOCMERGED.config.server.modules.elastalertengine.rulesRepos.airgap}) %}
 {%   do SOCMERGED.config.server.modules.strelkaengine.update({'rulesRepos': SOCMERGED.config.server.modules.strelkaengine.rulesRepos.airgap}) %}
+{#%   if SOCMERGED.config.server.modules.suricataengine.rulesetSources is mapping %#}
+{%     do SOCMERGED.config.server.modules.suricataengine.update({'rulesetSources': SOCMERGED.config.server.modules.suricataengine.rulesetSources.airgap}) %}
+{#%   endif %#}
 {%   do SOCMERGED.config.server.update({'airgapEnabled': true}) %}
 {% else %}
 {%   do SOCMERGED.config.server.modules.elastalertengine.update({'rulesRepos': SOCMERGED.config.server.modules.elastalertengine.rulesRepos.default}) %}
 {%   do SOCMERGED.config.server.modules.strelkaengine.update({'rulesRepos': SOCMERGED.config.server.modules.strelkaengine.rulesRepos.default}) %}
+{#%   if SOCMERGED.config.server.modules.suricataengine.rulesetSources is mapping %#}
+{%     do SOCMERGED.config.server.modules.suricataengine.update({'rulesetSources': SOCMERGED.config.server.modules.suricataengine.rulesetSources.default}) %}
+{#%   endif %#}
 {%   do SOCMERGED.config.server.update({'airgapEnabled': false}) %}
 {% endif %}
+
+
+{# Define the Detections custom ruleset that should always be present #}
+{% set CUSTOM_RULESET = {
+  'name': '__custom__',
+  'description': 'User-created custom rules created via the Detections module in the SOC UI',
+  'sourceType': 'elasticsearch',
+  'sourcePath': 'so_detection.ruleset:__custom__',
+  'readOnly': false,
+  'deleteUnreferenced': false,
+  'license': 'Custom',
+  'enabled': true
+} %}
+
+{# Always append the custom ruleset to suricataengine.rulesetSources if not already present #}
+{% if SOCMERGED.config.server.modules.suricataengine is defined and SOCMERGED.config.server.modules.suricataengine.rulesetSources is defined %}
+{%   if SOCMERGED.config.server.modules.suricataengine.rulesetSources is not mapping %}
+{%     set custom_names = SOCMERGED.config.server.modules.suricataengine.rulesetSources | selectattr('name', 'equalto', '__custom__') | list %}
+{%     if custom_names | length == 0 %}
+{%       do SOCMERGED.config.server.modules.suricataengine.rulesetSources.append(CUSTOM_RULESET) %}
+{%     endif %}
+{%   endif %}
+{% endif %}
+
+{# Enable SO_FILTERS and SO_EXTRACTIONS when Suricata is the metadata engine #}
+{% if SOCMERGED.config.server.modules.suricataengine is defined and SOCMERGED.config.server.modules.suricataengine.rulesetSources is defined %}
+{%   if SOCMERGED.config.server.modules.suricataengine.rulesetSources is not mapping %}
+{%     for ruleset in SOCMERGED.config.server.modules.suricataengine.rulesetSources %}
+{%       if ruleset.name in ['SO_FILTERS', 'SO_EXTRACTIONS'] and GLOBALS.md_engine == 'SURICATA' %}
+{%         do ruleset.update({'enabled': true}) %}
+{%       endif %}
+{%     endfor %}
+{%   endif %}
+{% endif %}
+
+{# Transform Emerging-Threats ruleset based on license key #}
+{% if SOCMERGED.config.server.modules.suricataengine is defined and SOCMERGED.config.server.modules.suricataengine.rulesetSources is defined %}
+{%   if SOCMERGED.config.server.modules.suricataengine.rulesetSources is not mapping %}
+{%     for ruleset in SOCMERGED.config.server.modules.suricataengine.rulesetSources %}
+{%     if ruleset.name == 'Emerging-Threats' %}
+{%       if ruleset.licenseKey and ruleset.licenseKey != '' %}
+{#         License key is defined - transform to ETPRO #}
+{%         if ruleset.sourceType == 'directory' %}
+{#           Airgap mode - update directory path #}
+{%           do ruleset.update({
+               'name': 'ETPRO',
+               'sourcePath': '/nsm/rules/custom-local-repos/local-etpro-suricata/etpro.rules.tar.gz',
+               'license': 'Commercial'
+             }) %}
+{%         else %}
+{#           Engine Version is hardcoded in the URL - this does not change often: https://community.emergingthreats.net/t/supported-engines/71 #}
+{%           do ruleset.update({
+               'name': 'ETPRO',
+               'sourcePath': 'https://rules.emergingthreatspro.com/' ~ ruleset.licenseKey ~ '/suricata-7.0.3/etpro.rules.tar.gz',
+               'urlHash': 'https://rules.emergingthreatspro.com/' ~ ruleset.licenseKey ~ '/suricata-7.0.3/etpro.rules.tar.gz.md5',
+               'license': 'Commercial'
+             }) %}
+{%         endif %}
+{%       else %}
+{#         No license key - explicitly set to ETOPEN #}
+{%         if ruleset.sourceType == 'directory' %}
+{#           Airgap mode - update directory path #}
+{%           do ruleset.update({
+               'name': 'ETOPEN',
+               'sourcePath': '/nsm/rules/suricata/etopen/',
+               'license': 'BSD'
+             }) %}
+{%         else %}
+{%           do ruleset.update({
+               'name': 'ETOPEN',
+               'sourcePath': 'https://rules.emergingthreats.net/open/suricata-7.0.3/emerging.rules.tar.gz',
+               'urlHash': 'https://rules.emergingthreats.net/open/suricata-7.0.3/emerging.rules.tar.gz.md5',
+               'license': 'BSD'
+             }) %}
+{%         endif %}
+{%       endif %}
+{%     endif %}
+{%     endfor %}
+{%   endif %}
+{% endif %}
+
 
 {# set playbookRepos based on airgap or not #}
 {% if GLOBALS.airgap %}
