@@ -11,6 +11,7 @@ stenoca:
     - name: /opt/so/conf/steno/certs
     - user: 941
     - group: 939
+    - makedirs: True
 
 {% else %}
 
