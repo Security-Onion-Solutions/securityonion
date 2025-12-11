@@ -12,6 +12,7 @@
 {%   set lsheap = LOGSTASH_MERGED.settings.lsheap %}
 
 include:
+  - ca
 {%   if GLOBALS.role not in ['so-receiver','so-fleet'] %}
   - elasticsearch.ca
 {%   endif %}
@@ -20,9 +21,9 @@ include:
   - kafka.ca
   - kafka.ssl
 {%   endif %}
+  - logstash.ssl
   - logstash.config
   - logstash.sostatus
-  - ssl
 
 so-logstash:
   docker_container.running:
@@ -65,22 +66,18 @@ so-logstash:
       - /opt/so/log/logstash:/var/log/logstash:rw
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
       - /opt/so/conf/logstash/etc/certs:/usr/share/logstash/certs:ro
-      {% if GLOBALS.role in ['so-manager', 'so-managerhype', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-receiver'] %}
-      - /etc/pki/filebeat.crt:/usr/share/logstash/filebeat.crt:ro
-      - /etc/pki/filebeat.p8:/usr/share/logstash/filebeat.key:ro
-      {% endif %}
+      - /etc/pki/tls/certs/intca.crt:/usr/share/filebeat/ca.crt:ro
       {% if GLOBALS.is_manager or GLOBALS.role in ['so-fleet', 'so-heavynode', 'so-receiver'] %}
       - /etc/pki/elasticfleet-logstash.crt:/usr/share/logstash/elasticfleet-logstash.crt:ro
       - /etc/pki/elasticfleet-logstash.key:/usr/share/logstash/elasticfleet-logstash.key:ro
       - /etc/pki/elasticfleet-lumberjack.crt:/usr/share/logstash/elasticfleet-lumberjack.crt:ro
       - /etc/pki/elasticfleet-lumberjack.key:/usr/share/logstash/elasticfleet-lumberjack.key:ro
+          {% if GLOBALS.role != 'so-fleet' %}
+      - /etc/pki/filebeat.crt:/usr/share/logstash/filebeat.crt:ro
+      - /etc/pki/filebeat.p8:/usr/share/logstash/filebeat.key:ro
+          {% endif %}
       {% endif %}
-      {% if GLOBALS.role in ['so-manager', 'so-managerhype', 'so-managersearch', 'so-standalone', 'so-import'] %}
-      - /etc/pki/ca.crt:/usr/share/filebeat/ca.crt:ro
-      {% else %}
-      - /etc/pki/tls/certs/intca.crt:/usr/share/filebeat/ca.crt:ro
-      {% endif %}
-      {% if GLOBALS.role in ['so-manager', 'so-managerhype', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-searchnode' ] %}
+      {% if GLOBALS.role not in ['so-receiver','so-fleet'] %}
       - /opt/so/conf/ca/cacerts:/etc/pki/ca-trust/extracted/java/cacerts:ro
       - /opt/so/conf/ca/tls-ca-bundle.pem:/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:ro
       {% endif %}
@@ -100,11 +97,22 @@ so-logstash:
         {% endfor %}
       {% endif %}
     - watch:
-      {% if GLOBALS.is_manager or GLOBALS.role in ['so-fleet', 'so-receiver'] %}
-      - x509: etc_elasticfleet_logstash_key
-      - x509: etc_elasticfleet_logstash_crt
-      {% endif %}
       - file: lsetcsync
+      - file: trusttheca
+      {% if GLOBALS.is_manager %}
+      - file: elasticsearch_cacerts
+      - file: elasticsearch_capems
+      {% endif %}
+      {% if GLOBALS.is_manager or GLOBALS.role in ['so-fleet', 'so-heavynode', 'so-receiver'] %}
+      - x509: etc_elasticfleet_logstash_crt
+      - x509: etc_elasticfleet_logstash_key
+      - x509: etc_elasticfleetlumberjack_crt
+      - x509: etc_elasticfleetlumberjack_key
+        {% if GLOBALS.role != 'so-fleet' %}
+      - x509: etc_filebeat_crt
+      - file: logstash_filebeat_p8
+        {% endif %}
+      {% endif %}
       {% for assigned_pipeline in LOGSTASH_MERGED.assigned_pipelines.roles[GLOBALS.role.split('-')[1]] %}
       - file: ls_pipeline_{{assigned_pipeline}}
         {% for CONFIGFILE in LOGSTASH_MERGED.defined_pipelines[assigned_pipeline] %}
@@ -115,17 +123,20 @@ so-logstash:
       - file: kafkacertz
       {% endif %}
     - require:
-      {% if grains['role'] in ['so-manager', 'so-managerhype', 'so-managersearch', 'so-standalone', 'so-import', 'so-heavynode', 'so-receiver'] %}
+      - file: trusttheca
+      {% if GLOBALS.is_manager %}
+      - file: elasticsearch_cacerts
+      - file: elasticsearch_capems
+      {% endif %}
+      {% if GLOBALS.is_manager or GLOBALS.role in ['so-fleet', 'so-heavynode', 'so-receiver'] %}
+      - x509: etc_elasticfleet_logstash_crt
+      - x509: etc_elasticfleet_logstash_key
+      - x509: etc_elasticfleetlumberjack_crt
+      - x509: etc_elasticfleetlumberjack_key
+        {% if GLOBALS.role != 'so-fleet' %}
       - x509: etc_filebeat_crt
-      {% endif %}
-      {% if grains['role'] in ['so-manager', 'so-managerhype', 'so-managersearch', 'so-standalone', 'so-import'] %}
-      - x509: pki_public_ca_crt
-      {% else %}
-      - x509: trusttheca
-      {% endif %}
-      {% if grains.role in ['so-manager', 'so-managerhype', 'so-managersearch', 'so-standalone', 'so-import'] %}
-      - file: cacertz
-      - file: capemz
+      - file: logstash_filebeat_p8
+        {% endif %}
       {% endif %}
       {% if GLOBALS.pipeline == 'KAFKA' and GLOBALS.role in ['so-manager', 'so-managerhype', 'so-managersearch', 'so-standalone', 'so-searchnode'] %}
       - file: kafkacertz

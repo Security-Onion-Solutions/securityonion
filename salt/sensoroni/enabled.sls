@@ -8,6 +8,7 @@
 
 
 include:
+  - pcap.ca
   - sensoroni.config
   - sensoroni.sostatus
 

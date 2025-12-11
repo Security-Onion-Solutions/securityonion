@@ -8,9 +8,6 @@
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 {%   from 'telegraf/map.jinja' import TELEGRAFMERGED %}
 
-include:
-  - ssl
-
 # add Telegraf to monitor all the things
 tgraflogdir:
   file.directory:

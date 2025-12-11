@@ -13,9 +13,11 @@
 {%   set SERVICETOKEN = salt['pillar.get']('elasticfleet:config:server:es_token','') %}
 
 include:
+  - ca
+  - logstash.ssl
+  - elasticfleet.ssl
   - elasticfleet.config
   - elasticfleet.sostatus
-  - ssl
 
 {% if grains.role not in ['so-fleet'] %}
 # Wait for Elasticsearch to be ready - no reason to try running Elastic Fleet server if ES is not ready
@@ -132,6 +134,11 @@ so-elastic-fleet:
         {% endfor %}
       {% endif %}
     - watch:
+      - file: trusttheca
+      - x509: etc_elasticfleet_key
+      - x509: etc_elasticfleet_crt
+    - require:
+      - file: trusttheca
       - x509: etc_elasticfleet_key
       - x509: etc_elasticfleet_crt
 {%   endif %}

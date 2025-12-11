@@ -4,14 +4,13 @@
 # Elastic License 2.0.
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
-{% if sls in allowed_states %}
-{%   from 'vars/globals.map.jinja' import GLOBALS %}
+{% if sls.split('.')[0] in allowed_states or sls in allowed_states%}
 
-include:
-{%   if GLOBALS.is_manager %}
-  - ca.server
-{%   endif %}
-  - ca.trustca
+stenoca:
+  file.directory:
+    - name: /opt/so/conf/steno/certs
+    - user: 941
+    - group: 939
 
 {% else %}
 

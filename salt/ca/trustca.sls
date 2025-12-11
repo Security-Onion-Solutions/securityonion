@@ -3,20 +3,22 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-{% from 'allowed_states.map.jinja' import allowed_states %}
-{% if sls in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 
-include:
-{%   if GLOBALS.is_manager %}
-  - ca.server
-{%   endif %}
-  - ca.trustca
+cacertdir:
+  file.directory:
+    - name: /etc/pki/tls/certs
+    - makedirs: True
 
-{% else %}
+# Trust the CA
+trusttheca:
+  file.managed:
+    - name: /etc/pki/tls/certs/intca.crt
+    - source: salt://ca/files/ca.crt
 
-{{sls}}_state_not_allowed:
-  test.fail_without_changes:
-    - name: {{sls}}_state_not_allowed
-
+{% if GLOBALS.os_family == 'Debian' %}
+symlinkca:
+  file.symlink:
+    - target: /etc/pki/tls/certs/intca.crt
+    - name: /etc/ssl/certs/intca.crt
 {% endif %}

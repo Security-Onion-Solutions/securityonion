@@ -8,81 +8,14 @@
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 {%   from 'docker/docker.map.jinja' import DOCKER %}
 {%   from 'nginx/map.jinja' import NGINXMERGED %}
-{%   set ca_server = GLOBALS.minion_id %}
 
 include:
+  - nginx.ssl
   - nginx.config
   - nginx.sostatus
 
-
-{%   if grains.role not in ['so-fleet'] %}
-
-{#   if the user has selected to replace the crt and key in the ui #}
-{%   if NGINXMERGED.ssl.replace_cert %}
-
-managerssl_key:
-  file.managed:
-    - name: /etc/pki/managerssl.key
-    - source: salt://nginx/ssl/ssl.key
-    - mode: 640
-    - group: 939
-    - watch_in:
-      - docker_container: so-nginx
-
-managerssl_crt:
-  file.managed:
-    - name: /etc/pki/managerssl.crt
-    - source: salt://nginx/ssl/ssl.crt
-    - mode: 644
-    - watch_in:
-      - docker_container: so-nginx
-
-{%   else %}
-
-managerssl_key:
-  x509.private_key_managed:
-    - name: /etc/pki/managerssl.key
-    - keysize: 4096
-    - backup: True
-    - new: True
-    {% if salt['file.file_exists']('/etc/pki/managerssl.key') -%}
-    - prereq:
-      - x509: /etc/pki/managerssl.crt
-    {%- endif %}
-    - retry:
-        attempts: 5
-        interval: 30
-    - watch_in:
-      - docker_container: so-nginx
-
-# Create a cert for the reverse proxy
-managerssl_crt:
-  x509.certificate_managed:
-    - name: /etc/pki/managerssl.crt
-    - ca_server: {{ ca_server }}
-    - signing_policy: managerssl
-    - private_key: /etc/pki/managerssl.key
-    - CN: {{ GLOBALS.hostname }}
-    - subjectAltName: "DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}, DNS:{{ GLOBALS.url_base }}" 
-    - days_remaining: 7
-    - days_valid: 820
-    - backup: True
-    - timeout: 30
-    - retry:
-        attempts: 5
-        interval: 30
-    - watch_in:
-      - docker_container: so-nginx
-
-{%   endif %}
-
-msslkeyperms:
-  file.managed:
-    - replace: False
-    - name: /etc/pki/managerssl.key
-    - mode: 640
-    - group: 939
-
+{%   if GLOBALS.role != 'so-fleet' %}
+{%     set container_config = 'so-nginx' %}
 make-rule-dir-nginx:
   file.directory:
     - name: /nsm/rules
@@ -92,15 +25,11 @@ make-rule-dir-nginx:
       - user
       - group
     - show_changes: False
-      
-{%   endif %}
 
-{# if this is an so-fleet node then we want to use the port bindings, custom bind mounts defined for fleet #}
-{% if GLOBALS.role == 'so-fleet' %}
-{%   set container_config = 'so-nginx-fleet-node' %}
-{% else %}
-{%   set container_config = 'so-nginx' %}
-{% endif %}
+{%   else %}
+{#     if this is an so-fleet node then we want to use the port bindings, custom bind mounts defined for fleet #}
+{%     set container_config = 'so-nginx-fleet-node' %}
+{%   endif %}
 
 so-nginx:
   docker_container.running:
@@ -154,18 +83,27 @@ so-nginx:
     - watch:
       - file: nginxconf
       - file: nginxconfdir
-    - require:
-      - file: nginxconf
-{% if GLOBALS.is_manager %}
-{%     if NGINXMERGED.ssl.replace_cert %}
+      {% if GLOBALS.is_manager %}
+      {%   if NGINXMERGED.ssl.replace_cert %}
       - file: managerssl_key
       - file: managerssl_crt
-{%     else %}
+      {%   else %}
       - x509: managerssl_key
       - x509: managerssl_crt
-{%     endif%}
+      {%   endif%}
+      {% endif %}
+    - require:
+      - file: nginxconf
+      {% if GLOBALS.is_manager %}
+      {%   if NGINXMERGED.ssl.replace_cert %}
+      - file: managerssl_key
+      - file: managerssl_crt
+      {%   else %}
+      - x509: managerssl_key
+      - x509: managerssl_crt
+      {%   endif%}
       - file: navigatorconfig
-{%   endif %}
+      {% endif %}
 
 delete_so-nginx_so-status.disabled:
   file.uncomment:

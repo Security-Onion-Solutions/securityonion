@@ -6,18 +6,11 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states or sls in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
+{%   from 'ca/map.jinja' import CA %}
 {%   set kafka_password = salt['pillar.get']('kafka:config:password') %}
 
 include:
-  - ca.dirs
-    {% set global_ca_server = [] %}
-    {% set x509dict = salt['mine.get'](GLOBALS.manager | lower~'*', 'x509.get_pem_entries') %}
-    {% for host in x509dict %}
-      {% if 'manager' in host.split('_')|last or host.split('_')|last == 'standalone' %}
-        {% do global_ca_server.append(host) %}
-      {% endif %}
-    {% endfor %}
-    {% set ca_server = global_ca_server[0] %}
+  - ca
 
 {% if GLOBALS.pipeline == "KAFKA" %}
 
@@ -39,9 +32,9 @@ kafka_client_key:
 kafka_client_crt:
   x509.certificate_managed:
     - name: /etc/pki/kafka-client.crt
-    - ca_server: {{ ca_server }}
+    - ca_server: {{ CA.server }}
     - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
-    - signing_policy: kafka
+    - signing_policy: general
     - private_key: /etc/pki/kafka-client.key
     - CN: {{ GLOBALS.hostname }}
     - days_remaining: 7
@@ -87,9 +80,9 @@ kafka_key:
 kafka_crt:
   x509.certificate_managed:
     - name: /etc/pki/kafka.crt
-    - ca_server: {{ ca_server }}
+    - ca_server: {{ CA.server }}
     - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
-    - signing_policy: kafka
+    - signing_policy: general
     - private_key: /etc/pki/kafka.key
     - CN: {{ GLOBALS.hostname }}
     - days_remaining: 7
@@ -103,6 +96,7 @@ kafka_crt:
     - name: "/usr/bin/openssl pkcs12 -inkey /etc/pki/kafka.key -in /etc/pki/kafka.crt -export -out /etc/pki/kafka.p12 -nodes -passout pass:{{ kafka_password }}"
     - onchanges:
       - x509: /etc/pki/kafka.key
+
 kafka_key_perms:
   file.managed:
     - replace: False
@@ -148,9 +142,9 @@ kafka_logstash_key:
 kafka_logstash_crt:
   x509.certificate_managed:
     - name: /etc/pki/kafka-logstash.crt
-    - ca_server: {{ ca_server }}
+    - ca_server: {{ CA.server }}
     - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
-    - signing_policy: kafka
+    - signing_policy: general
     - private_key: /etc/pki/kafka-logstash.key
     - CN: {{ GLOBALS.hostname }}
     - days_remaining: 7

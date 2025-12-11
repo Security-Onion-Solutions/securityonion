@@ -1122,16 +1122,6 @@ generate_ca() {
 	logCmd "openssl x509 -in /etc/pki/ca.crt -noout -subject -issuer -dates"
 }
 
-generate_ssl() {
-	# if the install type is a manager then we need to wait for the minion to be ready before trying
-	# to run the ssl state since we need the minion to sign the certs
-	if [[ $waitforstate ]]; then
-		(wait_for_salt_minion "$MINION_ID" "5" '/dev/stdout' || fail_setup) 2>&1 | tee -a "$setup_log"
-	fi
-	info "Applying SSL state"
-	logCmd "salt-call state.apply ssl -l info"
-}
-
 generate_passwords(){
   title "Generate Random Passwords"
   INFLUXPASS=$(get_random_value)
@@ -1661,7 +1651,6 @@ reinstall_init() {
 		fi
 
 		logCmd "salt-call state.apply ca.remove -linfo --local --file-root=../salt"
-		logCmd "salt-call state.apply ssl.remove -linfo --local --file-root=../salt"
 
 		# Kill any salt processes (safely)
 		for service in "${salt_services[@]}"; do
