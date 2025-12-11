@@ -57,12 +57,12 @@ class TestBackupScript(unittest.TestCase):
         mock_response.json.return_value = {'hits': {'hits': []}}
         mock_response.raise_for_status = MagicMock()
         mock_get.return_value = mock_response
-        
-        response = ds.query_elasticsearch(ds.QUERY_DETECTIONS, self.auth)
-        
+
+        response = ds.query_elasticsearch(ds.QUERY_DETECTIONS, self.auth, ds.DEFAULT_INDEX)
+
         self.assertEqual(response, {'hits': {'hits': []}})
         mock_get.assert_called_once_with(
-            ds.ES_URL,
+            f"https://localhost:9200/{ds.DEFAULT_INDEX}/_search",
             headers={"Content-Type": "application/json"},
             data=ds.QUERY_DETECTIONS,
             auth=self.auth,
@@ -81,7 +81,7 @@ class TestBackupScript(unittest.TestCase):
     @patch('os.makedirs')
     @patch('builtins.open', new_callable=mock_open)
     def test_save_overrides(self, mock_file, mock_makedirs):
-        file_path = ds.save_overrides(self.mock_override_hit)
+        file_path = ds.save_overrides(self.mock_override_hit, self.output_dir)
         expected_path = f'{self.output_dir}/sigma/overrides/test_id.yaml'
         self.assertEqual(file_path, expected_path)
         mock_makedirs.assert_called_once_with(f'{self.output_dir}/sigma/overrides', exist_ok=True)
@@ -90,9 +90,9 @@ class TestBackupScript(unittest.TestCase):
     @patch('subprocess.run')
     def test_ensure_git_repo(self, mock_run):
         mock_run.return_value = MagicMock(returncode=0)
-        
-        ds.ensure_git_repo()
-        
+
+        ds.ensure_git_repo(self.output_dir)
+
         mock_run.assert_has_calls([
             call(["git", "config", "--global", "init.defaultBranch", "main"], check=True),
             call(["git", "-C", self.output_dir, "init"], check=True),
@@ -106,9 +106,9 @@ class TestBackupScript(unittest.TestCase):
         mock_commit_result = MagicMock(returncode=1)
         # Ensure sufficient number of MagicMock instances for each subprocess.run call
         mock_run.side_effect = [mock_status_result, mock_commit_result, MagicMock(returncode=0), MagicMock(returncode=0), MagicMock(returncode=0), MagicMock(returncode=0), MagicMock(returncode=0), MagicMock(returncode=0)]
-        
+
         print("Running test_commit_changes...")
-        ds.commit_changes()
+        ds.commit_changes(self.output_dir)
         print("Finished test_commit_changes.")
 
         mock_run.assert_has_calls([
@@ -120,39 +120,45 @@ class TestBackupScript(unittest.TestCase):
         ])
 
     @patch('builtins.print')
-    @patch('so-detections-backup.commit_changes')
-    @patch('so-detections-backup.save_overrides')
-    @patch('so-detections-backup.save_content')
-    @patch('so-detections-backup.query_elasticsearch')
-    @patch('so-detections-backup.get_auth_credentials')
+    @patch.object(ds, 'commit_changes')
+    @patch.object(ds, 'save_overrides')
+    @patch.object(ds, 'save_content')
+    @patch.object(ds, 'query_elasticsearch')
+    @patch.object(ds, 'get_auth_credentials')
     @patch('os.makedirs')
-    def test_main(self, mock_makedirs, mock_get_auth, mock_query, mock_save_content, mock_save_overrides, mock_commit, mock_print):
+    @patch.object(ds, 'parse_args')
+    def test_main(self, mock_parse_args, mock_makedirs, mock_get_auth, mock_query, mock_save_content, mock_save_overrides, mock_commit, mock_print):
+        mock_args = MagicMock()
+        mock_args.output = self.output_dir
+        mock_args.index = ds.DEFAULT_INDEX
+        mock_parse_args.return_value = mock_args
         mock_get_auth.return_value = self.auth_credentials
         mock_query.side_effect = [
             {'hits': {'hits': [{"_source": {"so_detection": {"publicId": "1", "content": "content1", "language": "sigma"}}}]}},
             {'hits': {'hits': [{"_source": {"so_detection": {"publicId": "2", "overrides": [{"key": "value"}], "language": "suricata"}}}]}}
         ]
-        
+
         with patch('datetime.datetime') as mock_datetime:
             mock_datetime.now.return_value.strftime.return_value = "2024-05-23 20:49:44"
             ds.main()
-        
+
         mock_makedirs.assert_called_once_with(self.output_dir, exist_ok=True)
         mock_get_auth.assert_called_once_with(ds.AUTH_FILE)
         mock_query.assert_has_calls([
-            call(ds.QUERY_DETECTIONS, self.auth),
-            call(ds.QUERY_OVERRIDES, self.auth)
+            call(ds.QUERY_DETECTIONS, self.auth, ds.DEFAULT_INDEX),
+            call(ds.QUERY_OVERRIDES, self.auth, ds.DEFAULT_INDEX)
         ])
         mock_save_content.assert_called_once_with(
-            {"_source": {"so_detection": {"publicId": "1", "content": "content1", "language": "sigma"}}}, 
-            self.output_dir, 
-            "sigma", 
+            {"_source": {"so_detection": {"publicId": "1", "content": "content1", "language": "sigma"}}},
+            self.output_dir,
+            "sigma",
             "yaml"
         )
         mock_save_overrides.assert_called_once_with(
-            {"_source": {"so_detection": {"publicId": "2", "overrides": [{"key": "value"}], "language": "suricata"}}}
+            {"_source": {"so_detection": {"publicId": "2", "overrides": [{"key": "value"}], "language": "suricata"}}},
+            self.output_dir
         )
-        mock_commit.assert_called_once()
+        mock_commit.assert_called_once_with(self.output_dir)
         mock_print.assert_called()
 
 if __name__ == '__main__':
