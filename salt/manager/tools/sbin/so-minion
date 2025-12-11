@@ -716,10 +716,12 @@ function checkMine() {
 	}
 }
 
-# Add Elastic Agent settings to the minion file
 function create_ca_pillar() {
 	local capillar=/opt/so/saltstack/local/pillar/ca/init.sls
-	/usr/sbin/so-yaml.py replace $capillar ca.server $MINION_ID
+    printf '%s\n'\
+    "ca:"\
+    "  server: $MINION_ID"\
+	"  " > $capillar
     if [ $? -ne 0 ]; then
         log "ERROR" "Failed to add $MINION_ID to $capillar"
         return 1
