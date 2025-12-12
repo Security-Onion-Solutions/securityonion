@@ -3,6 +3,7 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
+{% if sls in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 
 pki_private_key:
@@ -51,3 +52,11 @@ cakeyperms:
     - name: /etc/pki/ca.key
     - mode: 640
     - group: 939
+
+{% else %}
+
+{{sls}}_state_not_allowed:
+  test.fail_without_changes:
+    - name: {{sls}}_state_not_allowed
+
+{% endif %}

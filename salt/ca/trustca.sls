@@ -3,7 +3,7 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-{%   from 'vars/globals.map.jinja' import GLOBALS %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 
 cacertdir:
   file.directory:

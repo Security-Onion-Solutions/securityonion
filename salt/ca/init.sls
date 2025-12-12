@@ -3,20 +3,10 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-{% from 'allowed_states.map.jinja' import allowed_states %}
-{% if sls in allowed_states %}
-{%   from 'vars/globals.map.jinja' import GLOBALS %}
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 
 include:
-{%   if GLOBALS.is_manager %}
+{% if GLOBALS.is_manager %}
   - ca.server
-{%   endif %}
-  - ca.trustca
-
-{% else %}
-
-{{sls}}_state_not_allowed:
-  test.fail_without_changes:
-    - name: {{sls}}_state_not_allowed
-
 {% endif %}
+  - ca.trustca
