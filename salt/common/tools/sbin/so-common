@@ -554,21 +554,36 @@ run_check_net_err() {
 }
 
 wait_for_salt_minion() {
-	local minion="$1"
-	local timeout="${2:-5}"
-	local logfile="${3:-'/dev/stdout'}"
-	retry 60 5 "journalctl -u salt-minion.service | grep 'Minion is ready to receive requests'" >> "$logfile" 2>&1 || fail
-	local attempt=0
-	# each attempts would take about 15 seconds
-	local maxAttempts=20
-	until check_salt_minion_status "$minion" "$timeout" "$logfile"; do
-		attempt=$((attempt+1))
-		if [[ $attempt -eq $maxAttempts ]]; then
-			return 1
-		fi
-		sleep 10
-	done
-	return 0
+    local minion="$1"
+    local max_wait="${2:-30}"
+    local interval="${3:-2}"
+    local logfile="${4:-'/dev/stdout'}"
+    local elapsed=0
+
+    echo "Waiting for salt-minion '$minion' to be ready..." | tee -a "$logfile"
+
+    while [ $elapsed -lt $max_wait ]; do
+        # Check if service is running
+        if ! systemctl is-active --quiet salt-minion; then
+            echo "salt-minion service not running (elapsed: ${elapsed}s)" | tee -a "$logfile"
+            sleep $interval
+            elapsed=$((elapsed + interval))
+            continue
+        fi
+        
+        # Check if minion responds to ping
+        if salt "$minion" test.ping --timeout=3 --out=json 2>> "$logfile" | grep -q "true"; then
+            echo "salt-minion '$minion' is connected and ready!" | tee -a "$logfile"
+            return 0
+        fi
+        
+        echo "Waiting... (${elapsed}s / ${max_wait}s)" | tee -a "$logfile"
+        sleep $interval
+        elapsed=$((elapsed + interval))
+    done
+
+    echo "ERROR: salt-minion '$minion' not ready after $max_wait seconds" | tee -a "$logfile"
+    return 1
 }
 
 salt_minion_count() {
