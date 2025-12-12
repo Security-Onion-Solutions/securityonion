@@ -1274,6 +1274,13 @@ custom_found=0
 check_config_file "$SO_RULE_UPDATE" "KNOWN_SO_RULE_UPDATE_HASHES" || custom_found=1
 check_config_file "$RULECAT_CONF" "KNOWN_RULECAT_CONF_HASHES" || custom_found=1
 
+# Check for ETPRO rules on airgap systems
+if [[ $is_airgap -eq 0 ]] && grep -q 'ETPRO ' /nsm/rules/suricata/emerging-all.rules 2>/dev/null; then
+    echo "ETPRO rules detected on airgap system - custom configuration"
+    echo "ETPRO rules detected on Airgap in /nsm/rules/suricata/emerging-all.rules" >> /opt/so/conf/soc/fingerprints/suricataengine.syncBlock
+    custom_found=1
+fi
+
 # If no custom configs found, remove syncBlock
 if [[ $custom_found -eq 0 ]]; then
     echo "idstools migration completed successfully - removing Suricata engine syncBlock"
