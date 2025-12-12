@@ -5,6 +5,9 @@
 
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 
+include:
+  - docker
+
 cacertdir:
   file.directory:
     - name: /etc/pki/tls/certs
@@ -15,6 +18,8 @@ trusttheca:
   file.managed:
     - name: /etc/pki/tls/certs/intca.crt
     - source: salt://ca/files/ca.crt
+    - listen_in:
+      - service: docker_running
 
 {% if GLOBALS.os_family == 'Debian' %}
 symlinkca:

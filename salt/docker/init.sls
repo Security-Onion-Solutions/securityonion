@@ -89,7 +89,6 @@ docker_running:
     - enable: True
     - watch:
       - file: docker_daemon
-      - file: trusttheca
     - require:
       - file: docker_daemon
       - file: trusttheca
