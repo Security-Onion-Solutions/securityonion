@@ -8,7 +8,9 @@
 
 
 include:
+{% if GLOBALS.is_sensor or GLOBALS.role == 'so-import' %}
   - pcap.ca
+{% endif %}
   - sensoroni.config
   - sensoroni.sostatus
 
@@ -17,7 +19,9 @@ so-sensoroni:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-soc:{{ GLOBALS.so_version }}
     - network_mode: host
     - binds:
+      {% if GLOBALS.is_sensor or GLOBALS.role == 'so-import' %}
       - /opt/so/conf/steno/certs:/etc/stenographer/certs:rw
+      {% endif %}
       - /nsm/pcap:/nsm/pcap:rw
       - /nsm/import:/nsm/import:rw
       - /nsm/pcapout:/nsm/pcapout:rw
