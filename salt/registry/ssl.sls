@@ -8,19 +8,38 @@
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 {%   from 'ca/map.jinja' import CA %}
 
+include:
+  - ca
+
+# Delete directory if it exists at the key path
+registry_key_cleanup:
+  file.absent:
+    - name: /etc/pki/registry.key
+    - onlyif:
+      - test -d /etc/pki/registry.key
+
 registry_key:
   x509.private_key_managed:
     - name: /etc/pki/registry.key
     - keysize: 4096
     - backup: True
     - new: True
+    - require:
+      - file: registry_key_cleanup
     {% if salt['file.file_exists']('/etc/pki/registry.key') -%}
     - prereq:
       - x509: /etc/pki/registry.crt
     {%- endif %}
     - retry:
-        attempts: 5
-        interval: 30
+        attempts: 15
+        interval: 10
+
+# Delete directory if it exists at the crt path
+registry_crt_cleanup:
+  file.absent:
+    - name: /etc/pki/registry.crt
+    - onlyif:
+      - test -d /etc/pki/registry.crt
 
 # Create a cert for the docker registry
 registry_crt:
@@ -34,10 +53,13 @@ registry_crt:
     - days_remaining: 7
     - days_valid: 820
     - backup: True
+    - require:
+      - file: registry_crt_cleanup
     - timeout: 30
     - retry:
-        attempts: 5
-        interval: 30
+        attempts: 15
+        interval: 10
+
 
 regkeyperms:
   file.managed:

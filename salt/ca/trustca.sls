@@ -18,8 +18,9 @@ trusttheca:
   file.managed:
     - name: /etc/pki/tls/certs/intca.crt
     - source: salt://ca/files/ca.crt
-    - listen_in:
+    - watch_in:
       - service: docker_running
+    - show_changes: False
 
 {% if GLOBALS.os_family == 'Debian' %}
 symlinkca:
