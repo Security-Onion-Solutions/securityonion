@@ -1174,11 +1174,12 @@ hash_normalized_file() {
         return 1
     fi
 
-    sed -E \
+    # Ensure trailing newline for consistent hashing regardless of source file
+    { sed -E \
         -e 's/^[[:space:]]+//; s/[[:space:]]+$//' \
         -e '/^$/d' \
         -e 's|--url=http://[^:]+:7788|--url=http://MANAGER:7788|' \
-        "$file" | sha256sum | awk '{print $1}'
+        "$file"; echo; } | sed '/^$/d' | sha256sum | awk '{print $1}'
 }
 
 # Known-default hashes for so-rule-update (ETOPEN ruleset)
