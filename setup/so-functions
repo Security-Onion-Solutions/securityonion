@@ -1762,6 +1762,50 @@ backup_dir() {
 }
 
 drop_install_options() {
+	# Ensure values written to install.txt won't later fail manager-side parsing in so-minion
+	strip_control_chars() {
+		# bash: remove ASCII control characters (incl. newlines/tabs/ESC)
+		printf '%s' "$1" | tr -d '[:cntrl:]'
+	}
+
+	validate_install_txt_vars() {
+		# Sanitize first (fail closed if still invalid)
+		MAINIP="$(strip_control_chars "$MAINIP")"
+		MNIC="$(strip_control_chars "$MNIC")"
+		NODE_DESCRIPTION="$(strip_control_chars "$NODE_DESCRIPTION")"
+		ES_HEAP_SIZE="$(strip_control_chars "$ES_HEAP_SIZE")"
+		PATCHSCHEDULENAME="$(strip_control_chars "$PATCHSCHEDULENAME")"
+		INTERFACE="$(strip_control_chars "$INTERFACE")"
+		HOSTNAME="$(strip_control_chars "$HOSTNAME")"
+		LS_HEAP_SIZE="$(strip_control_chars "$LS_HEAP_SIZE")"
+		IDH_MGTRESTRICT="$(strip_control_chars "$IDH_MGTRESTRICT")"
+		IDH_SERVICES="$(strip_control_chars "$IDH_SERVICES")"
+
+		valid_ip4 "$MAINIP" || return 1
+		[[ "$MNIC" =~ ^[A-Za-z0-9_.:-]+$ ]] || return 1
+		[[ "$NODE_DESCRIPTION" =~ ^[[:print:]]{0,256}$ ]] || return 1
+		[[ "$ES_HEAP_SIZE" =~ ^[0-9]+[kKmMgGtTpPeE]?$ ]] || return 1
+		[[ "$PATCHSCHEDULENAME" =~ ^[A-Za-z0-9._-]*$ ]] || return 1
+		[[ "$INTERFACE" =~ ^[A-Za-z0-9._:,-]+$ ]] || return 1
+		valid_hostname "$HOSTNAME" || return 1
+		[[ "$LS_HEAP_SIZE" =~ ^[0-9]+[kKmMgGtTpPeE]?$ ]] || return 1
+		[[ "$lb_procs" =~ ^[0-9]+$ ]] || return 1
+		[[ "$num_cpu_cores" =~ ^[0-9]+$ ]] || return 1
+		[[ -z "$IDH_MGTRESTRICT" || "$IDH_MGTRESTRICT" == "True" || "$IDH_MGTRESTRICT" == "False" ]] || return 1
+		[[ -z "$IDH_SERVICES" || "$IDH_SERVICES" =~ ^[[:print:]]{0,512}$ ]] || return 1
+
+		return 0
+	}
+
+	if ! validate_install_txt_vars; then
+		if declare -F whiptail_error_message >/dev/null; then
+			whiptail_error_message "One or more setup values were invalid and would cause the manager to reject this node when adding it. Please re-run setup and verify hostname, management IP/interface, and node description."
+		else
+			echo "Error: invalid setup values detected; refusing to write /opt/so/install.txt"
+		fi
+		return 1
+	fi
+
 	# Drop the install Variable
 	echo "MAINIP=$MAINIP" > /opt/so/install.txt
 	echo "MNIC=$MNIC" >> /opt/so/install.txt

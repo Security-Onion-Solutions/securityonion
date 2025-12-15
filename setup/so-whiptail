@@ -903,8 +903,9 @@ whiptail_management_nic() {
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
 
-	while [ -z "$MNIC" ]
+	while [ -z "$MNIC" ] || [[ "$MNIC" =~ [[:cntrl:]] ]] || [[ ! "$MNIC" =~ ^[A-Za-z0-9_.:-]+$ ]]
 	do
+		whiptail_invalid_input
 		MNIC=$(whiptail --title "$whiptail_title" --menu "Please select the NIC you would like to use for management.\n\nUse the arrow keys to move around and the Enter key to select." 22 75 12 "${nic_list_management[@]}" 3>&1 1>&2 2>&3 )	
 		local exitstatus=$?
 		whiptail_check_exitstatus $exitstatus
@@ -1098,6 +1099,14 @@ whiptail_node_description() {
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
+
+	while [[ "$NODE_DESCRIPTION" =~ [[:cntrl:]] ]]; do
+		whiptail_error_message "Node description cannot contain control characters. Please enter a new description."
+		NODE_DESCRIPTION=$(whiptail --title "$whiptail_title" \
+			--inputbox "Enter a short description for the node or press ENTER to leave blank:" 10 75 3>&1 1>&2 2>&3)
+		local exitstatus=$?
+		whiptail_check_exitstatus $exitstatus
+	done
 }
 
 whiptail_ntp_ask() {
