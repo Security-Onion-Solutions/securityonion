@@ -1504,7 +1504,13 @@ networking_needful() {
 	if [[ $reinit_networking ]] || ! [[ -f $net_init_file ]]; then
 		collect_hostname
 	fi
-	[[ ! ( $is_eval || $is_import ) ]] && whiptail_node_description
+	if [[ ! ( $is_eval || $is_import ) ]]; then
+		whiptail_node_description
+		while [[ "$NODE_DESCRIPTION" =~ [[:cntrl:]] ]]; do
+			whiptail_error_message "Node description cannot contain control characters. Please enter a new description."
+			whiptail_node_description
+		done
+	fi
 	if [[ $reinit_networking ]] || ! [[ -f $net_init_file ]]; then
 		network_init_whiptail
 	else
