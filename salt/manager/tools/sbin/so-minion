@@ -126,16 +126,130 @@ ADVPILLARFILE=/opt/so/saltstack/local/pillar/minions/adv_$MINION_ID.sls
 
 function getinstallinfo() {
 	log "INFO" "Getting install info for minion $MINION_ID"
-	# Pull from file
-	INSTALLVARS=$(sudo salt "$MINION_ID" cp.get_file_str /opt/so/install.txt --out=newline_values_only)
-	if [ $? -ne 0 ]; then
+
+	local install_json
+	local install_text
+
+	# Reset any prior values so we fail closed if the file is missing keys
+	MAINIP=""
+	MNIC=""
+	NODE_DESCRIPTION=""
+	ES_HEAP_SIZE=""
+	PATCHSCHEDULENAME=""
+	INTERFACE=""
+	NODETYPE=""
+	CORECOUNT=""
+	LSHOSTNAME=""
+	LSHEAP=""
+	CPUCORES=""
+	IDH_MGTRESTRICT=""
+	IDH_SERVICES=""
+
+	# Pull from file (treat it as data, not code)
+	install_json=$(sudo salt "$MINION_ID" cp.get_file_str /opt/so/install.txt --out=json 2>/dev/null)
+	if [ $? -ne 0 ] || [ -z "$install_json" ]; then
 		log "ERROR" "Failed to get install info from $MINION_ID"
 		return 1
 	fi
-	
-	source <(echo $INSTALLVARS)
-	if [ $? -ne 0 ]; then
-		log "ERROR" "Failed to source install variables"
+
+	install_text=$(jq -r --arg id "$MINION_ID" '.[$id] // empty' <<<"$install_json" 2>/dev/null)
+	if [ $? -ne 0 ] || [ -z "$install_text" ] || [ "$install_text" == "null" ]; then
+		log "ERROR" "Failed to parse install info response for $MINION_ID"
+		return 1
+	fi
+
+	while IFS= read -r line; do
+		# Trim trailing CR (in case of CRLF files)
+		line=${line%$'\r'}
+
+		# Skip empty/comment lines
+		[[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+
+		if [[ "$line" =~ ^[[:space:]]*([A-Z0-9_]+)[[:space:]]*=(.*)$ ]]; then
+			local key="${BASH_REMATCH[1]}"
+			local value="${BASH_REMATCH[2]}"
+
+			# Trim leading whitespace from value (writers shouldn't include it, but tolerate it)
+			value="${value#"${value%%[![:space:]]*}"}"
+
+			# Strip a single layer of surrounding quotes
+			if [[ "$value" =~ ^\".*\"$ ]]; then
+				value="${value:1:${#value}-2}"
+			elif [[ "$value" =~ ^\'.*\'$ ]]; then
+				value="${value:1:${#value}-2}"
+			fi
+
+			case "$key" in
+				MAINIP)
+					[[ "$value" =~ ^[A-Za-z0-9.:-]+$ ]] || { log "ERROR" "Invalid MAINIP in install info"; return 1; }
+					MAINIP="$value"
+					;;
+				MNIC)
+					[[ "$value" =~ ^[A-Za-z0-9_.:-]+$ ]] || { log "ERROR" "Invalid MNIC in install info"; return 1; }
+					MNIC="$value"
+					;;
+				NODE_DESCRIPTION)
+					# Allow spaces and common punctuation, but reject control chars
+					[[ "$value" =~ ^[[:print:]]{0,256}$ ]] || { log "ERROR" "Invalid NODE_DESCRIPTION in install info"; return 1; }
+					NODE_DESCRIPTION="$value"
+					;;
+				ES_HEAP_SIZE)
+					[[ "$value" =~ ^[0-9]+[kKmMgGtTpPeE]?$ ]] || { log "ERROR" "Invalid ES_HEAP_SIZE in install info"; return 1; }
+					ES_HEAP_SIZE="$value"
+					;;
+				PATCHSCHEDULENAME)
+					[[ "$value" =~ ^[A-Za-z0-9._-]*$ ]] || { log "ERROR" "Invalid PATCHSCHEDULENAME in install info"; return 1; }
+					PATCHSCHEDULENAME="$value"
+					;;
+				INTERFACE)
+					[[ "$value" =~ ^[A-Za-z0-9._:,-]+$ ]] || { log "ERROR" "Invalid INTERFACE in install info"; return 1; }
+					INTERFACE="$value"
+					;;
+				NODETYPE)
+					[[ "$value" =~ ^[A-Z0-9_]+$ ]] || { log "ERROR" "Invalid NODETYPE in install info"; return 1; }
+					if ! declare -F "create${value}" >/dev/null; then
+						log "ERROR" "Unknown NODETYPE '$value' in install info"
+						return 1
+					fi
+					NODETYPE="$value"
+					;;
+				CORECOUNT)
+					[[ "$value" =~ ^[0-9]+$ ]] || { log "ERROR" "Invalid CORECOUNT in install info"; return 1; }
+					CORECOUNT="$value"
+					;;
+				LSHOSTNAME)
+					[[ "$value" =~ ^[A-Za-z0-9.-]+$ ]] || { log "ERROR" "Invalid LSHOSTNAME in install info"; return 1; }
+					LSHOSTNAME="$value"
+					;;
+				LSHEAP)
+					[[ "$value" =~ ^[0-9]+[kKmMgGtTpPeE]?$ ]] || { log "ERROR" "Invalid LSHEAP in install info"; return 1; }
+					LSHEAP="$value"
+					;;
+				CPUCORES)
+					[[ "$value" =~ ^[0-9]+$ ]] || { log "ERROR" "Invalid CPUCORES in install info"; return 1; }
+					CPUCORES="$value"
+					;;
+				IDH_MGTRESTRICT)
+					[[ "$value" == "True" || "$value" == "False" ]] || { log "ERROR" "Invalid IDH_MGTRESTRICT in install info"; return 1; }
+					IDH_MGTRESTRICT="$value"
+					;;
+				IDH_SERVICES)
+					[[ "$value" =~ ^[[:print:]]{0,512}$ ]] || { log "ERROR" "Invalid IDH_SERVICES in install info"; return 1; }
+					IDH_SERVICES="$value"
+					;;
+				*)
+					# Ignore unknown keys for forward compatibility
+					:
+					;;
+			esac
+		else
+			log "ERROR" "Invalid install info line from $MINION_ID"
+			return 1
+		fi
+	done <<<"$install_text"
+
+	if [[ -z "$NODETYPE" || -z "$MAINIP" || -z "$MNIC" ]]; then
+		log "ERROR" "Missing required install variables from $MINION_ID"
 		return 1
 	fi
 }
@@ -996,7 +1110,7 @@ function setupMinionFiles() {
 	log "INFO" "Setting up minion files for $MINION_ID"
 	
 	# Check to see if nodetype is set
-	if [ -z $NODETYPE ]; then
+	if [ -z "$NODETYPE" ]; then
 		error_msg="No node type specified"
 		log "ERROR" "$error_msg"
 		echo "$error_msg"
@@ -1018,7 +1132,12 @@ function setupMinionFiles() {
 	fi
 
 	# Create node-specific configuration
-	create$NODETYPE || return 1
+	local create_func="create${NODETYPE}"
+	if ! declare -F "$create_func" >/dev/null; then
+		log "ERROR" "Unknown node type '$NODETYPE'"
+		return 1
+	fi
+	"$create_func" || return 1
 	
 	# Ensure proper ownership after all content is written
 	ensure_socore_ownership || return 1
