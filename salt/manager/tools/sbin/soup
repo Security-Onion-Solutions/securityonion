@@ -21,6 +21,9 @@ whiptail_title='Security Onion UPdater'
 NOTIFYCUSTOMELASTICCONFIG=false
 TOPFILE=/opt/so/saltstack/default/salt/top.sls
 BACKUPTOPFILE=/opt/so/saltstack/default/salt/top.sls.backup
+SALTUPGRADED=false
+SALT_CLOUD_INSTALLED=false
+SALT_CLOUD_CONFIGURED=false
 # used to display messages to the user at the end of soup
 declare -a FINAL_MESSAGE_QUEUE=()
 
@@ -271,7 +274,7 @@ check_os_updates() {
         if [[ "$confirm" == [cC] ]]; then
           echo "Continuing without updating packages"
         elif [[ "$confirm" == [uU] ]]; then
-          echo "Applying Grid Updates"
+          echo "Applying Grid Updates. The following patch.os salt state may take a while depending on how many packages need to be updated."
           update_flag=true
         else
           echo "Exiting soup"
@@ -423,6 +426,7 @@ preupgrade_changes() {
     [[ "$INSTALLEDVERSION" == 2.4.160 ]] && up_to_2.4.170
     [[ "$INSTALLEDVERSION" == 2.4.170 ]] && up_to_2.4.180
     [[ "$INSTALLEDVERSION" == 2.4.180 ]] && up_to_2.4.190
+    [[ "$INSTALLEDVERSION" == 2.4.190 ]] && up_to_2.4.200
     true
 }
 
@@ -454,6 +458,7 @@ postupgrade_changes() {
     [[ "$POSTVERSION"  == 2.4.160 ]] && post_to_2.4.170
     [[ "$POSTVERSION"  == 2.4.170 ]] && post_to_2.4.180
     [[ "$POSTVERSION"  == 2.4.180 ]] && post_to_2.4.190
+    [[ "$POSTVERSION"  == 2.4.190 ]] && post_to_2.4.200
     true
 }
 
@@ -631,6 +636,13 @@ post_to_2.4.190() {
     rollover_index "logs-elasticsearch.server-default"
 
   POSTVERSION=2.4.190
+}
+
+post_to_2.4.200() {
+  echo "Initiating Suricata idstools migration..."
+  suricata_idstools_removal_post
+
+  POSTVERSION=2.4.200
 }
 
 repo_sync() {
@@ -900,6 +912,15 @@ up_to_2.4.190() {
   INSTALLEDVERSION=2.4.190
 }
 
+up_to_2.4.200() {
+  echo "Backing up idstools config..."
+  suricata_idstools_removal_pre
+
+  touch /opt/so/state/esfleet_logstash_config_pillar
+
+  INSTALLEDVERSION=2.4.200
+}
+
 add_hydra_pillars() {
   mkdir -p /opt/so/saltstack/local/pillar/hydra
   touch /opt/so/saltstack/local/pillar/hydra/soc_hydra.sls
@@ -983,6 +1004,8 @@ rollover_index() {
 }
 
 suricata_idstools_migration() {
+  # For 2.4.70
+
   #Backup the pillars for idstools
   mkdir -p /nsm/backup/detections-migration/idstools
   rsync -av /opt/so/saltstack/local/pillar/idstools/* /nsm/backup/detections-migration/idstools
@@ -1083,6 +1106,217 @@ playbook_migration() {
   echo "Playbook Migration is complete...."
 }
 
+suricata_idstools_removal_pre() {
+# For SOUPs beginning with 2.4.200 - pre SOUP checks
+
+# Create syncBlock file
+install -d -o 939 -g 939 -m 755 /opt/so/conf/soc/fingerprints
+install -o 939 -g 939 -m 644 /dev/null /opt/so/conf/soc/fingerprints/suricataengine.syncBlock
+cat > /opt/so/conf/soc/fingerprints/suricataengine.syncBlock << EOF
+Suricata ruleset sync is blocked until this file is removed. **CRITICAL** Make sure that you have manually added any custom Suricata rulesets via SOC config before removing this file - review the documentation for more details: https://docs.securityonion.net/en/2.4/nids.html#sync-block
+EOF
+
+# Remove possible symlink & create salt local rules dir
+[ -L /opt/so/saltstack/local/salt/suricata/rules ] && rm -f /opt/so/saltstack/local/salt/suricata/rules
+install -d -o 939 -g 939 /opt/so/saltstack/local/salt/suricata/rules/ || echo "Failed to create Suricata local rules directory"
+
+# Backup custom rules & overrides
+mkdir -p /nsm/backup/detections-migration/2-4-200
+cp /usr/sbin/so-rule-update /nsm/backup/detections-migration/2-4-200
+cp /opt/so/conf/idstools/etc/rulecat.conf /nsm/backup/detections-migration/2-4-200
+
+# Backup so-detection index via reindex
+echo "Creating sos-backup index template..."
+template_result=$(/sbin/so-elasticsearch-query '_index_template/sos-backup' -X PUT \
+    --retry 5 --retry-delay 15 --retry-all-errors \
+    -d '{"index_patterns":["sos-backup-*"],"priority":501,"template":{"settings":{"index":{"number_of_replicas":0,"number_of_shards":1}}}}')
+
+if [[ -z "$template_result" ]] || ! echo "$template_result" | jq -e '.acknowledged == true' > /dev/null 2>&1; then
+    echo "Error: Failed to create sos-backup index template"
+    echo "$template_result"
+    exit 1
+fi
+
+BACKUP_INDEX="sos-backup-detection-$(date +%Y%m%d-%H%M%S)"
+echo "Backing up so-detection index to $BACKUP_INDEX..."
+reindex_result=$(/sbin/so-elasticsearch-query '_reindex?wait_for_completion=true' \
+    --retry 5 --retry-delay 15 --retry-all-errors \
+    -X POST -d "{\"source\": {\"index\": \"so-detection\"}, \"dest\": {\"index\": \"$BACKUP_INDEX\"}}")
+
+if [[ -z "$reindex_result" ]]; then
+    echo "Error: Backup of detections failed - no response from Elasticsearch"
+    exit 1
+elif echo "$reindex_result" | jq -e '.created >= 0' > /dev/null 2>&1; then
+    echo "Backup complete: $(echo "$reindex_result" | jq -r '.created') documents copied"
+elif echo "$reindex_result" | grep -q "index_not_found_exception"; then
+    echo "so-detection index does not exist, skipping backup"
+else
+    echo "Error: Backup of detections failed"
+    echo "$reindex_result"
+    exit 1
+fi
+
+}
+
+suricata_idstools_removal_post() {
+# For SOUPs beginning with 2.4.200 - post SOUP checks
+
+echo "Checking idstools configuration for custom modifications..."
+
+# Normalize and hash file content for consistent comparison
+# Args: $1 - file path
+# Outputs: SHA256 hash to stdout
+# Returns: 0 on success, 1 on failure
+hash_normalized_file() {
+    local file="$1"
+
+    if [[ ! -r "$file" ]]; then
+        return 1
+    fi
+
+    # Ensure trailing newline for consistent hashing regardless of source file
+    { sed -E \
+        -e 's/^[[:space:]]+//; s/[[:space:]]+$//' \
+        -e '/^$/d' \
+        -e 's|--url=http://[^:]+:7788|--url=http://MANAGER:7788|' \
+        "$file"; echo; } | sed '/^$/d' | sha256sum | awk '{print $1}'
+}
+
+# Known-default hashes for so-rule-update (ETOPEN ruleset)
+KNOWN_SO_RULE_UPDATE_HASHES=(
+    # 2.4.100+ (suricata 7.0.3, non-airgap)
+    "5fbd067ced86c8ec72ffb7e1798aa624123b536fb9d78f4b3ad8d3b45db1eae7"  # 2.4.100-2.4.190 non-Airgap
+    # 2.4.90+ airgap (same for 2.4.90 and 2.4.100+)
+    "61f632c55791338c438c071040f1490066769bcce808b595b5cc7974a90e653a"  # 2.4.90+ Airgap
+    # 2.4.90 (suricata 6.0, non-airgap, comment inside proxy block)
+    "0380ec52a05933244ab0f0bc506576e1d838483647b40612d5fe4b378e47aedd"  # 2.4.90 non-Airgap
+    # 2.4.10-2.4.80 (suricata 6.0, non-airgap, comment outside proxy block)
+    "b6e4d1b5a78d57880ad038a9cd2cc6978aeb2dd27d48ea1a44dd866a2aee7ff4"  # 2.4.10-2.4.80 non-Airgap
+    # 2.4.10-2.4.80 airgap
+    "b20146526ace2b142fde4664f1386a9a1defa319b3a1d113600ad33a1b037dad"  # 2.4.10-2.4.80 Airgap
+    # 2.4.5 and earlier (no pidof check, non-airgap)
+    "d04f5e4015c348133d28a7840839e82d60009781eaaa1c66f7f67747703590dc"  # 2.4.5 non-Airgap
+)
+
+# Known-default hashes for rulecat.conf
+KNOWN_RULECAT_CONF_HASHES=(
+    # 2.4.100+ (suricata 7.0.3)
+    "302e75dca9110807f09ade2eec3be1fcfc8b2bf6cf2252b0269bb72efeefe67e"  # 2.4.100-2.4.190 without SURICATA md_engine
+    "8029b7718c324a9afa06a5cf180afde703da1277af4bdd30310a6cfa3d6398cb"  # 2.4.100-2.4.190 with SURICATA md_engine
+    # 2.4.80-2.4.90 (suricata 6.0, with --suricata-version and --output)
+    "4d8b318e6950a6f60b02f307cf27c929efd39652990c1bd0c8820aa8a307e1e7"  # 2.4.80-2.4.90 without SURICATA md_engine
+    "a1ddf264c86c4e91c81c5a317f745a19466d4311e4533ec3a3c91fed04c11678"  # 2.4.80-2.4.90 with SURICATA md_engine
+    # 2.4.50-2.4.70 (/suri/ path, no --suricata-version)
+    "86e3afb8d0f00c62337195602636864c98580a13ca9cc85029661a539deae6ae"  # 2.4.50-2.4.70 without SURICATA md_engine
+    "5a97604ca5b820a10273a2d6546bb5e00c5122ca5a7dfe0ba0bfbce5fc026f4b"  # 2.4.50-2.4.70 with SURICATA md_engine
+    # 2.4.20-2.4.40 (/nids/ path without /suri/)
+    "d098ea9ecd94b5cca35bf33543f8ea8f48066a0785221fabda7fef43d2462c29"  # 2.4.20-2.4.40 without SURICATA md_engine
+    "9dbc60df22ae20d65738ba42e620392577857038ba92278e23ec182081d191cd"  # 2.4.20-2.4.40 with SURICATA md_engine
+    # 2.4.5-2.4.10 (/sorules/ path for extraction/filters)
+    "490f6843d9fca759ee74db3ada9c702e2440b8393f2cfaf07bbe41aaa6d955c3"  # 2.4.5-2.4.10 with SURICATA md_engine
+    # Note: 2.4.5-2.4.10 without SURICATA md_engine has same hash as 2.4.20-2.4.40 without SURICATA md_engine
+)
+
+# Check a config file against known hashes
+# Args: $1 - file path, $2 - array name of known hashes
+check_config_file() {
+    local file="$1"
+    local known_hashes_array="$2"
+    local file_display_name=$(basename "$file")
+
+    if [[ ! -f "$file" ]]; then
+        echo "Warning: $file not found"
+        echo "$file_display_name not found - manual verification required" >> /opt/so/conf/soc/fingerprints/suricataengine.syncBlock
+        return 1
+    fi
+
+    echo "Hashing $file..."
+    local file_hash
+    if ! file_hash=$(hash_normalized_file "$file"); then
+        echo "Warning: Could not read $file"
+        echo "$file_display_name not readable - manual verification required" >> /opt/so/conf/soc/fingerprints/suricataengine.syncBlock
+        return 1
+    fi
+
+    echo "  Hash: $file_hash"
+
+    # Check if hash matches any known default
+    local -n known_hashes=$known_hashes_array
+    for known_hash in "${known_hashes[@]}"; do
+        if [[ "$file_hash" == "$known_hash" ]]; then
+            echo "  Matches known default configuration"
+            return 0
+        fi
+    done
+
+    # No match - custom configuration detected
+    echo "Does not match known default - custom configuration detected"
+    echo "Custom $file_display_name detected (hash: $file_hash)" >> /opt/so/conf/soc/fingerprints/suricataengine.syncBlock
+
+    # If this is so-rule-update, check for ETPRO license code and write out to the syncBlock file
+    # If ETPRO is enabled, the license code already exists in the so-rule-update script, this is just making it easier to migrate
+    if [[ "$file_display_name" == "so-rule-update" ]]; then
+        local etpro_code
+        etpro_code=$(grep -oP '\-\-etpro=\K[0-9a-fA-F]+' "$file" 2>/dev/null) || true
+        if [[ -n "$etpro_code" ]]; then
+            echo "ETPRO code found: $etpro_code" >> /opt/so/conf/soc/fingerprints/suricataengine.syncBlock
+        fi
+    fi
+
+    return 1
+}
+
+# Check so-rule-update and rulecat.conf
+SO_RULE_UPDATE="/usr/sbin/so-rule-update"
+RULECAT_CONF="/opt/so/conf/idstools/etc/rulecat.conf"
+
+custom_found=0
+
+check_config_file "$SO_RULE_UPDATE" "KNOWN_SO_RULE_UPDATE_HASHES" || custom_found=1
+check_config_file "$RULECAT_CONF" "KNOWN_RULECAT_CONF_HASHES" || custom_found=1
+
+# Check for ETPRO rules on airgap systems
+if [[ $is_airgap -eq 0 ]] && grep -q 'ETPRO ' /nsm/rules/suricata/emerging-all.rules 2>/dev/null; then
+    echo "ETPRO rules detected on airgap system - custom configuration"
+    echo "ETPRO rules detected on Airgap in /nsm/rules/suricata/emerging-all.rules" >> /opt/so/conf/soc/fingerprints/suricataengine.syncBlock
+    custom_found=1
+fi
+
+# If no custom configs found, remove syncBlock
+if [[ $custom_found -eq 0 ]]; then
+    echo "idstools migration completed successfully - removing Suricata engine syncBlock"
+    rm -f /opt/so/conf/soc/fingerprints/suricataengine.syncBlock
+else
+    echo "Custom idstools configuration detected - syncBlock remains in place"
+    echo "Review /opt/so/conf/soc/fingerprints/suricataengine.syncBlock for details"
+fi
+
+echo "Cleaning up idstools"
+echo "Stopping and removing the idstools container..."
+if [ -n "$(docker ps -q -f name=^so-idstools$)" ]; then
+    image_name=$(docker ps -a --filter name=^so-idstools$ --format '{{.Image}}' 2>/dev/null || true)
+    docker stop so-idstools || echo "Warning: failed to stop so-idstools container"
+    docker rm so-idstools || echo "Warning: failed to remove so-idstools container"
+
+    if [[ -n "$image_name" ]]; then
+        echo "Removing idstools image: $image_name"
+        docker rmi "$image_name" || echo "Warning: failed to remove image $image_name"
+    fi
+fi
+
+echo "Removing idstools symlink and scripts..."
+rm -rf /usr/sbin/so-idstools*
+sed -i '/^#\?so-idstools$/d' /opt/so/conf/so-status/so-status.conf
+crontab -l | grep -v 'so-rule-update' | crontab -
+
+# Backup the salt master config & manager pillar before editing it
+cp /opt/so/saltstack/local/pillar/minions/$MINIONID.sls /nsm/backup/detections-migration/2-4-200/
+cp /etc/salt/master  /nsm/backup/detections-migration/2-4-200/
+so-yaml.py remove /opt/so/saltstack/local/pillar/minions/$MINIONID.sls idstools
+so-yaml.py removelistitem /etc/salt/master file_roots.base /opt/so/rules/nids
+
+}
+
 determine_elastic_agent_upgrade() {
   if [[ $is_airgap -eq 0 ]]; then
     update_elastic_agent_airgap
@@ -1129,7 +1363,7 @@ unmount_update() {
 
 update_airgap_rules() {
   # Copy the rules over to update them for airgap.
-  rsync -a $UPDATE_DIR/agrules/suricata/* /nsm/rules/suricata/
+  rsync -a --delete $UPDATE_DIR/agrules/suricata/ /nsm/rules/suricata/etopen/
   rsync -a $UPDATE_DIR/agrules/detect-sigma/* /nsm/rules/detect-sigma/
   rsync -a $UPDATE_DIR/agrules/detect-yara/* /nsm/rules/detect-yara/
   # Copy the securityonion-resorces repo over for SOC Detection Summaries and checkout the published summaries branch
@@ -1260,24 +1494,43 @@ upgrade_check_salt() {
 }
 
 upgrade_salt() {
-  SALTUPGRADED=True
   echo "Performing upgrade of Salt from $INSTALLEDSALTVERSION to $NEWSALTVERSION."
   echo ""
   # If rhel family
   if [[ $is_rpm ]]; then
+    # Check if salt-cloud is installed
+    if rpm -q salt-cloud &>/dev/null; then
+      SALT_CLOUD_INSTALLED=true
+    fi
+    # Check if salt-cloud is configured
+    if [[ -f /etc/salt/cloud.profiles.d/socloud.conf ]]; then
+      SALT_CLOUD_CONFIGURED=true
+    fi
+    
     echo "Removing yum versionlock for Salt."
     echo ""
     yum versionlock delete "salt"
     yum versionlock delete "salt-minion"
     yum versionlock delete "salt-master"
+    # Remove salt-cloud versionlock if installed
+    if [[ $SALT_CLOUD_INSTALLED == true ]]; then
+      yum versionlock delete "salt-cloud"
+    fi
     echo "Updating Salt packages."
     echo ""
     set +e
     # if oracle run with -r to ignore repos set by bootstrap
     if [[ $OS == 'oracle' ]]; then
-      run_check_net_err \
-      "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -X -r -F -M stable \"$NEWSALTVERSION\"" \
-      "Could not update salt, please check $SOUP_LOG for details."
+      # Add -L flag only if salt-cloud is already installed
+      if [[ $SALT_CLOUD_INSTALLED == true ]]; then
+        run_check_net_err \
+        "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -X -r -L -F -M stable \"$NEWSALTVERSION\"" \
+        "Could not update salt, please check $SOUP_LOG for details."
+      else
+        run_check_net_err \
+        "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -X -r -F -M stable \"$NEWSALTVERSION\"" \
+        "Could not update salt, please check $SOUP_LOG for details."
+      fi
     # if another rhel family variant we want to run without -r to allow the bootstrap script to manage repos
     else
       run_check_net_err \
@@ -1290,8 +1543,14 @@ upgrade_salt() {
     yum versionlock add "salt-0:$NEWSALTVERSION-0.*"
     yum versionlock add "salt-minion-0:$NEWSALTVERSION-0.*"
     yum versionlock add "salt-master-0:$NEWSALTVERSION-0.*"
+    # Add salt-cloud versionlock if installed
+    if [[ $SALT_CLOUD_INSTALLED == true ]]; then
+      yum versionlock add "salt-cloud-0:$NEWSALTVERSION-0.*"
+    fi
   # Else do Ubuntu things
   elif [[ $is_deb ]]; then
+    # ensure these files don't exist when upgrading from 3006.9 to 3006.16
+    rm -f /etc/apt/keyrings/salt-archive-keyring-2023.pgp /etc/apt/sources.list.d/salt.list
     echo "Removing apt hold for Salt."
     echo ""
     apt-mark unhold "salt-common"
@@ -1322,6 +1581,7 @@ upgrade_salt() {
     echo ""
     exit 1
   else
+    SALTUPGRADED=true
     echo "Salt upgrade success."
     echo ""
   fi
@@ -1565,6 +1825,11 @@ main() {
     # ensure the mine is updated and populated before highstates run, following the salt-master restart
     update_salt_mine
 
+    if [[ $SALT_CLOUD_CONFIGURED == true && $SALTUPGRADED == true ]]; then
+      echo "Updating salt-cloud config to use the new Salt version"
+      salt-call state.apply salt.cloud.config concurrent=True
+    fi
+
     enable_highstate
 
     echo ""
@@ -1608,7 +1873,7 @@ main() {
       if [[ $is_airgap -eq 0 ]]; then
         echo ""
         echo "Cleaning repos on remote Security Onion nodes."
-        salt -C 'not *_eval and not *_manager and not *_managersearch and not *_standalone and G@os:CentOS' cmd.run "yum clean all"
+        salt -C 'not *_eval and not *_manager* and not *_standalone and G@os:OEL' cmd.run "dnf clean all"
         echo ""
       fi
     fi
@@ -1647,7 +1912,7 @@ This appears to be a distributed deployment. Other nodes should update themselve
 
 Each minion is on a random 15 minute check-in period and things like network bandwidth can be a factor in how long the actual upgrade takes. If you have a heavy node on a slow link, it is going to take a while to get the containers to it. Depending on what changes happened between the versions, Elasticsearch might not be able to talk to said heavy node until the update is complete.
 
-If it looks like you’re missing data after the upgrade, please avoid restarting services and instead make sure at least one search node has completed its upgrade. The best way to do this is to run 'sudo salt-call state.highstate' from a search node and make sure there are no errors. Typically if it works on one node it will work on the rest. Forward nodes are less complex and will update as they check in so you can monitor those from the Grid section of SOC.
+If it looks like you’re missing data after the upgrade, please avoid restarting services and instead make sure at least one search node has completed its upgrade. The best way to do this is to run 'sudo salt-call state.highstate' from a search node and make sure there are no errors. Typically if it works on one node it will work on the rest. Sensor nodes are less complex and will update as they check in so you can monitor those from the Grid section of SOC.
 
 For more information, please see $DOC_BASE_URL/soup.html#distributed-deployments.
 

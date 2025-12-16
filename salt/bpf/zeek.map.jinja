@@ -1,7 +1,16 @@
+{% from 'vars/globals.map.jinja' import GLOBALS %}
 {% import_yaml 'bpf/defaults.yaml' as BPFDEFAULTS %}
 {% set BPFMERGED = salt['pillar.get']('bpf', BPFDEFAULTS.bpf, merge=True) %}
+{% set ZEEK_BPF_STATUS = 0 %}
 {% import 'bpf/macros.jinja' as MACROS %}
 
 {{ MACROS.remove_comments(BPFMERGED, 'zeek') }}
 
 {% set ZEEKBPF = BPFMERGED.zeek %}
+
+{% if ZEEKBPF %}
+   {% set ZEEK_BPF_CALC = salt['cmd.run_all']('/usr/sbin/so-bpf-compile ' ~ GLOBALS.sensor.interface ~ ' ' ~ ZEEKBPF|join(" "), cwd='/root') %}
+   {% if ZEEK_BPF_CALC['retcode'] == 0 %}
+      {% set ZEEK_BPF_STATUS = 1 %}
+   {% endif %}
+{% endif %}

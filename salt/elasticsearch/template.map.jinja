@@ -61,5 +61,55 @@
 {%       do settings.index_template.template.settings.index.pop('sort') %}
 {%     endif %}
 {%   endif %}
+
+{# advanced ilm actions #}
+{%   if settings.policy is defined and settings.policy.phases is defined %}
+{%     set PHASE_NAMES = ["hot", "warm", "cold"] %}
+{%     for P in PHASE_NAMES %}
+{%       if settings.policy.phases[P] is defined and settings.policy.phases[P].actions is defined %}
+{%         set PHASE = settings.policy.phases[P].actions %}
+{#         remove allocate action if number_of_replicas isn't configured #}
+{%         if PHASE.allocate is defined %}
+{%           if PHASE.allocate.number_of_replicas is not defined or PHASE.allocate.number_of_replicas == "" %}
+{%             do PHASE.pop('allocate', none) %}
+{%           endif %}
+{%         endif %}
+{#         start shrink action #}
+{%         if PHASE.shrink is defined %}
+{%           if PHASE.shrink.method is defined %}
+{%             if PHASE.shrink.method == 'COUNT' and PHASE.shrink.number_of_shards is defined and PHASE.shrink.number_of_shards %}
+{#               remove max_primary_shard_size value when doing shrink operation by count vs size #}
+{%               do PHASE.shrink.pop('max_primary_shard_size', none) %}
+{%             elif PHASE.shrink.method == 'SIZE' and PHASE.shrink.max_primary_shard_size is defined and PHASE.shrink.max_primary_shard_size %}
+{#               remove number_of_shards value when doing shrink operation by size vs count #}
+{%               do PHASE.shrink.pop('number_of_shards', none) %}
+{%             else %}
+{#               method isn't defined or missing a required config number_of_shards/max_primary_shard_size #}
+{%               do PHASE.pop('shrink', none) %}
+{%             endif %}
+{%           endif %}
+{%         endif %}
+{#         always remove shrink method since its only used for SOC config, not in the actual ilm policy #}
+{%         if PHASE.shrink is defined %}
+{%            do PHASE.shrink.pop('method', none) %}
+{%         endif %}
+{#         end shrink action #}
+{#         start force merge #}
+{%         if PHASE.forcemerge is defined %}
+{%           if PHASE.forcemerge.index_codec is defined and PHASE.forcemerge.index_codec %}
+{%             do PHASE.forcemerge.update({'index_codec': 'best_compression'}) %}
+{%           else %}
+{%             do PHASE.forcemerge.pop('index_codec', none) %}
+{%           endif %}
+{%           if PHASE.forcemerge.max_num_segments is not defined or not PHASE.forcemerge.max_num_segments %}
+{#             max_num_segments is empty, drop it #}
+{%             do PHASE.pop('forcemerge', none) %}
+{%           endif %}
+{%         endif %}
+{#         end force merge #}
+{%       endif %}
+{%     endfor %}
+{%   endif %}
+
 {%   do ES_INDEX_SETTINGS.update({index | replace("_x_", "."): ES_INDEX_SETTINGS_GLOBAL_OVERRIDES[index]}) %}
 {% endfor %}

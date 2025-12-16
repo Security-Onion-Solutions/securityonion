@@ -7,9 +7,49 @@
 {% if sls.split('.')[0] in allowed_states %}
 
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
-{%   from 'bpf/suricata.map.jinja' import SURICATABPF %}
 {%   from 'suricata/map.jinja' import SURICATAMERGED %}
-{%   set BPF_STATUS = 0  %}
+{%   from 'bpf/suricata.map.jinja' import SURICATABPF, SURICATA_BPF_STATUS, SURICATA_BPF_CALC %}
+
+{%   if GLOBALS.pcap_engine in ["SURICATA", "TRANSITION"] %}
+{%     from 'bpf/pcap.map.jinja' import PCAPBPF, PCAP_BPF_STATUS, PCAP_BPF_CALC %}
+# BPF compilation and configuration
+{%     if PCAPBPF and not PCAP_BPF_STATUS %}
+suriPCAPbpfcompilationfailure:
+  test.configurable_test_state:
+    - changes: False
+    - result: False
+    - comment: "BPF Syntax Error - Discarding Specified BPF. Error: {{ PCAP_BPF_CALC['stderr'] }}"
+{%     endif %}
+{%   endif %}
+
+suridir:
+  file.directory:
+    - name: /opt/so/conf/suricata
+    - user: 940
+    - group: 939
+    - mode: 775
+    - makedirs: True
+
+# BPF applied to all of Suricata - alerts/metadata/pcap
+suribpf:
+  file.managed:
+    - name: /opt/so/conf/suricata/bpf
+    - user: 940
+    - group: 940
+   {% if SURICATA_BPF_STATUS %}
+    - contents: {{ SURICATABPF }}
+   {% else %}
+    - contents:
+      - ""
+   {% endif %}
+
+{%   if SURICATABPF and not SURICATA_BPF_STATUS %}
+suribpfcompilationfailure:
+  test.configurable_test_state:
+    - changes: False
+    - result: False
+    - comment: "BPF Syntax Error - Discarding Specified BPF. Error: {{ SURICATA_BPF_CALC['stderr'] }}"
+{%   endif %}
 
 # Add Suricata Group
 suricatagroup:
@@ -49,17 +89,12 @@ suricata_sbin_jinja:
     - file_mode: 755
     - template: jinja
 
-suridir:
-  file.directory:
-    - name: /opt/so/conf/suricata
-    - user: 940
-    - group: 940
-
 suriruledir:
   file.directory:
-    - name: /opt/so/conf/suricata/rules
+    - name: /opt/so/rules/suricata
     - user: 940
-    - group: 940
+    - group: 939
+    - mode: 775
     - makedirs: True
 
 surilogdir:
@@ -84,14 +119,12 @@ suridatadir:
     - mode: 770
     - makedirs: True
 
-# salt:// would resolve to /opt/so/rules/nids because of the defined file_roots and
-#  not existing under /opt/so/saltstack/local/salt or /opt/so/saltstack/default/salt
 surirulesync:
   file.recurse:
-    - name: /opt/so/conf/suricata/rules/
-    - source: salt://suri/
+    - name: /opt/so/rules/suricata/
+    - source: salt://suricata/rules/
     - user: 940
-    - group: 940
+    - group: 939
     - show_changes: False
 
 surilogscript:
@@ -124,10 +157,9 @@ suriconfig:
 surithresholding:
   file.managed:
     - name: /opt/so/conf/suricata/threshold.conf
-    - source: salt://suricata/files/threshold.conf.jinja
+    - source: salt://suricata/files/threshold.conf
     - user: 940
     - group: 940
-    - template: jinja
 
 suriclassifications:
   file.managed:
@@ -135,32 +167,6 @@ suriclassifications:
     - source: salt://suricata/classification/classification.config
     - user: 940
     - group: 940
-
-# BPF compilation and configuration
-{% if SURICATABPF %}
-   {% set BPF_CALC = salt['cmd.script']('salt://common/tools/sbin/so-bpf-compile', GLOBALS.sensor.interface + ' ' + SURICATABPF|join(" "),cwd='/root') %}
-   {% if BPF_CALC['stderr'] == "" %}
-      {% set BPF_STATUS = 1  %}
-   {% else  %}
-suribpfcompilationfailure:
-  test.configurable_test_state:
-   - changes: False
-   - result: False
-   - comment: "BPF Syntax Error - Discarding Specified BPF"
-   {% endif %}
-{% endif %}
-
-suribpf:
-  file.managed:
-    - name: /opt/so/conf/suricata/bpf
-    - user: 940
-    - group: 940
-   {% if BPF_STATUS %}
-    - contents: {{ SURICATABPF }}
-   {% else %}
-    - contents:
-      - ""
-   {% endif %}
 
 so-suricata-eve-clean:
   file.managed:
@@ -170,6 +176,14 @@ so-suricata-eve-clean:
     - mode: 755
     - template: jinja
     - source: salt://suricata/cron/so-suricata-eve-clean
+
+so-suricata-rulestats:
+  file.managed:
+    - name: /usr/sbin/so-suricata-rulestats
+    - user: root
+    - group: root
+    - mode: 755
+    - source: salt://suricata/cron/so-suricata-rulestats
 
 {% else %}
 

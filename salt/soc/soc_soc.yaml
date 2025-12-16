@@ -424,6 +424,17 @@ soc:
             description: The maximum number of documents to request in a single Elasticsearch scroll request.
           bulkIndexWorkerCount:
             description: The number of worker threads to use when bulk indexing data into Elasticsearch. A value below 1 will default to the number of CPUs available.
+        filedatastore:
+          jobDir:
+            description: The location where local job files are stored on the manager.
+            global: True
+            advanced: True
+          retryFailureIntervalMs:
+            description: The interval, in milliseconds, to wait before attempting to reprocess a failed job.
+            global: True
+          retryFailureMaxAttempts:
+            description: The max number of attempts to process a job, in the event the job fails to complete.
+            global: True
         sostatus:
           refreshIntervalMs:
             description: Duration (in milliseconds) between refreshes of the grid status. Shortening this duration may not have expected results, as the backend systems feeding this sostatus data will continue their updates as scheduled.
@@ -552,6 +563,64 @@ soc:
             advanced: True
             forcedType: "[]string"
             helpLink: detections.html#rule-engine-status
+          rulesetSources:
+            default: &serulesetSources
+              description: "Ruleset sources for Suricata rules. Supports URL downloads and local directories. Refer to the linked documentation for details on how to configure this setting."
+              global: True
+              advanced: False
+              forcedType: "[]{}"
+              helpLink: suricata.html
+              syntax: json
+              uiElements:
+              - field: name
+                label: Ruleset Name (This will be the name of the ruleset in the UI)
+                required: True
+                readonly: True
+              - field: description
+                label: Description
+              - field: enabled
+                label: Enabled (If false, existing rules & overrides will be removed)
+                forcedType: bool
+                required: True
+              - field: licenseKey
+                label: License Key
+                required: False
+              - field: sourceType
+                label: Source Type
+                required: True
+                options:
+                  - url
+                  - directory
+              - field: sourcePath
+                label: Source Path (full url or directory path)
+                required: True
+              - field: excludeFiles
+                label: Exclude Files (list of file names to exclude, separated by commas)
+                required: False
+              - field: license
+                label: Ruleset License
+                required: True
+              - field: readOnly
+                label: Read Only (Prevents changes to the rule itself - can still be enabled/disabled/tuned)
+                forcedType: bool
+                required: False
+              - field: deleteUnreferenced
+                label: Delete Unreferenced (Deletes rules that are no longer referenced by ruleset source)
+                forcedType: bool
+                required: False
+              - field: proxyURL
+                label: HTTP/HTTPS proxy URL for downloading the ruleset.
+                required: False
+              - field: proxyUsername
+                label: Proxy authentication username.
+                required: False
+              - field: proxyPassword
+                label: Proxy authentication password.
+                required: False
+              - field: proxyCACert
+                label: Path to CA certificate file for MITM proxy verification.
+                required: False
+            airgap: *serulesetSources
         navigator:
           intervalMinutes:
             description: How often to generate the Navigator Layers. (minutes)
@@ -606,14 +675,9 @@ soc:
           investigationPrompt: 
             description: Prompt given to Onion AI when beginning an investigation.
             global: True
-          contextLimitSmall:
-            description: Smaller context limit for Onion AI.
+          compressContextPrompt:
+            description: Prompt given to Onion AI when summarizing a conversation in order to compress context.
             global: True
-            advanced: True
-          contextLimitLarge:
-            description: Larger context limit for Onion AI.
-            global: True
-            advanced: True
           thresholdColorRatioLow:
             description: Lower visual context color change threshold.
             global: True
@@ -630,6 +694,38 @@ soc:
             description: Onion AI credit amount at which balance turns red.
             global: True
             advanced: True
+          availableModels:
+            description: List of AI models available for use in SOC as well as model specific warning thresholds.
+            global: True
+            advanced: True
+            forcedType: "[]{}"
+            helpLink: assistant.html
+            syntax: json
+            uiElements:
+            - field: id
+              label: Model ID
+              required: True
+            - field: displayName
+              label: Display Name
+              required: True
+            - field: origin
+              label: Country of Origin for the Model Training
+              required: false
+            - field: contextLimitSmall
+              label: Context Limit (Small)
+              forcedType: int
+              required: True
+            - field: contextLimitLarge
+              label: Context Limit (Large)
+              forcedType: int
+              required: True
+            - field: lowBalanceColorAlert
+              label: Low Balance Color Alert
+              forcedType: int
+              required: True
+            - field: enabled
+              label: Enabled
+              forcedType: bool
         apiTimeoutMs:
           description: Duration (in milliseconds) to wait for a response from the SOC server API before giving up and showing an error on the SOC UI.
           global: True

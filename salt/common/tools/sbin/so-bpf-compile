@@ -29,9 +29,26 @@ fi
 
 interface="$1"
 shift
-tcpdump -i $interface -ddd $@ | tail -n+2 |
-while read line; do
+
+# Capture tcpdump output and exit code
+tcpdump_output=$(tcpdump -i "$interface" -ddd "$@" 2>&1)
+tcpdump_exit=$?
+
+if [ $tcpdump_exit -ne 0 ]; then
+  echo "$tcpdump_output" >&2
+  exit $tcpdump_exit
+fi
+
+# Process the output, skipping the first line
+echo "$tcpdump_output" | tail -n+2 | while read -r line; do
   cols=( $line )
-  printf "%04x%02x%02x%08x" ${cols[0]} ${cols[1]} ${cols[2]} ${cols[3]}
+  printf "%04x%02x%02x%08x" "${cols[0]}" "${cols[1]}" "${cols[2]}" "${cols[3]}"
 done
+
+# Check if the pipeline succeeded
+if [ "${PIPESTATUS[0]}" -ne 0 ]; then
+  exit 1
+fi
+
 echo ""
+exit 0

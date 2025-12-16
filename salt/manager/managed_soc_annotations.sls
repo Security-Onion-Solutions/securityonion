@@ -25,13 +25,11 @@
            {% set index_settings = es.get('index_settings', {}) %}
            {% set input = index_settings.get('so-logs', {}) %}
            {% for k in matched_integration_names %}
-           {%   if k not in index_settings %}
-           {%     set _ = index_settings.update({k: input}) %}
-           {%   endif %}
+           {%   do index_settings.update({k: input}) %}
            {% endfor %}
            {% for k in addon_integration_keys %}
            {%   if k not in matched_integration_names and k in index_settings %}
-           {%     set _ = index_settings.pop(k) %}
+           {%     do index_settings.pop(k) %}
            {%   endif %}
            {% endfor %}
            {{ data }}
@@ -45,14 +43,12 @@
            {% set es = data.get('elasticsearch', {}) %}
            {% set index_settings = es.get('index_settings', {}) %}
            {% for k in matched_integration_names %}
-           {%   if k not in index_settings %}
-           {%     set input = ADDON_INTEGRATION_DEFAULTS[k] %}
-           {%     set _ = index_settings.update({k: input})%}
-           {%   endif %}
+           {%   set input = ADDON_INTEGRATION_DEFAULTS[k] %}
+           {%     do index_settings.update({k: input})%}
            {% endfor %}
            {% for k in addon_integration_keys %}
            {%   if k not in matched_integration_names and k in index_settings %}
-           {%     set _ = index_settings.pop(k) %}
+           {%     do index_settings.pop(k) %}
            {%   endif %}
            {% endfor %}
            {{ data }}

@@ -17,6 +17,7 @@ def showUsage(args):
     print('Usage: {} <COMMAND> <YAML_FILE> [ARGS...]'.format(sys.argv[0]), file=sys.stderr)
     print('  General commands:', file=sys.stderr)
     print('    append         - Append a list item to a yaml key, if it exists and is a list. Requires KEY and LISTITEM args.', file=sys.stderr)
+    print('    removelistitem - Remove a list item from a yaml key, if it exists and is a list. Requires KEY and LISTITEM args.', file=sys.stderr)
     print('    add            - Add a new key and set its value. Fails if key already exists. Requires KEY and VALUE args.', file=sys.stderr)
     print('    get            - Displays (to stdout) the value stored in the given key. Requires KEY arg.', file=sys.stderr)
     print('    remove         - Removes a yaml key, if it exists. Requires KEY arg.', file=sys.stderr)
@@ -26,8 +27,8 @@ def showUsage(args):
     print('  Where:', file=sys.stderr)
     print('   YAML_FILE       - Path to the file that will be modified. Ex: /opt/so/conf/service/conf.yaml', file=sys.stderr)
     print('   KEY             - YAML key, does not support \' or " characters at this time. Ex: level1.level2', file=sys.stderr)
-    print('   VALUE           - Value to set for a given key', file=sys.stderr)
-    print('   LISTITEM        - Item to append to a given key\'s list value', file=sys.stderr)
+    print('   VALUE           - Value to set for a given key. Can be a literal value or file:<path> to load from a YAML file.', file=sys.stderr)
+    print('   LISTITEM        - Item to append to a given key\'s list value. Can be a literal value or file:<path> to load from a YAML file.', file=sys.stderr)
     sys.exit(1)
 
 
@@ -57,8 +58,32 @@ def appendItem(content, key, listItem):
             return 1
 
 
+def removeListItem(content, key, listItem):
+    pieces = key.split(".", 1)
+    if len(pieces) > 1:
+        removeListItem(content[pieces[0]], pieces[1], listItem)
+    else:
+        try:
+            if not isinstance(content[key], list):
+                raise AttributeError("Value is not a list")
+            if listItem in content[key]:
+                content[key].remove(listItem)
+        except (AttributeError, TypeError):
+            print("The existing value for the given key is not a list. No action was taken on the file.", file=sys.stderr)
+            return 1
+        except KeyError:
+            print("The key provided does not exist. No action was taken on the file.", file=sys.stderr)
+            return 1
+
+
 def convertType(value):
-    if isinstance(value, str) and len(value) > 0 and (not value.startswith("0") or len(value) == 1):
+    if isinstance(value, str) and value.startswith("file:"):
+        path = value[5:]  # Remove "file:" prefix
+        if not os.path.exists(path):
+            print(f"File '{path}' does not exist.", file=sys.stderr)
+            sys.exit(1)
+        return loadYaml(path)
+    elif isinstance(value, str) and len(value) > 0 and (not value.startswith("0") or len(value) == 1):
         if "." in value:
             try:
                 value = float(value)
@@ -92,6 +117,23 @@ def append(args):
 
     content = loadYaml(filename)
     appendItem(content, key, convertType(listItem))
+    writeYaml(filename, content)
+
+    return 0
+
+
+def removelistitem(args):
+    if len(args) != 3:
+        print('Missing filename, key arg, or list item to remove', file=sys.stderr)
+        showUsage(None)
+        return 1
+
+    filename = args[0]
+    key = args[1]
+    listItem = args[2]
+
+    content = loadYaml(filename)
+    removeListItem(content, key, convertType(listItem))
     writeYaml(filename, content)
 
     return 0
@@ -205,6 +247,7 @@ def main():
         "help": showUsage,
         "add": add,
         "append": append,
+        "removelistitem": removelistitem,
         "get": get,
         "remove": remove,
         "replace": replace,

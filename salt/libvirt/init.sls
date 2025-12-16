@@ -31,6 +31,19 @@ libvirt_conf_dir:
     - group: 939
     - makedirs: True
 
+libvirt_volumes:
+  file.directory:
+    - name: /nsm/libvirt/volumes
+    - user: qemu
+    - group: qemu
+    - dir_mode: 755
+    - file_mode: 640
+    - recurse:
+      - user
+      - group
+      - mode
+    - makedirs: True
+
 libvirt_config:
   file.managed:
     - name: /opt/so/conf/libvirt/libvirtd.conf

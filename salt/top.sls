@@ -74,8 +74,6 @@ base:
     - sensoroni
     - telegraf
     - firewall
-    - idstools
-    - suricata.manager
     - healthcheck
     - elasticsearch
     - elastic-fleet-package-registry
@@ -106,8 +104,6 @@ base:
     - firewall
     - sensoroni
     - telegraf
-    - idstools
-    - suricata.manager
     - healthcheck
     - elasticsearch
     - logstash
@@ -142,8 +138,6 @@ base:
     - sensoroni
     - telegraf
     - backup.config_backup
-    - idstools
-    - suricata.manager
     - elasticsearch
     - logstash
     - redis
@@ -177,8 +171,6 @@ base:
     - sensoroni
     - telegraf
     - backup.config_backup
-    - idstools
-    - suricata.manager
     - elasticsearch
     - logstash
     - redis
@@ -208,8 +200,6 @@ base:
     - sensoroni
     - telegraf
     - firewall
-    - idstools
-    - suricata.manager
     - pcap
     - elasticsearch
     - elastic-fleet-package-registry

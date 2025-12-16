@@ -1,0 +1,56 @@
+{
+  "processors": [
+    {
+      "rename": {
+        "field": "message2.dns.queries",
+        "target_field": "dns.queries",
+        "ignore_missing": true,
+        "ignore_failure": true
+      }
+    },
+    {
+      "script": {
+        "source": "if (ctx?.dns?.queries != null && ctx?.dns?.queries.length > 0) {\n    if (ctx.dns == null) {\n      ctx.dns = new HashMap();\n    }\n    if (ctx.dns.query == null) {\n      ctx.dns.query = new HashMap();\n    }\n    ctx.dns.query.name = ctx?.dns?.queries[0].rrname;\n}"
+      }
+    },
+    {
+      "script": {
+        "source": "if (ctx?.dns?.queries != null && ctx?.dns?.queries.length > 0) {\n    if (ctx.dns == null) {\n      ctx.dns = new HashMap();\n    }\n    if (ctx.dns.query == null) {\n      ctx.dns.query = new HashMap();\n    }\n    ctx.dns.query.type_name = ctx?.dns?.queries[0].rrtype;\n}"
+      }
+    },
+    {
+      "foreach": {
+        "field": "dns.queries",
+        "processor": {
+          "rename": {
+            "field": "_ingest._value.rrname",
+            "target_field": "_ingest._value.name",
+            "ignore_missing": true
+          }
+        },
+        "ignore_failure": true
+      }
+    },
+    {
+      "foreach": {
+        "field": "dns.queries",
+        "processor": {
+          "rename": {
+            "field": "_ingest._value.rrtype",
+            "target_field": "_ingest._value.type_name",
+            "ignore_missing": true
+          }
+        },
+        "ignore_failure": true
+      }
+    },
+    {
+      "pipeline": {
+        "name": "suricata.tld",
+        "ignore_missing_pipeline": true,
+        "if": "ctx?.dns?.queries != null && ctx?.dns?.queries.length > 0",
+        "ignore_failure": true
+      }
+    }
+  ]
+}

@@ -172,7 +172,15 @@ MANAGER_HOSTNAME = socket.gethostname()
 
 def _download_image():
     """
-    Download and validate the Oracle Linux KVM image.
+    Download and validate the Oracle Linux KVM image with retry logic and progress monitoring.
+    
+    Features:
+    - Detects stalled downloads (no progress for 30 seconds)
+    - Retries up to 3 times on failure
+    - Connection timeout of 30 seconds
+    - Read timeout of 60 seconds
+    - Cleans up partial downloads on failure
+    
     Returns:
         bool: True if successful or file exists with valid checksum, False on error
     """
@@ -185,45 +193,107 @@ def _download_image():
             os.unlink(IMAGE_PATH)
     
     log.info("Starting image download process")
+    
+    # Retry configuration
+    max_attempts = 3
+    retry_delay = 5  # seconds to wait between retry attempts
+    stall_timeout = 30  # seconds without progress before considering download stalled
+    connection_timeout = 30  # seconds to establish connection
+    read_timeout = 60  # seconds to wait for data chunks
+    
+    for attempt in range(1, max_attempts + 1):
+        log.info("Download attempt %d of %d", attempt, max_attempts)
+        
+        try:
+            # Download file with timeouts
+            log.info("Downloading Oracle Linux KVM image from %s to %s", IMAGE_URL, IMAGE_PATH)
+            response = requests.get(
+                IMAGE_URL,
+                stream=True,
+                timeout=(connection_timeout, read_timeout)
+            )
+            response.raise_for_status()
 
-    try:
-        # Download file
-        log.info("Downloading Oracle Linux KVM image from %s to %s", IMAGE_URL, IMAGE_PATH)
-        response = requests.get(IMAGE_URL, stream=True)
-        response.raise_for_status()
+            # Get total file size for progress tracking
+            total_size = int(response.headers.get('content-length', 0))
+            downloaded_size = 0
+            last_log_time = 0
+            last_progress_time = time.time()
+            last_downloaded_size = 0
 
-        # Get total file size for progress tracking
-        total_size = int(response.headers.get('content-length', 0))
-        downloaded_size = 0
-        last_log_time = 0
+            # Save file with progress logging and stall detection
+            with salt.utils.files.fopen(IMAGE_PATH, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:  # filter out keep-alive new chunks
+                        f.write(chunk)
+                        downloaded_size += len(chunk)
+                        current_time = time.time()
+                        
+                        # Check for stalled download
+                        if downloaded_size > last_downloaded_size:
+                            # Progress made, reset stall timer
+                            last_progress_time = current_time
+                            last_downloaded_size = downloaded_size
+                        elif current_time - last_progress_time > stall_timeout:
+                            # No progress for stall_timeout seconds
+                            raise Exception(
+                                f"Download stalled: no progress for {stall_timeout} seconds "
+                                f"at {downloaded_size}/{total_size} bytes"
+                            )
+                        
+                        # Log progress every second
+                        if current_time - last_log_time >= 1:
+                            progress = (downloaded_size / total_size) * 100 if total_size > 0 else 0
+                            log.info("Progress - %.1f%% (%d/%d bytes)",
+                                    progress, downloaded_size, total_size)
+                            last_log_time = current_time
 
-        # Save file with progress logging
-        with salt.utils.files.fopen(IMAGE_PATH, 'wb') as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                f.write(chunk)
-                downloaded_size += len(chunk)
+            # Validate downloaded file
+            log.info("Download complete, validating checksum...")
+            if not _validate_image_checksum(IMAGE_PATH, IMAGE_SHA256):
+                log.error("Checksum validation failed on attempt %d", attempt)
+                os.unlink(IMAGE_PATH)
+                if attempt < max_attempts:
+                    log.info("Will retry download...")
+                    continue
+                else:
+                    log.error("All download attempts failed due to checksum mismatch")
+                    return False
+
+            log.info("Successfully downloaded and validated Oracle Linux KVM image")
+            return True
+
+        except requests.exceptions.Timeout as e:
+            log.error("Download attempt %d failed: Timeout - %s", attempt, str(e))
+            if os.path.exists(IMAGE_PATH):
+                os.unlink(IMAGE_PATH)
+            if attempt < max_attempts:
+                log.info("Will retry download in %d seconds...", retry_delay)
+                time.sleep(retry_delay)
+            else:
+                log.error("All download attempts failed due to timeout")
                 
-                # Log progress every second
-                current_time = time.time()
-                if current_time - last_log_time >= 1:
-                    progress = (downloaded_size / total_size) * 100 if total_size > 0 else 0
-                    log.info("Progress - %.1f%% (%d/%d bytes)", 
-                            progress, downloaded_size, total_size)
-                    last_log_time = current_time
-
-        # Validate downloaded file
-        if not _validate_image_checksum(IMAGE_PATH, IMAGE_SHA256):
-            os.unlink(IMAGE_PATH)
-            return False
-
-        log.info("Successfully downloaded and validated Oracle Linux KVM image")
-        return True
-
-    except Exception as e:
-        log.error("Error downloading hypervisor image: %s", str(e))
-        if os.path.exists(IMAGE_PATH):
-            os.unlink(IMAGE_PATH)
-        return False
+        except requests.exceptions.RequestException as e:
+            log.error("Download attempt %d failed: Network error - %s", attempt, str(e))
+            if os.path.exists(IMAGE_PATH):
+                os.unlink(IMAGE_PATH)
+            if attempt < max_attempts:
+                log.info("Will retry download in %d seconds...", retry_delay)
+                time.sleep(retry_delay)
+            else:
+                log.error("All download attempts failed due to network errors")
+                
+        except Exception as e:
+            log.error("Download attempt %d failed: %s", attempt, str(e))
+            if os.path.exists(IMAGE_PATH):
+                os.unlink(IMAGE_PATH)
+            if attempt < max_attempts:
+                log.info("Will retry download in %d seconds...", retry_delay)
+                time.sleep(retry_delay)
+            else:
+                log.error("All download attempts failed")
+    
+    return False
 
 def _check_ssh_keys_exist():
     """
@@ -419,25 +489,28 @@ def _ensure_hypervisor_host_dir(minion_id: str = None):
         log.error(f"Error creating hypervisor host directory: {str(e)}")
         return False
 
-def _apply_dyanno_hypervisor_state():
+def _apply_dyanno_hypervisor_state(status):
     """
     Apply the soc.dyanno.hypervisor state on the salt master.
     
     This function applies the soc.dyanno.hypervisor state on the salt master
     to update the hypervisor annotation and ensure all hypervisor host directories exist.
     
+    Args:
+        status: Status passed to the hypervisor annotation state
+    
     Returns:
         bool: True if state was applied successfully, False otherwise
     """
     try:
-        log.info("Applying soc.dyanno.hypervisor state on salt master")
+        log.info(f"Applying soc.dyanno.hypervisor state on salt master with status: {status}")
         
         # Initialize the LocalClient
         local = salt.client.LocalClient()
         
         # Target the salt master to apply the soc.dyanno.hypervisor state
         target = MANAGER_HOSTNAME + '_*'
-        state_result = local.cmd(target, 'state.apply', ['soc.dyanno.hypervisor', "pillar={'baseDomain': {'status': 'PreInit'}}", 'concurrent=True'], tgt_type='glob')
+        state_result = local.cmd(target, 'state.apply', ['soc.dyanno.hypervisor', f"pillar={{'baseDomain': {{'status': '{status}'}}}}", 'concurrent=True'], tgt_type='glob')
         log.debug(f"state_result: {state_result}")
         # Check if state was applied successfully
         if state_result:
@@ -454,17 +527,17 @@ def _apply_dyanno_hypervisor_state():
                         success = False
             
             if success:
-                log.info("Successfully applied soc.dyanno.hypervisor state")
+                log.info(f"Successfully applied soc.dyanno.hypervisor state with status: {status}")
                 return True
             else:
-                log.error("Failed to apply soc.dyanno.hypervisor state")
+                log.error(f"Failed to apply soc.dyanno.hypervisor state with status: {status}")
                 return False
         else:
-            log.error("No response from salt master when applying soc.dyanno.hypervisor state")
+            log.error(f"No response from salt master when applying soc.dyanno.hypervisor state with status: {status}")
             return False
             
     except Exception as e:
-        log.error(f"Error applying soc.dyanno.hypervisor state: {str(e)}")
+        log.error(f"Error applying soc.dyanno.hypervisor state with status: {status}: {str(e)}")
         return False
 
 def _apply_cloud_config_state():
@@ -598,11 +671,6 @@ def setup_environment(vm_name: str = 'sool9', disk_size: str = '220G', minion_id
         log.warning("Failed to apply salt.cloud.config state, continuing with setup")
         # We don't return an error here as we want to continue with the setup process
 
-    # Apply the soc.dyanno.hypervisor state on the salt master
-    if not _apply_dyanno_hypervisor_state():
-        log.warning("Failed to apply soc.dyanno.hypervisor state, continuing with setup")
-        # We don't return an error here as we want to continue with the setup process
-
     log.info("Starting setup_environment in setup_hypervisor runner")
     
     # Check if environment is already set up
@@ -616,9 +684,12 @@ def setup_environment(vm_name: str = 'sool9', disk_size: str = '220G', minion_id
     
     # Handle image setup if needed
     if not image_valid:
+        _apply_dyanno_hypervisor_state('ImageDownloadStart')
         log.info("Starting image download/validation process")
         if not _download_image():
             log.error("Image download failed")
+            # Update hypervisor annotation with failure status
+            _apply_dyanno_hypervisor_state('ImageDownloadFailed')
             return {
                 'success': False,
                 'error': 'Image download failed',
@@ -631,6 +702,8 @@ def setup_environment(vm_name: str = 'sool9', disk_size: str = '220G', minion_id
         log.info("Setting up SSH keys")
         if not _setup_ssh_keys():
             log.error("SSH key setup failed")
+            # Update hypervisor annotation with failure status
+            _apply_dyanno_hypervisor_state('SSHKeySetupFailed')
             return {
                 'success': False,
                 'error': 'SSH key setup failed',
@@ -654,6 +727,12 @@ def setup_environment(vm_name: str = 'sool9', disk_size: str = '220G', minion_id
     
     success = vm_result.get('success', False)
     log.info("Setup environment completed with status: %s", "SUCCESS" if success else "FAILED")
+    
+    # Update hypervisor annotation with success status
+    if success:
+        _apply_dyanno_hypervisor_state('PreInit')
+    else:
+        _apply_dyanno_hypervisor_state('SetupFailed')
     
     # If setup was successful and we have a minion_id, run highstate
     if success and minion_id:

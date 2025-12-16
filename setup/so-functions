@@ -502,6 +502,7 @@ configure_minion() {
 		minion_type=desktop
 	fi
 	info "Configuring minion type as $minion_type" 
+	logCmd "mkdir -p /etc/salt/minion.d"
 	echo "role: so-$minion_type" > /etc/salt/grains
 	
 	local minion_config=/etc/salt/minion
@@ -541,20 +542,6 @@ configure_minion() {
 		"log_file: /opt/so/log/salt/minion"\
 		"#startup_states: highstate" >> "$minion_config"
 
-	# At the time the so-managerhype node does not yet have the bridge configured.
-	# The so-hypervisor node doesn't either, but it doesn't cause issues here.
-	local usebr0=false
-	if [ "$minion_type" == 'hypervisor' ]; then
-    	usebr0=true
-	fi
-	local pillar_json="{\"host\": {\"mainint\": \"$MNIC\"}, \"usebr0\": $usebr0}"
-	info "Running: salt-call state.apply salt.mine_functions --local --file-root=../salt/ -l info pillar='$pillar_json'"
-	salt-call state.apply salt.mine_functions --local --file-root=../salt/ -l info pillar="$pillar_json"
-
-	{
-		logCmd "systemctl enable salt-minion";
-		logCmd "systemctl restart salt-minion";
-	} >> "$setup_log" 2>&1
 }
 
 checkin_at_boot() {
@@ -669,11 +656,11 @@ check_requirements() {
 	fi
 	
 	if [[ $total_mem_hr -lt $req_mem ]]; then
-		whiptail_requirements_error "memory" "${total_mem_hr} GB" "${req_mem} GB"
 		if [[ $is_standalone || $is_heavynode ]]; then
 			echo "This install type will fail with less than $req_mem GB of memory. Exiting setup."
 			exit 0
 		fi
+		whiptail_requirements_error "memory" "${total_mem_hr} GB" "${req_mem} GB"
 	fi
 	if [[ $is_standalone || $is_heavynode ]]; then
 		if [[ $total_mem_hr -gt 15 && $total_mem_hr -lt 24 ]]; then
@@ -729,7 +716,7 @@ configure_network_sensor() {
 	fi
 
 	# Create the bond interface only if it doesn't already exist
-	nmcli -f name,uuid -p con | grep -q '$INTERFACE'
+	nmcli -f name,uuid -p con | grep -q "$INTERFACE"
 	local found_int=$?
 
 	if [[ $found_int != 0 ]]; then
@@ -798,25 +785,18 @@ configure_hyper_bridge() {
 }
 
 copy_salt_master_config() {
-
+	logCmd "mkdir /etc/salt"
 	title "Copy the Salt master config template to the proper directory"
 	if [ "$setup_type" = 'iso' ]; then
 		logCmd "cp /root/SecurityOnion/files/salt/master/master /etc/salt/master"
-		#logCmd "cp /root/SecurityOnion/files/salt/master/salt-master.service /usr/lib/systemd/system/salt-master.service"
 	else
 		logCmd "cp ../files/salt/master/master /etc/salt/master"
-		#logCmd "cp ../files/salt/master/salt-master.service /usr/lib/systemd/system/salt-master.service"
 	fi
 	info "Copying pillar and salt files in $temp_install_dir to $local_salt_dir"
 	logCmd "cp -R $temp_install_dir/pillar/ $local_salt_dir/"
 	if [ -d "$temp_install_dir"/salt ] ; then
 		logCmd "cp -R $temp_install_dir/salt/ $local_salt_dir/"
 	fi
-
-	# Restart the service so it picks up the changes
-	logCmd "systemctl daemon-reload"
-	logCmd "systemctl enable salt-master"
-	logCmd "systemctl restart salt-master"
 }
 
 create_local_nids_rules() {
@@ -836,7 +816,6 @@ create_manager_pillars() {
 	backup_pillar
 	docker_pillar
 	redis_pillar
-	idstools_pillar
 	kratos_pillar
 	hydra_pillar
 	soc_pillar
@@ -1302,11 +1281,6 @@ ls_heapsize() {
 
 }
 
-idstools_pillar() {
-	title "Ading IDSTOOLS pillar options"
-	touch $adv_idstools_pillar_file
-}
-
 nginx_pillar() {
 	title "Creating the NGINX pillar"
 	[[ -z "$TESTING" ]] && return
@@ -1482,7 +1456,7 @@ make_some_dirs() {
 	mkdir -p $local_salt_dir/salt/firewall/portgroups
 	mkdir -p $local_salt_dir/salt/firewall/ports
 
-	for THEDIR in bpf pcap elasticsearch ntp firewall redis backup influxdb strelka sensoroni soc docker zeek suricata nginx telegraf logstash soc manager kratos hydra idstools idh elastalert stig global kafka versionlock hypervisor vm; do
+	for THEDIR in bpf pcap elasticsearch ntp firewall redis backup influxdb strelka sensoroni soc docker zeek suricata nginx telegraf logstash soc manager kratos hydra idh elastalert stig global kafka versionlock hypervisor vm; do
 	mkdir -p $local_salt_dir/pillar/$THEDIR
 	touch $local_salt_dir/pillar/$THEDIR/adv_$THEDIR.sls
 	touch $local_salt_dir/pillar/$THEDIR/soc_$THEDIR.sls
@@ -1624,16 +1598,21 @@ proxy_validate() {
 
 reserve_group_ids() {
 	# This is a hack to fix OS from taking group IDs that we need
+	logCmd "groupadd -g 920 docker"
 	logCmd "groupadd -g 928 kratos"
 	logCmd "groupadd -g 930 elasticsearch"
 	logCmd "groupadd -g 931 logstash"
 	logCmd "groupadd -g 932 kibana"
 	logCmd "groupadd -g 933 elastalert"
 	logCmd "groupadd -g 937 zeek"
+	logCmd "groupadd -g 938 salt"
+	logCmd "groupadd -g 939 socore"
 	logCmd "groupadd -g 940 suricata"
+	logCmd "groupadd -g 948 elastic-agent-pr"
+	logCmd "groupadd -g 949 elastic-agent"
 	logCmd "groupadd -g 941 stenographer"
-	logCmd "groupadd -g 945 ossec"
-	logCmd "groupadd -g 946 cyberchef"
+	logCmd "groupadd -g 947 elastic-fleet"
+	logCmd "groupadd -g 960 kafka"
 }
 
 reserve_ports() {
@@ -1646,6 +1625,12 @@ reserve_ports() {
 	fi
 }
 
+clear_previous_setup_results() {
+	# Disregard previous setup outcomes.
+	rm -f /root/failure
+	rm -f /root/success
+}
+
 reinstall_init() {
 	info "Putting system in state to run setup again"
 
@@ -1656,10 +1641,6 @@ reinstall_init() {
 	fi
 
 	local service_retry_count=20
-
-	# Disregard previous install outcomes
-	rm -f /root/failure
-	rm -f /root/success
 
 	{
 		# remove all of root's cronjobs
@@ -1939,11 +1920,12 @@ repo_sync_local() {
 }
 
 saltify() {
-	info "Installing Salt"
 	SALTVERSION=$(grep "version:" ../salt/salt/master.defaults.yaml | grep -o "[0-9]\+\.[0-9]\+")
+	info "Installing Salt $SALTVERSION"
+	chmod u+x ../salt/salt/scripts/bootstrap-salt.sh
 	if [[ $is_deb ]]; then
 
-		DEBIAN_FRONTEND=noninteractive retry 150 20 "apt-get -y -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" upgrade" >> "$setup_log" 2>&1 || fail_setup
+		DEBIAN_FRONTEND=noninteractive retry 30 10 "apt-get -y -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" upgrade" >> "$setup_log" 2>&1 || fail_setup
 		if [ $OSVER == "focal" ]; then update-alternatives --install /usr/bin/python python /usr/bin/python3.10 10; fi
 		local pkg_arr=(
 			'apache2-utils'
@@ -1956,15 +1938,10 @@ saltify() {
 			'jq'
 			'gnupg'
 		)
-		retry 150 20 "apt-get -y install ${pkg_arr[*]}" || fail_setup
+		retry 30 10 "apt-get -y install ${pkg_arr[*]}" || fail_setup
 
 		logCmd "mkdir -vp /etc/apt/keyrings"
 		logCmd "wget -q --inet4-only -O /etc/apt/keyrings/docker.pub https://download.docker.com/linux/ubuntu/gpg"
-
-		# Download public key
-		logCmd "curl -fsSL -o /etc/apt/keyrings/salt-archive-keyring-2023.pgp https://packages.broadcom.com/artifactory/api/security/keypair/SaltProjectKey/public"
-		# Create apt repo target configuration
-		echo "deb [signed-by=/etc/apt/keyrings/salt-archive-keyring-2023.pgp arch=amd64] https://packages.broadcom.com/artifactory/saltproject-deb/ stable main" | sudo tee /etc/apt/sources.list.d/salt.list
 
 		if [[ $is_ubuntu ]]; then
 			# Add Docker Repo
@@ -1976,44 +1953,49 @@ saltify() {
 			echo "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $OSVER stable" > /etc/apt/sources.list.d/docker.list 
 		fi
 
-		logCmd "apt-key add /etc/apt/keyrings/salt-archive-keyring-2023.pgp"
-
-		#logCmd "apt-key add /opt/so/gpg/SALTSTACK-GPG-KEY.pub"
 		logCmd "apt-key add /etc/apt/keyrings/docker.pub"
 
-		# Add SO Saltstack Repo
-		#echo "deb https://repo.securityonion.net/file/securityonion-repo/ubuntu/20.04/amd64/salt3004.2/ focal main" > /etc/apt/sources.list.d/saltstack.list
-
-		# Ain't nothing but a GPG 
-
-		retry 150 20 "apt-get update" "" "Err:" || fail_setup
+		retry 30 10 "apt-get update" "" "Err:" || fail_setup
 		if [[ $waitforstate ]]; then
-			retry 150 20 "apt-get -y install salt-common=$SALTVERSION salt-minion=$SALTVERSION salt-master=$SALTVERSION" || fail_setup
-			retry 150 20 "apt-mark hold salt-minion salt-common salt-master" || fail_setup
-			retry 150 20 "apt-get -y install python3-pip python3-dateutil python3-m2crypto python3-packaging python3-influxdb python3-lxml" || exit 1
+			retry 30 10 "bash ../salt/salt/scripts/bootstrap-salt.sh -M -X stable $SALTVERSION" || fail_setup
+			retry 30 10 "apt-mark hold salt-minion salt-common salt-master" || fail_setup
+			retry 30 10 "apt-get -y install python3-pip python3-dateutil python3-m2crypto python3-packaging python3-influxdb python3-lxml" || exit 1
 		else
-			retry 150 20 "apt-get -y install salt-common=$SALTVERSION salt-minion=$SALTVERSION" || fail_setup
-			retry 150 20 "apt-mark hold salt-minion salt-common" || fail_setup
+			retry 30 10 "bash ../salt/salt/scripts/bootstrap-salt.sh -X stable $SALTVERSION" || fail_setup
+			retry 30 10 "apt-mark hold salt-minion salt-common" || fail_setup
 		fi
 	fi
 		
 	if [[ $is_rpm ]]; then
 		if [[ $waitforstate ]]; then 
 			# install all for a manager
-			logCmd "dnf -y install salt-$SALTVERSION salt-master-$SALTVERSION salt-minion-$SALTVERSION"
+			retry 30 10 "bash ../salt/salt/scripts/bootstrap-salt.sh -r -M -X stable $SALTVERSION" || fail_setup
 		else
-			# We just need the minion
-			if [[ $is_airgap ]]; then
-			    logCmd "dnf -y install salt salt-minion"
-			else
-			    logCmd "dnf -y install salt-$SALTVERSION salt-minion-$SALTVERSION"
-			fi
+			# just a minion
+			retry 30 10 "bash ../salt/salt/scripts/bootstrap-salt.sh -r -X stable $SALTVERSION" || fail_setup
 		fi
 	fi
 
-	logCmd "mkdir -p /etc/salt/minion.d"
 	salt_install_module_deps
 	salt_patch_x509_v2
+
+	# At the time the so-managerhype node does not yet have the bridge configured.
+	# The so-hypervisor node doesn't either, but it doesn't cause issues here.
+	local usebr0=false
+	if [ "$minion_type" == 'hypervisor' ]; then
+    	usebr0=true
+	fi
+	local pillar_json="{\"host\": {\"mainint\": \"$MNIC\"}, \"usebr0\": $usebr0}"
+	info "Running: salt-call state.apply salt.mine_functions --local --file-root=../salt/ -l info pillar='$pillar_json'"
+	salt-call state.apply salt.mine_functions --local --file-root=../salt/ -l info pillar="$pillar_json"
+
+	if [[ $waitforstate ]]; then 
+		logCmd "systemctl enable salt-master";
+		logCmd "systemctl start salt-master";
+	fi
+
+	logCmd "systemctl enable salt-minion";
+	logCmd "systemctl restart salt-minion";
 
 }
 

@@ -8,8 +8,7 @@
 
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 {% from "zeek/config.map.jinja" import ZEEKMERGED %}
-{% from 'bpf/zeek.map.jinja' import ZEEKBPF %}
-{% set BPF_STATUS = 0  %}
+{% from 'bpf/zeek.map.jinja' import ZEEKBPF, ZEEK_BPF_STATUS, ZEEK_BPF_CALC %}
 
 # Add Zeek group
 zeekgroup:
@@ -158,18 +157,13 @@ zeekja4cfg:
     - user: 937
     - group: 939
 
-# BPF compilation and configuration
-{% if ZEEKBPF %}
-   {% set BPF_CALC = salt['cmd.script']('salt://common/tools/sbin/so-bpf-compile', GLOBALS.sensor.interface + ' ' + ZEEKBPF|join(" "),cwd='/root') %}
-   {% if BPF_CALC['stderr'] == "" %}
-       {% set BPF_STATUS = 1  %}
-  {% else  %}
+# BPF compilation failed
+{% if ZEEKBPF and not ZEEK_BPF_STATUS %}
 zeekbpfcompilationfailure:
   test.configurable_test_state:
     - changes: False
     - result: False
-    - comment: "BPF Syntax Error - Discarding Specified BPF"
-   {% endif %}
+    - comment: "BPF Syntax Error - Discarding Specified BPF. Error: {{ ZEEK_BPF_CALC['stderr'] }}"
 {% endif %}
 
 zeekbpf:
@@ -177,7 +171,7 @@ zeekbpf:
     - name: /opt/so/conf/zeek/bpf
     - user: 940
     - group: 940
-{% if BPF_STATUS %}
+{% if ZEEK_BPF_STATUS %}
     - contents: {{ ZEEKBPF }}
 {% else %}
     - contents:
