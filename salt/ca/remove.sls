@@ -3,6 +3,10 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
+{% set setup_running = salt['cmd.retcode']('pgrep -x so-setup') == 0 %}
+
+{% if setup_running%}
+
 include:
   - ssl.remove
 
@@ -21,3 +25,11 @@ remove_trusttheca:
 remove_pki_public_ca_crt_symlink:
   file.absent:
     - name: /opt/so/saltstack/local/salt/ca/files/ca.crt
+
+{% else %}
+
+so-setup_not_running:
+  test.show_notification:
+    - text: "This state is reserved for usage during so-setup."
+
+{% endif %}
