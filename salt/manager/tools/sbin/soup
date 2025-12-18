@@ -427,6 +427,7 @@ preupgrade_changes() {
     [[ "$INSTALLEDVERSION" == 2.4.170 ]] && up_to_2.4.180
     [[ "$INSTALLEDVERSION" == 2.4.180 ]] && up_to_2.4.190
     [[ "$INSTALLEDVERSION" == 2.4.190 ]] && up_to_2.4.200
+    [[ "$INSTALLEDVERSION" == 2.4.200 ]] && up_to_2.4.210
     true
 }
 
@@ -459,6 +460,7 @@ postupgrade_changes() {
     [[ "$POSTVERSION"  == 2.4.170 ]] && post_to_2.4.180
     [[ "$POSTVERSION"  == 2.4.180 ]] && post_to_2.4.190
     [[ "$POSTVERSION"  == 2.4.190 ]] && post_to_2.4.200
+    [[ "$POSTVERSION"  == 2.4.200 ]] && post_to_2.4.210
     true
 }
 
@@ -615,9 +617,6 @@ post_to_2.4.180() {
 }
 
 post_to_2.4.190() {
-    echo "Regenerating Elastic Agent Installers"
-    /sbin/so-elastic-agent-gen-installers
-
     # Only need to update import / eval nodes
     if [[ "$MINION_ROLE" == "import" ]] || [[ "$MINION_ROLE" == "eval" ]]; then
         update_import_fleet_output
@@ -643,6 +642,13 @@ post_to_2.4.200() {
   suricata_idstools_removal_post
 
   POSTVERSION=2.4.200
+}
+
+post_to_2.4.210() {
+  echo "Regenerating Elastic Agent Installers"
+  /sbin/so-elastic-agent-gen-installers
+
+  POSTVERSION=2.4.210
 }
 
 repo_sync() {
@@ -906,9 +912,7 @@ up_to_2.4.180() {
 }
 
 up_to_2.4.190() {
-  # Elastic Update for this release, so download Elastic Agent files
-  determine_elastic_agent_upgrade
-
+  echo "Nothing to do for 2.4.190"
   INSTALLEDVERSION=2.4.190
 }
 
@@ -919,6 +923,13 @@ up_to_2.4.200() {
   touch /opt/so/state/esfleet_logstash_config_pillar
 
   INSTALLEDVERSION=2.4.200
+}
+
+up_to_2.4.210() {
+  # Elastic Update for this release, so download Elastic Agent files
+  determine_elastic_agent_upgrade
+
+  INSTALLEDVERSION=2.4.210
 }
 
 add_hydra_pillars() {
