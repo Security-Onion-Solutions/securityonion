@@ -87,6 +87,9 @@ check_err() {
       113)
         echo 'No route to host'
       ;;
+      160)
+        echo 'Incompatiable Elasticsearch upgrade'
+      ;;
       *)
         echo 'Unhandled error'
         echo "$err_msg"
@@ -1619,6 +1622,69 @@ verify_latest_update_script() {
   fi
 
 }
+
+verify_es_version_compatibility() {
+
+  # supported upgrade paths for SO-ES versions
+  declare -A es_upgrade_map=(
+    ["8.14.3"]="8.17.3 8.18.4 8.18.6 8.18.8"
+    ["8.17.3"]="8.18.4 8.18.6 8.18.8"
+    ["8.18.4"]="8.18.6 8.18.8 9.0.8"
+    ["8.18.6"]="8.18.8 9.0.8"
+    ["8.18.8"]="9.0.8"
+  )
+
+  # Elasticsearch MUST upgrade through these versions
+  declare -A es_to_so_version=(
+    ["8.18.8"]="2.4.190-20251024"
+  )
+
+  # Get current Elasticsearch version
+  if es_version_raw=$(so-elasticsearch-query / --fail --retry 5 --retry-delay 10); then
+    es_version=$(echo "$es_version_raw" | jq -r '.version.number' )
+  else
+    echo "Could not determine current Elasticsearch version to validate compatibility with post soup Elasticsearch version."
+    exit 160
+  fi
+
+  if ! target_es_version=$(so-yaml.py get $UPDATE_DIR/salt/elasticsearch/defaults.yaml elasticsearch.version | sed -n '1p'); then
+    # so-yaml.py failed to get the ES version from upgrade versions elasticsearch/defaults.yaml file. Likely they are upgrading to an SO version older than 2.4.110 prior to the ES version pinning and should be OKAY to continue with the upgrade.
+
+    # if so-yaml.py failed to get the ES version AND the version we are upgrading to is newer than 2.4.110 then we should bail
+    if [[ $(cat $UPDATE_DIR/VERSION | cut -d'.' -f3) > 110 ]]; then
+      echo "Couldn't determine the target Elasticsearch version (post soup version) to ensure compatibility with current Elasticsearch version. Exiting"
+      exit 160
+    fi
+
+    # allow upgrade to version < 2.4.110 without checking ES version compatibility
+    return 0
+
+  fi
+
+
+  if [[ " ${es_upgrade_map[$es_version]} " =~ " $target_es_version " ]]; then
+    # supported upgrade
+    return 0
+  else
+    compatible_versions=${es_upgrade_map[$es_version]}
+    next_step_so_version=${es_to_so_version[${compatible_versions##* }]}
+    echo -e "\n##############################################################################################################################\n"
+    echo -e "You are currently running Security Onion $INSTALLEDVERSION. You will need to update to version $next_step_so_version before updating to $(cat $UPDATE_DIR/VERSION).\n"
+
+    if [[ $is_airgap -eq 0 ]]; then
+      echo "You can download the $next_step_so_version ISO image from https://download.securityonion.net/file/securityonion/securityonion-$next_step_so_version.iso"
+    else
+      echo "You can use the following soup command to upgrade to $next_step_so_version;"
+      echo -e "  sudo BRANCH=$next_step_so_version soup\n"
+
+    fi
+    echo "*** Once you have updated to $next_step_so_version, you can then run soup again to update to $(cat $UPDATE_DIR/VERSION). ***"
+    echo -e "\n###############################################################################################################################\n"
+    exit 160
+  fi
+
+}
+
 # Keeping this block in case we need to do a hotfix that requires salt update
 apply_hotfix() {
   if [[ "$INSTALLEDVERSION" == "2.4.20" ]] ; then
@@ -1714,6 +1780,8 @@ main() {
   fi
   echo "Verifying we have the latest soup script."
   verify_latest_update_script
+
+  verify_es_version_compatibility
 
   echo "Let's see if we need to update Security Onion."
   upgrade_check
