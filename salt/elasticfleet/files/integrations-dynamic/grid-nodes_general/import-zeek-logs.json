@@ -2,7 +2,7 @@
 {%- raw -%}
 {
   "package": {
-    "name": "log",
+    "name": "filestream",
     "version": ""
   },
   "name": "import-zeek-logs",
@@ -10,19 +10,31 @@
   "description": "Zeek Import logs",
   "policy_id": "so-grid-nodes_general",
   "inputs": {
-    "logs-logfile": {
+    "filestream-filestream": {
       "enabled": true,
       "streams": {
-        "log.logs": {
+        "filestream.generic": {
           "enabled": true,
           "vars": {
             "paths": [
               "/nsm/import/*/zeek/logs/*.log"
             ],
             "data_stream.dataset": "import",
-            "tags": [],
+            "pipeline": "",
+            "parsers": "#- ndjson:\n#    target: \"\"\n#    message_key: msg\n#- multiline:\n#    type: count\n#    count_lines: 3\n",
+            "exclude_files": ["({%- endraw -%}{{ ELASTICFLEETMERGED.logging.zeek.excluded | join('|') }}{%- raw -%}).log$"],
+            "include_files": [],
             "processors": "- dissect:\n    tokenizer: \"/nsm/import/%{import.id}/zeek/logs/%{import.file}\"\n    field: \"log.file.path\"\n    target_prefix: \"\"\n- script:\n      lang: javascript\n      source: >\n        function process(event) {\n          var pl = event.Get(\"import.file\").slice(0,-4);\n          event.Put(\"@metadata.pipeline\", \"zeek.\" + pl);\n        }\n- add_fields:\n    target: event\n    fields:\n      category: network\n      module: zeek\n      imported: true\n- add_tags:\n    tags: \"ics\"\n    when:\n      regexp:\n        import.file: \"^bacnet*|^bsap*|^cip*|^cotp*|^dnp3*|^ecat*|^enip*|^modbus*|^opcua*|^profinet*|^s7comm*\"",
-            "custom": "exclude_files: [\"{%- endraw -%}{{ ELASTICFLEETMERGED.logging.zeek.excluded | join('|') }}{%- raw -%}.log$\"]\n"
+            "tags": [],
+            "recursive_glob": true,
+            "clean_inactive": -1,
+            "harvester_limit": 0,
+            "fingerprint": false,
+            "fingerprint_offset": 0,
+            "fingerprint_length": "64",
+            "file_identity_native": true,
+            "exclude_lines": [],
+            "include_lines": []
           }
         }
       }
