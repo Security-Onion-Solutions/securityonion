@@ -1139,40 +1139,35 @@ mkdir -p /nsm/backup/detections-migration/2-4-200
 cp /usr/sbin/so-rule-update /nsm/backup/detections-migration/2-4-200
 cp /opt/so/conf/idstools/etc/rulecat.conf /nsm/backup/detections-migration/2-4-200
 
-if [[ -f /opt/so/conf/soc/so-detections-backup.py ]]; then
-    python3 /opt/so/conf/soc/so-detections-backup.py
+# Backup so-detection index via reindex
+echo "Creating sos-backup index template..."
+template_result=$(/sbin/so-elasticsearch-query '_index_template/sos-backup' -X PUT \
+    --retry 5 --retry-delay 15 --retry-all-errors \
+    -d '{"index_patterns":["sos-backup-*"],"priority":501,"template":{"settings":{"index":{"number_of_replicas":0,"number_of_shards":1}}}}')
 
-    # Verify backup by comparing counts
-    echo "Verifying detection overrides backup..."
-    es_override_count=$(/sbin/so-elasticsearch-query 'so-detection/_count' \
-       --retry 5 --retry-delay 10 --retry-all-errors \
-       -d '{"query": {"bool": {"must": [{"exists": {"field": "so_detection.overrides"}}]}}}' | jq -r '.count') || {
-        echo "  Error: Failed to query Elasticsearch for override count"
-        exit 1
-    }
+if [[ -z "$template_result" ]] || ! echo "$template_result" | jq -e '.acknowledged == true' > /dev/null 2>&1; then
+    echo "Error: Failed to create sos-backup index template"
+    echo "$template_result"
+    exit 1
+fi
 
-    if [[ ! "$es_override_count" =~ ^[0-9]+$ ]]; then
-        echo "  Error: Invalid override count from Elasticsearch: '$es_override_count'"
-        exit 1
-    fi
+BACKUP_INDEX="sos-backup-detection-$(date +%Y%m%d-%H%M%S)"
+echo "Backing up so-detection index to $BACKUP_INDEX..."
+reindex_result=$(/sbin/so-elasticsearch-query '_reindex?wait_for_completion=true' \
+    --retry 5 --retry-delay 15 --retry-all-errors \
+    -X POST -d "{\"source\": {\"index\": \"so-detection\"}, \"dest\": {\"index\": \"$BACKUP_INDEX\"}}")
 
-    backup_override_count=$(find /nsm/backup/detections/repo/*/overrides -type f 2>/dev/null | wc -l)
-
-    echo "  Elasticsearch overrides: $es_override_count"
-    echo "  Backed up overrides: $backup_override_count"
-
-    if [[ "$es_override_count" -gt 0 ]]; then
-        if [[ "$backup_override_count" -gt 0 ]]; then
-            echo "  Override backup verified successfully"
-        else
-            echo "  Error: Elasticsearch has $es_override_count overrides but backup has 0 files"
-            exit 1
-        fi
-    else
-        echo "  No overrides to backup"
-    fi
+if [[ -z "$reindex_result" ]]; then
+    echo "Error: Backup of detections failed - no response from Elasticsearch"
+    exit 1
+elif echo "$reindex_result" | jq -e '.created >= 0' > /dev/null 2>&1; then
+    echo "Backup complete: $(echo "$reindex_result" | jq -r '.created') documents copied"
+elif echo "$reindex_result" | grep -q "index_not_found_exception"; then
+    echo "so-detection index does not exist, skipping backup"
 else
-    echo "SOC Detections backup script not found, skipping detection backup"
+    echo "Error: Backup of detections failed"
+    echo "$reindex_result"
+    exit 1
 fi
 
 }
@@ -1193,11 +1188,12 @@ hash_normalized_file() {
         return 1
     fi
 
-    sed -E \
+    # Ensure trailing newline for consistent hashing regardless of source file
+    { sed -E \
         -e 's/^[[:space:]]+//; s/[[:space:]]+$//' \
         -e '/^$/d' \
         -e 's|--url=http://[^:]+:7788|--url=http://MANAGER:7788|' \
-        "$file" | sha256sum | awk '{print $1}'
+        "$file"; echo; } | sed '/^$/d' | sha256sum | awk '{print $1}'
 }
 
 # Known-default hashes for so-rule-update (ETOPEN ruleset)
@@ -1293,6 +1289,13 @@ custom_found=0
 check_config_file "$SO_RULE_UPDATE" "KNOWN_SO_RULE_UPDATE_HASHES" || custom_found=1
 check_config_file "$RULECAT_CONF" "KNOWN_RULECAT_CONF_HASHES" || custom_found=1
 
+# Check for ETPRO rules on airgap systems
+if [[ $is_airgap -eq 0 ]] && grep -q 'ETPRO ' /nsm/rules/suricata/emerging-all.rules 2>/dev/null; then
+    echo "ETPRO rules detected on airgap system - custom configuration"
+    echo "ETPRO rules detected on Airgap in /nsm/rules/suricata/emerging-all.rules" >> /opt/so/conf/soc/fingerprints/suricataengine.syncBlock
+    custom_found=1
+fi
+
 # If no custom configs found, remove syncBlock
 if [[ $custom_found -eq 0 ]]; then
     echo "idstools migration completed successfully - removing Suricata engine syncBlock"
@@ -1318,6 +1321,7 @@ fi
 echo "Removing idstools symlink and scripts..."
 rm -rf /usr/sbin/so-idstools*
 sed -i '/^#\?so-idstools$/d' /opt/so/conf/so-status/so-status.conf
+crontab -l | grep -v 'so-rule-update' | crontab -
 
 # Backup the salt master config & manager pillar before editing it
 cp /opt/so/saltstack/local/pillar/minions/$MINIONID.sls /nsm/backup/detections-migration/2-4-200/
@@ -1948,7 +1952,7 @@ main() {
       if [[ $is_airgap -eq 0 ]]; then
         echo ""
         echo "Cleaning repos on remote Security Onion nodes."
-        salt -C 'not *_eval and not *_manager and not *_managersearch and not *_standalone and G@os:CentOS' cmd.run "yum clean all"
+        salt -C 'not *_eval and not *_manager* and not *_standalone and G@os:OEL' cmd.run "dnf clean all"
         echo ""
       fi
     fi
