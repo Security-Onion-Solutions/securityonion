@@ -426,6 +426,7 @@ preupgrade_changes() {
     [[ "$INSTALLEDVERSION" == 2.4.170 ]] && up_to_2.4.180
     [[ "$INSTALLEDVERSION" == 2.4.180 ]] && up_to_2.4.190
     [[ "$INSTALLEDVERSION" == 2.4.190 ]] && up_to_2.4.200
+    [[ "$INSTALLEDVERSION" == 2.4.200 ]] && up_to_2.4.210
     true
 }
 
@@ -458,6 +459,7 @@ postupgrade_changes() {
     [[ "$POSTVERSION"  == 2.4.170 ]] && post_to_2.4.180
     [[ "$POSTVERSION"  == 2.4.180 ]] && post_to_2.4.190
     [[ "$POSTVERSION"  == 2.4.190 ]] && post_to_2.4.200
+    [[ "$POSTVERSION"  == 2.4.200 ]] && post_to_2.4.210
     true
 }
 
@@ -642,6 +644,14 @@ post_to_2.4.200() {
   suricata_idstools_removal_post
 
   POSTVERSION=2.4.200
+}
+
+post_to_2.4.210() {
+  echo "Rolling over Kratos index to apply new index template"
+
+  rollover_index "logs-kratos-so"
+
+  POSTVERSION=2.4.210
 }
 
 repo_sync() {
@@ -920,6 +930,12 @@ up_to_2.4.200() {
   INSTALLEDVERSION=2.4.200
 }
 
+up_to_2.4.210() {
+  echo "Nothing to do for 2.4.210"
+
+  INSTALLEDVERSION=2.4.210
+}
+
 add_hydra_pillars() {
   mkdir -p /opt/so/saltstack/local/pillar/hydra
   touch /opt/so/saltstack/local/pillar/hydra/soc_hydra.sls
@@ -1173,11 +1189,12 @@ hash_normalized_file() {
         return 1
     fi
 
-    sed -E \
+    # Ensure trailing newline for consistent hashing regardless of source file
+    { sed -E \
         -e 's/^[[:space:]]+//; s/[[:space:]]+$//' \
         -e '/^$/d' \
         -e 's|--url=http://[^:]+:7788|--url=http://MANAGER:7788|' \
-        "$file" | sha256sum | awk '{print $1}'
+        "$file"; echo; } | sed '/^$/d' | sha256sum | awk '{print $1}'
 }
 
 # Known-default hashes for so-rule-update (ETOPEN ruleset)
