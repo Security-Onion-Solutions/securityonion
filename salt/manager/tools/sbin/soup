@@ -1711,6 +1711,13 @@ verify_es_version_compatibility() {
       echo -e "\n##############################################################################################################################\n"
       exit 160
     else
+      # preserve BRANCH value if set originally
+      if [[ -n "$BRANCH" ]]; then
+        local originally_requested_so_version="$BRANCH"
+      else
+        local originally_requested_so_version="2.4/main"
+      fi
+
       echo "Starting automated intermediate upgrade to $next_step_so_version."
       echo "After completion, the system will automatically attempt to upgrade to the latest version."
       echo -e "\n##############################################################################################################################\n"
@@ -1719,7 +1726,7 @@ verify_es_version_compatibility() {
        echo -e \"Verifying Elasticsearch was successfully upgraded to ${compatible_versions##* } across the grid. This part can take a while as Searchnodes/Heavynodes sync up with the Manager! \n\nOnce verification completes the next soup will begin automatically. If verification takes longer than 1 hour it will stop waiting and your grid will remain at $next_step_so_version. Allowing for all Searchnodes/Heavynodes to upgrade Elasticsearch to the required version on their own time.\n\" \
        && timeout --foreground 3600 bash /tmp/so_intermediate_upgrade_verification.sh ${compatible_versions##* } $es_required_version_statefile && \
        echo -e \"\n##############################################################################################################################\n\" \
-       && soup -y && soup -y"
+       && BRANCH=$originally_requested_so_version soup -y && BRANCH=$originally_requested_so_version soup -y"
     fi
   fi
 
