@@ -3,14 +3,6 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-trusttheca:
-  file.absent:
-    - name: /etc/pki/tls/certs/intca.crt
-
-symlinkca:
-  file.absent:
-    - name: /etc/ssl/certs/intca.crt
-
 influxdb_key:
   file.absent:
     - name: /etc/pki/influxdb.key
@@ -43,6 +35,7 @@ etc_filebeat_crt:
   file.absent:
     - name: /etc/pki/filebeat.crt
 
+# manager has symlink to /etc/pki/filebeat.crt and /etc/pki/filebeat.p8
 filebeatdir:
   file.absent:
     - name: /opt/so/saltstack/local/salt/filebeat/files
