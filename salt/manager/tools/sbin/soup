@@ -319,6 +319,19 @@ clone_to_tmp() {
   fi
 }
 
+# there is a function like this in so-minion, but we cannot source it since args required for so-minion
+create_ca_pillar() {
+  local ca_pillar_dir="/opt/so/saltstack/local/pillar/ca"
+  local ca_pillar_file="${ca_pillar_dir}/init.sls"
+
+  echo "Updating CA pillar configuration"
+  mkdir -p "$ca_pillar_dir"
+  echo "ca: {}" > "$ca_pillar_file"
+
+  so-yaml.py add "$ca_pillar_file" ca.server "$MINIONID"
+  chown -R socore:socore "$ca_pillar_dir"
+}
+
 disable_logstash_heavynodes() {
   c=0
   printf "\nChecking for heavynodes and disabling Logstash if they exist\n"
@@ -427,6 +440,7 @@ preupgrade_changes() {
     [[ "$INSTALLEDVERSION" == 2.4.180 ]] && up_to_2.4.190
     [[ "$INSTALLEDVERSION" == 2.4.190 ]] && up_to_2.4.200
     [[ "$INSTALLEDVERSION" == 2.4.200 ]] && up_to_2.4.210
+    [[ "$INSTALLEDVERSION" == 2.4.210 ]] && up_to_2.4.220
     true
 }
 
@@ -460,6 +474,7 @@ postupgrade_changes() {
     [[ "$POSTVERSION"  == 2.4.180 ]] && post_to_2.4.190
     [[ "$POSTVERSION"  == 2.4.190 ]] && post_to_2.4.200
     [[ "$POSTVERSION"  == 2.4.200 ]] && post_to_2.4.210
+    [[ "$POSTVERSION"  == 2.4.210 ]] && post_to_2.4.220    
     true
 }
 
@@ -652,6 +667,11 @@ post_to_2.4.210() {
   rollover_index "logs-kratos-so"
 
   POSTVERSION=2.4.210
+}
+
+post_to_2.4.220() {
+  echo "Nothing to apply"
+  POSTVERSION=2.4.220
 }
 
 repo_sync() {
@@ -934,6 +954,12 @@ up_to_2.4.210() {
   echo "Nothing to do for 2.4.210"
 
   INSTALLEDVERSION=2.4.210
+}
+
+up_to_2.4.220() {
+  create_ca_pillar
+
+  INSTALLEDVERSION=2.4.220
 }
 
 add_hydra_pillars() {
