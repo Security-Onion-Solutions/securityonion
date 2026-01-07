@@ -1634,7 +1634,7 @@ reinstall_init() {
 
 	{
 		# remove all of root's cronjobs
-		logCmd "crontab -r -u root"
+		crontab -r -u root
 
 		if command -v salt-call &> /dev/null && grep -q "master:" /etc/salt/minion 2> /dev/null; then
 			# Disable schedule so highstate doesn't start running during the install
@@ -1644,7 +1644,7 @@ reinstall_init() {
 			salt-call -l info saltutil.kill_all_jobs --local
 		fi
 
-		logCmd "salt-call state.apply ca.remove -linfo --local --file-root=../salt"
+		salt-call state.apply ca.remove -linfo --local --file-root=../salt
 
 		# Kill any salt processes (safely)
 		for service in "${salt_services[@]}"; do
@@ -1657,7 +1657,7 @@ reinstall_init() {
 			local count=0
 			while check_service_status "$service"; do
 				if [[ $count -gt $service_retry_count ]]; then
-					info "Could not stop $service after 1 minute, exiting setup."
+					echo "Could not stop $service after 1 minute, exiting setup."
 
 					# Stop the systemctl process trying to kill the service, show user a message, then exit setup
 					kill -9 $pid
@@ -1695,10 +1695,10 @@ reinstall_init() {
 		backup_dir /nsm/influxdb "$date_string"
 
 		# Uninstall local Elastic Agent, if installed
-		logCmd "elastic-agent uninstall -f"
+		elastic-agent uninstall -f
 
 		if [[ $is_deb ]]; then
-			info "Unholding previously held packages."
+			echo "Unholding previously held packages."
 			apt-mark unhold $(apt-mark showhold)
 		fi
 
