@@ -1681,9 +1681,11 @@ verify_es_version_compatibility() {
         create_intermediate_upgrade_verification_script $es_verification_script
     fi
 
-    # create script using version in statefile
     local es_required_version_statefile_value=$(cat $es_required_version_statefile)
-    timeout --foreground 3600 bash "$es_verification_script" "$es_required_version_statefile_value" "$es_required_version_statefile"
+    echo -e "\n##############################################################################################################################\n"
+    echo "A previously required intermediate Elasticsearch upgrade was detected. Verifying that all Searchnodes/Heavynodes have successfully upgraded Elasticsearch to $es_required_version_statefile_value before proceeding with soup to avoid potential data loss!"
+    # create script using version in statefile
+    timeout --foreground 4000 bash "$es_verification_script" "$es_required_version_statefile_value" "$es_required_version_statefile"
     if [[ $? -ne 0 ]]; then
         echo -e "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
 
@@ -1692,7 +1694,7 @@ verify_es_version_compatibility() {
         echo -e "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
         exit 161
     fi
-
+    echo -e "\n##############################################################################################################################\n"
   fi
 
   if [[ " ${es_upgrade_map[$es_version]} " =~ " $target_es_version " || "$es_version" == "$target_es_version" ]]; then
@@ -1728,7 +1730,7 @@ verify_es_version_compatibility() {
       exec bash -c "BRANCH=$next_step_so_version soup -y && BRANCH=$next_step_so_version soup -y && \
        echo -e \"\n##############################################################################################################################\n\" && \
        echo -e \"Verifying Elasticsearch was successfully upgraded to ${compatible_versions##* } across the grid. This part can take a while as Searchnodes/Heavynodes sync up with the Manager! \n\nOnce verification completes the next soup will begin automatically. If verification takes longer than 1 hour it will stop waiting and your grid will remain at $next_step_so_version. Allowing for all Searchnodes/Heavynodes to upgrade Elasticsearch to the required version on their own time.\n\" \
-       && timeout --foreground 3600 bash /tmp/so_intermediate_upgrade_verification.sh ${compatible_versions##* } $es_required_version_statefile && \
+       && timeout --foreground 4000 bash /tmp/so_intermediate_upgrade_verification.sh ${compatible_versions##* } $es_required_version_statefile && \
        echo -e \"\n##############################################################################################################################\n\" \
        && BRANCH=$originally_requested_so_version soup -y && BRANCH=$originally_requested_so_version soup -y"
     fi
