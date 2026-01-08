@@ -131,3 +131,41 @@ Security Onion Case Report
 {{ range sortHistory "CreateTime" "asc" .History -}}
 | {{formatDateTime "Mon Jan 02 15:04:05 -0700 2006" .CreateTime}} | {{getUserDetail "email" .UserId}} | {{.Kind}} | {{.Operation}} |
 {{end}}
+
+## Attached Onion AI Sessions
+
+{{ range $idx, $session := sortAssistantSessionDetails "CreateTime" "desc" .AssistantSessions }}
+
+#### Session {{ add $idx 1 }}
+
+**Session ID:** {{$session.Session.SessionId}}
+
+**Title:** {{$session.Session.Title}}
+
+**User ID:** {{getUserDetail "email" $session.Session.UserId}}
+
+**Created:** {{formatDateTime "Mon Jan 02 15:04:05 -0700 2006" $session.Session.CreateTime}}
+
+**Updated:** {{formatDateTime "Mon Jan 02 15:04:05 -0700 2006" $session.Session.UpdateTime}}
+
+{{ if $session.Session.DeleteTime }}
+**Deleted:** {{ formatDateTime "Mon Jan 02 15:04:05 -0700 2006" $session.Session.DeleteTime}}
+{{ end }}
+
+#### Messages
+
+{{ range $index, $msg := sortAssistantMessages "CreateTime" "asc" $session.History }}
+{{ range $i, $block := $msg.Message.ContentBlocks }}
+
+{{ if eq $block.Type "text" }}
+
+**Role:** {{$msg.Message.Role}}
+
+{{ stripEmoji $block.Text }}
+
+---
+
+{{ end }}{{ end }}
+
+{{end}}
+{{end}}
