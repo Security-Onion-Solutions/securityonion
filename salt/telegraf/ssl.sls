@@ -46,6 +46,17 @@ telegraf_key_perms:
     - mode: 640
     - group: 939
 
+{%   if not GLOBALS.is_manager %}
+{# Prior to 2.4.220, minions used influxdb.crt and key for telegraf #}
+remove_influxdb.crt:
+  file.absent:
+    - name: /etc/pki/influxdb.crt
+
+remove_influxdb.key:
+  file.absent:
+    - name: /etc/pki/influxdb.key
+{%   endif %}
+
 {% else %}
 
 {{sls}}_state_not_allowed:
