@@ -34,7 +34,7 @@ kafka_client_crt:
     - name: /etc/pki/kafka-client.crt
     - ca_server: {{ CA.server }}
     - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
-    - signing_policy: general
+    - signing_policy: kafka
     - private_key: /etc/pki/kafka-client.key
     - CN: {{ GLOBALS.hostname }}
     - days_remaining: 7
@@ -82,7 +82,7 @@ kafka_crt:
     - name: /etc/pki/kafka.crt
     - ca_server: {{ CA.server }}
     - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
-    - signing_policy: general
+    - signing_policy: kafka
     - private_key: /etc/pki/kafka.key
     - CN: {{ GLOBALS.hostname }}
     - days_remaining: 7
@@ -144,7 +144,7 @@ kafka_logstash_crt:
     - name: /etc/pki/kafka-logstash.crt
     - ca_server: {{ CA.server }}
     - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
-    - signing_policy: general
+    - signing_policy: kafka
     - private_key: /etc/pki/kafka-logstash.key
     - CN: {{ GLOBALS.hostname }}
     - days_remaining: 7

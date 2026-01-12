@@ -47,7 +47,7 @@ registry_crt:
     - name: /etc/pki/registry.crt
     - ca_server: {{ CA.server }}
     - subjectAltName: DNS:{{ GLOBALS.manager }}, IP:{{ GLOBALS.manager_ip }} 
-    - signing_policy: general
+    - signing_policy: registry
     - private_key: /etc/pki/registry.key
     - CN: {{ GLOBALS.manager }}
     - days_remaining: 7

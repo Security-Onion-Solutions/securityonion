@@ -53,7 +53,7 @@ managerssl_crt:
   x509.certificate_managed:
     - name: /etc/pki/managerssl.crt
     - ca_server: {{ CA.server }}
-    - signing_policy: general
+    - signing_policy: managerssl
     - private_key: /etc/pki/managerssl.key
     - CN: {{ GLOBALS.hostname }}
     - subjectAltName: "DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}, DNS:{{ GLOBALS.url_base }}" 

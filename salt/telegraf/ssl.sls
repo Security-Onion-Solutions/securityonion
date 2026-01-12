@@ -27,7 +27,7 @@ telegraf_crt:
   x509.certificate_managed:
     - name: /etc/pki/telegraf.crt
     - ca_server: {{ CA.server }}
-    - signing_policy: general
+    - signing_policy: influxdb
     - private_key: /etc/pki/telegraf.key
     - CN: {{ GLOBALS.hostname }}
     - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }} 

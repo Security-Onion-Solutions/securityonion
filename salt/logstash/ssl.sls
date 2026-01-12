@@ -31,7 +31,7 @@ etc_elasticfleet_logstash_crt:
   x509.certificate_managed:
     - name: /etc/pki/elasticfleet-logstash.crt
     - ca_server: {{ CA.server }}
-    - signing_policy: general
+    - signing_policy: elasticfleet
     - private_key: /etc/pki/elasticfleet-logstash.key
     - CN: {{ GLOBALS.hostname }}
     - subjectAltName: DNS:{{ GLOBALS.hostname }},DNS:{{ GLOBALS.url_base }},IP:{{ GLOBALS.node_ip }}{% if ELASTICFLEETMERGED.config.server.custom_fqdn | length > 0 %},DNS:{{ ELASTICFLEETMERGED.config.server.custom_fqdn | join(',DNS:') }}{% endif %}
@@ -92,7 +92,7 @@ etc_elasticfleetlumberjack_crt:
   x509.certificate_managed:
     - name: /etc/pki/elasticfleet-lumberjack.crt
     - ca_server: {{ CA.server }}
-    - signing_policy: general
+    - signing_policy: elasticfleet
     - private_key: /etc/pki/elasticfleet-lumberjack.key
     - CN: {{ GLOBALS.node_ip }}
     - subjectAltName: DNS:{{ GLOBALS.hostname }}
@@ -161,7 +161,7 @@ etc_filebeat_crt:
   x509.certificate_managed:
     - name: /etc/pki/filebeat.crt
     - ca_server: {{ CA.server }}
-    - signing_policy: general
+    - signing_policy: filebeat
     - private_key: /etc/pki/filebeat.key
     - CN: {{ GLOBALS.hostname }}
     - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
@@ -242,7 +242,7 @@ conf_filebeat_crt:
   x509.certificate_managed:
     - name: /opt/so/conf/filebeat/etc/pki/filebeat.crt
     - ca_server: {{ CA.server }}
-    - signing_policy: general
+    - signing_policy: filebeat
     - private_key: /opt/so/conf/filebeat/etc/pki/filebeat.key
     - CN: {{ GLOBALS.hostname }}
     - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}

@@ -27,7 +27,7 @@ redis_crt:
     - name: /etc/pki/redis.crt
     - ca_server: {{ CA.server }}
     - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
-    - signing_policy: general
+    - signing_policy: registry
     - private_key: /etc/pki/redis.key
     - CN: {{ GLOBALS.hostname }}
     - days_remaining: 7

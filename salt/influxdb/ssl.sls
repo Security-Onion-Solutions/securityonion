@@ -27,7 +27,7 @@ influxdb_crt:
   x509.certificate_managed:
     - name: /etc/pki/influxdb.crt
     - ca_server: {{ CA.server }}
-    - signing_policy: general
+    - signing_policy: influxdb
     - private_key: /etc/pki/influxdb.key
     - CN: {{ GLOBALS.hostname }}
     - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }} 

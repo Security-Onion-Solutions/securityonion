@@ -27,7 +27,7 @@ elasticsearch_crt:
   x509.certificate_managed:
     - name: /etc/pki/elasticsearch.crt
     - ca_server: {{ CA.server }}
-    - signing_policy: general
+    - signing_policy: registry
     - private_key: /etc/pki/elasticsearch.key
     - CN: {{ GLOBALS.hostname }}
     - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}

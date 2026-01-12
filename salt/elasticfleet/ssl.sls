@@ -31,7 +31,7 @@ etc_elasticfleet_crt:
   x509.certificate_managed:
     - name: /etc/pki/elasticfleet-server.crt
     - ca_server: {{ CA.server }}
-    - signing_policy: general
+    - signing_policy: elasticfleet
     - private_key: /etc/pki/elasticfleet-server.key
     - CN: {{ GLOBALS.hostname }}
     - subjectAltName: DNS:{{ GLOBALS.hostname }},DNS:{{ GLOBALS.url_base }},IP:{{ GLOBALS.node_ip }}{% if ELASTICFLEETMERGED.config.server.custom_fqdn | length > 0 %},DNS:{{ ELASTICFLEETMERGED.config.server.custom_fqdn | join(',DNS:') }}{% endif %}
@@ -88,7 +88,7 @@ etc_elasticfleet_agent_crt:
   x509.certificate_managed:
     - name: /etc/pki/elasticfleet-agent.crt
     - ca_server: {{ CA.server }}
-    - signing_policy: general
+    - signing_policy: elasticfleet
     - private_key: /etc/pki/elasticfleet-agent.key
     - CN: {{ GLOBALS.hostname }}
     - days_remaining: 7
@@ -148,7 +148,7 @@ elasticfleet_kafka_crt:
   x509.certificate_managed:
     - name: /etc/pki/elasticfleet-kafka.crt
     - ca_server: {{ CA.server }}
-    - signing_policy: general
+    - signing_policy: kafka
     - private_key: /etc/pki/elasticfleet-kafka.key
     - CN: {{ GLOBALS.hostname }}
     - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
