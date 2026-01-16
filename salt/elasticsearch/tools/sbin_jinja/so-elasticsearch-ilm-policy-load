@@ -4,148 +4,32 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-# Logging configuration
-LOG_FILE="/opt/so/log/elasticsearch/so-elasticsearch-ilm-policy-load.log"
-LOG_DIR=$(dirname "$LOG_FILE")
-
-# Ensure log directory exists
-if [[ ! -d "$LOG_DIR" ]]; then
-  mkdir -p "$LOG_DIR"
-fi
-
-# Timing variables
-SCRIPT_START_TIME=$(date +%s%3N)
-LAST_CHECKPOINT_TIME=$SCRIPT_START_TIME
-
-# Get elapsed time in milliseconds since script start
-get_elapsed_ms() {
-  local now=$(date +%s%3N)
-  echo $((now - SCRIPT_START_TIME))
-}
-
-# Get time since last checkpoint and update checkpoint
-get_checkpoint_ms() {
-  local now=$(date +%s%3N)
-  local elapsed=$((now - LAST_CHECKPOINT_TIME))
-  LAST_CHECKPOINT_TIME=$now
-  echo $elapsed
-}
-
-# Logging function with timing
-log() {
-  local level=$1
-  shift
-  local message="$*"
-  local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-  local elapsed_ms=$(get_elapsed_ms)
-  local elapsed_sec=$(echo "scale=3; $elapsed_ms / 1000" | bc)
-  echo "[$timestamp] [+${elapsed_sec}s] [$level] $message" | tee -a "$LOG_FILE"
-}
-
-log_info() {
-  log "INFO" "$@"
-}
-
-log_warn() {
-  log "WARN" "$@"
-}
-
-log_error() {
-  log "ERROR" "$@"
-}
-
-# Log with checkpoint timing (shows time since last checkpoint)
-log_timing() {
-  local checkpoint_ms=$(get_checkpoint_ms)
-  local checkpoint_sec=$(echo "scale=3; $checkpoint_ms / 1000" | bc)
-  local elapsed_ms=$(get_elapsed_ms)
-  local elapsed_sec=$(echo "scale=3; $elapsed_ms / 1000" | bc)
-  local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-  echo "[$timestamp] [+${elapsed_sec}s] [TIMING] $* (took ${checkpoint_sec}s)" | tee -a "$LOG_FILE"
-}
-
-log_info "========== Starting Elasticsearch ILM policy load =========="
-
-LAST_CHECKPOINT_TIME=$(date +%s%3N)
 . /usr/sbin/so-common
-log_timing "Sourced so-common"
 
 {%- from 'elasticsearch/template.map.jinja' import ES_INDEX_SETTINGS %}
-
-policy_count=0
-total_policy_time_ms=0
 
 {%- for index, settings in ES_INDEX_SETTINGS.items() %}
 {%-   if settings.policy is defined %}
 {%-     if index == 'so-logs-detections.alerts' %}
   echo
   echo "Setting up so-logs-detections.alerts-so policy..."
-  log_info "Setting up so-logs-detections.alerts-so policy..."
-  LAST_CHECKPOINT_TIME=$(date +%s%3N)
-  policy_start=$(date +%s%3N)
   curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -s -k -L -X PUT "https://localhost:9200/_ilm/policy/{{ index }}-so" -H 'Content-Type: application/json' -d'{ "policy": {{ settings.policy | tojson(true) }} }'
-  policy_end=$(date +%s%3N)
-  policy_duration=$((policy_end - policy_start))
-  total_policy_time_ms=$((total_policy_time_ms + policy_duration))
-  policy_count=$((policy_count + 1))
-  log_timing "Completed so-logs-detections.alerts-so policy (${policy_duration}ms)"
   echo
 {%-     elif index == 'so-logs-soc' %}
   echo
   echo "Setting up so-soc-logs policy..."
-  log_info "Setting up so-soc-logs policy..."
-  LAST_CHECKPOINT_TIME=$(date +%s%3N)
-  policy_start=$(date +%s%3N)
   curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -s -k -L -X PUT "https://localhost:9200/_ilm/policy/so-soc-logs" -H 'Content-Type: application/json' -d'{ "policy": {{ settings.policy | tojson(true) }} }'
-  policy_end=$(date +%s%3N)
-  policy_duration=$((policy_end - policy_start))
-  total_policy_time_ms=$((total_policy_time_ms + policy_duration))
-  policy_count=$((policy_count + 1))
-  log_timing "Completed so-soc-logs policy (${policy_duration}ms)"
   echo
   echo
   echo "Setting up {{ index }}-logs policy..."
-  log_info "Setting up {{ index }}-logs policy..."
-  LAST_CHECKPOINT_TIME=$(date +%s%3N)
-  policy_start=$(date +%s%3N)
   curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -s -k -L -X PUT "https://localhost:9200/_ilm/policy/{{ index }}-logs" -H 'Content-Type: application/json' -d'{ "policy": {{ settings.policy | tojson(true) }} }'
-  policy_end=$(date +%s%3N)
-  policy_duration=$((policy_end - policy_start))
-  total_policy_time_ms=$((total_policy_time_ms + policy_duration))
-  policy_count=$((policy_count + 1))
-  log_timing "Completed {{ index }}-logs policy (${policy_duration}ms)"
   echo
 {%-     else %}
   echo
   echo "Setting up {{ index }}-logs policy..."
-  log_info "Setting up {{ index }}-logs policy..."
-  LAST_CHECKPOINT_TIME=$(date +%s%3N)
-  policy_start=$(date +%s%3N)
   curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -s -k -L -X PUT "https://localhost:9200/_ilm/policy/{{ index }}-logs" -H 'Content-Type: application/json' -d'{ "policy": {{ settings.policy | tojson(true) }} }'
-  policy_end=$(date +%s%3N)
-  policy_duration=$((policy_end - policy_start))
-  total_policy_time_ms=$((total_policy_time_ms + policy_duration))
-  policy_count=$((policy_count + 1))
-  log_timing "Completed {{ index }}-logs policy (${policy_duration}ms)"
   echo
 {%-     endif %}
 {%-   endif %}
 {%- endfor %}
 echo
-
-# Final timing summary
-total_elapsed_ms=$(get_elapsed_ms)
-total_elapsed_sec=$(echo "scale=3; $total_elapsed_ms / 1000" | bc)
-avg_policy_ms=0
-if [[ $policy_count -gt 0 ]]; then
-  avg_policy_ms=$((total_policy_time_ms / policy_count))
-fi
-
-log_info "========== TIMING SUMMARY =========="
-log_info "Total policies processed: $policy_count"
-log_info "Total policy load time: ${total_policy_time_ms}ms"
-log_info "Average time per policy: ${avg_policy_ms}ms"
-log_info "Total script time: ${total_elapsed_sec}s"
-log_info "===================================="
-
-log_info "========== Elasticsearch ILM policy load complete (${total_elapsed_sec}s) =========="
