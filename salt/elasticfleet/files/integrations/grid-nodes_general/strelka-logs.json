@@ -1,26 +1,40 @@
 {
   "package": {
-    "name": "log",
+    "name": "filestream",
     "version": ""
   },
   "name": "strelka-logs",
-  "namespace": "so",
-  "description": "Strelka logs",
+  "description": "Strelka Logs",
   "policy_id": "so-grid-nodes_general",
+  "namespace": "so",
   "inputs": {
-    "logs-logfile": {
+    "filestream-filestream": {
       "enabled": true,
       "streams": {
-        "log.logs": {
+        "filestream.generic": {
           "enabled": true,
           "vars": {
             "paths": [
               "/nsm/strelka/log/strelka.log"
             ],
             "data_stream.dataset": "strelka",
-            "tags": [],
+            "pipeline": "strelka.file",
+            "parsers": "#- ndjson:\n#    target: \"\"\n#    message_key: msg\n#- multiline:\n#    type: count\n#    count_lines: 3\n",
+            "exclude_files": [
+              "\\.gz$"
+            ],
+            "include_files": [],
             "processors": "- add_fields:\n    target: event\n    fields:\n      category: file\n      module: strelka",
-            "custom": "pipeline: strelka.file"
+            "tags": [],
+            "recursive_glob": true,
+            "clean_inactive": -1,
+            "harvester_limit": 0,
+            "fingerprint": false,
+            "fingerprint_offset": 0,
+            "fingerprint_length": "64",
+            "file_identity_native": true,
+            "exclude_lines": [],
+            "include_lines": []
           }
         }
       }
