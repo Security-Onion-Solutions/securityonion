@@ -142,7 +142,7 @@ function update_kafka_outputs() {
 
 {% if GLOBALS.pipeline == "KAFKA" %}
   # Get current list of Kafka Outputs
-  RAW_JSON=$(curl -K /opt/so/conf/elasticsearch/curl.config 'http://localhost:5601/api/fleet/outputs/so-manager_kafka')
+  RAW_JSON=$(curl -K /opt/so/conf/elasticsearch/curl.config 'http://localhost:5601/api/fleet/outputs/so-manager_kafka' --retry 3 --retry-delay 30 --fail 2>/dev/null)
 
   # Check to make sure that the server responded with good data - else, bail from script
   CHECKSUM=$(jq -r '.item.id' <<< "$RAW_JSON")
@@ -168,7 +168,7 @@ function update_kafka_outputs() {
   {# If global pipeline isn't set to KAFKA then assume default of REDIS / logstash #}
 {% else %}
   # Get current list of Logstash Outputs
-  RAW_JSON=$(curl -K /opt/so/conf/elasticsearch/curl.config 'http://localhost:5601/api/fleet/outputs/so-manager_logstash')
+  RAW_JSON=$(curl -K /opt/so/conf/elasticsearch/curl.config 'http://localhost:5601/api/fleet/outputs/so-manager_logstash' --retry 3 --retry-delay 30 --fail 2>/dev/null)
 
   # Check to make sure that the server responded with good data - else, bail from script
   CHECKSUM=$(jq -r '.item.id' <<< "$RAW_JSON")
