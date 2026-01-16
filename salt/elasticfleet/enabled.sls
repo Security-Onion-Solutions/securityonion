@@ -188,6 +188,19 @@ so-elastic-defend-manage-filters-file-watch:
 {%    endif %}
 {%  endif %}
 
+{# this block exists to rerun so-elasticsearch-templates-load during setup #}
+{# currently the script has a check if /usr/sbin/so-elastic-fleet-common exists before allowing templates to load #}
+{# that prevents the templates from being loaded during the initial highstate #}
+{%   if GLOBALS.is_manager %}
+so-elasticsearch-templates-elasticfleet-ready:
+  cmd.run:
+    - name: /usr/sbin/so-elasticsearch-templates-load
+    - cwd: /opt/so
+    - require:
+      - docker_container: so-elastic-fleet
+    - onlyif: pgrep so-setup
+{%   endif %}
+
 delete_so-elastic-fleet_so-status.disabled:
   file.uncomment:
     - name: /opt/so/conf/so-status/so-status.conf
