@@ -716,6 +716,18 @@ function checkMine() {
 	}
 }
 
+function create_ca_pillar() {
+	local capillar=/opt/so/saltstack/local/pillar/ca/init.sls
+    printf '%s\n'\
+    "ca:"\
+    "  server: $MINION_ID"\
+	"  " > $capillar
+    if [ $? -ne 0 ]; then
+        log "ERROR" "Failed to add $MINION_ID to $capillar"
+        return 1
+    fi
+}
+
 function createEVAL() {
 	log "INFO" "Creating EVAL configuration for minion $MINION_ID"
 	is_pcaplimit=true
@@ -1013,6 +1025,7 @@ function setupMinionFiles() {
 	managers=("EVAL" "STANDALONE" "IMPORT" "MANAGER" "MANAGERSEARCH")
 	if echo "${managers[@]}" | grep -qw "$NODETYPE"; then
 		add_sensoroni_with_analyze_to_minion || return 1
+		create_ca_pillar || return 1
 	else
 		add_sensoroni_to_minion || return 1
 	fi

@@ -1,5 +1,6 @@
 base:
   '*':
+    - ca
     - global.soc_global
     - global.adv_global
     - docker.soc_docker

@@ -18,10 +18,6 @@ mine_functions:
         mine_functions:
           network.ip_addrs:
             - interface: {{ interface }}
-        {%- if role in ['so-eval','so-import','so-manager','so-managerhype','so-managersearch','so-standalone'] %}
-          x509.get_pem_entries:
-            - glob_path: '/etc/pki/ca.crt'
-        {% endif %}
 
 mine_update_mine_functions:
   module.run:

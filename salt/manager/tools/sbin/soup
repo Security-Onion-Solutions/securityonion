@@ -325,6 +325,19 @@ clone_to_tmp() {
   fi
 }
 
+# there is a function like this in so-minion, but we cannot source it since args required for so-minion
+create_ca_pillar() {
+  local ca_pillar_dir="/opt/so/saltstack/local/pillar/ca"
+  local ca_pillar_file="${ca_pillar_dir}/init.sls"
+
+  echo "Updating CA pillar configuration"
+  mkdir -p "$ca_pillar_dir"
+  echo "ca: {}" > "$ca_pillar_file"
+
+  so-yaml.py add "$ca_pillar_file" ca.server "$MINIONID"
+  chown -R socore:socore "$ca_pillar_dir"
+}
+
 disable_logstash_heavynodes() {
   c=0
   printf "\nChecking for heavynodes and disabling Logstash if they exist\n"
@@ -368,7 +381,6 @@ masterlock() {
   echo "base:" > $TOPFILE
   echo "  $MINIONID:" >> $TOPFILE
   echo "    - ca" >> $TOPFILE
-  echo "    - ssl" >> $TOPFILE
   echo "    - elasticsearch" >> $TOPFILE
 }
 
@@ -668,6 +680,11 @@ post_to_2.4.210() {
   POSTVERSION=2.4.210
 }
 
+post_to_2.4.220() {
+  echo "Nothing to apply"
+  POSTVERSION=2.4.220
+}
+
 repo_sync() {
   echo "Sync the local repo."
   su socore -c '/usr/sbin/so-repo-sync' || fail "Unable to complete so-repo-sync."
@@ -953,6 +970,12 @@ up_to_2.4.210() {
   determine_elastic_agent_upgrade
 
   INSTALLEDVERSION=2.4.210
+}
+
+up_to_2.4.220() {
+  create_ca_pillar
+
+  INSTALLEDVERSION=2.4.220
 }
 
 add_hydra_pillars() {
@@ -1909,7 +1932,7 @@ apply_hotfix() {
       mv /etc/pki/managerssl.crt /etc/pki/managerssl.crt.old
       mv /etc/pki/managerssl.key /etc/pki/managerssl.key.old
       systemctl_func "start" "salt-minion"
-      (wait_for_salt_minion "$MINIONID" "5" '/dev/stdout' || fail "Salt minion was not running or ready.") 2>&1 | tee -a "$SOUP_LOG"
+      (wait_for_salt_minion "$MINIONID" "120" "4" "$SOUP_LOG" || fail "Salt minion was not running or ready.") 2>&1 | tee -a "$SOUP_LOG"
     fi
   else
    echo "No actions required. ($INSTALLEDVERSION/$HOTFIXVERSION)"
@@ -2108,7 +2131,7 @@ main() {
     echo ""
     echo "Running a highstate. This could take several minutes."
     set +e
-    (wait_for_salt_minion "$MINIONID" "5" '/dev/stdout' || fail "Salt minion was not running or ready.") 2>&1 | tee -a "$SOUP_LOG"
+    (wait_for_salt_minion "$MINIONID" "120" "4" "$SOUP_LOG" || fail "Salt minion was not running or ready.") 2>&1 | tee -a "$SOUP_LOG"
     highstate
     set -e
 
@@ -2121,7 +2144,7 @@ main() {
     check_saltmaster_status
 
     echo "Running a highstate to complete the Security Onion upgrade on this manager. This could take several minutes."
-    (wait_for_salt_minion "$MINIONID" "5" '/dev/stdout' || fail "Salt minion was not running or ready.") 2>&1 | tee -a "$SOUP_LOG"
+    (wait_for_salt_minion "$MINIONID" "120" "4" "$SOUP_LOG" || fail "Salt minion was not running or ready.") 2>&1 | tee -a "$SOUP_LOG"
 
     # Stop long-running scripts to allow potentially updated scripts to load on the next execution.
     killall salt-relay.sh
