@@ -11,31 +11,47 @@
 {%- endif -%}
 {
   "package": {
-    "name": "log",
+    "name": "filestream",
     "version": ""
   },
   "name": "kratos-logs",
-  "namespace": "so",
   "description": "Kratos logs",
   "policy_id": "so-grid-nodes_general",
+  "namespace": "so",
   "inputs": {
-    "logs-logfile": {
+    "filestream-filestream": {
       "enabled": true,
       "streams": {
-        "log.logs": {
+        "filestream.generic": {
           "enabled": true,
           "vars": {
             "paths": [
               "/opt/so/log/kratos/kratos.log"
             ],
             "data_stream.dataset": "kratos",
-            "tags": ["so-kratos"],
+            "pipeline": "kratos",
+            "parsers": "#- ndjson:\n#    target: \"\"\n#    message_key: msg\n#- multiline:\n#    type: count\n#    count_lines: 3\n",
+            "exclude_files": [
+              "\\.gz$"
+            ],
+            "include_files": [],
             {%- if valid_identities -%}
             "processors": "- decode_json_fields:\n    fields: [\"message\"]\n    target: \"\"\n    add_error_key: true\n- add_fields:\n    target: event\n    fields:\n      category: iam\n      module: kratos\n- if:\n    has_fields:\n      - identity_id\n  then:{% for id, email in identities %}\n    - if:\n        equals:\n          identity_id: \"{{ id }}\"\n      then:\n        - add_fields:\n            target: ''\n            fields:\n              user.name: \"{{ email }}\"{% endfor %}",
             {%- else -%}
             "processors": "- decode_json_fields:\n    fields: [\"message\"]\n    target: \"\"\n    add_error_key: true\n- add_fields:\n    target: event\n    fields:\n      category: iam\n      module: kratos",
             {%- endif -%}
-            "custom": "pipeline: kratos"
+            "tags": [
+              "so-kratos"
+            ],
+            "recursive_glob": true,
+            "clean_inactive": -1,
+            "harvester_limit": 0,
+            "fingerprint": false,
+            "fingerprint_offset": 0,
+            "fingerprint_length": "64",
+            "file_identity_native": true,
+            "exclude_lines": [],
+            "include_lines": []
           }
         }
       }
@@ -43,4 +59,3 @@
   },
   "force": true
 }
-

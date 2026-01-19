@@ -1,26 +1,43 @@
 {
   "package": {
-    "name": "log",
+    "name": "filestream",
     "version": ""
   },
   "name": "hydra-logs",
-  "namespace": "so",
   "description": "Hydra logs",
   "policy_id": "so-grid-nodes_general",
+  "namespace": "so",
   "inputs": {
-    "logs-logfile": {
+    "filestream-filestream": {
       "enabled": true,
       "streams": {
-        "log.logs": {
+        "filestream.generic": {
           "enabled": true,
           "vars": {
             "paths": [
               "/opt/so/log/hydra/hydra.log"
             ],
             "data_stream.dataset": "hydra",
-            "tags": ["so-hydra"],
-            "processors": "- decode_json_fields:\n    fields: [\"message\"]\n    target: \"\"\n    add_error_key: true      \n- add_fields:\n    target: event\n    fields:\n      category: iam\n      module: hydra",
-            "custom": "pipeline: hydra"
+            "pipeline": "hydra",
+            "parsers": "#- ndjson:\n#    target: \"\"\n#    message_key: msg\n#- multiline:\n#    type: count\n#    count_lines: 3\n",
+            "exclude_files": [
+              "\\.gz$"
+            ],
+            "include_files": [],
+            "processors": "- decode_json_fields:\n    fields: [\"message\"]\n    target: \"\"\n    add_error_key: true\n- add_fields:\n    target: event\n    fields:\n      category: iam\n      module: hydra",
+            "tags": [
+              "so-hydra"
+            ],
+            "recursive_glob": true,
+            "ignore_older": "72h",
+            "clean_inactive": -1,
+            "harvester_limit": 0,
+            "fingerprint": false,
+            "fingerprint_offset": 0,
+            "fingerprint_length": "64",
+            "file_identity_native": true,
+            "exclude_lines": [],
+            "include_lines": []
           }
         }
       }
@@ -28,3 +45,5 @@
   },
   "force": true
 }
+
+

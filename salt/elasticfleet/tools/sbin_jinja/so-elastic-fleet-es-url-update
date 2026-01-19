@@ -26,7 +26,7 @@ function update_es_urls() {
 }
 
 # Get current list of Fleet Elasticsearch URLs
-RAW_JSON=$(curl -K /opt/so/conf/elasticsearch/curl.config 'http://localhost:5601/api/fleet/outputs/so-manager_elasticsearch')
+RAW_JSON=$(curl -K /opt/so/conf/elasticsearch/curl.config 'http://localhost:5601/api/fleet/outputs/so-manager_elasticsearch' --retry 3 --retry-delay 30 --fail 2>/dev/null)
 
 # Check to make sure that the server responded with good data - else, bail from script
 CHECKSUM=$(jq -r '.item.id' <<< "$RAW_JSON")
