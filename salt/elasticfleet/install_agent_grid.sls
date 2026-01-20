@@ -8,7 +8,9 @@
 {% endif %}
 
 {% set AGENT_STATUS = salt['service.available']('elastic-agent') %}
-{% if not AGENT_STATUS  %}
+{% set AGENT_RC = salt['cmd.retcode']('elastic-agent status', ignore_retcode=True) %}
+
+{% if not AGENT_STATUS or AGENT_RC == 127 %}
 
 pull_agent_installer:
   file.managed:
@@ -19,7 +21,7 @@ pull_agent_installer:
 
 run_installer:
   cmd.run:
-    - name: ./so-elastic-agent_linux_amd64 -token={{ GRIDNODETOKEN }}
+    - name: ./so-elastic-agent_linux_amd64 -token={{ GRIDNODETOKEN }} -force
     - cwd: /opt/so
     - retry:
         attempts: 3
