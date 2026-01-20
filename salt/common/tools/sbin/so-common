@@ -560,29 +560,32 @@ wait_for_salt_minion() {
     local logfile="${4:-'/dev/stdout'}"
     local elapsed=0
 
-	echo "$(date '+%a %d %b %Y %H:%M:%S.%6N') - Waiting for salt-minion '$minion' to be ready..." | tee -a "$logfile"
+	echo "$(date '+%a %d %b %Y %H:%M:%S.%6N') - Waiting for salt-minion '$minion' to be ready..."
 
     while [ $elapsed -lt $max_wait ]; do
         # Check if service is running
+		echo "$(date '+%a %d %b %Y %H:%M:%S.%6N') - Check if salt-minion service is running"
         if ! systemctl is-active --quiet salt-minion; then
-            echo "$(date '+%a %d %b %Y %H:%M:%S.%6N') - salt-minion service not running (elapsed: ${elapsed}s)" | tee -a "$logfile"
+            echo "$(date '+%a %d %b %Y %H:%M:%S.%6N') - salt-minion service not running (elapsed: ${elapsed}s)"
             sleep $interval
             elapsed=$((elapsed + interval))
             continue
         fi
-        
+		echo "$(date '+%a %d %b %Y %H:%M:%S.%6N') - salt-minion service is running"
+
         # Check if minion responds to ping
+		echo "$(date '+%a %d %b %Y %H:%M:%S.%6N') - Check if $minion responds to ping"
         if salt "$minion" test.ping --timeout=3 --out=json 2>> "$logfile" | grep -q "true"; then
-            echo "$(date '+%a %d %b %Y %H:%M:%S.%6N') - salt-minion '$minion' is connected and ready!" | tee -a "$logfile"
+            echo "$(date '+%a %d %b %Y %H:%M:%S.%6N') - salt-minion '$minion' is connected and ready!"
             return 0
         fi
         
-        echo "$(date '+%a %d %b %Y %H:%M:%S.%6N') - Waiting... (${elapsed}s / ${max_wait}s)" | tee -a "$logfile"
+        echo "$(date '+%a %d %b %Y %H:%M:%S.%6N') - Waiting... (${elapsed}s / ${max_wait}s)"
         sleep $interval
         elapsed=$((elapsed + interval))
     done
 
-    echo "$(date '+%a %d %b %Y %H:%M:%S.%6N') - ERROR: salt-minion '$minion' not ready after $max_wait seconds" | tee -a "$logfile"
+    echo "$(date '+%a %d %b %Y %H:%M:%S.%6N') - ERROR: salt-minion '$minion' not ready after $max_wait seconds"
     return 1
 }
 
