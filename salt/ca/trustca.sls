@@ -8,11 +8,6 @@
 include:
   - docker
 
-cacertdir:
-  file.directory:
-    - name: /etc/pki/tls/certs
-    - makedirs: True
-
 # Trust the CA
 trusttheca:
   file.managed:
@@ -21,6 +16,7 @@ trusttheca:
     - watch_in:
       - service: docker_running
     - show_changes: False
+    - makedirs: True
 
 {% if GLOBALS.os_family == 'Debian' %}
 symlinkca:
