@@ -8,9 +8,9 @@
 {% endif %}
 
 {% set AGENT_STATUS = salt['service.available']('elastic-agent') %}
-{% set AGENT_RC = salt['cmd.retcode']('elastic-agent status', ignore_retcode=True) %}
+{% set AGENT_EXISTS = salt['file.file_exists']('/opt/Elastic/Agent/elastic-agent') %}
 
-{% if not AGENT_STATUS or AGENT_RC == 127 %}
+{% if not AGENT_STATUS or not AGENT_EXISTS %}
 
 pull_agent_installer:
   file.managed:
