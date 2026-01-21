@@ -12,9 +12,7 @@
 include:
   - ca
 
-{% if GLOBALS.pipeline == "KAFKA" %}
-
-{%   if GLOBALS.role in ['so-manager', 'so-managersearch', 'so-standalone'] %}
+{% if GLOBALS.role in ['so-manager', 'so-managersearch', 'so-standalone'] %}
 kafka_client_key:
   x509.private_key_managed:
     - name: /etc/pki/kafka-client.key
@@ -60,9 +58,9 @@ kafka_client_crt_perms:
     - mode: 640
     - user: 960
     - group: 939
-{%   endif %}
+{% endif %}
 
-{%   if GLOBALS.role in ['so-manager', 'so-managersearch','so-receiver', 'so-standalone'] %}
+{% if GLOBALS.role in ['so-manager', 'so-managersearch','so-receiver', 'so-standalone'] %}
 kafka_key:
   x509.private_key_managed:
     - name: /etc/pki/kafka.key
@@ -120,11 +118,11 @@ kafka_pkcs12_perms:
     - mode: 640
     - user: 960
     - group: 939
-{%   endif %}
+{% endif %}
 
 # Standalone needs kafka-logstash for automated testing. Searchnode/manager search need it for logstash to consume from Kafka.
 # Manager will have cert, but be unused until a pipeline is created and logstash enabled.
-{%   if GLOBALS.role in ['so-standalone', 'so-managersearch', 'so-searchnode', 'so-manager'] %}
+{% if GLOBALS.role in ['so-standalone', 'so-managersearch', 'so-searchnode', 'so-manager'] %}
 kafka_logstash_key:
   x509.private_key_managed:
     - name: /etc/pki/kafka-logstash.key
@@ -183,7 +181,6 @@ kafka_logstash_pkcs12_perms:
     - user: 931
     - group: 939
 
-{%   endif %}
 {% endif %}
 
 {% else %}
