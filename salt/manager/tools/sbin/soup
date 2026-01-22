@@ -1728,11 +1728,20 @@ verify_es_version_compatibility() {
     return 0
   else
     compatible_versions=${es_upgrade_map[$es_version]}
-    next_step_so_version=${es_to_so_version[${compatible_versions##* }]}
-    echo -e "\n##############################################################################################################################\n"
-    echo -e "You are currently running Security Onion $INSTALLEDVERSION. You will need to update to version $next_step_so_version before updating to $(cat $UPDATE_DIR/VERSION).\n"
+    if [[ -z "$compatible_versions" ]]; then
+      # If current ES version is not explicitly defined in the upgrade map, we know they have an intermediate upgrade to do.
+        # We default to the lowest ES version defined in es_to_so_version as $first_es_required_version
+      local first_es_required_version=$(printf '%s\n' "${!es_to_so_version[@]}" | sort -V | head -n1)
+      next_step_so_version=${es_to_so_version[$first_es_required_version]}
+      required_es_upgrade_version="$first_es_required_version"
+    else
+      next_step_so_version=${es_to_so_version[${compatible_versions##* }]}
+      required_es_upgrade_version="${compatible_versions##* }"
+    fi
+      echo -e "\n##############################################################################################################################\n"
+      echo -e "You are currently running Security Onion $INSTALLEDVERSION. You will need to update to version $next_step_so_version before updating to $(cat $UPDATE_DIR/VERSION).\n"
 
-    echo "${compatible_versions##* }" > "$es_required_version_statefile"
+      echo "$required_es_upgrade_version" > "$es_required_version_statefile"
 
     # We expect to upgrade to the latest compatiable minor version of ES
     create_intermediate_upgrade_verification_script $es_verification_script
