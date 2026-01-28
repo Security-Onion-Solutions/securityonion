@@ -34,6 +34,11 @@ if [[ "$RETURN_CODE" != "0" ]]; then
   exit 1
 fi
 
+if [[ ! -f /etc/pki/elasticfleet-kafka.crt || ! -f /etc/pki/elasticfleet-kafka.key ]]; then
+  echo -e "\nKafka certificates not found, can't setup Elastic Fleet output policy for Kafka...\n"
+  exit 1
+fi
+
 KAFKACRT=$(openssl x509 -in /etc/pki/elasticfleet-kafka.crt)
 KAFKAKEY=$(openssl rsa -in  /etc/pki/elasticfleet-kafka.key)
 KAFKACA=$(openssl x509 -in  /etc/pki/tls/certs/intca.crt)
