@@ -353,6 +353,22 @@ disable_logstash_heavynodes() {
   done
 }
 
+disable_redis_heavynodes() {
+  local c=0
+  printf "\nChecking for heavynodes and disabling Redis if they exist\n"
+  for file in /opt/so/saltstack/local/pillar/minions/*.sls; do
+    if [[ "$file" =~ "_heavynode.sls" && ! "$file" =~ "/opt/so/saltstack/local/pillar/minions/adv_" ]]; then
+      c=1
+      echo "Disabling Redis for: $file"
+      so-yaml.py replace "$file" redis.enabled False
+    fi
+  done
+
+  if [[ "$c" != 0 ]]; then
+    FINAL_MESSAGE_QUEUE+=("Redis has been disabled on all heavynodes.")
+  fi
+}
+
 enable_highstate() {
     echo "Enabling highstate."
     salt-call state.enable highstate -l info --local
@@ -673,6 +689,8 @@ post_to_2.4.210() {
   echo "Rolling over Kratos index to apply new index template"
 
   rollover_index "logs-kratos-so"
+
+  disable_redis_heavynodes
 
   echo "Regenerating Elastic Agent Installers"
   /sbin/so-elastic-agent-gen-installers
