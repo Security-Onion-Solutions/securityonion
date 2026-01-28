@@ -11,6 +11,7 @@
 
 include:
   - elasticfleet.artifact_registry
+  - elasticfleet.ssl
 
 # Add EA Group
 elasticfleetgroup:

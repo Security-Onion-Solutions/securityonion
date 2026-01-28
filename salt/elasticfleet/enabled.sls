@@ -15,7 +15,6 @@
 include:
   - ca
   - logstash.ssl
-  - elasticfleet.ssl
   - elasticfleet.config
   - elasticfleet.sostatus
 
