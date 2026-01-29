@@ -404,6 +404,42 @@ is_single_node_grid() {
 	grep "role: so-" /etc/salt/grains | grep -E "eval|standalone|import" &> /dev/null
 }
 
+initialize_elasticsearch_indices() {
+    local index_names=$1
+    local default_entry=${2:-'{"@timestamp":"0"}'}
+
+    local retries=3
+    local retry_delay=5
+
+    for idx in $index_names; do
+        local count=0
+        if ! output=$(so-elasticsearch-query "$idx" --fail --retry 3 --retry-delay 30); then
+            echo "Index does not already exist. Initializing $idx index."
+
+            while [[ $count -lt $retries ]]; do
+                response=$(so-elasticsearch-query "$idx/_doc" -d "$default_entry" -XPOST --fail 2>/dev/null)
+                if echo "$response" | grep -q '"successful":1'; then
+                    echo "Successfully initialized $idx index."
+
+                    break
+                else
+                    echo "Failed to initialize $idx index. Retrying in $retry_delay seconds..."
+                    sleep $retry_delay
+                    ((count++))
+                fi
+            done
+
+            if [[ $count -eq $retries ]]; then
+                echo "Failed to initialize $idx index after $retries attempts."
+            fi
+
+        else
+            echo "Index $idx already exists. No action needed."
+        fi
+    done
+
+}
+
 lookup_bond_interfaces() {
 	cat /proc/net/bonding/bond0 | grep "Slave Interface:" | sed -e "s/Slave Interface: //g"
 }
