@@ -7,6 +7,7 @@
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 {%   from 'telegraf/map.jinja' import TELEGRAFMERGED %}
+{%   from 'logstash/map.jinja' import LOGSTASH_MERGED %}
 
 # add Telegraf to monitor all the things
 tgraflogdir:
@@ -89,6 +90,7 @@ tgrafconf:
     - defaults:
         GLOBALS: {{ GLOBALS }}
         TELEGRAFMERGED: {{ TELEGRAFMERGED }}
+        LOGSTASH_MERGED: {{ LOGSTASH_MERGED }}
 
 # this file will be read by telegraf to send node details (management interface, monitor interface, etc)
 # into influx
