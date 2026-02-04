@@ -93,6 +93,10 @@ check_err() {
       161)
         echo 'Required intermediate Elasticsearch upgrade not complete'
       ;;
+      170)
+        echo "Intermediate upgrade completed successfully to $next_step_so_version, but next soup to Security Onion $originally_requested_so_version could not be started automatically."
+        echo "Start soup again manually to continue the upgrade to Security Onion $originally_requested_so_version."
+      ;;
       *)
         echo 'Unhandled error'
         echo "$err_msg"
@@ -1682,7 +1686,7 @@ verify_latest_update_script() {
 
 verify_es_version_compatibility() {
 
-  local es_required_version_statefile="/opt/so/state/so_es_required_upgrade_version.txt"
+  es_required_version_statefile="/opt/so/state/so_es_required_upgrade_version.txt"
   local es_verification_script="/tmp/so_intermediate_upgrade_verification.sh"
   # supported upgrade paths for SO-ES versions
   declare -A es_upgrade_map=(
@@ -1767,30 +1771,96 @@ verify_es_version_compatibility() {
     create_intermediate_upgrade_verification_script $es_verification_script
 
     if [[ $is_airgap -eq 0 ]]; then
-      echo "You can download the $next_step_so_version ISO image from https://download.securityonion.net/file/securityonion/securityonion-$next_step_so_version.iso"
-      echo "*** Once you have updated to $next_step_so_version, you can then run soup again to update to $(cat $UPDATE_DIR/VERSION). ***"
-      echo -e "\n##############################################################################################################################\n"
-      exit 160
+      run_airgap_intermediate_upgrade
     else
-      # preserve BRANCH value if set originally
-      if [[ -n "$BRANCH" ]]; then
-        local originally_requested_so_version="$BRANCH"
-      else
-        local originally_requested_so_version="2.4/main"
-      fi
-
-      echo "Starting automated intermediate upgrade to $next_step_so_version."
-      echo "After completion, the system will automatically attempt to upgrade to the latest version."
-      echo -e "\n##############################################################################################################################\n"
-      exec bash -c "BRANCH=$next_step_so_version soup -y && BRANCH=$next_step_so_version soup -y && \
-       echo -e \"\n##############################################################################################################################\n\" && \
-       echo -e \"Verifying Elasticsearch was successfully upgraded to $required_es_upgrade_version across the grid. This part can take a while as Searchnodes/Heavynodes sync up with the Manager! \n\nOnce verification completes the next soup will begin automatically. If verification takes longer than 1 hour it will stop waiting and your grid will remain at $next_step_so_version. Allowing for all Searchnodes/Heavynodes to upgrade Elasticsearch to the required version on their own time.\n\" \
-       && timeout --foreground 4000 bash /tmp/so_intermediate_upgrade_verification.sh $required_es_upgrade_version $es_required_version_statefile && \
-       echo -e \"\n##############################################################################################################################\n\" \
-       && BRANCH=$originally_requested_so_version soup -y && BRANCH=$originally_requested_so_version soup -y"
+      run_network_intermediate_upgrade
     fi
   fi
 
+}
+
+run_airgap_intermediate_upgrade() {
+  local originally_requested_so_version=$(cat $UPDATE_DIR/VERSION)
+  # preserve ISOLOC value, so we can try to use it post intermediate upgrade
+  local originally_requested_iso_location="$ISOLOC"
+
+  echo "You can download the $next_step_so_version ISO image from https://download.securityonion.net/file/securityonion/securityonion-$next_step_so_version.iso"
+  echo "*** Once you have updated to $next_step_so_version, you can then run soup again to update to $(cat $UPDATE_DIR/VERSION). ***"
+  echo -e "\nIf you have the next ISO / USB ready, enter the path now eg. /dev/sdd, /home/onion/securityonion-$next_step_so_version.iso:"
+
+  while [[ -z "$next_iso_location" ]] || [[ ! -f "$next_iso_location" && ! -b "$next_iso_location" ]]; do
+    # List removable devices if any are present
+    local removable_devices=$(lsblk -no PATH,SIZE,TYPE,MOUNTPOINTS,RM | awk '$NF==1')
+    if [[ -n "$removable_devices" ]]; then
+      echo "PATH        SIZE    TYPE    MOUNTPOINTS    RM"
+      echo "$removable_devices"
+    fi
+
+    read -rp "Device/ISO Path (or 'exit' to quit): " next_iso_location
+    if [[ "${next_iso_location,,}" == "exit" ]]; then
+      echo "Exiting soup. Before reattempting to upgrade to $originally_requested_so_version, please first upgrade to $next_step_so_version to ensure Elasticsearch can properly update through the required versions."
+
+      exit 160
+    fi
+
+    if [[ ! -f "$next_iso_location" && ! -b "$next_iso_location" ]]; then
+      echo "$next_iso_location is not a valid file or block device."
+      next_iso_location=""
+    fi
+  done
+
+  echo "Using $next_iso_location for required intermediary upgrade."
+  exec bash <<EOF
+    ISOLOC=$next_iso_location soup -y && \
+    ISOLOC=$next_iso_location soup -y && \
+
+    echo -e "\n##############################################################################################################################\n" && \
+    echo -e "Verifying Elasticsearch was successfully upgraded to $required_es_upgrade_version across the grid. This part can take a while as Searchnodes/Heavynodes sync up with the Manager! \n\nOnce verification completes the next soup will begin automatically. If verification takes longer than 1 hour it will stop waiting and your grid will remain at $next_step_so_version. Allowing for all Searchnodes/Heavynodes to upgrade Elasticsearch to the required version on their own time.\n" && \
+
+    timeout --foreground 4000 bash /tmp/so_intermediate_upgrade_verification.sh $required_es_upgrade_version $es_required_version_statefile && \
+
+    echo -e "\n##############################################################################################################################\n" && \
+
+    # automatically start the next soup if the original ISO isn't using the same block device we just used
+    if [[ -n "$originally_requested_iso_location" ]] && [[ "$originally_requested_iso_location" != "$next_iso_location" ]]; then
+      ISOLOC=$originally_requested_iso_location soup -y && \
+      ISOLOC=$originally_requested_iso_location soup -y
+    else
+      echo "Could not automatically start next soup to $originally_requested_so_version. Soup will now exit here at $(cat /etc/soversion)" && exit 170
+    fi
+
+    echo -e "\n##############################################################################################################################\n"
+EOF
+
+}
+
+run_network_intermediate_upgrade() {
+  # preserve BRANCH value if set originally
+  if [[ -n "$BRANCH" ]]; then
+    local originally_requested_so_branch="$BRANCH"
+  else
+    local originally_requested_so_branch="2.4/main"
+  fi
+
+  echo "Starting automated intermediate upgrade to $next_step_so_version."
+  echo "After completion, the system will automatically attempt to upgrade to the latest version."
+  echo -e "\n##############################################################################################################################\n"
+  exec bash << EOF
+    BRANCH=$next_step_so_version soup -y && \
+    BRANCH=$next_step_so_version soup -y && \
+
+    echo -e "\n##############################################################################################################################\n" && \
+    echo -e "Verifying Elasticsearch was successfully upgraded to $required_es_upgrade_version across the grid. This part can take a while as Searchnodes/Heavynodes sync up with the Manager! \n\nOnce verification completes the next soup will begin automatically. If verification takes longer than 1 hour it will stop waiting and your grid will remain at $next_step_so_version. Allowing for all Searchnodes/Heavynodes to upgrade Elasticsearch to the required version on their own time.\n" && \
+
+    timeout --foreground 4000 bash /tmp/so_intermediate_upgrade_verification.sh $required_es_upgrade_version $es_required_version_statefile && \
+
+    echo -e "\n##############################################################################################################################\n" && \
+
+    BRANCH=$originally_requested_so_branch soup -y && \
+    BRANCH=$originally_requested_so_branch soup -y
+
+    echo -e "\n##############################################################################################################################\n"
+EOF
 }
 
 create_intermediate_upgrade_verification_script() {
