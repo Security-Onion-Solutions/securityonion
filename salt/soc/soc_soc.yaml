@@ -650,13 +650,6 @@ soc:
                 label: Folder
             airgap: *pbRepos
         assistant:
-          apiUrl:
-            description: The URL of the AI gateway.
-            global: True
-          healthTimeoutSeconds:
-            description: Timeout in seconds for the Onion AI health check.
-            global: True
-            advanced: True
           systemPromptAddendum:
             description: Additional context to provide to the AI assistant about this SOC deployment. This can include information about your environment, policies, or any other relevant details that can help the AI provide more accurate and tailored assistance. Long prompts may be shortened.
             global: True
@@ -666,6 +659,40 @@ soc:
             description: Maximum length of the system prompt addendum. Longer prompts will be truncated.
             global: True
             advanced: True
+          adapters:
+            description: Configuration for AI adapters used by the Onion AI assistant.
+            global: True
+            advanced: True
+            forcedType: "[]{}"
+            syntax: json
+            uiElements:
+            - field: name
+              label: Adapter Name
+              regex: "^(?!.*@).+$"
+              regexFailureMessage: Adapter name cannot contain the '@' character
+              required: True
+            - field: protocol
+              label: Protocol
+              required: True
+              options:
+                - securityonion_ai_cloud
+                - gemini
+            - field: apiUrl
+              label: API URL
+              required: False
+            - field: apiKey
+              label: API Key
+              required: False
+            - field: serviceAccountJSON
+              label: Service Account JSON
+              required: False
+              multiline: True
+            - field: serviceAccountLocation
+              label: Service Account Location
+              required: False
+            - field: healthTimeoutSeconds
+              label: Health Timeout Seconds
+              required: False
       client:
         assistant:
           enabled:
@@ -704,6 +731,8 @@ soc:
             - field: id
               label: Model ID
               required: True
+              regex: "^(?!.*@).+$"
+              regexFailureMessage: Model ID cannot contain the '@' character
             - field: displayName
               label: Display Name
               required: True
