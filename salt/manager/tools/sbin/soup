@@ -1784,7 +1784,7 @@ verify_es_version_compatibility() {
         # We expect to upgrade to the latest compatiable minor version of ES
         create_intermediate_upgrade_verification_script $es_verification_script
 
-        if [[ $is_airgap -eq 0 ]]; then
+        if [[ $is_airgap -eq 0 ]] || [[ $nonairgap_useiso -eq 0 ]] ; then
             run_airgap_intermediate_upgrade
         else
             run_network_intermediate_upgrade
@@ -1797,6 +1797,11 @@ run_airgap_intermediate_upgrade() {
     local originally_requested_so_version=$(cat $UPDATE_DIR/VERSION)
     # preserve ISOLOC value, so we can try to use it post intermediate upgrade
     local originally_requested_iso_location="$ISOLOC"
+
+    if [[ -d /tmp/soagupdate ]]; then
+        echo -e "\nUnmounting current ISO before running intermediate upgrade\n"
+        unmount_update
+    fi
 
     echo "You can download the $next_step_so_version ISO image from https://download.securityonion.net/file/securityonion/securityonion-$next_step_so_version.iso"
     echo -e "\nIf you have the next ISO / USB ready, enter the path now eg. /dev/sdd, /home/onion/securityonion-$next_step_so_version.iso:"
