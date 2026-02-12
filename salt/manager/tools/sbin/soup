@@ -158,7 +158,7 @@ EOF
         echo "Ensure you verify the ISO that you downloaded."
         exit 0
       else
-        echo "Device has been mounted!"
+        echo "Device has been mounted! $(cat /tmp/soagupdate/SecurityOnion/VERSION)"
       fi
     else
       echo "Could not find Security Onion ISO content at ${ISOLOC}"
@@ -1745,20 +1745,23 @@ verify_es_version_compatibility() {
         fi
 
         local es_required_version_statefile_value=$(cat $es_required_version_statefile)
-        echo -e "\n##############################################################################################################################\n"
-        echo "A previously required intermediate Elasticsearch upgrade was detected. Verifying that all Searchnodes/Heavynodes have successfully upgraded Elasticsearch to $es_required_version_statefile_value before proceeding with soup to avoid potential data loss!"
-        # create script using version in statefile
-        timeout --foreground 4000 bash "$es_verification_script" "$es_required_version_statefile_value" "$es_required_version_statefile"
-        if [[ $? -ne 0 ]]; then
-            echo -e "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
+        # If statefile was created on the first soup to an unsupported ES version and the next soup is attempting to upgrade to the required version it isn't expected that the upgrade has completed so skip verification check
+        if [[ "$target_es_version" != "$es_required_version_statefile_value" ]]; then
+            echo -e "\n##############################################################################################################################\n"
+            echo "A previously required intermediate Elasticsearch upgrade was detected. Verifying that all Searchnodes/Heavynodes have successfully upgraded Elasticsearch to $es_required_version_statefile_value before proceeding with soup to avoid potential data loss!"
+            # create script using version in statefile
+            timeout --foreground 4000 bash "$es_verification_script" "$es_required_version_statefile_value" "$es_required_version_statefile"
+            if [[ $? -ne 0 ]]; then
+                echo -e "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
 
-            echo "A previous required intermediate Elasticsearch upgrade to $es_required_version_statefile_value has yet to successfully complete across the grid. Please allow time for all Searchnodes/Heavynodes to have upgraded Elasticsearch to $es_required_version_statefile_value before running soup again to avoid potential data loss!"
+                echo "A previous required intermediate Elasticsearch upgrade to $es_required_version_statefile_value has yet to successfully complete across the grid. Please allow time for all Searchnodes/Heavynodes to have upgraded Elasticsearch to $es_required_version_statefile_value before running soup again to avoid potential data loss!"
 
-            echo -e "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
+                echo -e "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
 
-            exit 161
+                exit 161
+            fi
+            echo -e "\n##############################################################################################################################\n"
         fi
-        echo -e "\n##############################################################################################################################\n"
     fi
 
     if [[ " ${es_upgrade_map[$es_version]} " =~ " $target_es_version " || "$es_version" == "$target_es_version" ]]; then
@@ -1800,11 +1803,6 @@ run_airgap_intermediate_upgrade() {
     local originally_requested_so_version=$(cat $UPDATE_DIR/VERSION)
     # preserve ISOLOC value, so we can try to use it post intermediate upgrade
     local originally_requested_iso_location="$ISOLOC"
-
-    if [[ -d /tmp/soagupdate ]]; then
-        echo -e "\nUnmounting current ISO before running intermediate upgrade\n"
-        unmount_update
-    fi
 
     echo "You can download the $next_step_so_version ISO image from https://download.securityonion.net/file/securityonion/securityonion-$next_step_so_version.iso"
     echo -e "\nIf you have the next ISO / USB ready, enter the path now eg. /dev/sdd, /home/onion/securityonion-$next_step_so_version.iso:"
@@ -2096,6 +2094,10 @@ main() {
   echo "Found that Security Onion $INSTALLEDVERSION is currently installed."
   echo ""
   if [[ $is_airgap -eq 0 ]] || [[ $nonairgap_useiso -eq 0 ]]; then
+    # Make sure we get a fresh mount of the ISO (helps with intermediate upgrades and ensuring if non-airgap soup runs with -f the correct ISO)
+    if [[ -d /tmp/soagupdate ]]; then
+        unmount_update
+    fi
     # Let's mount the ISO since this is airgap or non-airgap with -f used
     airgap_mounted
   else
