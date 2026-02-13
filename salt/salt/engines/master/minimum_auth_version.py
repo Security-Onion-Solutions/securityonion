@@ -62,7 +62,7 @@ def start(wait_days=7):
             if elapsed >= wait_delta:
                 log.info("Changing minimum_auth_version")
                 _clear_start_time()
-                result = caller.cmd('state.apply', 'salt.master.remove_minimum_auth_version_engine', kwarg={'queue': True})
+                result = caller.cmd('state.apply', 'salt.master.remove_minimum_auth_version', kwarg={'queue': True})
                 # We shouldn't reach this line since the above line should remove the engine and restart salt-master
                 log.info("State apply result: %s", result)
                 mav_removed = True

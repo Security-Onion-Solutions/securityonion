@@ -5,6 +5,11 @@
 
 # This state is to be used during soup preupgrade_changes, and run when the salt-master has been stopped. Soup will later start the salt-master.
 
+set_minimum_auth_version_0:
+  file.managed:
+    - name: /etc/salt/master.d/minimum_auth_version.conf
+    - source: salt://salt/master/files/minimum_auth_version.conf
+
 add_minimum_auth_version_engine_config:
   file.managed:
     - name: /etc/salt/master.d/minimum_auth_version_engine.conf

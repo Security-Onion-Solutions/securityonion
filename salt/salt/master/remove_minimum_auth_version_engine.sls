@@ -6,6 +6,10 @@
 include:
   - salt.master
 
+unset_minimum_auth_version_0:
+  file.absent:
+    - name: /etc/salt/master.d/minimum_auth_version.conf
+
 remove_minimum_auth_version_engine_config:
   file.absent:
     - name: /etc/salt/master.d/minimum_auth_version_engine.conf
