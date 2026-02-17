@@ -4,6 +4,8 @@
 # Elastic License 2.0.
 
 # This state is to be used during soup preupgrade_changes, and run when the salt-master has been stopped. Soup will later start the salt-master.
+# This state is used to deal with the breaking change introduced in 3006.17 - https://docs.saltproject.io/en/3006/topics/releases/3006.17.html
+
 
 set_minimum_auth_version_0:
   file.managed:
