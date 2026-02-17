@@ -93,6 +93,10 @@ check_err() {
       161)
         echo 'Required intermediate Elasticsearch upgrade not complete'
       ;;
+      170)
+        echo "Intermediate upgrade completed successfully to $next_step_so_version, but next soup to Security Onion $originally_requested_so_version could not be started automatically."
+        echo "Start soup again manually to continue the upgrade to Security Onion $originally_requested_so_version."
+      ;;
       *)
         echo 'Unhandled error'
         echo "$err_msg"
@@ -154,7 +158,7 @@ EOF
         echo "Ensure you verify the ISO that you downloaded."
         exit 0
       else
-        echo "Device has been mounted!"
+        echo "Device has been mounted! $(cat /tmp/soagupdate/SecurityOnion/VERSION)"
       fi
     else
       echo "Could not find Security Onion ISO content at ${ISOLOC}"
@@ -1682,115 +1686,208 @@ verify_latest_update_script() {
 
 verify_es_version_compatibility() {
 
-  local es_required_version_statefile="/opt/so/state/so_es_required_upgrade_version.txt"
-  local es_verification_script="/tmp/so_intermediate_upgrade_verification.sh"
-  # supported upgrade paths for SO-ES versions
-  declare -A es_upgrade_map=(
-    ["8.14.3"]="8.17.3 8.18.4 8.18.6 8.18.8"
-    ["8.17.3"]="8.18.4 8.18.6 8.18.8"
-    ["8.18.4"]="8.18.6 8.18.8 9.0.8"
-    ["8.18.6"]="8.18.8 9.0.8"
-    ["8.18.8"]="9.0.8"
-  )
+    local es_required_version_statefile_base="/opt/so/state/so_es_required_upgrade_version"
+    local es_verification_script="/tmp/so_intermediate_upgrade_verification.sh"
+    local is_active_intermediate_upgrade=1
+    # supported upgrade paths for SO-ES versions
+    declare -A es_upgrade_map=(
+	    ["8.14.3"]="8.17.3 8.18.4 8.18.6 8.18.8"
+	    ["8.17.3"]="8.18.4 8.18.6 8.18.8"
+	    ["8.18.4"]="8.18.6 8.18.8 9.0.8"
+	    ["8.18.6"]="8.18.8 9.0.8"
+	    ["8.18.8"]="9.0.8"
+    )
 
-  # Elasticsearch MUST upgrade through these versions
-  declare -A es_to_so_version=(
-    ["8.18.8"]="2.4.190-20251024"
-  )
+    # Elasticsearch MUST upgrade through these versions
+    declare -A es_to_so_version=(
+	    ["8.18.8"]="2.4.190-20251024"
+    )
 
-  # Get current Elasticsearch version
-  if es_version_raw=$(so-elasticsearch-query / --fail --retry 5 --retry-delay 10); then
-    es_version=$(echo "$es_version_raw" | jq -r '.version.number' )
-  else
-    echo "Could not determine current Elasticsearch version to validate compatibility with post soup Elasticsearch version."
-    exit 160
-  fi
-
-  if ! target_es_version=$(so-yaml.py get $UPDATE_DIR/salt/elasticsearch/defaults.yaml elasticsearch.version | sed -n '1p'); then
-    # so-yaml.py failed to get the ES version from upgrade versions elasticsearch/defaults.yaml file. Likely they are upgrading to an SO version older than 2.4.110 prior to the ES version pinning and should be OKAY to continue with the upgrade.
-
-    # if so-yaml.py failed to get the ES version AND the version we are upgrading to is newer than 2.4.110 then we should bail
-    if [[ $(cat $UPDATE_DIR/VERSION | cut -d'.' -f3) > 110 ]]; then
-      echo "Couldn't determine the target Elasticsearch version (post soup version) to ensure compatibility with current Elasticsearch version. Exiting"
-      exit 160
-    fi
-
-    # allow upgrade to version < 2.4.110 without checking ES version compatibility
-    return 0
-
-  fi
-
-  # if this statefile exists then we have done an intermediate upgrade and we need to ensure that ALL ES nodes have been upgraded to the version in the statefile before allowing soup to continue
-  if [[ -f "$es_required_version_statefile" ]]; then
-    # required so verification script should have already been created
-    if [[ ! -f "$es_verification_script" ]]; then
-        create_intermediate_upgrade_verification_script $es_verification_script
-    fi
-
-    local es_required_version_statefile_value=$(cat $es_required_version_statefile)
-    echo -e "\n##############################################################################################################################\n"
-    echo "A previously required intermediate Elasticsearch upgrade was detected. Verifying that all Searchnodes/Heavynodes have successfully upgraded Elasticsearch to $es_required_version_statefile_value before proceeding with soup to avoid potential data loss!"
-    # create script using version in statefile
-    timeout --foreground 4000 bash "$es_verification_script" "$es_required_version_statefile_value" "$es_required_version_statefile"
-    if [[ $? -ne 0 ]]; then
-        echo -e "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
-
-        echo "A previous required intermediate Elasticsearch upgrade to $es_required_version_statefile_value has yet to successfully complete across the grid. Please allow time for all Searchnodes/Heavynodes to have upgraded Elasticsearch to $es_required_version_statefile_value before running soup again to avoid potential data loss!"
-
-        echo -e "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
-        exit 161
-    fi
-    echo -e "\n##############################################################################################################################\n"
-  fi
-
-  if [[ " ${es_upgrade_map[$es_version]} " =~ " $target_es_version " || "$es_version" == "$target_es_version" ]]; then
-    # supported upgrade
-    return 0
-  else
-    compatible_versions=${es_upgrade_map[$es_version]}
-    if [[ -z "$compatible_versions" ]]; then
-      # If current ES version is not explicitly defined in the upgrade map, we know they have an intermediate upgrade to do.
-        # We default to the lowest ES version defined in es_to_so_version as $first_es_required_version
-      local first_es_required_version=$(printf '%s\n' "${!es_to_so_version[@]}" | sort -V | head -n1)
-      next_step_so_version=${es_to_so_version[$first_es_required_version]}
-      required_es_upgrade_version="$first_es_required_version"
+    # Get current Elasticsearch version
+    if es_version_raw=$(so-elasticsearch-query / --fail --retry 5 --retry-delay 10); then
+        es_version=$(echo "$es_version_raw" | jq -r '.version.number' )
     else
-      next_step_so_version=${es_to_so_version[${compatible_versions##* }]}
-      required_es_upgrade_version="${compatible_versions##* }"
+        echo "Could not determine current Elasticsearch version to validate compatibility with post soup Elasticsearch version."
+
+        exit 160
     fi
-      echo -e "\n##############################################################################################################################\n"
-      echo -e "You are currently running Security Onion $INSTALLEDVERSION. You will need to update to version $next_step_so_version before updating to $(cat $UPDATE_DIR/VERSION).\n"
 
-      echo "$required_es_upgrade_version" > "$es_required_version_statefile"
+    if ! target_es_version_raw=$(so-yaml.py get $UPDATE_DIR/salt/elasticsearch/defaults.yaml elasticsearch.version); then
+        # so-yaml.py failed to get the ES version from upgrade versions elasticsearch/defaults.yaml file. Likely they are upgrading to an SO version older than 2.4.110 prior to the ES version pinning and should be OKAY to continue with the upgrade.
 
-    # We expect to upgrade to the latest compatiable minor version of ES
-    create_intermediate_upgrade_verification_script $es_verification_script
+        # if so-yaml.py failed to get the ES version AND the version we are upgrading to is newer than 2.4.110 then we should bail
+        if [[ $(cat $UPDATE_DIR/VERSION | cut -d'.' -f3) > 110 ]]; then
+            echo "Couldn't determine the target Elasticsearch version (post soup version) to ensure compatibility with current Elasticsearch version. Exiting"
 
-    if [[ $is_airgap -eq 0 ]]; then
-      echo "You can download the $next_step_so_version ISO image from https://download.securityonion.net/file/securityonion/securityonion-$next_step_so_version.iso"
-      echo "*** Once you have updated to $next_step_so_version, you can then run soup again to update to $(cat $UPDATE_DIR/VERSION). ***"
-      echo -e "\n##############################################################################################################################\n"
-      exit 160
+            exit 160
+        fi
+
+        # allow upgrade to version < 2.4.110 without checking ES version compatibility
+        return 0
     else
-      # preserve BRANCH value if set originally
-      if [[ -n "$BRANCH" ]]; then
-        local originally_requested_so_version="$BRANCH"
-      else
-        local originally_requested_so_version="2.4/main"
-      fi
-
-      echo "Starting automated intermediate upgrade to $next_step_so_version."
-      echo "After completion, the system will automatically attempt to upgrade to the latest version."
-      echo -e "\n##############################################################################################################################\n"
-      exec bash -c "BRANCH=$next_step_so_version soup -y && BRANCH=$next_step_so_version soup -y && \
-       echo -e \"\n##############################################################################################################################\n\" && \
-       echo -e \"Verifying Elasticsearch was successfully upgraded to $required_es_upgrade_version across the grid. This part can take a while as Searchnodes/Heavynodes sync up with the Manager! \n\nOnce verification completes the next soup will begin automatically. If verification takes longer than 1 hour it will stop waiting and your grid will remain at $next_step_so_version. Allowing for all Searchnodes/Heavynodes to upgrade Elasticsearch to the required version on their own time.\n\" \
-       && timeout --foreground 4000 bash /tmp/so_intermediate_upgrade_verification.sh $required_es_upgrade_version $es_required_version_statefile && \
-       echo -e \"\n##############################################################################################################################\n\" \
-       && BRANCH=$originally_requested_so_version soup -y && BRANCH=$originally_requested_so_version soup -y"
+        target_es_version=$(sed -n '1p' <<< "$target_es_version_raw")
     fi
-  fi
 
+    for statefile in "${es_required_version_statefile_base}"-*; do
+        [[ -f $statefile ]] || continue
+
+        local es_required_version_statefile_value=$(cat "$statefile")
+
+        if [[ "$es_required_version_statefile_value" == "$target_es_version" ]]; then
+            echo "Intermediate upgrade to ES $target_es_version is in progress. Skipping Elasticsearch version compatibility check."
+            is_active_intermediate_upgrade=0
+            continue
+        fi
+
+        if [[ ! -f "$es_verification_script" ]]; then
+            create_intermediate_upgrade_verification_script "$es_verification_script"
+        fi
+
+        echo -e "\n##############################################################################################################################\n"
+        echo "A previously required intermediate Elasticsearch upgrade was detected. Verifying that all Searchnodes/Heavynodes have successfully upgraded Elasticsearch to $es_required_version_statefile_value before proceeding with soup to avoid potential data loss!"
+        timeout --foreground 4000 bash "$es_verification_script" "$es_required_version_statefile_value" "$statefile"
+        if [[ $? -ne 0 ]]; then
+            echo -e "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
+
+            echo "A previous required intermediate Elasticsearch upgrade to $es_required_version_statefile_value has yet to successfully complete across the grid. Please allow time for all Searchnodes/Heavynodes to have upgraded Elasticsearch to $es_required_version_statefile_value before running soup again to avoid potential data loss!"
+
+            echo -e "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
+
+            exit 161
+        fi
+        echo -e "\n##############################################################################################################################\n"
+    done
+
+    # if current soup is an intermediate upgrade we can skip the upgrade map check below
+    if [[ $is_active_intermediate_upgrade -eq 0 ]]; then
+        return 0
+    fi
+
+    if [[ " ${es_upgrade_map[$es_version]} " =~ " $target_es_version " || "$es_version" == "$target_es_version" ]]; then
+        # supported upgrade
+        return 0
+    else
+        compatible_versions=${es_upgrade_map[$es_version]}
+        if [[ -z "$compatible_versions" ]]; then
+            # If current ES version is not explicitly defined in the upgrade map, we know they have an intermediate upgrade to do.
+            # We default to the lowest ES version defined in es_to_so_version as $first_es_required_version
+            local first_es_required_version=$(printf '%s\n' "${!es_to_so_version[@]}" | sort -V | head -n1)
+            next_step_so_version=${es_to_so_version[$first_es_required_version]}
+            required_es_upgrade_version="$first_es_required_version"
+        else
+            next_step_so_version=${es_to_so_version[${compatible_versions##* }]}
+            required_es_upgrade_version="${compatible_versions##* }"
+        fi
+        echo -e "\n##############################################################################################################################\n"
+        echo -e "You are currently running Security Onion $INSTALLEDVERSION. You will need to update to version $next_step_so_version before updating to $(cat $UPDATE_DIR/VERSION).\n"
+
+        es_required_version_statefile="${es_required_version_statefile_base}-${required_es_upgrade_version}"
+        echo "$required_es_upgrade_version" > "$es_required_version_statefile"
+
+        # We expect to upgrade to the latest compatiable minor version of ES
+        create_intermediate_upgrade_verification_script "$es_verification_script"
+
+        if [[ $is_airgap -eq 0 ]]; then
+            run_airgap_intermediate_upgrade
+        else
+            if [[ ! -z $ISOLOC ]]; then
+                originally_requested_iso_location="$ISOLOC"
+            fi
+            # Make sure ISOLOC is not set. Network installs that used soup -f would have ISOLOC set.
+            unset ISOLOC
+
+            run_network_intermediate_upgrade
+	    fi
+    fi
+
+}
+
+run_airgap_intermediate_upgrade() {
+    local originally_requested_so_version=$(cat $UPDATE_DIR/VERSION)
+    # preserve ISOLOC value, so we can try to use it post intermediate upgrade
+    local originally_requested_iso_location="$ISOLOC"
+
+    echo "You can download the $next_step_so_version ISO image from https://download.securityonion.net/file/securityonion/securityonion-$next_step_so_version.iso"
+    echo -e "\nIf you have the next ISO / USB ready, enter the path now eg. /dev/sdd, /home/onion/securityonion-$next_step_so_version.iso:"
+
+    while [[ -z "$next_iso_location" ]] || [[ ! -f "$next_iso_location" && ! -b "$next_iso_location" ]]; do
+        # List removable devices if any are present
+        local removable_devices=$(lsblk -no PATH,SIZE,TYPE,MOUNTPOINTS,RM | awk '$NF==1')
+        if [[ -n "$removable_devices" ]]; then
+            echo "PATH        SIZE    TYPE    MOUNTPOINTS    RM"
+            echo "$removable_devices"
+        fi
+
+        read -rp "Device/ISO Path (or 'exit' to quit): " next_iso_location
+        if [[ "${next_iso_location,,}" == "exit" ]]; then
+            echo "Exiting soup. Before reattempting to upgrade to $originally_requested_so_version, please first upgrade to $next_step_so_version to ensure Elasticsearch can properly update through the required versions."
+
+            exit 160
+        fi
+
+        if [[ ! -f "$next_iso_location" && ! -b "$next_iso_location" ]]; then
+            echo "$next_iso_location is not a valid file or block device."
+            next_iso_location=""
+        fi
+    done
+
+    echo "Using $next_iso_location for required intermediary upgrade."
+    exec bash <<EOF
+        ISOLOC=$next_iso_location soup -y && \
+        ISOLOC=$next_iso_location soup -y && \
+
+        echo -e "\n##############################################################################################################################\n" && \
+        echo -e "Verifying Elasticsearch was successfully upgraded to $required_es_upgrade_version across the grid. This part can take a while as Searchnodes/Heavynodes sync up with the Manager! \n\nOnce verification completes the next soup will begin automatically. If verification takes longer than 1 hour it will stop waiting and your grid will remain at $next_step_so_version. Allowing for all Searchnodes/Heavynodes to upgrade Elasticsearch to the required version on their own time.\n" && \
+
+        timeout --foreground 4000 bash /tmp/so_intermediate_upgrade_verification.sh $required_es_upgrade_version $es_required_version_statefile && \
+
+        echo -e "\n##############################################################################################################################\n" && \
+
+        # automatically start the next soup if the original ISO isn't using the same block device we just used
+        if [[ -n "$originally_requested_iso_location" ]] && [[ "$originally_requested_iso_location" != "$next_iso_location" ]]; then
+            ISOLOC=$originally_requested_iso_location soup -y && \
+            ISOLOC=$originally_requested_iso_location soup -y
+        else
+            echo "Could not automatically start next soup to $originally_requested_so_version. Soup will now exit here at $(cat /etc/soversion)" && \
+
+            exit 170
+        fi
+
+        echo -e "\n##############################################################################################################################\n"
+EOF
+}
+
+run_network_intermediate_upgrade() {
+    # preserve BRANCH value if set originally
+    if [[ -n "$BRANCH" ]]; then
+        local originally_requested_so_branch="$BRANCH"
+    else
+        local originally_requested_so_branch="2.4/main"
+    fi
+
+    echo "Starting automated intermediate upgrade to $next_step_so_version."
+    echo "After completion, the system will automatically attempt to upgrade to the latest version."
+    echo -e "\n##############################################################################################################################\n"
+    exec bash << EOF
+        BRANCH=$next_step_so_version soup -y && \
+        BRANCH=$next_step_so_version soup -y && \
+
+        echo -e "\n##############################################################################################################################\n" && \
+        echo -e "Verifying Elasticsearch was successfully upgraded to $required_es_upgrade_version across the grid. This part can take a while as Searchnodes/Heavynodes sync up with the Manager! \n\nOnce verification completes the next soup will begin automatically. If verification takes longer than 1 hour it will stop waiting and your grid will remain at $next_step_so_version. Allowing for all Searchnodes/Heavynodes to upgrade Elasticsearch to the required version on their own time.\n" && \
+
+        timeout --foreground 4000 bash /tmp/so_intermediate_upgrade_verification.sh $required_es_upgrade_version $es_required_version_statefile && \
+
+        echo -e "\n##############################################################################################################################\n" && \
+        if [[ -n "$originally_requested_iso_location" ]]; then
+            # nonairgap soup that used -f originally, runs intermediate upgrade using network + BRANCH, later coming back to the original ISO for the last soup
+            ISOLOC=$originally_requested_iso_location soup -y && \
+            ISOLOC=$originally_requested_iso_location soup -y
+        else
+            BRANCH=$originally_requested_so_branch soup -y && \
+            BRANCH=$originally_requested_so_branch soup -y
+        fi
+        echo -e "\n##############################################################################################################################\n"
+EOF
 }
 
 create_intermediate_upgrade_verification_script() {
@@ -2021,6 +2118,7 @@ main() {
   echo "Verifying we have the latest soup script."
   verify_latest_update_script
 
+  echo "Verifying Elasticsearch version compatibility before upgrading."
   verify_es_version_compatibility
 
   echo "Let's see if we need to update Security Onion."
