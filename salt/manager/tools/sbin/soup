@@ -1739,6 +1739,12 @@ verify_es_version_compatibility() {
             continue
         fi
 
+        # use sort to check if es_required_statefile_value is < the current es_version.
+        if [[ "$(printf '%s\n' $es_required_version_statefile_value $es_version | sort -V | head -n1)" == "$es_required_version_statefile_value" ]]; then
+            rm -f "$statefile"
+            continue
+        fi
+
         if [[ ! -f "$es_verification_script" ]]; then
             create_intermediate_upgrade_verification_script "$es_verification_script"
         fi
@@ -1807,6 +1813,9 @@ run_airgap_intermediate_upgrade() {
     # preserve ISOLOC value, so we can try to use it post intermediate upgrade
     local originally_requested_iso_location="$ISOLOC"
 
+    # make sure a fresh ISO gets mounted
+    unmount_update
+
     echo "You can download the $next_step_so_version ISO image from https://download.securityonion.net/file/securityonion/securityonion-$next_step_so_version.iso"
     echo -e "\nIf you have the next ISO / USB ready, enter the path now eg. /dev/sdd, /home/onion/securityonion-$next_step_so_version.iso:"
 
@@ -1845,6 +1854,7 @@ run_airgap_intermediate_upgrade() {
 
         # automatically start the next soup if the original ISO isn't using the same block device we just used
         if [[ -n "$originally_requested_iso_location" ]] && [[ "$originally_requested_iso_location" != "$next_iso_location" ]]; then
+            umount /tmp/soagupdate
             ISOLOC=$originally_requested_iso_location soup -y && \
             ISOLOC=$originally_requested_iso_location soup -y
         else
