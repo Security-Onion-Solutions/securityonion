@@ -20,20 +20,20 @@ dockergroup:
 dockerheldpackages:
   pkg.installed:
     - pkgs:
-      - containerd.io: 1.7.21-1
-      - docker-ce: 5:27.2.0-1~debian.12~bookworm
-      - docker-ce-cli: 5:27.2.0-1~debian.12~bookworm
-      - docker-ce-rootless-extras: 5:27.2.0-1~debian.12~bookworm
+      - containerd.io: 2.2.1-1~debian.12~bookworm
+      - docker-ce: 5:29.2.1-1~debian.12~bookworm
+      - docker-ce-cli: 5:29.2.1-1~debian.12~bookworm
+      - docker-ce-rootless-extras: 5:29.2.1-1~debian.12~bookworm
     - hold: True
     - update_holds: True
 {%    elif grains.oscodename == 'jammy' %}
 dockerheldpackages:
   pkg.installed:
     - pkgs:
-      - containerd.io: 1.7.21-1
-      - docker-ce: 5:27.2.0-1~ubuntu.22.04~jammy
-      - docker-ce-cli: 5:27.2.0-1~ubuntu.22.04~jammy
-      - docker-ce-rootless-extras: 5:27.2.0-1~ubuntu.22.04~jammy
+      - containerd.io: 2.2.1-1~ubuntu.22.04~jammy
+      - docker-ce: 5:29.2.1-1~ubuntu.22.04~jammy
+      - docker-ce-cli: 5:29.2.1-1~ubuntu.22.04~jammy
+      - docker-ce-rootless-extras: 5:29.2.1-1~ubuntu.22.04~jammy
     - hold: True
     - update_holds: True
 {%    else %}
