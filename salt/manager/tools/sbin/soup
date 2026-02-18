@@ -165,7 +165,7 @@ EOF
 }
 
 airgap_update_dockers() {
-  if [[ $is_airgap -eq 0 ]] || [[ $nonairgap_useiso -eq 0 ]]; then
+  if [[ $is_airgap -eq 0 ]] || [[ ! -z "$ISOLOC" ]]; then
     # Let's copy the tarball
     if [[ ! -f $AGDOCKER/registry.tar ]]; then
       echo "Unable to locate registry. Exiting"
@@ -200,14 +200,7 @@ update_registry() {
 check_airgap() {
   # See if this is an airgap install
   AIRGAP=$(cat /opt/so/saltstack/local/pillar/global/soc_global.sls | grep airgap: | awk '{print $2}' | tr '[:upper:]' '[:lower:]')
-  if [[ ! -z "$ISOLOC" ]]; then
-    # flag to use ISO for non-airgap installs, won't be used everywhere is_airgap -eq 0 is used. Used to speed up network soups by using local storage for large files.
-    nonairgap_useiso=0
-  else
-    nonairgap_useiso=1
-  fi
-  # use ISO if its airgap install OR ISOLOC was set with -f <path>
-  if [[ "$AIRGAP" == "true" ]] || [[ $nonairgap_useiso -eq 0 ]]; then
+  if [[ "$AIRGAP" == "true" ]]; then
       is_airgap=0
       UPDATE_DIR=/tmp/soagupdate/SecurityOnion
       AGDOCKER=/tmp/soagupdate/docker
@@ -1394,7 +1387,7 @@ so-yaml.py removelistitem /etc/salt/master file_roots.base /opt/so/rules/nids
 }
 
 determine_elastic_agent_upgrade() {
-  if [[ $is_airgap -eq 0 ]] || [[ $nonairgap_useiso -eq 0 ]]; then
+  if [[ $is_airgap -eq 0 ]]; then
     update_elastic_agent_airgap
   else
     set +e
@@ -2012,10 +2005,15 @@ main() {
   MINION_ROLE=$(lookup_role)
   echo "Found that Security Onion $INSTALLEDVERSION is currently installed."
   echo ""
-  if [[ $is_airgap -eq 0 ]] || [[ $nonairgap_useiso -eq 0 ]]; then
-    # Let's mount the ISO since this is airgap or non-airgap with -f used
+  if [[ $is_airgap -eq 0 ]]; then
+    # Let's mount the ISO since this is airgap
     airgap_mounted
   else
+    # if not airgap but -f was used
+    if [[ ! -z "$ISOLOC" ]]; then
+      airgap_mounted
+      AGDOCKER=/tmp/soagupdate/docker
+    fi
     echo "Cloning Security Onion github repo into $UPDATE_DIR."
     echo "Removing previous upgrade sources."
     rm -rf $UPDATE_DIR
@@ -2035,8 +2033,7 @@ main() {
   upgrade_check_salt
   set -e
 
-  if [[ $is_airgap -eq 0 ]] || [[ $nonairgap_useiso -eq 0 ]]; then
-    # non-airgap with -f used can do an initial ISO repo update and so-repo-sync cron job will sync any diff later via network
+  if [[ $is_airgap -eq 0 ]]; then
     update_airgap_repo
     dnf clean all
     check_os_updates
