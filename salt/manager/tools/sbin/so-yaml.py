@@ -211,7 +211,7 @@ def replaceListObjectByCondition(content, key, conditionField, conditionValue, n
             if not found:
                 print(f"No list item found with {conditionField}={conditionValue}. No action was taken on the file.", file=sys.stderr)
                 return 1
-       
+
         except AttributeError:
             print("The existing value for the given key is not a list. No action was taken on the file.", file=sys.stderr)
             return 1
