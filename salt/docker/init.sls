@@ -106,6 +106,8 @@ dockerreserveports:
     - source: salt://common/files/99-reserved-ports.conf
     - name: /etc/sysctl.d/99-reserved-ports.conf
 
+# If this network doesn't already exist
+{% if not salt['docker.networks'](names='sobridge') %}
 sos_docker_net:
   docker_network.present:
     - name: sobridge
@@ -117,4 +119,4 @@ sos_docker_net:
         com.docker.network.bridge.enable_ip_masquerade: 'true'
         com.docker.network.bridge.enable_icc: 'true'
         com.docker.network.bridge.host_binding_ipv4: '0.0.0.0'
-    - unless: 'docker network ls | grep sobridge'
+{% endif %}
