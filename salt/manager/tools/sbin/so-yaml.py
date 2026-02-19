@@ -199,7 +199,7 @@ def replaceListObjectByCondition(content, key, conditionField, conditionValue, n
         try:
             if not isinstance(content[key], list):
                 raise AttributeError("Value is not a list")
-            
+
             # Find and replace the item that matches the condition
             found = False
             for i, item in enumerate(content[key]):
@@ -207,11 +207,11 @@ def replaceListObjectByCondition(content, key, conditionField, conditionValue, n
                     content[key][i] = newObject
                     found = True
                     break
-            
+
             if not found:
                 print(f"No list item found with {conditionField}={conditionValue}. No action was taken on the file.", file=sys.stderr)
                 return 1
-                
+       
         except AttributeError:
             print("The existing value for the given key is not a list. No action was taken on the file.", file=sys.stderr)
             return 1
@@ -246,7 +246,7 @@ def replacelistobject(args):
 
     content = loadYaml(filename)
     result = replaceListObjectByCondition(content, key, conditionField, conditionValue, newObject)
-    
+
     if result != 1:
         writeYaml(filename, content)
 
