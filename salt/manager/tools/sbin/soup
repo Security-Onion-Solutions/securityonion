@@ -697,6 +697,18 @@ post_to_2.4.210() {
   echo "Regenerating Elastic Agent Installers"
   /sbin/so-elastic-agent-gen-installers
 
+  # migrate elasticsearch:managed_integrations pillar to manager:managed_integrations
+  if managed_integrations=$(/usr/sbin/so-yaml.py get /opt/so/saltstack/local/pillar/elasticsearch/soc_elasticsearch.sls elasticsearch.managed_integrations); then
+    local managed_integrations_old_pillar="/tmp/elasticsearch-managed_integrations.yaml"
+
+    echo "Migrating managed_integrations pillar"
+    echo -e "$managed_integrations" > "$managed_integrations_old_pillar"
+
+    /usr/sbin/so-yaml.py add /opt/so/saltstack/local/pillar/manager/soc_manager.sls manager.managed_integrations file:$managed_integrations > /dev/null 2>&1
+
+  fi
+
+
   POSTVERSION=2.4.210
 }
 
