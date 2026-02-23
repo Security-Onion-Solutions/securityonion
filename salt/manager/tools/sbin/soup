@@ -702,7 +702,7 @@ post_to_2.4.210() {
   /sbin/so-elastic-agent-gen-installers
 
   # migrate elasticsearch:managed_integrations pillar to manager:managed_integrations
-  if managed_integrations=$(/usr/sbin/so-yaml.py get /opt/so/saltstack/local/pillar/elasticsearch/soc_elasticsearch.sls elasticsearch.managed_integrations); then
+  if managed_integrations=$(/usr/sbin/so-yaml.py get /opt/so/saltstack/local/pillar/elasticsearch/soc_elasticsearch.sls elasticsearch.managed_integrations 2>/dev/null); then
     local managed_integrations_old_pillar="/tmp/elasticsearch-managed_integrations.yaml"
 
     echo "Migrating managed_integrations pillar"
@@ -2073,7 +2073,7 @@ apply_hotfix() {
       mv /etc/pki/managerssl.crt /etc/pki/managerssl.crt.old
       mv /etc/pki/managerssl.key /etc/pki/managerssl.key.old
       systemctl_func "start" "salt-minion"
-      (wait_for_salt_minion "$MINIONID" "120" "4" "$SOUP_LOG" || fail "Salt minion was not running or ready.") 2>&1 | tee -a "$SOUP_LOG"
+      wait_for_salt_minion "$MINIONID" "120" "4" "$SOUP_LOG" || fail "Salt minion was not running or ready."
     fi
   else
    echo "No actions required. ($INSTALLEDVERSION/$HOTFIXVERSION)"
@@ -2195,7 +2195,7 @@ main() {
     else
       update_registry
       set +e
-      update_docker_containers 'soup' '' '' '/dev/stdout' 2>&1 | tee -a "$SOUP_LOG"
+      update_docker_containers 'soup' '' '' '/dev/stdout' 2>&1
       set -e
     fi
 
@@ -2273,7 +2273,7 @@ main() {
     echo ""
     echo "Running a highstate. This could take several minutes."
     set +e
-    (wait_for_salt_minion "$MINIONID" "120" "4" "$SOUP_LOG" || fail "Salt minion was not running or ready.") 2>&1 | tee -a "$SOUP_LOG"
+    wait_for_salt_minion "$MINIONID" "120" "4" "$SOUP_LOG" || fail "Salt minion was not running or ready."
     highstate
     set -e
 
@@ -2286,10 +2286,15 @@ main() {
     check_saltmaster_status
 
     echo "Running a highstate to complete the Security Onion upgrade on this manager. This could take several minutes."
-    (wait_for_salt_minion "$MINIONID" "120" "4" "$SOUP_LOG" || fail "Salt minion was not running or ready.") 2>&1 | tee -a "$SOUP_LOG"
+    wait_for_salt_minion "$MINIONID" "120" "4" "$SOUP_LOG" || fail "Salt minion was not running or ready."
 
     # Stop long-running scripts to allow potentially updated scripts to load on the next execution.
-    killall salt-relay.sh
+    if pgrep salt-relay.sh > /dev/null 2>&1; then
+        echo "Stopping salt-relay.sh"
+        killall salt-relay.sh
+    else
+        echo "salt-relay.sh is not running"
+    fi
 
     # ensure the mine is updated and populated before highstates run, following the salt-master restart
     update_salt_mine

@@ -343,7 +343,7 @@ def get(args):
     content = loadYaml(filename)
     output = getKeyValue(content, key)
     if output is None:
-        print("Not found", file=sys.stderr)
+        print(f"Key '{key}' not found by so-yaml.py", file=sys.stderr)
         return 2
 
     print(yaml.safe_dump(output))
