@@ -75,15 +75,17 @@ prompt_change_engine() {
             read -rp " Continue with changing pcapengine to SURICATA? (y/N): " CONFIRM_CHANGE
             if [[ ! "$CONFIRM_CHANGE" =~ ^[Yy]$ ]]; then
                 pcapengine_not_changed
-                return
+                return 1
             fi
         fi
         echo ""
         echo " Updating pcapengine to SURICATA..."
         so-yaml.py replace /opt/so/saltstack/local/pillar/global/soc_global.sls global.pcapengine SURICATA
-        echo " Done. Please run this script again to continue the upgrade."
+        echo " Done."
+        return 0
     else
         pcapengine_not_changed
+        return 1
     fi
 }
 
@@ -107,10 +109,10 @@ case "$PCAP_ENGINE" in
         echo ""
 
         prompt_delete_pcap
-        prompt_change_engine "$PCAP_ENGINE"
-
-        echo ""
-        exit 1
+        if ! prompt_change_engine "$PCAP_ENGINE"; then
+            echo ""
+            exit 1
+        fi
         ;;
     *)
         echo ""
