@@ -2289,7 +2289,12 @@ main() {
     (wait_for_salt_minion "$MINIONID" "120" "4" "$SOUP_LOG" || fail "Salt minion was not running or ready.") 2>&1 | tee -a "$SOUP_LOG"
 
     # Stop long-running scripts to allow potentially updated scripts to load on the next execution.
-    killall salt-relay.sh
+    if pgrep salt-relay.sh > /dev/null 2>&1; then
+        echo "Stopping salt-relay.sh"
+        killall salt-relay.sh
+    else
+        echo "salt-relay.sh is not running"
+    fi
 
     # ensure the mine is updated and populated before highstates run, following the salt-master restart
     update_salt_mine
