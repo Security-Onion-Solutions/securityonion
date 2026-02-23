@@ -10,6 +10,20 @@
 
 UPDATE_URL=https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/refs/heads/3/main/VERSION
 
+# Check if already running version 3
+CURRENT_VERSION=$(cat /etc/soversion 2>/dev/null)
+if [[ "$CURRENT_VERSION" =~ ^3\. ]]; then
+    echo ""
+    echo "========================================================================="
+    echo " Already Running Security Onion 3"
+    echo "========================================================================="
+    echo ""
+    echo " This system is already running Security Onion $CURRENT_VERSION."
+    echo " Use 'soup' to update within the 3.x release line."
+    echo ""
+    exit 0
+fi
+
 echo ""
 echo "Checking PCAP settings."
 echo ""
@@ -17,43 +31,64 @@ echo ""
 # Check pcapengine setting - must be SURICATA before upgrading to version 3
 PCAP_ENGINE=$(lookup_pillar "pcapengine")
 
+prompt_delete_pcap() {
+    read -rp " Would you like to delete all remaining Stenographer PCAP data? (y/N): " DELETE_PCAP
+    if [[ "$DELETE_PCAP" =~ ^[Yy]$ ]]; then
+        echo ""
+        echo " WARNING: This will permanently delete all Stenographer PCAP data"
+        echo " on all nodes. This action cannot be undone."
+        echo ""
+        read -rp " Are you sure? (y/N): " CONFIRM_DELETE
+        if [[ "$CONFIRM_DELETE" =~ ^[Yy]$ ]]; then
+            echo ""
+            echo " Deleting Stenographer PCAP data on all nodes..."
+            salt '*' cmd.run "rm -rf /nsm/pcap/* && rm -rf /nsm/pcapindex/*"
+            echo " Done."
+        else
+            echo ""
+            echo " Delete cancelled."
+        fi
+    fi
+}
+
+prompt_change_engine() {
+    local current_engine=$1
+    echo ""
+    read -rp " Would you like to change pcapengine to SURICATA now? (y/N): " CHANGE_ENGINE
+    if [[ "$CHANGE_ENGINE" =~ ^[Yy]$ ]]; then
+        echo ""
+        echo " Updating pcapengine to SURICATA..."
+        sed -i "s/pcapengine: $current_engine/pcapengine: SURICATA/" /opt/so/saltstack/local/pillar/global/soc_soc.sls
+        echo " Done. Please run this script again to continue the upgrade."
+    else
+        echo ""
+        echo " You can change pcapengine to SURICATA by navigating in SOC to:"
+        echo "   Configuration -> global -> pcapengine"
+    fi
+}
+
 case "$PCAP_ENGINE" in
     SURICATA)
         echo "PCAP engine settings OK."
         ;;
-    TRANSITION)
+    TRANSITION|STENO)
         echo ""
         echo "========================================================================="
         echo " PCAP Engine Check Failed"
         echo "========================================================================="
         echo ""
-        echo " Your pcapengine is currently set to TRANSITION."
+        echo " Your pcapengine is currently set to $PCAP_ENGINE."
         echo ""
-        echo " Before upgrading to Security Onion 3, you must:"
-        echo "   1. Ensure your old PCAP data has finished rolling off from Stenographer"
-        echo "   2. Change pcapengine to SURICATA in:"
-        echo "      /opt/so/saltstack/local/pillar/global/soc_global.sls"
+        echo " Before upgrading to Security Onion 3, Stenographer PCAP data must be"
+        echo " removed and pcapengine must be set to SURICATA."
         echo ""
-        echo " Once pcapengine is set to SURICATA, run this script again."
+        echo " To check remaining Stenographer PCAP usage, run:"
+        echo "   salt '*' cmd.run 'du -sh /nsm/pcap'"
         echo ""
-        exit 1
-        ;;
-    STENO)
-        echo ""
-        echo "========================================================================="
-        echo " PCAP Engine Check Failed"
-        echo "========================================================================="
-        echo ""
-        echo " Your pcapengine is currently set to STENO."
-        echo ""
-        echo " Before upgrading to Security Onion 3, you must:"
-        echo ""
-        echo " Preserve existing PCAP during transition"
-        echo "   1. Change pcapengine to TRANSITION in:"
-        echo "      /opt/so/saltstack/local/pillar/global/soc_global.sls"
-        echo "   2. Wait for old PCAP to roll off from Stenographer to Suricata"
-        echo "   3. Change pcapengine to SURICATA"
-        echo "   4. Run this script again"
+
+        prompt_delete_pcap
+        prompt_change_engine "$PCAP_ENGINE"
+
         echo ""
         exit 1
         ;;
@@ -64,8 +99,9 @@ case "$PCAP_ENGINE" in
         echo "========================================================================="
         echo ""
         echo " Unable to determine pcapengine setting (got: '$PCAP_ENGINE')."
-        echo " Please ensure pcapengine is set to SURICATA in:"
-        echo "   /opt/so/saltstack/local/pillar/global/soc_global.sls"
+        echo " Please ensure pcapengine is set to SURICATA."
+        echo " In SOC, navigate to Configuration -> global -> pcapengine"
+        echo " and change the value to SURICATA."
         echo ""
         exit 1
         ;;
