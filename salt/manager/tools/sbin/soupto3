@@ -1,0 +1,126 @@
+#!/bin/bash
+
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+
+. /usr/sbin/so-common
+
+UPDATE_URL=https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/refs/heads/3/main/VERSION
+
+echo ""
+echo "Checking PCAP settings."
+echo ""
+
+# Check pcapengine setting - must be SURICATA before upgrading to version 3
+PCAP_ENGINE=$(lookup_pillar "pcapengine")
+
+case "$PCAP_ENGINE" in
+    SURICATA)
+        echo "PCAP engine settings OK."
+        ;;
+    TRANSITION)
+        echo ""
+        echo "========================================================================="
+        echo " PCAP Engine Check Failed"
+        echo "========================================================================="
+        echo ""
+        echo " Your pcapengine is currently set to TRANSITION."
+        echo ""
+        echo " Before upgrading to Security Onion 3, you must:"
+        echo "   1. Ensure your old PCAP data has finished rolling off from Stenographer"
+        echo "   2. Change pcapengine to SURICATA in:"
+        echo "      /opt/so/saltstack/local/pillar/global/soc_global.sls"
+        echo ""
+        echo " Once pcapengine is set to SURICATA, run this script again."
+        echo ""
+        exit 1
+        ;;
+    STENO)
+        echo ""
+        echo "========================================================================="
+        echo " PCAP Engine Check Failed"
+        echo "========================================================================="
+        echo ""
+        echo " Your pcapengine is currently set to STENO."
+        echo ""
+        echo " Before upgrading to Security Onion 3, you must:"
+        echo ""
+        echo " Preserve existing PCAP during transition"
+        echo "   1. Change pcapengine to TRANSITION in:"
+        echo "      /opt/so/saltstack/local/pillar/global/soc_global.sls"
+        echo "   2. Wait for old PCAP to roll off from Stenographer to Suricata"
+        echo "   3. Change pcapengine to SURICATA"
+        echo "   4. Run this script again"
+        echo ""
+        exit 1
+        ;;
+    *)
+        echo ""
+        echo "========================================================================="
+        echo " PCAP Engine Check Failed"
+        echo "========================================================================="
+        echo ""
+        echo " Unable to determine pcapengine setting (got: '$PCAP_ENGINE')."
+        echo " Please ensure pcapengine is set to SURICATA in:"
+        echo "   /opt/so/saltstack/local/pillar/global/soc_global.sls"
+        echo ""
+        exit 1
+        ;;
+esac
+
+echo ""
+echo "Checking Versions."
+echo ""
+
+# Check if Security Onion 3 has been released
+VERSION=$(curl -sSf "$UPDATE_URL" 2>/dev/null)
+
+if [[ -z "$VERSION" ]]; then
+    echo ""
+    echo "========================================================================="
+    echo " Unable to Check Version"
+    echo "========================================================================="
+    echo ""
+    echo " Could not retrieve version information from:"
+    echo "   $UPDATE_URL"
+    echo ""
+    echo " Please check your network connection and try again."
+    echo ""
+    exit 1
+fi
+
+if [[ "$VERSION" == "UNRELEASED" ]]; then
+    echo ""
+    echo "========================================================================="
+    echo " Security Onion 3 Not Available"
+    echo "========================================================================="
+    echo ""
+    echo " Security Onion 3 has not been released yet."
+    echo ""
+    echo " Please check back later or visit https://securityonion.net for updates."
+    echo ""
+    exit 1
+fi
+
+# Validate version format (e.g., 3.0.2)
+if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo ""
+    echo "========================================================================="
+    echo " Invalid Version"
+    echo "========================================================================="
+    echo ""
+    echo " Received unexpected version format: '$VERSION'"
+    echo ""
+    echo " Please check back later or visit https://securityonion.net for updates."
+    echo ""
+    exit 1
+fi
+
+echo "Security Onion 3 ($VERSION) is available. Upgrading..."
+echo ""
+
+# All checks passed - proceed with upgrade
+BRANCH=3/main soup
