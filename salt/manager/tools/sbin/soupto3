@@ -31,6 +31,8 @@ echo ""
 # Check pcapengine setting - must be SURICATA before upgrading to version 3
 PCAP_ENGINE=$(lookup_pillar "pcapengine")
 
+PCAP_DELETED=false
+
 prompt_delete_pcap() {
     read -rp " Would you like to delete all remaining Stenographer PCAP data? (y/N): " DELETE_PCAP
     if [[ "$DELETE_PCAP" =~ ^[Yy]$ ]]; then
@@ -44,6 +46,7 @@ prompt_delete_pcap() {
             echo " Deleting Stenographer PCAP data on all nodes..."
             salt '*' cmd.run "rm -rf /nsm/pcap/* && rm -rf /nsm/pcapindex/*"
             echo " Done."
+            PCAP_DELETED=true
         else
             echo ""
             echo " Delete cancelled."
@@ -51,19 +54,36 @@ prompt_delete_pcap() {
     fi
 }
 
+pcapengine_not_changed() {
+    echo ""
+    echo " pcapengine must be set to SURICATA before upgrading to Security Onion 3."
+    echo " You can change this in SOC by navigating to:"
+    echo "   Configuration -> global -> pcapengine"
+}
+
 prompt_change_engine() {
     local current_engine=$1
     echo ""
     read -rp " Would you like to change pcapengine to SURICATA now? (y/N): " CHANGE_ENGINE
     if [[ "$CHANGE_ENGINE" =~ ^[Yy]$ ]]; then
+        if [[ "$PCAP_DELETED" != "true" ]]; then
+            echo ""
+            echo " WARNING: Stenographer PCAP data was not deleted. If you proceed,"
+            echo " this data will no longer be accessible through SOC and will never"
+            echo " be automatically deleted. You will need to manually remove it later."
+            echo ""
+            read -rp " Continue with changing pcapengine to SURICATA? (y/N): " CONFIRM_CHANGE
+            if [[ ! "$CONFIRM_CHANGE" =~ ^[Yy]$ ]]; then
+                pcapengine_not_changed
+                return
+            fi
+        fi
         echo ""
         echo " Updating pcapengine to SURICATA..."
         sed -i "s/pcapengine: $current_engine/pcapengine: SURICATA/" /opt/so/saltstack/local/pillar/global/soc_soc.sls
         echo " Done. Please run this script again to continue the upgrade."
     else
-        echo ""
-        echo " You can change pcapengine to SURICATA by navigating in SOC to:"
-        echo "   Configuration -> global -> pcapengine"
+        pcapengine_not_changed
     fi
 }
 
