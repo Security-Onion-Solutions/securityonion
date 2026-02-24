@@ -56,7 +56,7 @@ prompt_delete_pcap() {
 
 pcapengine_not_changed() {
     echo ""
-    echo " pcapengine must be set to SURICATA before upgrading to Security Onion 3."
+    echo " PCAP engine must be set to SURICATA before upgrading to Security Onion 3."
     echo " You can change this in SOC by navigating to:"
     echo "   Configuration -> global -> pcapengine"
 }
@@ -64,7 +64,7 @@ pcapengine_not_changed() {
 prompt_change_engine() {
     local current_engine=$1
     echo ""
-    read -rp " Would you like to change pcapengine to SURICATA now? (y/N): " CHANGE_ENGINE
+    read -rp " Would you like to change the PCAP engine to SURICATA now? (y/N): " CHANGE_ENGINE
     if [[ "$CHANGE_ENGINE" =~ ^[Yy]$ ]]; then
         if [[ "$PCAP_DELETED" != "true" ]]; then
             echo ""
@@ -79,7 +79,7 @@ prompt_change_engine() {
             fi
         fi
         echo ""
-        echo " Updating pcapengine to SURICATA..."
+        echo " Updating PCAP engine to SURICATA..."
         so-yaml.py replace /opt/so/saltstack/local/pillar/global/soc_global.sls global.pcapengine SURICATA
         echo " Done."
         return 0
@@ -99,10 +99,10 @@ case "$PCAP_ENGINE" in
         echo " PCAP Engine Check Failed"
         echo "========================================================================="
         echo ""
-        echo " Your pcapengine is currently set to $PCAP_ENGINE."
+        echo " Your PCAP engine is currently set to $PCAP_ENGINE."
         echo ""
         echo " Before upgrading to Security Onion 3, Stenographer PCAP data must be"
-        echo " removed and pcapengine must be set to SURICATA."
+        echo " removed and the PCAP engine must be set to SURICATA."
         echo ""
         echo " To check remaining Stenographer PCAP usage, run:"
         echo "   salt '*' cmd.run 'du -sh /nsm/pcap'"
@@ -120,8 +120,8 @@ case "$PCAP_ENGINE" in
         echo " PCAP Engine Check Failed"
         echo "========================================================================="
         echo ""
-        echo " Unable to determine pcapengine setting (got: '$PCAP_ENGINE')."
-        echo " Please ensure pcapengine is set to SURICATA."
+        echo " Unable to determine the PCAP engine setting (got: '$PCAP_ENGINE')."
+        echo " Please ensure the PCAP engine is set to SURICATA."
         echo " In SOC, navigate to Configuration -> global -> pcapengine"
         echo " and change the value to SURICATA."
         echo ""
