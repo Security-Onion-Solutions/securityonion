@@ -1823,6 +1823,25 @@ verify_es_version_compatibility() {
 
 }
 
+wait_for_salt_minion_with_restart() {
+    local minion="$1"
+    local max_wait="${2:-60}"
+    local interval="${3:-3}"
+    local logfile="$4"
+    
+    wait_for_salt_minion "$minion" "$max_wait" "$interval" "$logfile"
+    local result=$?
+    
+    if [[ $result -ne 0 ]]; then
+        echo "$(date '+%a %d %b %Y %H:%M:%S.%6N') - salt-minion not ready, attempting restart..."
+        systemctl_func "restart" "salt-minion"
+        wait_for_salt_minion "$minion" "$max_wait" "$interval" "$logfile"
+        result=$?
+    fi
+    
+    return $result
+}
+
 run_airgap_intermediate_upgrade() {
     local originally_requested_so_version=$(cat $UPDATE_DIR/VERSION)
     # preserve ISOLOC value, so we can try to use it post intermediate upgrade
@@ -2073,7 +2092,7 @@ apply_hotfix() {
       mv /etc/pki/managerssl.crt /etc/pki/managerssl.crt.old
       mv /etc/pki/managerssl.key /etc/pki/managerssl.key.old
       systemctl_func "start" "salt-minion"
-      wait_for_salt_minion "$MINIONID" "120" "4" "$SOUP_LOG" || fail "Salt minion was not running or ready."
+       wait_for_salt_minion_with_restart "$MINIONID" "60" "3" "$SOUP_LOG" || fail "Salt minion was not running or ready."
     fi
   else
    echo "No actions required. ($INSTALLEDVERSION/$HOTFIXVERSION)"
@@ -2273,7 +2292,7 @@ main() {
     echo ""
     echo "Running a highstate. This could take several minutes."
     set +e
-    wait_for_salt_minion "$MINIONID" "120" "4" "$SOUP_LOG" || fail "Salt minion was not running or ready."
+    wait_for_salt_minion_with_restart "$MINIONID" "60" "3" "$SOUP_LOG" || fail "Salt minion was not running or ready."
     highstate
     set -e
 
@@ -2286,7 +2305,7 @@ main() {
     check_saltmaster_status
 
     echo "Running a highstate to complete the Security Onion upgrade on this manager. This could take several minutes."
-    wait_for_salt_minion "$MINIONID" "120" "4" "$SOUP_LOG" || fail "Salt minion was not running or ready."
+    wait_for_salt_minion_with_restart "$MINIONID" "60" "3" "$SOUP_LOG" || fail "Salt minion was not running or ready."
 
     # Stop long-running scripts to allow potentially updated scripts to load on the next execution.
     if pgrep salt-relay.sh > /dev/null 2>&1; then
