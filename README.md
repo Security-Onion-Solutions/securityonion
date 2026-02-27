@@ -27,24 +27,24 @@ Config
 
 ### Release Notes
 
-https://docs.securityonion.net/en/2.4/release-notes.html
+https://securityonion.net/docs/release-notes
 
 ### Requirements
 
-https://docs.securityonion.net/en/2.4/hardware.html
+https://securityonion.net/docs/hardware
 
 ### Download
 
-https://docs.securityonion.net/en/2.4/download.html
+https://securityonion.net/docs/download
 
 ### Installation
 
-https://docs.securityonion.net/en/2.4/installation.html
+https://securityonion.net/docs/installation
 
 ### FAQ
 
-https://docs.securityonion.net/en/2.4/faq.html
+https://securityonion.net/docs/faq
 
 ### Feedback
 
-https://docs.securityonion.net/en/2.4/community-support.html
+https://securityonion.net/docs/community-support
