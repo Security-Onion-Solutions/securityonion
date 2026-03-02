@@ -75,6 +75,7 @@ kratosconfig:
     - group: 928
     - mode: 600
     - template: jinja
+    - show_changes: False
     - defaults:
         KRATOSMERGED: {{ KRATOSMERGED }}
 

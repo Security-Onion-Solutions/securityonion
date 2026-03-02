@@ -17,8 +17,8 @@ include:
   - repo.client
   - salt.mine_functions
   - salt.minion.service_file
-{% if GLOBALS.role in GLOBALS.manager_roles %}
-  - ca
+{% if GLOBALS.is_manager %}
+  - ca.signing_policy
 {% endif %}
 
 {% if INSTALLEDSALTVERSION|string != SALTVERSION|string %}
@@ -111,7 +111,7 @@ salt_minion_service:
 {% if INSTALLEDSALTVERSION|string == SALTVERSION|string %}
       - file: set_log_levels
 {% endif %}
-{% if GLOBALS.role in GLOBALS.manager_roles %}
-      - file: /etc/salt/minion.d/signing_policies.conf
+{% if GLOBALS.is_manager %}
+      - file: signing_policy
 {% endif %}
     - order: last

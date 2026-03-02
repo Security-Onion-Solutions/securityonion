@@ -6,9 +6,6 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 
-include:
-  - ssl
-
 # Create the config directory for the docker registry
 dockerregistryconfdir:
   file.directory:

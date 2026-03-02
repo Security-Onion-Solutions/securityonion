@@ -10,6 +10,7 @@
 
 
 include:
+  - pcap.ca
   - pcap.config
   - pcap.sostatus
 

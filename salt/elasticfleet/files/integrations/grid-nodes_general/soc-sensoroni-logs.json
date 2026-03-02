@@ -1,30 +1,44 @@
 {
   "package": {
-    "name": "log",
+    "name": "filestream",
     "version": ""
   },
   "name": "soc-sensoroni-logs",
-  "namespace": "so",
   "description": "Security Onion - Sensoroni - Logs",
   "policy_id": "so-grid-nodes_general",
+  "namespace": "so",
   "inputs": {
-    "logs-logfile": {
+    "filestream-filestream": {
       "enabled": true,
       "streams": {
-        "log.logs": {
+        "filestream.generic": {
           "enabled": true,
           "vars": {
             "paths": [
               "/opt/so/log/sensoroni/sensoroni.log"
             ],
             "data_stream.dataset": "soc",
-            "tags": [],
+            "pipeline": "common",
+            "parsers": "#- ndjson:\n#    target: \"\"\n#    message_key: msg\n#- multiline:\n#    type: count\n#    count_lines: 3\n",
+            "exclude_files": [
+              "\\.gz$"
+            ],
+            "include_files": [],
             "processors": "- decode_json_fields:\n    fields: [\"message\"]\n    target: \"sensoroni\"\n    process_array: true\n    max_depth: 2\n    add_error_key: true      \n- add_fields:\n    target: event\n    fields:\n      category: host\n      module: soc\n      dataset_temp: sensoroni\n- rename:\n    fields:\n      - from: \"sensoroni.fields.sourceIp\"\n        to: \"source.ip\"\n      - from: \"sensoroni.fields.status\"\n        to: \"http.response.status_code\"\n      - from: \"sensoroni.fields.method\"\n        to: \"http.request.method\"\n      - from: \"sensoroni.fields.path\"\n        to: \"url.path\"\n      - from: \"sensoroni.message\"\n        to: \"event.action\"\n      - from: \"sensoroni.level\"\n        to: \"log.level\"\n    ignore_missing: true",
-            "custom": "pipeline: common"
+            "tags": [],
+            "recursive_glob": true,
+            "clean_inactive": -1,
+            "harvester_limit": 0,
+            "fingerprint": false,
+            "fingerprint_offset": 0,
+            "fingerprint_length": "64",
+            "file_identity_native": true,
+            "exclude_lines": [],
+            "include_lines": []
           }
         }
       }
     }
   },
-  "force": true
+"force": true
 }

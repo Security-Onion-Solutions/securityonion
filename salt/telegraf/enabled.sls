@@ -9,8 +9,9 @@
 {%   from 'docker/docker.map.jinja' import DOCKER %}
 {%   from 'telegraf/map.jinja' import TELEGRAFMERGED %}
 
-
 include:
+  - ca
+  - telegraf.ssl
   - telegraf.config
   - telegraf.sostatus
 
@@ -42,13 +43,9 @@ so-telegraf:
       - /proc:/host/proc:ro
       - /nsm:/host/nsm:ro
       - /etc:/host/etc:ro
-      {% if GLOBALS.role in ['so-manager', 'so-eval', 'so-managersearch' ] %}
-      - /etc/pki/ca.crt:/etc/telegraf/ca.crt:ro
-      {% else %}
       - /etc/pki/tls/certs/intca.crt:/etc/telegraf/ca.crt:ro
-      {% endif %}
-      - /etc/pki/influxdb.crt:/etc/telegraf/telegraf.crt:ro
-      - /etc/pki/influxdb.key:/etc/telegraf/telegraf.key:ro
+      - /etc/pki/telegraf.crt:/etc/telegraf/telegraf.crt:ro
+      - /etc/pki/telegraf.key:/etc/telegraf/telegraf.key:ro
       - /opt/so/conf/telegraf/scripts:/scripts:ro
       - /opt/so/log/stenographer:/var/log/stenographer:ro
       - /opt/so/log/suricata:/var/log/suricata:ro
@@ -71,21 +68,20 @@ so-telegraf:
       {% endfor %}
     {% endif %}
     - watch:
+      - file: trusttheca
+      - x509: telegraf_crt
+      - x509: telegraf_key
       - file: tgrafconf
       - file: node_config
     {% for script in TELEGRAFMERGED.scripts[GLOBALS.role.split('-')[1]] %}
       - file: tgraf_sync_script_{{script}}
     {% endfor %}
-    - require: 
+    - require:
+      - file: trusttheca
+      - x509: telegraf_crt
+      - x509: telegraf_key
       - file: tgrafconf
       - file: node_config
-      {% if GLOBALS.role in ['so-manager', 'so-eval', 'so-managersearch' ] %}
-      - x509: pki_public_ca_crt
-      {% else %}
-      - x509: trusttheca
-      {% endif %}
-      - x509: influxdb_crt
-      - x509: influxdb_key
 
 delete_so-telegraf_so-status.disabled:
   file.uncomment:

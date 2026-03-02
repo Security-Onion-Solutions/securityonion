@@ -9,6 +9,7 @@
 {%   from 'docker/docker.map.jinja' import DOCKER %}
 
 include:
+  - ca
   - elasticagent.config
   - elasticagent.sostatus
 
@@ -55,8 +56,10 @@ so-elastic-agent:
       {% endif %}
     - require:
       - file: create-elastic-agent-config
+      - file: trusttheca
     - watch:
       - file: create-elastic-agent-config
+      - file: trusttheca
 
 delete_so-elastic-agent_so-status.disabled:
   file.uncomment:

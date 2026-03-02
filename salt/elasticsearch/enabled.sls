@@ -14,6 +14,9 @@
 {%   from 'elasticsearch/template.map.jinja' import ES_INDEX_SETTINGS %}
 
 include:
+  - ca
+  - elasticsearch.ca
+  - elasticsearch.ssl
   - elasticsearch.config
   - elasticsearch.sostatus
 
@@ -61,11 +64,7 @@ so-elasticsearch:
       - /nsm/elasticsearch:/usr/share/elasticsearch/data:rw
       - /opt/so/log/elasticsearch:/var/log/elasticsearch:rw
       - /opt/so/conf/ca/cacerts:/usr/share/elasticsearch/jdk/lib/security/cacerts:ro
-      {% if GLOBALS.is_manager %}
-      - /etc/pki/ca.crt:/usr/share/elasticsearch/config/ca.crt:ro
-      {% else %}
       - /etc/pki/tls/certs/intca.crt:/usr/share/elasticsearch/config/ca.crt:ro
-      {% endif %}
       - /etc/pki/elasticsearch.crt:/usr/share/elasticsearch/config/elasticsearch.crt:ro
       - /etc/pki/elasticsearch.key:/usr/share/elasticsearch/config/elasticsearch.key:ro
       - /etc/pki/elasticsearch.p12:/usr/share/elasticsearch/config/elasticsearch.p12:ro
@@ -82,22 +81,21 @@ so-elasticsearch:
         {% endfor %}
       {% endif %}
     - watch:
-      - file: cacertz
+      - file: trusttheca
+      - x509: elasticsearch_crt
+      - x509: elasticsearch_key
+      - file: elasticsearch_cacerts
       - file: esyml
     - require:
+      - file: trusttheca
+      - x509: elasticsearch_crt
+      - x509: elasticsearch_key
+      - file: elasticsearch_cacerts
       - file: esyml
       - file: eslog4jfile
       - file: nsmesdir
       - file: eslogdir
-      - file: cacertz
-      - x509: /etc/pki/elasticsearch.crt
-      - x509: /etc/pki/elasticsearch.key
       - file: elasticp12perms
-      {% if GLOBALS.is_manager %}
-      - x509: pki_public_ca_crt
-      {% else %}
-      - x509: trusttheca
-      {% endif %}
       - cmd: auth_users_roles_inode
       - cmd: auth_users_inode
 
