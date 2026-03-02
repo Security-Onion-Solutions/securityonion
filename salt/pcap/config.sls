@@ -57,12 +57,6 @@ stenoconf:
         PCAPMERGED: {{ PCAPMERGED }}
         STENO_BPF_COMPILED: "{{ STENO_BPF_COMPILED }}"
 
-stenoca:
-  file.directory:
-    - name: /opt/so/conf/steno/certs
-    - user: 941
-    - group: 939
-
 pcaptmpdir:
   file.directory:
     - name: /nsm/pcaptmp

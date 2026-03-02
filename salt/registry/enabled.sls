@@ -9,6 +9,7 @@
 {%   from 'docker/docker.map.jinja' import DOCKER %}
 
 include:
+  - registry.ssl
   - registry.config
   - registry.sostatus
 
@@ -53,6 +54,9 @@ so-dockerregistry:
     - retry:
         attempts: 5
         interval: 30
+    - watch:
+      - x509: registry_crt
+      - x509: registry_key
     - require:
       - file: dockerregistryconf
       - x509: registry_crt

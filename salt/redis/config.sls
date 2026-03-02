@@ -7,9 +7,6 @@
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'redis/map.jinja' import REDISMERGED %}
 
-include:
-  - ssl
-
 # Redis Setup
 redisconfdir:
   file.directory:

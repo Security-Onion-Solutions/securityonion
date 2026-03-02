@@ -37,6 +37,7 @@ base:
   'not ( *_manager* or *_eval or *_import or *_standalone ) and G@saltversion:{{saltversion}}':
     - match: compound
     - salt.minion
+    - ca
     - patch.os.schedule
     - motd
     - salt.minion-check
@@ -49,6 +50,7 @@ base:
   '( *_manager* or *_eval or *_import or *_standalone ) and G@saltversion:{{saltversion}} and not I@node_data:False':
     - match: compound
     - salt.minion
+    - ca
     - patch.os.schedule
     - motd
     - salt.minion-check
@@ -61,8 +63,6 @@ base:
     - match: compound
     - salt.master
     - sensor
-    - ca
-    - ssl
     - registry
     - manager
     - backup.config_backup
@@ -91,8 +91,6 @@ base:
     - match: compound
     - salt.master
     - sensor
-    - ca
-    - ssl
     - registry
     - manager
     - backup.config_backup
@@ -124,8 +122,6 @@ base:
   '*_manager or *_managerhype and G@saltversion:{{saltversion}} and not I@node_data:False':
     - match: compound
     - salt.master
-    - ca
-    - ssl
     - registry
     - nginx
     - influxdb
@@ -157,8 +153,6 @@ base:
   '*_managersearch and G@saltversion:{{saltversion}} and not I@node_data:False':
     - match: compound
     - salt.master
-    - ca
-    - ssl
     - registry
     - nginx
     - influxdb
@@ -187,8 +181,6 @@ base:
     - match: compound
     - salt.master
     - sensor
-    - ca
-    - ssl
     - registry
     - manager
     - nginx
@@ -212,7 +204,6 @@ base:
   '*_searchnode and G@saltversion:{{saltversion}}':
     - match: compound
     - firewall
-    - ssl
     - elasticsearch
     - logstash
     - sensoroni
@@ -225,7 +216,6 @@ base:
   '*_sensor and G@saltversion:{{saltversion}}':
     - match: compound
     - sensor
-    - ssl
     - sensoroni
     - telegraf
     - firewall
@@ -241,7 +231,6 @@ base:
   '*_heavynode and G@saltversion:{{saltversion}}':
     - match: compound
     - sensor
-    - ssl
     - sensoroni
     - telegraf
     - nginx
@@ -259,7 +248,6 @@ base:
 
   '*_receiver and G@saltversion:{{saltversion}}':
     - match: compound
-    - ssl
     - sensoroni
     - telegraf
     - firewall
@@ -271,7 +259,6 @@ base:
 
   '*_idh and G@saltversion:{{saltversion}}':
     - match: compound
-    - ssl
     - sensoroni
     - telegraf
     - firewall
@@ -280,7 +267,6 @@ base:
 
   '*_fleet and G@saltversion:{{saltversion}}':
     - match: compound
-    - ssl
     - sensoroni
     - telegraf
     - firewall
@@ -293,7 +279,6 @@ base:
 
   '*_hypervisor and I@features:vrt and G@saltversion:{{saltversion}}':
     - match: compound
-    - ssl
     - sensoroni
     - telegraf
     - firewall
@@ -304,7 +289,6 @@ base:
     - stig
   
   '*_desktop and G@saltversion:{{saltversion}}':
-    - ssl
     - sensoroni
     - telegraf
     - elasticfleet.install_agent_grid

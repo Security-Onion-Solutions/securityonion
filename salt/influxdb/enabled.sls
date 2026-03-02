@@ -11,6 +11,7 @@
 {%   set TOKEN = salt['pillar.get']('influxdb:token') %}
 
 include:
+  - influxdb.ssl
   - influxdb.config
   - influxdb.sostatus
 
@@ -59,6 +60,8 @@ so-influxdb:
     {% endif %}
     - watch:
       - file: influxdbconf
+      - x509: influxdb_key
+      - x509: influxdb_crt
     - require:
       - file: influxdbconf
       - x509: influxdb_key

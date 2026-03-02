@@ -68,6 +68,8 @@ so-kafka:
       - file: kafka_server_jaas_properties
       {% endif %}
       - file: kafkacertz
+      - x509: kafka_crt
+      - file: kafka_pkcs12_perms
     - require:
       - file: kafkacertz
 

@@ -9,7 +9,6 @@
 
 include:
   - salt.minion
-  - ssl
   
 # Influx DB
 influxconfdir:

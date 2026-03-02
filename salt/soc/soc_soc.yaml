@@ -455,6 +455,11 @@ soc:
             global: True
             advanced: True
             forcedType: int
+        staticrbac:
+          defaultRole:
+            description: "Default role for new users that have not been assigned a role. When a role is specified, an attempt will be made to permanently assign the role to the user once the user accesses SOC. The role name must match exactly the name of an existing RBAC role. Standard system roles include: limited-auditor, limited-analyst, auditor, analyst, superuser"
+            global: True
+            advanced: False
         strelkaengine:
           aiRepoUrl:
             description: URL to the AI repository. This is used to pull in AI models for use in Strelka rules.
@@ -552,10 +557,11 @@ soc:
             global: True
             advanced: True
           customRulesets:
-            description: 'URLs and/or Local File configurations for Suricata custom rulesets. Refer to the linked documentation for important specification and file placement information'
+            description: 'This setting is no longer used. Use Ruleset Sources setting instead.'
             global: True
             advanced: True
             forcedType: "[]{}"
+            readonly: True
             helpLink: suricata.html
           ignoredSidRanges:
             description: 'List of Suricata SID ranges to ignore during the Integrity Check. This is useful for ignoring specific rules not governed by the UI. Each line should contain 1 range in the format "1100000-1200000". The ranges are treated as inclusive.'
@@ -650,14 +656,6 @@ soc:
                 label: Folder
             airgap: *pbRepos
         assistant:
-          apiUrl:
-            description: The URL of the AI gateway.
-            advanced: True
-            global: True
-          healthTimeoutSeconds:
-            description: Timeout in seconds for the Onion AI health check.
-            global: True
-            advanced: True
           systemPromptAddendum:
             description: Additional context to provide to the AI assistant about this SOC deployment. This can include information about your environment, policies, or any other relevant details that can help the AI provide more accurate and tailored assistance. Long prompts may be shortened.
             global: True
@@ -667,6 +665,44 @@ soc:
             description: Maximum length of the system prompt addendum. Longer prompts will be truncated.
             global: True
             advanced: True
+          adapters:
+            description: Configuration for AI adapters used by the Onion AI assistant. Please see documentation for help on which fields are required for which protocols.
+            global: True
+            advanced: True
+            forcedType: "[]{}"
+            helpLink: assistant.html
+            syntax: json
+            uiElements:
+            - field: name
+              label: Adapter Name
+              regex: "^(?!.*@).+$"
+              regexFailureMessage: Adapter name cannot contain the '@' character
+              required: True
+            - field: protocol
+              label: Protocol
+              required: True
+              options:
+                - securityonion_ai_cloud
+                - gemini
+                - openai_responses
+                - openai_chat
+            - field: apiUrl
+              label: API URL
+              required: False
+            - field: apiKey
+              label: API Key
+              required: False
+            - field: serviceAccountJSON
+              label: Service Account JSON
+              required: False
+              multiline: True
+            - field: serviceAccountLocation
+              label: Service Account Location
+              required: False
+            - field: healthTimeoutSeconds
+              label: Health Timeout Seconds
+              required: False
+              forcedType: int
       client:
         assistant:
           enabled:
@@ -705,6 +741,8 @@ soc:
             - field: id
               label: Model ID
               required: True
+              regex: "^(?!.*@).+$"
+              regexFailureMessage: Model ID cannot contain the '@' character
             - field: displayName
               label: Display Name
               required: True
@@ -722,6 +760,8 @@ soc:
             - field: lowBalanceColorAlert
               label: Low Balance Color Alert
               forcedType: int
+            - field: adapter
+              label: Adapter
               required: True
             - field: enabled
               label: Enabled

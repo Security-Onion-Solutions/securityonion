@@ -177,7 +177,7 @@ so-status_script:
     - source: salt://common/tools/sbin/so-status
     - mode: 755
 
-{% if GLOBALS.role in GLOBALS.sensor_roles %}
+{% if GLOBALS.is_sensor %}
 # Add sensor cleanup
 so-sensor-clean:
   cron.present:
