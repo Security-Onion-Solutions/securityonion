@@ -17,9 +17,9 @@ if [ ! -f /opt/so/state/eaintegrations.txt ]; then
 
   # Third, configure Elastic Defend Integration seperately
   /usr/sbin/so-elastic-fleet-integration-policy-elastic-defend
+
   # Initial Endpoints
-  for INTEGRATION in /opt/so/conf/elastic-fleet/integrations/endpoints-initial/*.json
-  do
+  for INTEGRATION in /opt/so/conf/elastic-fleet/integrations/endpoints-initial/*.json; do
     printf "\n\nInitial Endpoints Policy - Loading $INTEGRATION\n"
     elastic_fleet_integration_check "endpoints-initial" "$INTEGRATION"
     if [ -n "$INTEGRATION_ID" ]; then
@@ -40,8 +40,7 @@ if [ ! -f /opt/so/state/eaintegrations.txt ]; then
   done
 
   # Grid Nodes - General
-  for INTEGRATION in /opt/so/conf/elastic-fleet/integrations/grid-nodes_general/*.json
-  do
+  for INTEGRATION in /opt/so/conf/elastic-fleet/integrations/grid-nodes_general/*.json; do
     printf "\n\nGrid Nodes Policy_General - Loading $INTEGRATION\n"
     elastic_fleet_integration_check "so-grid-nodes_general" "$INTEGRATION"
     if [ -n "$INTEGRATION_ID" ]; then
@@ -60,13 +59,9 @@ if [ ! -f /opt/so/state/eaintegrations.txt ]; then
       fi
     fi
   done
-  if [[ "$RETURN_CODE" != "1" ]]; then
-    touch /opt/so/state/eaintegrations.txt
-  fi
 
   # Grid Nodes - Heavy
-  for INTEGRATION in /opt/so/conf/elastic-fleet/integrations/grid-nodes_heavy/*.json
-  do
+  for INTEGRATION in /opt/so/conf/elastic-fleet/integrations/grid-nodes_heavy/*.json; do
     printf "\n\nGrid Nodes Policy_Heavy - Loading $INTEGRATION\n"
     elastic_fleet_integration_check "so-grid-nodes_heavy" "$INTEGRATION"
     if [ -n "$INTEGRATION_ID" ]; then
@@ -78,22 +73,16 @@ if [ ! -f /opt/so/state/eaintegrations.txt ]; then
       fi
     else
       printf "\n\nIntegration does not exist - Creating integration\n"
-      if [ "$NAME" != "elasticsearch-logs" ]; then
-        if ! elastic_fleet_integration_create "@$INTEGRATION"; then
-          echo -e "\nFailed to create integration for ${INTEGRATION##*/}"
-          RETURN_CODE=1
-          continue
-        fi
+      if ! elastic_fleet_integration_create "@$INTEGRATION"; then
+        echo -e "\nFailed to create integration for ${INTEGRATION##*/}"
+        RETURN_CODE=1
+        continue
       fi
     fi
   done
-  if [[ "$RETURN_CODE" != "1" ]]; then
-    touch /opt/so/state/eaintegrations.txt
-  fi
 
   # Fleet Server - Optional integrations
-  for INTEGRATION in /opt/so/conf/elastic-fleet/integrations-optional/FleetServer*/*.json
-  do
+  for INTEGRATION in /opt/so/conf/elastic-fleet/integrations-optional/FleetServer*/*.json; do
     if ! [ "$INTEGRATION" == "/opt/so/conf/elastic-fleet/integrations-optional/FleetServer*/*.json" ]; then
       FLEET_POLICY=`echo "$INTEGRATION"| cut -d'/' -f7`
       printf "\n\nFleet Server Policy - Loading $INTEGRATION\n"
@@ -117,6 +106,8 @@ if [ ! -f /opt/so/state/eaintegrations.txt ]; then
       fi
     fi
   done
+
+  # Only create the state file if all policies were created/updated successfully
   if [[ "$RETURN_CODE" != "1" ]]; then
     touch /opt/so/state/eaintegrations.txt
   fi

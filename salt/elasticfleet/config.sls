@@ -11,6 +11,7 @@
 
 include:
   - elasticfleet.artifact_registry
+  - elasticfleet.ssl
 
 # Add EA Group
 elasticfleetgroup:
@@ -95,6 +96,9 @@ soresourcesrepoclone:
     - rev: 'main'
     - depth: 1
     - force_reset: True
+    - retry:
+        attempts: 3
+        interval: 10
 {% endif %}
 
 elasticdefendconfdir:

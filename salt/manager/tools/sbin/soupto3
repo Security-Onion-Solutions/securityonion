@@ -1,0 +1,184 @@
+#!/bin/bash
+
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+
+. /usr/sbin/so-common
+
+UPDATE_URL=https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/refs/heads/3/main/VERSION
+
+# Check if already running version 3
+CURRENT_VERSION=$(cat /etc/soversion 2>/dev/null)
+if [[ "$CURRENT_VERSION" =~ ^3\. ]]; then
+    echo ""
+    echo "========================================================================="
+    echo " Already Running Security Onion 3"
+    echo "========================================================================="
+    echo ""
+    echo " This system is already running Security Onion $CURRENT_VERSION."
+    echo " Use 'soup' to update within the 3.x release line."
+    echo ""
+    exit 0
+fi
+
+echo ""
+echo "Checking PCAP settings."
+echo ""
+
+# Check pcapengine setting - must be SURICATA before upgrading to version 3
+PCAP_ENGINE=$(lookup_pillar "pcapengine")
+
+PCAP_DELETED=false
+
+prompt_delete_pcap() {
+    read -rp " Would you like to delete all remaining Stenographer PCAP data? (y/N): " DELETE_PCAP
+    if [[ "$DELETE_PCAP" =~ ^[Yy]$ ]]; then
+        echo ""
+        echo " WARNING: This will permanently delete all Stenographer PCAP data"
+        echo " on all nodes. This action cannot be undone."
+        echo ""
+        read -rp " Are you sure? (y/N): " CONFIRM_DELETE
+        if [[ "$CONFIRM_DELETE" =~ ^[Yy]$ ]]; then
+            echo ""
+            echo " Deleting Stenographer PCAP data on all nodes..."
+            salt '*' cmd.run "rm -rf /nsm/pcap/* && rm -rf /nsm/pcapindex/*"
+            echo " Done."
+            PCAP_DELETED=true
+        else
+            echo ""
+            echo " Delete cancelled."
+        fi
+    fi
+}
+
+pcapengine_not_changed() {
+    echo ""
+    echo " PCAP engine must be set to SURICATA before upgrading to Security Onion 3."
+    echo " You can change this in SOC by navigating to:"
+    echo "   Configuration -> global -> pcapengine"
+}
+
+prompt_change_engine() {
+    local current_engine=$1
+    echo ""
+    read -rp " Would you like to change the PCAP engine to SURICATA now? (y/N): " CHANGE_ENGINE
+    if [[ "$CHANGE_ENGINE" =~ ^[Yy]$ ]]; then
+        if [[ "$PCAP_DELETED" != "true" ]]; then
+            echo ""
+            echo " WARNING: Stenographer PCAP data was not deleted. If you proceed,"
+            echo " this data will no longer be accessible through SOC and will never"
+            echo " be automatically deleted. You will need to manually remove it later."
+            echo ""
+            read -rp " Continue with changing pcapengine to SURICATA? (y/N): " CONFIRM_CHANGE
+            if [[ ! "$CONFIRM_CHANGE" =~ ^[Yy]$ ]]; then
+                pcapengine_not_changed
+                return 1
+            fi
+        fi
+        echo ""
+        echo " Updating PCAP engine to SURICATA..."
+        so-yaml.py replace /opt/so/saltstack/local/pillar/global/soc_global.sls global.pcapengine SURICATA
+        echo " Done."
+        return 0
+    else
+        pcapengine_not_changed
+        return 1
+    fi
+}
+
+case "$PCAP_ENGINE" in
+    SURICATA)
+        echo "PCAP engine settings OK."
+        ;;
+    TRANSITION|STENO)
+        echo ""
+        echo "========================================================================="
+        echo " PCAP Engine Check Failed"
+        echo "========================================================================="
+        echo ""
+        echo " Your PCAP engine is currently set to $PCAP_ENGINE."
+        echo ""
+        echo " Before upgrading to Security Onion 3, Stenographer PCAP data must be"
+        echo " removed and the PCAP engine must be set to SURICATA."
+        echo ""
+        echo " To check remaining Stenographer PCAP usage, run:"
+        echo "   salt '*' cmd.run 'du -sh /nsm/pcap'"
+        echo ""
+
+        prompt_delete_pcap
+        if ! prompt_change_engine "$PCAP_ENGINE"; then
+            echo ""
+            exit 1
+        fi
+        ;;
+    *)
+        echo ""
+        echo "========================================================================="
+        echo " PCAP Engine Check Failed"
+        echo "========================================================================="
+        echo ""
+        echo " Unable to determine the PCAP engine setting (got: '$PCAP_ENGINE')."
+        echo " Please ensure the PCAP engine is set to SURICATA."
+        echo " In SOC, navigate to Configuration -> global -> pcapengine"
+        echo " and change the value to SURICATA."
+        echo ""
+        exit 1
+        ;;
+esac
+
+echo ""
+echo "Checking Versions."
+echo ""
+
+# Check if Security Onion 3 has been released
+VERSION=$(curl -sSf "$UPDATE_URL" 2>/dev/null)
+
+if [[ -z "$VERSION" ]]; then
+    echo ""
+    echo "========================================================================="
+    echo " Unable to Check Version"
+    echo "========================================================================="
+    echo ""
+    echo " Could not retrieve version information from:"
+    echo "   $UPDATE_URL"
+    echo ""
+    echo " Please check your network connection and try again."
+    echo ""
+    exit 1
+fi
+
+if [[ "$VERSION" == "UNRELEASED" ]]; then
+    echo ""
+    echo "========================================================================="
+    echo " Security Onion 3 Not Available"
+    echo "========================================================================="
+    echo ""
+    echo " Security Onion 3 has not been released yet."
+    echo ""
+    echo " Please check back later or visit https://securityonion.net for updates."
+    echo ""
+    exit 1
+fi
+
+# Validate version format (e.g., 3.0.2)
+if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo ""
+    echo "========================================================================="
+    echo " Invalid Version"
+    echo "========================================================================="
+    echo ""
+    echo " Received unexpected version format: '$VERSION'"
+    echo ""
+    echo " Please check back later or visit https://securityonion.net for updates."
+    echo ""
+    exit 1
+fi
+
+echo "Security Onion 3 ($VERSION) is available. Upgrading..."
+echo ""
+
+# All checks passed - proceed with upgrade
+BRANCH=3/main soup

@@ -60,7 +60,7 @@ so-elastalert:
     - watch:
       - file: elastaconf
     - onlyif:
-      - "so-elasticsearch-query / | jq -r '.version.number[0:1]' | grep -q 8" {# only run this state if elasticsearch is version 8 #}
+      - "so-elasticsearch-query / | jq -r '.version.number[0:1]' | grep -q 9" {# only run this state if elasticsearch is version 9 #}
 
 delete_so-elastalert_so-status.disabled:
   file.uncomment:

@@ -6,22 +6,13 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states or sls in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
+{%   from 'ca/map.jinja' import CA %}
 {%   set kafka_password = salt['pillar.get']('kafka:config:password') %}
 
 include:
-  - ca.dirs
-    {% set global_ca_server = [] %}
-    {% set x509dict = salt['mine.get'](GLOBALS.manager | lower~'*', 'x509.get_pem_entries') %}
-    {% for host in x509dict %}
-      {% if 'manager' in host.split('_')|last or host.split('_')|last == 'standalone' %}
-        {% do global_ca_server.append(host) %}
-      {% endif %}
-    {% endfor %}
-    {% set ca_server = global_ca_server[0] %}
+  - ca
 
-{% if GLOBALS.pipeline == "KAFKA" %}
-
-{%   if GLOBALS.role in ['so-manager', 'so-managersearch', 'so-standalone'] %}
+{% if GLOBALS.role in ['so-manager', 'so-managersearch', 'so-standalone'] %}
 kafka_client_key:
   x509.private_key_managed:
     - name: /etc/pki/kafka-client.key
@@ -39,12 +30,12 @@ kafka_client_key:
 kafka_client_crt:
   x509.certificate_managed:
     - name: /etc/pki/kafka-client.crt
-    - ca_server: {{ ca_server }}
+    - ca_server: {{ CA.server }}
     - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
     - signing_policy: kafka
     - private_key: /etc/pki/kafka-client.key
     - CN: {{ GLOBALS.hostname }}
-    - days_remaining: 0
+    - days_remaining: 7
     - days_valid: 820
     - backup: True
     - timeout: 30
@@ -67,9 +58,9 @@ kafka_client_crt_perms:
     - mode: 640
     - user: 960
     - group: 939
-{%   endif %}
+{% endif %}
 
-{%   if GLOBALS.role in ['so-manager', 'so-managersearch','so-receiver', 'so-standalone'] %}
+{% if GLOBALS.role in ['so-manager', 'so-managersearch','so-receiver', 'so-standalone'] %}
 kafka_key:
   x509.private_key_managed:
     - name: /etc/pki/kafka.key
@@ -87,12 +78,12 @@ kafka_key:
 kafka_crt:
   x509.certificate_managed:
     - name: /etc/pki/kafka.crt
-    - ca_server: {{ ca_server }}
+    - ca_server: {{ CA.server }}
     - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
     - signing_policy: kafka
     - private_key: /etc/pki/kafka.key
     - CN: {{ GLOBALS.hostname }}
-    - days_remaining: 0
+    - days_remaining: 7
     - days_valid: 820
     - backup: True
     - timeout: 30
@@ -103,6 +94,7 @@ kafka_crt:
     - name: "/usr/bin/openssl pkcs12 -inkey /etc/pki/kafka.key -in /etc/pki/kafka.crt -export -out /etc/pki/kafka.p12 -nodes -passout pass:{{ kafka_password }}"
     - onchanges:
       - x509: /etc/pki/kafka.key
+
 kafka_key_perms:
   file.managed:
     - replace: False
@@ -126,11 +118,11 @@ kafka_pkcs12_perms:
     - mode: 640
     - user: 960
     - group: 939
-{%   endif %}
+{% endif %}
 
 # Standalone needs kafka-logstash for automated testing. Searchnode/manager search need it for logstash to consume from Kafka.
 # Manager will have cert, but be unused until a pipeline is created and logstash enabled.
-{%   if GLOBALS.role in ['so-standalone', 'so-managersearch', 'so-searchnode', 'so-manager'] %}
+{% if GLOBALS.role in ['so-standalone', 'so-managersearch', 'so-searchnode', 'so-manager'] %}
 kafka_logstash_key:
   x509.private_key_managed:
     - name: /etc/pki/kafka-logstash.key
@@ -148,12 +140,12 @@ kafka_logstash_key:
 kafka_logstash_crt:
   x509.certificate_managed:
     - name: /etc/pki/kafka-logstash.crt
-    - ca_server: {{ ca_server }}
+    - ca_server: {{ CA.server }}
     - subjectAltName: DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}
     - signing_policy: kafka
     - private_key: /etc/pki/kafka-logstash.key
     - CN: {{ GLOBALS.hostname }}
-    - days_remaining: 0
+    - days_remaining: 7
     - days_valid: 820
     - backup: True
     - timeout: 30
@@ -189,7 +181,6 @@ kafka_logstash_pkcs12_perms:
     - user: 931
     - group: 939
 
-{%   endif %}
 {% endif %}
 
 {% else %}

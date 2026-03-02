@@ -6,9 +6,9 @@
 {% from 'docker/docker.map.jinja' import DOCKER %}
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 
-# include ssl since docker service requires the intca
+# docker service requires the ca.crt
 include:
-  - ssl
+  - ca
 
 dockergroup:
   group.present:
@@ -20,20 +20,20 @@ dockergroup:
 dockerheldpackages:
   pkg.installed:
     - pkgs:
-      - containerd.io: 1.7.21-1
-      - docker-ce: 5:27.2.0-1~debian.12~bookworm
-      - docker-ce-cli: 5:27.2.0-1~debian.12~bookworm
-      - docker-ce-rootless-extras: 5:27.2.0-1~debian.12~bookworm
+      - containerd.io: 2.2.1-1~debian.12~bookworm
+      - docker-ce: 5:29.2.1-1~debian.12~bookworm
+      - docker-ce-cli: 5:29.2.1-1~debian.12~bookworm
+      - docker-ce-rootless-extras: 5:29.2.1-1~debian.12~bookworm
     - hold: True
     - update_holds: True
 {%    elif grains.oscodename == 'jammy' %}
 dockerheldpackages:
   pkg.installed:
     - pkgs:
-      - containerd.io: 1.7.21-1
-      - docker-ce: 5:27.2.0-1~ubuntu.22.04~jammy
-      - docker-ce-cli: 5:27.2.0-1~ubuntu.22.04~jammy
-      - docker-ce-rootless-extras: 5:27.2.0-1~ubuntu.22.04~jammy
+      - containerd.io: 2.2.1-1~ubuntu.22.04~jammy
+      - docker-ce: 5:29.2.1-1~ubuntu.22.04~jammy
+      - docker-ce-cli: 5:29.2.1-1~ubuntu.22.04~jammy
+      - docker-ce-rootless-extras: 5:29.2.1-1~ubuntu.22.04~jammy
     - hold: True
     - update_holds: True
 {%    else %}
@@ -51,10 +51,10 @@ dockerheldpackages:
 dockerheldpackages:
   pkg.installed:
     - pkgs:
-      - containerd.io: 1.7.21-3.1.el9
-      - docker-ce: 3:27.2.0-1.el9
-      - docker-ce-cli: 1:27.2.0-1.el9
-      - docker-ce-rootless-extras: 27.2.0-1.el9
+      - containerd.io: 2.2.1-1.el9
+      - docker-ce: 3:29.2.1-1.el9
+      - docker-ce-cli: 1:29.2.1-1.el9
+      - docker-ce-rootless-extras: 29.2.1-1.el9
     - hold: True
     - update_holds: True
 {% endif %}
@@ -89,10 +89,9 @@ docker_running:
     - enable: True
     - watch:
       - file: docker_daemon
-      - x509: trusttheca
     - require:
       - file: docker_daemon
-      - x509: trusttheca
+      - file: trusttheca
 
 
 # Reserve OS ports for Docker proxy in case boot settings are not already applied/present
@@ -118,4 +117,4 @@ sos_docker_net:
         com.docker.network.bridge.enable_ip_masquerade: 'true'
         com.docker.network.bridge.enable_icc: 'true'
         com.docker.network.bridge.host_binding_ipv4: '0.0.0.0'
-    - unless: 'docker network ls | grep sobridge'
+    - unless: ip l | grep sobridge
