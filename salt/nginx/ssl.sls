@@ -49,6 +49,17 @@ managerssl_key:
       - docker_container: so-nginx
 
 # Create a cert for the reverse proxy
+{% set san_list = [GLOBALS.hostname, GLOBALS.node_ip, GLOBALS.url_base] + NGINXMERGED.ssl.alt_names %}
+{% set unique_san_list = san_list | unique %}
+{% set managerssl_san_list = [] %}
+{% for item in unique_san_list %}
+{%   if item | ipaddr %}
+{%     do managerssl_san_list.append("IP:" + item) %}
+{%   else %}
+{%     do managerssl_san_list.append("DNS:" + item) %}
+{%   endif %}
+{% endfor %}
+{% set managerssl_san = managerssl_san_list | join(', ') %}
 managerssl_crt:
   x509.certificate_managed:
     - name: /etc/pki/managerssl.crt
@@ -56,7 +67,7 @@ managerssl_crt:
     - signing_policy: managerssl
     - private_key: /etc/pki/managerssl.key
     - CN: {{ GLOBALS.hostname }}
-    - subjectAltName: "DNS:{{ GLOBALS.hostname }}, IP:{{ GLOBALS.node_ip }}, DNS:{{ GLOBALS.url_base }}" 
+    - subjectAltName: {{ managerssl_san }}
     - days_remaining: 7
     - days_valid: 820
     - backup: True
