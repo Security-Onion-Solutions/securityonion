@@ -3,8 +3,6 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-{% if '2.4' in salt['cp.get_file_str']('/etc/soversion') %}
-
 {%   import_yaml '/opt/so/saltstack/local/pillar/global/soc_global.sls' as SOC_GLOBAL %}
 {%   if SOC_GLOBAL.global.airgap %}
 {%     set UPDATE_DIR='/tmp/soagupdate/SecurityOnion' %}
@@ -120,23 +118,3 @@ copy_bootstrap-salt_sbin:
     - source: {{UPDATE_DIR}}/salt/salt/scripts/bootstrap-salt.sh
     - force: True
     - preserve: True
-
-{# this is added in 2.4.120 to remove salt repo files pointing to saltproject.io to accomodate the move to broadcom and new bootstrap-salt script #}
-{%   if salt['pkg.version_cmp'](SOVERSION, '2.4.120') == -1 %}
-{%     set saltrepofile = '/etc/yum.repos.d/salt.repo' %}
-{%     if grains.os_family == 'Debian' %}
-{%       set saltrepofile = '/etc/apt/sources.list.d/salt.list' %}
-{%     endif %}
-remove_saltproject_io_repo_manager:
-  file.absent:
-    - name: {{ saltrepofile }}
-{%   endif %}
-
-{% else %}
-fix_23_soup_sbin:
-  cmd.run:
-    - name: curl -s -f -o /usr/sbin/soup https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/2.3/main/salt/common/tools/sbin/soup
-fix_23_soup_salt:
-  cmd.run:
-    - name: curl -s -f -o /opt/so/saltstack/defalt/salt/common/tools/sbin/soup https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/2.3/main/salt/common/tools/sbin/soup
-{% endif %}
