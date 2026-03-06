@@ -78,7 +78,6 @@ base:
     - elasticsearch
     - elastic-fleet-package-registry
     - kibana
-    - pcap
     - suricata
     - zeek
     - strelka
@@ -108,7 +107,6 @@ base:
     - redis
     - elastic-fleet-package-registry
     - kibana
-    - pcap
     - suricata
     - zeek
     - strelka
@@ -192,7 +190,6 @@ base:
     - sensoroni
     - telegraf
     - firewall
-    - pcap
     - elasticsearch
     - elastic-fleet-package-registry
     - kibana
@@ -220,7 +217,6 @@ base:
     - telegraf
     - firewall
     - nginx
-    - pcap
     - suricata
     - healthcheck
     - zeek
@@ -240,7 +236,6 @@ base:
     - redis
     - curator.disabled
     - strelka
-    - pcap
     - suricata
     - zeek
     - elasticfleet.install_agent_grid
