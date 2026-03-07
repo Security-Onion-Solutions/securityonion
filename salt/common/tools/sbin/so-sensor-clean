@@ -72,6 +72,22 @@ clean() {
 		done
 	fi
 
+	## Clean up extracted pcaps from Steno
+	PCAPS='/nsm/pcapout'
+	OLDEST_PCAP=$(find $PCAPS -type f -printf '%T+ %p\n' | sort -n | head -n 1)
+	if [ -z "$OLDEST_PCAP" -o "$OLDEST_PCAP" == ".." -o "$OLDEST_PCAP" == "." ]; then
+		echo "$(date) - No old files available to clean up in $PCAPS" >>$LOG
+	else
+		OLDEST_PCAP_DATE=$(echo $OLDEST_PCAP | awk '{print $1}' | cut -d+ -f1)
+		OLDEST_PCAP_FILE=$(echo $OLDEST_PCAP | awk '{print $2}')
+		echo "$(date) - Removing extracted files for $OLDEST_PCAP_DATE" >>$LOG
+		find $PCAPS -type f -printf '%T+ %p\n' | grep $OLDEST_PCAP_DATE | awk '{print $2}' | while read FILE; do
+			echo "$(date) - Removing file: $FILE" >>$LOG
+			rm -f "$FILE"
+		done
+	fi
+}
+
 # Check to see if we are already running
 NUM_RUNNING=$(pgrep -cf "/bin/bash /usr/sbin/so-sensor-clean")
 [ "$NUM_RUNNING" -gt 1 ] && echo "$(date) - $NUM_RUNNING sensor clean script processes running...exiting." >>$LOG && exit 0
