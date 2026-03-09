@@ -87,8 +87,6 @@ base:
     - zeek.adv_zeek
     - bpf.soc_bpf
     - bpf.adv_bpf
-    - pcap.soc_pcap
-    - pcap.adv_pcap
     - suricata.soc_suricata
     - suricata.adv_suricata
     - minions.{{ grains.id }}
@@ -134,8 +132,6 @@ base:
     - zeek.adv_zeek
     - bpf.soc_bpf
     - bpf.adv_bpf
-    - pcap.soc_pcap
-    - pcap.adv_pcap
     - suricata.soc_suricata
     - suricata.adv_suricata
     - minions.{{ grains.id }}
@@ -185,8 +181,6 @@ base:
     - zeek.adv_zeek
     - bpf.soc_bpf
     - bpf.adv_bpf
-    - pcap.soc_pcap
-    - pcap.adv_pcap
     - suricata.soc_suricata
     - suricata.adv_suricata
     - minions.{{ grains.id }}
@@ -209,8 +203,6 @@ base:
     - zeek.adv_zeek
     - bpf.soc_bpf
     - bpf.adv_bpf
-    - pcap.soc_pcap
-    - pcap.adv_pcap
     - suricata.soc_suricata
     - suricata.adv_suricata
     - strelka.soc_strelka
@@ -297,8 +289,6 @@ base:
     - zeek.adv_zeek
     - bpf.soc_bpf
     - bpf.adv_bpf
-    - pcap.soc_pcap
-    - pcap.adv_pcap
     - suricata.soc_suricata
     - suricata.adv_suricata
     - strelka.soc_strelka
