@@ -2,13 +2,20 @@
 {% from 'suricata/map.jinja' import SURICATAMERGED %}
 
 # This directory needs to exist regardless of whether SURIPCAP is enabled or not, in order for
-# Sensoroni to be able to look at old Suricata PCAP data
+# Sensoroni to mount it
 suripcapdir:
   file.directory:
     - name: /nsm/suripcap
     - user: 940
     - group: 939
     - mode: 775
+    - makedirs: True
+
+pcapoutdir:
+  file.directory:
+    - name: /nsm/pcapout
+    - user: 939
+    - group: 939
     - makedirs: True
 
 {%   if GLOBALS.pcap_engine in ["SURICATA"] %}
