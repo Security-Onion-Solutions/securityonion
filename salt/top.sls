@@ -85,6 +85,7 @@ base:
     - elastalert
     - utility
     - elasticfleet
+    - pcap.cleanup
 
   '*_standalone and G@saltversion:{{saltversion}} and not I@node_data:False':
     - match: compound
@@ -116,6 +117,7 @@ base:
     - elasticfleet
     - stig
     - kafka
+    - pcap.cleanup
 
   '*_manager or *_managerhype and G@saltversion:{{saltversion}} and not I@node_data:False':
     - match: compound
@@ -197,6 +199,7 @@ base:
     - suricata
     - zeek
     - elasticfleet
+    - pcap.cleanup
 
   '*_searchnode and G@saltversion:{{saltversion}}':
     - match: compound
@@ -223,6 +226,7 @@ base:
     - strelka
     - elasticfleet.install_agent_grid
     - stig
+    - pcap.cleanup
 
   '*_heavynode and G@saltversion:{{saltversion}}':
     - match: compound
@@ -240,6 +244,7 @@ base:
     - zeek
     - elasticfleet.install_agent_grid
     - elasticagent
+    - pcap.cleanup
 
   '*_receiver and G@saltversion:{{saltversion}}':
     - match: compound
