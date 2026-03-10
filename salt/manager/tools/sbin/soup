@@ -374,10 +374,17 @@ postupgrade_changes() {
     true
 }
 
+check_minimum_version() {
+  if [[ "$INSTALLEDVERSION" != "2.4.210" ]] && [[ ! "$INSTALLEDVERSION" =~ ^3\. ]]; then
+    echo "You must be on at least Security Onion 2.4.210 to upgrade. Currently installed version: $INSTALLEDVERSION"
+    exit 1
+  fi
+}
+
 ### 3.0.0 Scripts ###
 
 up_to_3.0.0() {
-  determine_elastic_agent_upgrade()
+  determine_elastic_agent_upgrade
 
   INSTALLEDVERSION=3.0.0
 }
@@ -1086,6 +1093,8 @@ main() {
   MINION_ROLE=$(lookup_role)
   echo "Found that Security Onion $INSTALLEDVERSION is currently installed."
   echo ""
+  check_minimum_version
+
   if [[ $is_airgap -eq 0 ]]; then
     # Let's mount the ISO since this is airgap
     airgap_mounted
