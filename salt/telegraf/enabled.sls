@@ -47,7 +47,6 @@ so-telegraf:
       - /etc/pki/telegraf.crt:/etc/telegraf/telegraf.crt:ro
       - /etc/pki/telegraf.key:/etc/telegraf/telegraf.key:ro
       - /opt/so/conf/telegraf/scripts:/scripts:ro
-      - /opt/so/log/stenographer:/var/log/stenographer:ro
       - /opt/so/log/suricata:/var/log/suricata:ro
       - /opt/so/log/raid:/var/log/raid:ro
       - /opt/so/log/sostatus:/var/log/sostatus:ro

@@ -1,21 +1,15 @@
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 {% set PCAP_BPF_STATUS = 0  %}
-{% set STENO_BPF_COMPILED = "" %}
 
-{% if GLOBALS.pcap_engine == "TRANSITION" %}
-{%   set PCAPBPF = ["ip and host 255.255.255.1 and port 1"] %}
-{% else %}
 {%   import_yaml 'bpf/defaults.yaml' as BPFDEFAULTS %}
 {%   set BPFMERGED = salt['pillar.get']('bpf', BPFDEFAULTS.bpf, merge=True) %}
 {%   import 'bpf/macros.jinja' as MACROS %}
 {{   MACROS.remove_comments(BPFMERGED, 'pcap') }}
 {%   set PCAPBPF = BPFMERGED.pcap %}
-{% endif %}
 
 {% if PCAPBPF %}
    {% set PCAP_BPF_CALC = salt['cmd.script']('salt://common/tools/sbin/so-bpf-compile', GLOBALS.sensor.interface + ' ' + PCAPBPF|join(" "),cwd='/root') %}
    {% if PCAP_BPF_CALC['retcode'] == 0 %}
       {% set PCAP_BPF_STATUS = 1 %}
-      {% set STENO_BPF_COMPILED =  ",\\\"--filter=" + PCAP_BPF_CALC['stdout'] + "\\\""  %}
    {% endif %}
 {% endif %}
