@@ -111,14 +111,6 @@ check_err() {
 
 }
 
-add_common() {
-  cp $UPDATE_DIR/salt/common/tools/sbin/so-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
-  cp $UPDATE_DIR/salt/common/tools/sbin/so-image-common $DEFAULT_SALT_DIR/salt/common/tools/sbin/
-  salt-call state.apply common queue=True
-  echo "Run soup one more time"
-  exit 0
-}
-
 airgap_mounted() {
   # Let's see if the ISO is already mounted.
   if [[ -f /tmp/soagupdate/SecurityOnion/VERSION ]]; then
@@ -214,8 +206,6 @@ check_airgap() {
   fi
 }
 
-# {% raw %}
-
 check_local_mods() {
   local salt_local=/opt/so/saltstack/local
 
@@ -242,8 +232,6 @@ check_local_mods() {
     sleep 10
   fi
 }
-
-# {% endraw %}
 
 check_pillar_items() {
   local pillar_output=$(salt-call pillar.items -lerror --out=json)
@@ -374,7 +362,7 @@ preupgrade_changes() {
     # This function is to add any new pillar items if needed.
     echo "Checking to see if changes are needed."
 
-    [[ "$INSTALLEDVERSION" == 2.4.2 ]] && up_to_2.4.3   
+    [[ "$INSTALLEDVERSION" == 2.4.210 ]] && up_to_3.0.0   
     true
 }
 
@@ -382,20 +370,23 @@ postupgrade_changes() {
     # This function is to add any new pillar items if needed.
     echo "Running post upgrade processes."
 
-    [[ "$POSTVERSION" == 2.4.2 ]] && post_to_2.4.3
+    [[ "$POSTVERSION" == 2.4.210 ]] && post_to_3.0.0
     true
 }
 
-post_to_2.4.3() {
-  echo "Nothing to apply"
-  POSTVERSION=2.4.3
-}
-
-up_to_2.4.3() {
+### 3.0.0 Scripts ###
+up_to_3.0.0() {
   echo "Nothing to do for 2.4.3"
 
   INSTALLEDVERSION=2.4.3
 }
+
+post_to_3.0.0() {
+  echo "Nothing to apply"
+  POSTVERSION=2.4.3
+}
+### 3.0.0 End ###
+
 repo_sync() {
   echo "Sync the local repo."
   su socore -c '/usr/sbin/so-repo-sync' || fail "Unable to complete so-repo-sync."
@@ -444,22 +435,6 @@ stop_salt_minion() {
 
     timeout 30 tail --pid=$MINIONPID -f /dev/null || echo "Killing salt-minion at $(date +"%T.%6N") after waiting 30s" && pkill -9 -ef /usr/bin/salt-minion
     set -e
-}
-
-rollover_index() {
-  idx=$1
-  exists=$(so-elasticsearch-query $idx -o /dev/null -w "%{http_code}")
-  if [[ $exists -eq 200 ]]; then
-    rollover=$(so-elasticsearch-query $idx/_rollover -o /dev/null -w "%{http_code}" -XPOST)
-
-    if [[ $rollover -eq 200 ]]; then
-      echo "Successfully triggered rollover for $idx..."
-    else
-      echo "Could not trigger rollover for $idx..."
-    fi
-  else
-    echo "Could not find index $idx..."
-  fi
 }
 
 determine_elastic_agent_upgrade() {
@@ -703,10 +678,6 @@ verify_es_version_compatibility() {
     local is_active_intermediate_upgrade=1
     # supported upgrade paths for SO-ES versions
     declare -A es_upgrade_map=(
-	    ["8.14.3"]="8.17.3 8.18.4 8.18.6 8.18.8"
-	    ["8.17.3"]="8.18.4 8.18.6 8.18.8"
-	    ["8.18.4"]="8.18.6 8.18.8 9.0.8"
-	    ["8.18.6"]="8.18.8 9.0.8"
 	    ["8.18.8"]="9.0.8"
     )
 
