@@ -29,7 +29,11 @@ sool9_{{host}}:
     hypervisor_host: {{host ~ "_" ~ role}}
   preflight_cmds:
     - |
-      tee -a /etc/hosts <<< "{{ MANAGERIP }}    {{ MANAGERHOSTNAME }}"
+      {%- set hostnames = [MANAGERHOSTNAME] %}
+      {%- if not (URL_BASE | ipaddr) and URL_BASE != MANAGERHOSTNAME %}
+      {%-   do hostnames.append(URL_BASE) %}
+      {%- endif %}
+      tee -a /etc/hosts <<< "{{ MANAGERIP }}    {{ hostnames | join('  ') }}"
     - |
       timeout 600 bash -c 'trap "echo \"Preflight Check: Failed to establish repo connectivity\"; exit 1" TERM; \
         while ! dnf makecache --repoid=securityonion >/dev/null 2>&1; do echo "Preflight Check: Waiting for repo connectivity..."; \
