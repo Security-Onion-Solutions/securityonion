@@ -393,7 +393,7 @@ class TestRemove(unittest.TestCase):
 
             result = soyaml.get([filename, "key1.child2.deep1"])
             self.assertEqual(result, 0)
-            self.assertIn("45\n...", mock_stdout.getvalue())
+            self.assertEqual("45\n", mock_stdout.getvalue())
 
     def test_get_str(self):
         with patch('sys.stdout', new=StringIO()) as mock_stdout:
@@ -404,7 +404,7 @@ class TestRemove(unittest.TestCase):
 
             result = soyaml.get([filename, "key1.child2.deep1"])
             self.assertEqual(result, 0)
-            self.assertIn("hello\n...", mock_stdout.getvalue())
+            self.assertEqual("hello\n", mock_stdout.getvalue())
 
     def test_get_list(self):
         with patch('sys.stdout', new=StringIO()) as mock_stdout:
