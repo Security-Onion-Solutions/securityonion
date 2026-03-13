@@ -2,7 +2,7 @@ from io import StringIO
 import sys
 from unittest.mock import patch, MagicMock
 import unittest
-import elasticsearch
+from elasticsearch import elasticsearch
 import json
 from datetime import datetime, timedelta
 
@@ -21,9 +21,9 @@ class TestElasticSearchMethods(unittest.TestCase):
     '''Test that analyzer main method work as expect when all required input is given'''
     def test_main_success(self):
         conf = {"base_url": "test", "auth_user": "test", "auth_pwd": "test", "api_key": "test", "index": "test", "time_delta_minutes": 14400, "map": {}, "cert_path": ""}
-        with patch('elasticsearch.helpers.loadConfig', new=MagicMock(return_value=conf))as mock_yaml:
+        with patch('elasticsearch.elasticsearch.helpers.loadConfig', new=MagicMock(return_value=conf))as mock_yaml:
             with patch('sys.stdout', new=StringIO()) as mock_cmd:
-                with patch('elasticsearch.analyze', new=MagicMock(return_value={'foo': 'bar'})) as mock:
+                with patch('elasticsearch.elasticsearch.analyze', new=MagicMock(return_value={'foo': 'bar'})) as mock:
                     sys.argv = ["cmd", "conf"]
                     elasticsearch.main()
                     expected = '{"foo": "bar"}\n'
@@ -121,7 +121,7 @@ class TestElasticSearchMethods(unittest.TestCase):
                 }
             }
         }
-        with patch('elasticsearch.buildReq', new=MagicMock(return_value=expectedQuery)) as mock:
+        with patch('elasticsearch.elasticsearch.buildReq', new=MagicMock(return_value=expectedQuery)) as mock:
             response = elasticsearch.buildReq(observableType, numberOfResults)
             self.assertEqual(json.dumps(response), json.dumps(expectedQuery))
             mock.assert_called_once()
@@ -243,8 +243,8 @@ class TestElasticSearchMethods(unittest.TestCase):
         prepareResultOutput = {'response': {'_id': "0", "hash": "123"}, 'summary': "Documents returned: 5", 'status': 'info'}
         conf = {"base_url": "test", "auth_user": "test", "auth_pwd": "test", "num_results": 10, "api_key": "test", "index": "test",
                 "time_delta_minutes": 14400, "timestamp_field_name": "test", "map": {}, "cert_path": "test"}
-        with patch('elasticsearch.sendReq', new=MagicMock(return_value=sendReqOutput)) as mock:
-            with patch('elasticsearch.prepareResults', new=MagicMock(return_value=prepareResultOutput)) as mock2:
+        with patch('elasticsearch.elasticsearch.sendReq', new=MagicMock(return_value=sendReqOutput)) as mock:
+            with patch('elasticsearch.elasticsearch.prepareResults', new=MagicMock(return_value=prepareResultOutput)) as mock2:
                 results = elasticsearch.analyze(conf, input)
                 self.assertEqual(results["summary"], "Documents returned: 5")
                 mock.assert_called_once()

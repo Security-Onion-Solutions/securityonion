@@ -1,7 +1,7 @@
 from io import StringIO
 import sys
 from unittest.mock import patch, MagicMock
-import threatfox
+from threatfox import threatfox
 import unittest
 
 
@@ -30,8 +30,8 @@ class TestThreatfoxMethods(unittest.TestCase):
         output = {"test": "val"}
         conf = {"api_key": "test_key"}
         with patch('sys.stdout', new=StringIO()) as mock_stdout:
-            with patch('threatfox.analyze', new=MagicMock(return_value=output)) as mock:
-                with patch('helpers.loadConfig', new=MagicMock(return_value=conf)) as lcmock:
+            with patch('threatfox.threatfox.analyze', new=MagicMock(return_value=output)) as mock:
+                with patch('threatfox.threatfox.helpers.loadConfig', new=MagicMock(return_value=conf)) as lcmock:
                     sys.argv = ["cmd", "input"]
                     threatfox.main()
                     expected = '{"test": "val"}\n'
@@ -163,8 +163,8 @@ class TestThreatfoxMethods(unittest.TestCase):
         conf = {'api_key': 'test_key'}
         prepareResultOutput = {'response': '',
                                'summary': 'no result', 'status': ''}
-        with patch('threatfox.sendReq', new=MagicMock(return_value=sendReqOutput)) as mock:
-            with patch('threatfox.prepareResults', new=MagicMock(return_value=prepareResultOutput)) as mock2:
+        with patch('threatfox.threatfox.sendReq', new=MagicMock(return_value=sendReqOutput)) as mock:
+            with patch('threatfox.threatfox.prepareResults', new=MagicMock(return_value=prepareResultOutput)) as mock2:
                 results = threatfox.analyze(conf, input)
                 self.assertEqual(results["summary"], "no result")
                 mock.assert_called_once()
