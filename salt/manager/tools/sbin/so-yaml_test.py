@@ -393,6 +393,17 @@ class TestRemove(unittest.TestCase):
 
             result = soyaml.get([filename, "key1.child2.deep1"])
             self.assertEqual(result, 0)
+            self.assertIn("45\n...", mock_stdout.getvalue())
+
+    def test_get_int_raw(self):
+        with patch('sys.stdout', new=StringIO()) as mock_stdout:
+            filename = "/tmp/so-yaml_test-get.yaml"
+            file = open(filename, "w")
+            file.write("{key1: { child1: 123, child2: { deep1: 45 } }, key2: false, key3: [e,f,g]}")
+            file.close()
+
+            result = soyaml.get(["-r", filename, "key1.child2.deep1"])
+            self.assertEqual(result, 0)
             self.assertEqual("45\n", mock_stdout.getvalue())
 
     def test_get_str(self):
@@ -404,6 +415,17 @@ class TestRemove(unittest.TestCase):
 
             result = soyaml.get([filename, "key1.child2.deep1"])
             self.assertEqual(result, 0)
+            self.assertIn("hello\n...", mock_stdout.getvalue())
+
+    def test_get_str_raw(self):
+        with patch('sys.stdout', new=StringIO()) as mock_stdout:
+            filename = "/tmp/so-yaml_test-get.yaml"
+            file = open(filename, "w")
+            file.write("{key1: { child1: 123, child2: { deep1: \"hello\" } }, key2: false, key3: [e,f,g]}")
+            file.close()
+
+            result = soyaml.get(["-r", filename, "key1.child2.deep1"])
+            self.assertEqual(result, 0)
             self.assertEqual("hello\n", mock_stdout.getvalue())
 
     def test_get_bool(self):
@@ -414,6 +436,17 @@ class TestRemove(unittest.TestCase):
             file.close()
 
             result = soyaml.get([filename, "key2"])
+            self.assertEqual(result, 0)
+            self.assertIn("false\n...", mock_stdout.getvalue())
+
+    def test_get_bool_raw(self):
+        with patch('sys.stdout', new=StringIO()) as mock_stdout:
+            filename = "/tmp/so-yaml_test-get.yaml"
+            file = open(filename, "w")
+            file.write("{key1: { child1: 123, child2: { deep1: 45 } }, key2: false, key3: [e,f,g]}")
+            file.close()
+
+            result = soyaml.get(["-r", filename, "key2"])
             self.assertEqual(result, 0)
             self.assertEqual("false\n", mock_stdout.getvalue())
 
