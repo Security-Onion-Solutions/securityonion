@@ -14,6 +14,7 @@
 {%   if 'vrt' in salt['pillar.get']('features', []) %}
 {%     set HYPERVISORS = salt['pillar.get']('hypervisor:nodes', {} ) %}
 {%     from 'salt/map.jinja' import SALTVERSION %}
+{%     from 'vars/globals.map.jinja' import GLOBALS %}
 
 {%     if HYPERVISORS %}
 cloud_providers:
@@ -34,6 +35,7 @@ cloud_profiles:
         MANAGERHOSTNAME: {{ grains.host }}
         MANAGERIP: {{ pillar.host.mainip }}
         SALTVERSION: {{ SALTVERSION }}
+        URL_BASE: {{ GLOBALS.url_base }}
     - template: jinja
     - makedirs: True
 {%     else %}

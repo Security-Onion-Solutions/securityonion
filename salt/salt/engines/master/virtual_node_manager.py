@@ -805,11 +805,6 @@ def process_vm_creation(hypervisor_path: str, vm_config: dict) -> None:
                     mark_invalid_hardware(hypervisor_path, vm_name, vm_config,
                                         {'nsm_size': 'Invalid nsm_size: must be positive integer'})
                     return
-                if size > 10000:  # 10TB reasonable maximum
-                    log.error("VM: %s - nsm_size %dGB exceeds reasonable maximum (10000GB)", vm_name, size)
-                    mark_invalid_hardware(hypervisor_path, vm_name, vm_config,
-                                        {'nsm_size': f'Invalid nsm_size: {size}GB exceeds maximum (10000GB)'})
-                    return
                 log.debug("VM: %s - nsm_size validated: %dGB", vm_name, size)
             except (ValueError, TypeError) as e:
                 log.error("VM: %s - nsm_size must be a valid integer, got: %s", vm_name, vm_config.get('nsm_size'))
