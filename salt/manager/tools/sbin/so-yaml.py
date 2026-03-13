@@ -346,7 +346,9 @@ def get(args):
         print(f"Key '{key}' not found by so-yaml.py", file=sys.stderr)
         return 2
 
-    if isinstance(output, (dict, list)):
+    if isinstance(output, bool):
+        print(str(output).lower())
+    elif isinstance(output, (dict, list)):
         print(yaml.safe_dump(output).strip())
     else:
         print(output)
