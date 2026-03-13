@@ -256,7 +256,7 @@ def replacelistobject(args):
 def addKey(content, key, value):
     pieces = key.split(".", 1)
     if len(pieces) > 1:
-        if not pieces[0] in content:
+        if pieces[0] not in content or content[pieces[0]] is None:
             content[pieces[0]] = {}
         addKey(content[pieces[0]], pieces[1], value)
     elif key in content:
@@ -346,7 +346,12 @@ def get(args):
         print(f"Key '{key}' not found by so-yaml.py", file=sys.stderr)
         return 2
 
-    print(yaml.safe_dump(output))
+    if isinstance(output, bool):
+        print(str(output).lower())
+    elif isinstance(output, (dict, list)):
+        print(yaml.safe_dump(output).strip())
+    else:
+        print(output)
     return 0
 
 
