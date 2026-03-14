@@ -11,6 +11,11 @@
 {# before we change outputs back to list, enable pcap-log if suricata is the pcapengine #}
 {% if GLOBALS.pcap_engine in ["SURICATA"] %}
 
+{# initialize pcap-log in config.outputs since we dont put it in defaults #}
+{%   if 'pcap-log' not in SURICATAMERGED.config.outputs %}
+{%     do SURICATAMERGED.config.outputs.update({'pcap-log': {}}) %}
+{%   endif %}
+
 {%   from 'bpf/pcap.map.jinja' import PCAPBPF, PCAP_BPF_STATUS %}
 {%   if PCAPBPF and PCAP_BPF_STATUS %}
 {%     do SURICATAMERGED.config.outputs['pcap-log'].update({'bpf-filter': PCAPBPF|join(" ")}) %}
