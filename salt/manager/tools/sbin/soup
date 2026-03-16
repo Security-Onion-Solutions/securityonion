@@ -576,78 +576,46 @@ upgrade_check_salt() {
 upgrade_salt() {
   echo "Performing upgrade of Salt from $INSTALLEDSALTVERSION to $NEWSALTVERSION."
   echo ""
-  # If rhel family
-  if [[ $is_rpm ]]; then
-    # Check if salt-cloud is installed
-    if rpm -q salt-cloud &>/dev/null; then
-      SALT_CLOUD_INSTALLED=true
-    fi
-    # Check if salt-cloud is configured
-    if [[ -f /etc/salt/cloud.profiles.d/socloud.conf ]]; then
-      SALT_CLOUD_CONFIGURED=true
-    fi
-    
-    echo "Removing yum versionlock for Salt."
-    echo ""
-    yum versionlock delete "salt"
-    yum versionlock delete "salt-minion"
-    yum versionlock delete "salt-master"
-    # Remove salt-cloud versionlock if installed
-    if [[ $SALT_CLOUD_INSTALLED == true ]]; then
-      yum versionlock delete "salt-cloud"
-    fi
-    echo "Updating Salt packages."
-    echo ""
-    set +e
-    # if oracle run with -r to ignore repos set by bootstrap
-    if [[ $OS == 'oracle' ]]; then
-      # Add -L flag only if salt-cloud is already installed
-      if [[ $SALT_CLOUD_INSTALLED == true ]]; then
-        run_check_net_err \
-        "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -X -r -L -F -M stable \"$NEWSALTVERSION\"" \
-        "Could not update salt, please check $SOUP_LOG for details."
-      else
-        run_check_net_err \
-        "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -X -r -F -M stable \"$NEWSALTVERSION\"" \
-        "Could not update salt, please check $SOUP_LOG for details."
-      fi
-    # if another rhel family variant we want to run without -r to allow the bootstrap script to manage repos
-    else
-      run_check_net_err \
-      "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -X -F -M stable \"$NEWSALTVERSION\"" \
-      "Could not update salt, please check $SOUP_LOG for details."
-    fi
-    set -e
-    echo "Applying yum versionlock for Salt."
-    echo ""
-    yum versionlock add "salt-0:$NEWSALTVERSION-0.*"
-    yum versionlock add "salt-minion-0:$NEWSALTVERSION-0.*"
-    yum versionlock add "salt-master-0:$NEWSALTVERSION-0.*"
-    # Add salt-cloud versionlock if installed
-    if [[ $SALT_CLOUD_INSTALLED == true ]]; then
-      yum versionlock add "salt-cloud-0:$NEWSALTVERSION-0.*"
-    fi
-  # Else do Ubuntu things
-  elif [[ $is_deb ]]; then
-    # ensure these files don't exist when upgrading from 3006.9 to 3006.16
-    rm -f /etc/apt/keyrings/salt-archive-keyring-2023.pgp /etc/apt/sources.list.d/salt.list
-    echo "Removing apt hold for Salt."
-    echo ""
-    apt-mark unhold "salt-common"
-    apt-mark unhold "salt-master"
-    apt-mark unhold "salt-minion"
-    echo "Updating Salt packages."
-    echo ""
-    set +e
+  # Check if salt-cloud is installed
+  if rpm -q salt-cloud &>/dev/null; then
+    SALT_CLOUD_INSTALLED=true
+  fi
+  # Check if salt-cloud is configured
+  if [[ -f /etc/salt/cloud.profiles.d/socloud.conf ]]; then
+    SALT_CLOUD_CONFIGURED=true
+  fi
+
+  echo "Removing yum versionlock for Salt."
+  echo ""
+  yum versionlock delete "salt"
+  yum versionlock delete "salt-minion"
+  yum versionlock delete "salt-master"
+  # Remove salt-cloud versionlock if installed
+  if [[ $SALT_CLOUD_INSTALLED == true ]]; then
+    yum versionlock delete "salt-cloud"
+  fi
+  echo "Updating Salt packages."
+  echo ""
+  set +e
+  # Run with -r to ignore repos set by bootstrap
+  if [[ $SALT_CLOUD_INSTALLED == true ]]; then
     run_check_net_err \
-    "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -X -F -M stable \"$NEWSALTVERSION\"" \
+    "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -X -r -L -F -M stable \"$NEWSALTVERSION\"" \
     "Could not update salt, please check $SOUP_LOG for details."
-    set -e
-    echo "Applying apt hold for Salt."
-    echo ""
-    apt-mark hold "salt-common"
-    apt-mark hold "salt-master"
-    apt-mark hold "salt-minion"
+  else
+    run_check_net_err \
+    "sh $UPDATE_DIR/salt/salt/scripts/bootstrap-salt.sh -X -r -F -M stable \"$NEWSALTVERSION\"" \
+    "Could not update salt, please check $SOUP_LOG for details."
+  fi
+  set -e
+  echo "Applying yum versionlock for Salt."
+  echo ""
+  yum versionlock add "salt-0:$NEWSALTVERSION-0.*"
+  yum versionlock add "salt-minion-0:$NEWSALTVERSION-0.*"
+  yum versionlock add "salt-master-0:$NEWSALTVERSION-0.*"
+  # Add salt-cloud versionlock if installed
+  if [[ $SALT_CLOUD_INSTALLED == true ]]; then
+    yum versionlock add "salt-cloud-0:$NEWSALTVERSION-0.*"
   fi
 
   echo "Checking if Salt was upgraded."
@@ -1084,6 +1052,10 @@ main() {
   echo ""
   set_os
 
+  if [[ ! $is_oracle ]]; then
+    fail "This OS is not supported. Security Onion requires Oracle Linux 9."
+  fi
+
   check_salt_master_status 1 || fail  "Could not talk to salt master: Please run 'systemctl status salt-master' to ensure the salt-master service is running and check the log at /opt/so/log/salt/master."
 
   echo "Checking to see if this is a manager."
@@ -1193,14 +1165,6 @@ main() {
       echo "Upgrading Salt"
       # Update the repo files so it can actually upgrade
       upgrade_salt
-
-      # for Debian based distro, we need to stop salt again after upgrade output below is from bootstrap-salt
-      # *  WARN: Not starting daemons on Debian based distributions
-      #    is not working mostly because starting them is the default behaviour.
-      if [[ $is_deb ]]; then
-        stop_salt_minion
-        stop_salt_master
-      fi
     fi
 
     preupgrade_changes
