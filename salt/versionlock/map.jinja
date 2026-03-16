@@ -6,11 +6,7 @@
 {% import_yaml 'versionlock/defaults.yaml' as VERSIONLOCKDEFAULTS %}
 {% set VERSIONLOCKMERGED = salt['pillar.get']('versionlock', VERSIONLOCKDEFAULTS.versionlock, merge=True) %}
 
-{% if grains.os_family == 'RedHat' %}
-{%   set HELD = salt['pkg.list_holds']() %}
-{% else %}
-{%   set HELD = salt['pkg.get_selections'](state='hold')['hold'] %}
-{% endif %}
+{% set HELD = salt['pkg.list_holds']() %}
 
 {# these are packages held / versionlock in other states #}
 {% set PACKAGES_HELD_IN_OTHER_STATES = [

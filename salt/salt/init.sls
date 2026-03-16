@@ -1,10 +1,3 @@
-{% if grains.oscodename == 'focal' %}
-saltpymodules:
-  pkg.installed:
-    - pkgs:
-      - python3-docker
-{% endif %}
-
 # distribute to minions for salt upgrades
 salt_bootstrap:
   file.managed:
