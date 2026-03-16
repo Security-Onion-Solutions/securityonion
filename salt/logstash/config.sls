@@ -36,10 +36,6 @@ logstash:
     - gid: 931
     - home: /opt/so/conf/logstash
 
-lslibdir:
-  file.absent:
-    - name: /opt/so/conf/logstash/lib
-
 logstash_sbin:
   file.recurse:
     - name: /usr/sbin
