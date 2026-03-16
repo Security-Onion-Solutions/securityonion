@@ -450,6 +450,18 @@ class TestRemove(unittest.TestCase):
             self.assertEqual(result, 0)
             self.assertEqual("false\n", mock_stdout.getvalue())
 
+    def test_get_dict_raw(self):
+        with patch('sys.stdout', new=StringIO()) as mock_stdout:
+            filename = "/tmp/so-yaml_test-get.yaml"
+            file = open(filename, "w")
+            file.write("{key1: { child1: 123, child2: { deep1: 45 } }, key2: false, key3: [e,f,g]}")
+            file.close()
+
+            result = soyaml.get(["-r", filename, "key1"])
+            self.assertEqual(result, 0)
+            self.assertIn("child1: 123", mock_stdout.getvalue())
+            self.assertNotIn("...", mock_stdout.getvalue())
+
     def test_get_list(self):
         with patch('sys.stdout', new=StringIO()) as mock_stdout:
             filename = "/tmp/so-yaml_test-get.yaml"
