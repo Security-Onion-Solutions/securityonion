@@ -34,32 +34,19 @@ check_default_repos() {
 		printf '%s' "$repo_str" | tee -a "$preflight_log"
 	fi
 
-	if [[ $OS == 'centos' ]]; then
-		if [[ $script_run == true ]]; then
-			printf '%s' 'yum update.'
-		else
-			printf '%s' 'yum update.' | tee -a "$preflight_log"
-		fi
-		echo "" >> "$preflight_log"
-		yum -y check-update >> $preflight_log 2>&1
-		ret_code=$?
-		if [[ $ret_code == 0 || $ret_code == 100 ]]; then
-			printf '%s\n' '  SUCCESS'
-			ret_code=0
-		else
-			printf '%s\n' '  FAILURE'
-		fi
+	if [[ $script_run == true ]]; then
+		printf '%s' 'yum update.'
 	else
-		if [[ $script_run == true ]]; then
-			printf '%s' 'apt update.'
-		else
-			printf '%s' 'apt update.' | tee -a "$preflight_log"
-		fi
-		echo "" >> "$preflight_log"
-		retry 150 10 "apt-get -y update" >> $preflight_log 2>&1
-		ret_code=$?
-		[[ $ret_code == 0 ]] && printf '%s\n' '  SUCCESS' || printf '%s\n' '  FAILURE'
-
+		printf '%s' 'yum update.' | tee -a "$preflight_log"
+	fi
+	echo "" >> "$preflight_log"
+	yum -y check-update >> $preflight_log 2>&1
+	ret_code=$?
+	if [[ $ret_code == 0 || $ret_code == 100 ]]; then
+		printf '%s\n' '  SUCCESS'
+		ret_code=0
+	else
+		printf '%s\n' '  FAILURE'
 	fi
 
 	return $ret_code
@@ -73,21 +60,11 @@ check_new_repos() {
 		printf '%s' "$repo_url_str" | tee -a "$preflight_log"
 	fi
 
-	if [[ $OS == 'centos' ]]; then
-		local repo_arr=( 
-			"https://download.docker.com/linux/centos/docker-ce.repo"
-			"https://repo.securityonion.net/file/securityonion-repo/keys/SALTSTACK-GPG-KEY.pub"
-			"https://download.docker.com/linux/ubuntu/gpg"
-			)
-	else
-		local ubuntu_version
-		ubuntu_version=$(grep VERSION_ID /etc/os-release 2> /dev/null | awk -F '[ "]' '{print $2}')
-		local repo_arr=(
-			"https://download.docker.com/linux/ubuntu/gpg"
-			"https://download.docker.com/linux/ubuntu"
-			"https://repo.securityonion.net/file/securityonion-repo/ubuntu/$ubuntu_version/amd64/salt/SALTSTACK-GPG-KEY.pub"
+	local repo_arr=(
+		"https://download.docker.com/linux/centos/docker-ce.repo"
+		"https://repo.securityonion.net/file/securityonion-repo/keys/SALTSTACK-GPG-KEY.pub"
+		"https://download.docker.com/linux/ubuntu/gpg"
 		)
-	fi
 
 	__check_url_arr "${repo_arr[@]}"
 	local ret_code=$?
@@ -155,17 +132,6 @@ __check_url_arr() {
 	return $ret_code
 }
 
-preflight_prereqs() {
-	local ret_code=0
-	
-	if [[ $OS == 'centos' ]]; then
-		: # no-op to match structure of other checks for $OS var
-	else
-		retry 150 10 "apt-get -y install curl" >> "$preflight_log" 2>&1 || ret_code=1
-	fi
-
-	return $ret_code
-}
 
 main() {
 	local intro_str="Beginning pre-flight checks."
@@ -183,7 +149,6 @@ main() {
 	fi
 
 	check_default_repos &&\
-	preflight_prereqs &&\
 	check_new_repos &&\
 	check_misc_urls
 

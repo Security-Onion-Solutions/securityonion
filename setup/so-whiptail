@@ -27,23 +27,6 @@ whiptail_airgap() {
 	fi
 }
 
-whiptail_debian_reboot_required() {
-
-	[ -n "$TESTING" ] && return
-
-	read -r -d '' message <<- EOM
-
-	Packages were upgraded and a reboot is required prior to Security Onion installation.
-
-	Once the reboot has completed, rerun Security Onion setup.
-
-	Press TAB and then the ENTER key to reboot the system.
-
-	EOM
-
-	whiptail --title "$whiptail_title" --msgbox "$message" 24 75 --scrolltext
-}
-
 whiptail_desktop_install() {
 
 	[ -n "$TESTING" ] && return
@@ -496,27 +479,6 @@ __append_end_msg() {
 	EOM
 }
 
-whiptail_focal_warning() {
-
-	[ -n "$TESTING" ] && return
-
-	read -r -d '' focal_warning_continue <<- EOM
-
-	WARNING: Ubuntu 20.04 is only supported as a minion role.
-
-	This node may not install or operate as expected if installed
-	as a manager, managersearch, standalone, eval, or import.
-
-	Would you like to continue the install?
-
-	EOM
-	whiptail --title "$whiptail_title" \
-		--yesno "$focal_warning_continue" 14 75 --defaultno
-
-	local exitstatus=$?
-	return $exitstatus
-
-}
 
 whiptail_gauge_post_setup() {
 
@@ -586,23 +548,15 @@ whiptail_install_type() {
 	[ -n "$TESTING" ] && return
 
 	# What kind of install are we doing?
-	if [[ "$OSVER" != "focal" ]]; then
-		install_type=$(whiptail --title "$whiptail_title" --menu \
-		"What kind of installation would you like to do?\n\nFor more information, please see:\n$DOC_BASE_URL/architecture" 18 65 5 \
-			"IMPORT" "Import PCAP or log files " \
-			"EVAL" "Evaluation mode (not for production) " \
-			"STANDALONE" "Standalone production install " \
-			"DISTRIBUTED" "Distributed deployment " \
-			"DESKTOP" "Security Onion Desktop" \
-			3>&1 1>&2 2>&3
-		)
-	elif [[ "$OSVER" == "focal" ]]; then
-		install_type=$(whiptail --title "$whiptail_title" --menu \
-		"What kind of installation would you like to do?\n\nFor more information, please see:\n$DOC_BASE_URL/architecture" 18 65 5 \
-			"DISTRIBUTED" "Distributed install submenu " \
-			3>&1 1>&2 2>&3
-		)
-	fi
+	install_type=$(whiptail --title "$whiptail_title" --menu \
+	"What kind of installation would you like to do?\n\nFor more information, please see:\n$DOC_BASE_URL/architecture" 18 65 5 \
+		"IMPORT" "Import PCAP or log files " \
+		"EVAL" "Evaluation mode (not for production) " \
+		"STANDALONE" "Standalone production install " \
+		"DISTRIBUTED" "Distributed deployment " \
+		"DESKTOP" "Security Onion Desktop" \
+		3>&1 1>&2 2>&3
+	)
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -623,18 +577,11 @@ whiptail_install_type_dist() {
 
 	[ -n "$TESTING" ] && return
 
-	if [[ "$OSVER" != "focal" ]]; then
 	dist_option=$(whiptail --title "$whiptail_title" --menu "Do you want to start a new deployment or join this box to \nan existing deployment?" 11 75 2 \
 		"New Deployment         " "Create a new Security Onion deployment" \
 		"Existing Deployment    " "Join to an existing Security Onion deployment " \
 		 3>&1 1>&2 2>&3
 	)
-	elif [[ "$OSVER" == "focal" ]]; then
-	dist_option=$(whiptail --title "$whiptail_title" --menu "Since this is Ubuntu, this box can only be connected to \nan existing deployment." 11 75 2 \
-		"Existing Deployment    " "Join to an existing Security Onion deployment " \
-		 3>&1 1>&2 2>&3
-	)
-	fi
 
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
@@ -916,7 +863,7 @@ whiptail_net_method() {
 	[ -n "$TESTING" ] && return
 
 	local pkg_mngr
-	if [[ $OS = 'centos' ]]; then pkg_mngr="yum"; else pkg_mngr='apt'; fi
+	pkg_mngr="yum"
 
 	read -r -d '' options_msg <<- EOM
 	"Direct" - Internet requests connect directly to the Internet.
@@ -1151,7 +1098,7 @@ whiptail_proxy_ask() {
 	[ -n "$TESTING" ] && return
 
 	local pkg_mngr
-	if [[ $OS = 'centos' ]]; then pkg_mngr="yum"; else pkg_mngr='apt'; fi
+	pkg_mngr="yum"
 	whiptail --title "$whiptail_title" --yesno "Do you want to proxy the traffic for git, docker client, wget, curl, ${pkg_mngr}, and various other SO components through a separate server in your environment?" 9 65 --defaultno
 }
 
@@ -1434,48 +1381,6 @@ whiptail_storage_requirements() {
 	whiptail_check_exitstatus $exitstatus
 }
 
-whiptail_ubuntu_notsupported() {
-	[ -n "$TESTING" ] && return
-	
-	read -r -d '' message <<- EOM
-		Ubuntu is not supported for this node type.
-
-		Please use a supported OS or install via ISO.
-	EOM
-	whiptail --title "$whiptail_title"  --msgbox "$message" 14 75
-}
-
-whiptail_ubuntu_warning() {
-	[ -n "$TESTING" ] && return
-	
-	read -r -d '' message <<- EOM
-		Ubuntu support for this node type is limited.
-
-		Please consider using a fully supported OS or install via ISO.
-	EOM
-	whiptail --title "$whiptail_title"  --msgbox "$message" 14 75
-
-}
-
-whiptail_unsupported_os_warning() {
-
-	[ -n "$TESTING" ] && return
-
-	read -r -d '' unsupported_os_continue <<- EOM
-	
-	WARNING: An unsupported operating system has been detected. 
-	Security Onion may not install or operate as expected. 
-
-	Would you like to continue the install?
-
-	EOM
-	whiptail --title "$whiptail_title" \
-		--yesno "$unsupported_os_continue" 14 75 --defaultno
-
-	local exitstatus=$?
-	return $exitstatus
-
-}
 
 whiptail_uppercase_warning() {
 
