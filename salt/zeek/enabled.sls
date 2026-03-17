@@ -35,6 +35,7 @@ so-zeek:
       - /opt/so/conf/zeek/policy/intel:/opt/zeek/share/zeek/policy/intel:rw
       - /opt/so/conf/zeek/bpf:/opt/zeek/etc/bpf:ro
       - /opt/so/conf/zeek/config.zeek:/opt/zeek/share/zeek/site/packages/ja4/config.zeek:ro
+      - /opt/so/conf/zeek/zkg:/opt/so/conf/zeek/zkg:ro
       {% if DOCKER.containers['so-zeek'].custom_bind_mounts %}
         {% for BIND in DOCKER.containers['so-zeek'].custom_bind_mounts %}
       - {{ BIND }}

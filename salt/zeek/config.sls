@@ -32,6 +32,20 @@ zeekpolicydir:
     - group: 939
     - makedirs: True
 
+zeekzkgdir:
+  file.directory:
+    - name: /opt/so/conf/zeek/zkg
+    - user: 937
+    - group: 939
+    - makedirs: True
+
+zeekzkgsync:
+  file.recurse:
+    - name: /opt/so/conf/zeek/zkg
+    - source: salt://zeek/zkg
+    - user: 937
+    - group: 939
+
 # Zeek Log Directory
 zeeklogdir:
   file.directory:
