@@ -60,6 +60,12 @@ so-kafka:
       {% if KAFKA_EXTERNAL_ACCESS %}
       - /opt/so/conf/kafka/kafka_server_jaas.conf:/opt/kafka/config/kafka_server_jaas.conf:ro
       {% endif %}
+    {% if DOCKER.containers['so-kafka'].ulimits %}
+    - ulimits:
+    {%   for ULIMIT in DOCKER.containers['so-kafka'].ulimits %}
+      - {{ ULIMIT }}
+    {%   endfor %}
+    {% endif %}
     - watch:
       {% for sc in ['server', 'client'] %}
       - file: kafka_kraft_{{sc}}_properties
