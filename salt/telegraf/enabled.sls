@@ -66,9 +66,9 @@ so-telegraf:
       - {{ XTRAHOST }}
       {% endfor %}
     {% endif %}
-    {% if DOCKER.containers['so-telegraf'].ulimits %}
+    {% if DOCKERMERGED.containers['so-telegraf'].ulimits %}
     - ulimits:
-    {%   for ULIMIT in DOCKER.containers['so-telegraf'].ulimits %}
+    {%   for ULIMIT in DOCKERMERGED.containers['so-telegraf'].ulimits %}
       - {{ ULIMIT }}
     {%   endfor %}
     {% endif %}
