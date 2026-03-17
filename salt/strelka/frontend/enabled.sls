@@ -46,6 +46,12 @@ strelka_frontend:
       - {{ XTRAENV }}
       {% endfor %}
     {% endif %}
+    {% if DOCKER.containers['so-strelka-frontend'].ulimits %}
+    - ulimits:
+    {%   for ULIMIT in DOCKER.containers['so-strelka-frontend'].ulimits %}
+      - {{ ULIMIT }}
+    {%   endfor %}
+    {% endif %}
     - watch:
       - file: frontend_config
 

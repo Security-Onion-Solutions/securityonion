@@ -52,6 +52,12 @@ so-hydra:
       - {{ XTRAENV }}
       {% endfor %}
     {% endif %}
+    {% if DOCKER.containers['so-hydra'].ulimits %}
+    - ulimits:
+    {%   for ULIMIT in DOCKER.containers['so-hydra'].ulimits %}
+      - {{ ULIMIT }}
+    {%   endfor %}
+    {% endif %}
     - restart_policy: unless-stopped
     - watch:
       - file: hydraconfig
