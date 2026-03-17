@@ -40,6 +40,12 @@ so-sensoroni:
       - {{ XTRAENV }}
       {% endfor %}
     {% endif %}
+    {% if DOCKER.containers['so-sensoroni'].ulimits %}
+    - ulimits:
+    {%   for ULIMIT in DOCKER.containers['so-sensoroni'].ulimits %}
+      - {{ ULIMIT }}
+    {%   endfor %}
+    {% endif %}
     - watch:
       - file: /opt/so/conf/sensoroni/sensoroni.json
     - require:

@@ -96,6 +96,12 @@ so-logstash:
       - {{ BIND }}
         {% endfor %}
       {% endif %}
+    {% if DOCKER.containers['so-logstash'].ulimits %}
+    - ulimits:
+    {%   for ULIMIT in DOCKER.containers['so-logstash'].ulimits %}
+      - {{ ULIMIT }}
+    {%   endfor %}
+    {% endif %}
     - watch:
       - file: lsetcsync
       - file: trusttheca

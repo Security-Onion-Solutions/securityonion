@@ -51,6 +51,12 @@ so-dockerregistry:
       - {{ XTRAENV }}
         {% endfor %}
       {% endif %}
+    {% if DOCKER.containers['so-dockerregistry'].ulimits %}
+    - ulimits:
+    {%   for ULIMIT in DOCKER.containers['so-dockerregistry'].ulimits %}
+      - {{ ULIMIT }}
+    {%   endfor %}
+    {% endif %}
     - retry:
         attempts: 5
         interval: 30

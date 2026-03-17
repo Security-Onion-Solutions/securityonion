@@ -51,6 +51,12 @@ so-elastalert:
       - {{ XTRAENV }}
         {% endfor %}
       {% endif %}
+    {% if DOCKER.containers['so-elastalert'].ulimits %}
+    - ulimits:
+    {%   for ULIMIT in DOCKER.containers['so-elastalert'].ulimits %}
+      - {{ ULIMIT }}
+    {%   endfor %}
+    {% endif %}
     - require:
       - cmd: wait_for_elasticsearch
       - file: elastarules
