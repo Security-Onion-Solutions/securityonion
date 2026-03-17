@@ -1,5 +1,3 @@
-{%- set HIGHLANDER = salt['pillar.get']('global:highlander', False) -%}
-{%- raw -%}
 {
   "description" : "common",
   "processors" : [
@@ -67,19 +65,7 @@
     { "append":          { "if": "ctx.dataset_tag_temp != null", "field": "tags", "value": "{{dataset_tag_temp.1}}"  } },
     { "grok":            { "if": "ctx.http?.response?.status_code != null", "field": "http.response.status_code", "patterns": ["%{NUMBER:http.response.status_code:long} %{GREEDYDATA}"]} },
     { "set":             { "if": "ctx?.metadata?.kafka != null" , "field": "kafka.id", "value": "{{metadata.kafka.partition}}{{metadata.kafka.offset}}{{metadata.kafka.timestamp}}", "ignore_failure": true } },
-    { "remove":          { "field": [ "message2", "type", "fields", "category", "module", "dataset", "dataset_tag_temp", "event.dataset_temp" ], "ignore_missing": true, "ignore_failure": true } }
-{%- endraw %}
-{%- if HIGHLANDER %}
-    ,
-    {
-      "pipeline": {
-        "name": "ecs"
-      }
-    }
-{%- endif %}
-{%- raw %}
-    ,
+    { "remove":          { "field": [ "message2", "type", "fields", "category", "module", "dataset", "dataset_tag_temp", "event.dataset_temp" ], "ignore_missing": true, "ignore_failure": true } },
     { "pipeline": { "name": "global@custom", "ignore_missing_pipeline": true, "description": "[Fleet] Global pipeline for all data streams" } }
   ]
 }
-{% endraw %}

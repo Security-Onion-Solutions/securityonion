@@ -11,14 +11,6 @@
 {%   endif %}
 {%   set SOVERSION = salt['file.read']('/etc/soversion').strip() %}
 
-remove_common_soup:
-  file.absent:
-    - name: /opt/so/saltstack/default/salt/common/tools/sbin/soup
-
-remove_common_so-firewall:
-  file.absent:
-    - name: /opt/so/saltstack/default/salt/common/tools/sbin/so-firewall
-
 # This section is used to put the scripts in place in the Salt file system
 # in case a state run tries to overwrite what we do in the next section.
 copy_so-common_common_tools_sbin:

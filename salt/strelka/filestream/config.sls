@@ -47,12 +47,6 @@ filestream_config:
         FILESTREAMCONFIG: {{ STRELKAMERGED.filestream.config }}
 
 # Filecheck Section
-{% if GLOBALS.os_family == 'Debian' %}
-install_watchdog:
-  pkg.installed:
-    - name: python3-watchdog
-
-{% elif GLOBALS.os_family == 'RedHat' %}
 remove_old_watchdog:
   pkg.removed:
     - name: python3-watchdog
@@ -60,7 +54,6 @@ remove_old_watchdog:
 install_watchdog:
   pkg.installed:
     - name: securityonion-python39-watchdog
-{% endif %}
 
 filecheck_logdir:
   file.directory:

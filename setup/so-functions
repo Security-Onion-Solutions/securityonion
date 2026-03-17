@@ -852,74 +852,14 @@ detect_cloud() {
 
 detect_os() {
 	title "Detecting Base OS"
-	if [ -f /etc/redhat-release ]; then
-		if grep -q "Rocky Linux release 9" /etc/redhat-release; then
-			OS=rocky
-			OSVER=9
-			is_rocky=true
-			is_rpm=true
-			not_supported=true
-			unset is_supported
-		elif grep -q "CentOS Stream release 9" /etc/redhat-release; then
-			OS=centos
-			OSVER=9
-			is_centos=true
-			is_rpm=true
-			not_supported=true
-			unset is_supported
-		elif grep -q "AlmaLinux release 9" /etc/redhat-release; then
-			OS=alma
-			OSVER=9
-			is_alma=true
-			is_rpm=true
-			not_supported=true
-			unset is_supported
-		elif grep -q "Red Hat Enterprise Linux release 9" /etc/redhat-release; then
-			if [ -f /etc/oracle-release ]; then
-				OS=oracle
-				OSVER=9
-				is_oracle=true
-				is_rpm=true
-				is_supported=true
-			else
-				OS=rhel
-				OSVER=9
-				is_rhel=true
-				is_rpm=true
-				not_supported=true
-				unset is_supported
-			fi
-		fi
-	elif [ -f /etc/os-release ]; then
-		if grep -q "UBUNTU_CODENAME=focal" /etc/os-release; then
-			OSVER=focal
-			UBVER=20.04
-			OS=ubuntu
-			is_ubuntu=true
-			is_deb=true
-			not_supported=true
-			unset is_supported
-		elif grep -q "UBUNTU_CODENAME=jammy" /etc/os-release; then
-			OSVER=jammy
-			UBVER=22.04
-			OS=ubuntu
-			is_ubuntu=true
-			is_deb=true
-			not_supported=true
-			unset is_supported
-		elif grep -q "VERSION_CODENAME=bookworm" /etc/os-release; then
-			OSVER=bookworm
-			DEBVER=12
-			is_debian=true
-			OS=debian
-			is_deb=true
-			not_supported=true
-			unset is_supported
-		fi
-		installer_prereq_packages
-
+	if [ -f /etc/redhat-release ] && grep -q "Red Hat Enterprise Linux release 9" /etc/redhat-release && [ -f /etc/oracle-release ]; then
+		OS=oracle
+		OSVER=9
+		is_oracle=true
+		is_rpm=true
+		is_supported=true
 	else
-		info "We were unable to determine if you are using a supported OS."
+		info "This OS is not supported. Security Onion requires Oracle Linux 9."
 		fail_setup
 	fi
 
@@ -932,23 +872,6 @@ download_elastic_agent_artifacts() {
 	fi
 }
 
-installer_prereq_packages() {	
-	if [[ $is_deb ]]; then
-		# Print message to stdout so the user knows setup is doing something
-		info "Running apt-get update"
-		retry 150 10 "apt-get update" "" "Err:" >> "$setup_log" 2>&1 || fail_setup
-		# Install network manager so we can do interface stuff
-		if ! command -v nmcli > /dev/null 2>&1; then
-			info "Installing network-manager"
-			retry 150 10 "apt-get -y install network-manager ethtool" >> "$setup_log" 2>&1 || fail_setup
-			logCmd "systemctl enable NetworkManager"
-			logCmd "systemctl start NetworkManager"
-		fi
-		if ! command -v curl > /dev/null 2>&1; then
-			retry 150 10 "apt-get -y install curl"  >> "$setup_log" 2>&1 || fail_setup
-		fi
-	fi
-}
 
 disable_auto_start() {
 	
@@ -1366,9 +1289,6 @@ create_global() {
 	echo "  mdengine: 'ZEEK'" >> $global_pillar_file
 	echo "  ids: 'Suricata'" >> $global_pillar_file
 	echo "  url_base: '$REDIRECTIT'" >> $global_pillar_file
-	if [[ $HIGHLANDER == 'True' ]]; then
-		echo "  highlander: True" >> $global_pillar_file
-	fi
 	if [[ $is_airgap ]]; then
 		echo "  airgap: True" >> $global_pillar_file
 	else 
@@ -1460,7 +1380,7 @@ network_init() {
 	title "Initializing Network"
 	disable_ipv6
 	set_hostname
-	if [[ ( $is_iso || $is_desktop_iso || $is_debian ) ]]; then
+	if [[ ( $is_iso || $is_desktop_iso ) ]]; then
 		set_management_interface
 	fi
 }
@@ -1694,11 +1614,6 @@ reinstall_init() {
 		# Uninstall local Elastic Agent, if installed
 		elastic-agent uninstall -f
 
-		if [[ $is_deb ]]; then
-			echo "Unholding previously held packages."
-			apt-mark unhold $(apt-mark showhold)
-		fi
-
 	} >> "$setup_log" 2>&1
 
 	info "System reinstall init has been completed."
@@ -1715,11 +1630,7 @@ reset_proxy() {
 
 	[[ -f /etc/gitconfig ]] && rm -f /etc/gitconfig
 	
-	if [[ $is_rpm ]]; then
-		sed -i "/proxy=/d" /etc/dnf/dnf.conf
-	else
-		[[ -f /etc/apt/apt.conf.d/00-proxy.conf ]] && rm -f /etc/apt/apt.conf.d/00-proxy.conf
-	fi
+	sed -i "/proxy=/d" /etc/dnf/dnf.conf
 }
 
 restore_file() {
@@ -1765,14 +1676,8 @@ drop_install_options() {
 
 remove_package() {
 	local package_name=$1
-	if [[ $is_rpm ]]; then
-		if rpm -qa | grep -q "$package_name"; then
-			logCmd "dnf remove -y $package_name"
-		fi
-	else
-		if dpkg -l | grep -q "$package_name"; then
-			retry 150 10 "apt purge -y \"$package_name\""
-		fi
+	if rpm -qa | grep -q "$package_name"; then
+		logCmd "dnf remove -y $package_name"
 	fi
 }
 
@@ -1786,122 +1691,91 @@ remove_package() {
 
 securityonion_repo() {
 	# Remove all the current repos
-	if [[ $is_oracle ]]; then
-		logCmd "dnf -v clean all"
-		logCmd "mkdir -vp /root/oldrepos"
-		if [ -n "$(ls -A /etc/yum.repos.d/ 2>/dev/null)" ]; then
-			logCmd "mv -v /etc/yum.repos.d/* /root/oldrepos/"
-		fi
-		if ! $is_desktop_grid; then
-			gpg_rpm_import
-			if [[ ! $is_airgap ]]; then
-				echo "https://repo.securityonion.net/file/so-repo/prod/3/oracle/9" > /etc/yum/mirror.txt
-				echo "https://so-repo-east.s3.us-east-005.backblazeb2.com/prod/3/oracle/9" >> /etc/yum/mirror.txt
-				echo "[main]" > /etc/yum.repos.d/securityonion.repo
-				echo "gpgcheck=1" >> /etc/yum.repos.d/securityonion.repo
-				echo "installonly_limit=3" >> /etc/yum.repos.d/securityonion.repo
-				echo "clean_requirements_on_remove=True" >> /etc/yum.repos.d/securityonion.repo
-				echo "best=True" >> /etc/yum.repos.d/securityonion.repo
-				echo "skip_if_unavailable=False" >> /etc/yum.repos.d/securityonion.repo
-				echo "cachedir=/opt/so/conf/reposync/cache" >> /etc/yum.repos.d/securityonion.repo
-				echo "keepcache=0" >> /etc/yum.repos.d/securityonion.repo
-				echo "[securityonionsync]" >> /etc/yum.repos.d/securityonion.repo
-				echo "name=Security Onion Repo repo" >> /etc/yum.repos.d/securityonion.repo
-				echo "mirrorlist=file:///etc/yum/mirror.txt" >> /etc/yum.repos.d/securityonion.repo
-				echo "enabled=1" >> /etc/yum.repos.d/securityonion.repo
-				echo "gpgcheck=1" >> /etc/yum.repos.d/securityonion.repo
-				logCmd "dnf repolist"
-			else
-				echo "[securityonion]" > /etc/yum.repos.d/securityonion.repo
-				echo "name=Security Onion Repo" >> /etc/yum.repos.d/securityonion.repo
-				echo "baseurl=https://$MSRV/repo" >> /etc/yum.repos.d/securityonion.repo
-				echo "enabled=1" >> /etc/yum.repos.d/securityonion.repo
-				echo "gpgcheck=1" >> /etc/yum.repos.d/securityonion.repo
-				echo "sslverify=0" >> /etc/yum.repos.d/securityonion.repo
-				logCmd "dnf repolist"
-			fi
-		elif [[ ! $waitforstate ]]; then
+	logCmd "dnf -v clean all"
+	logCmd "mkdir -vp /root/oldrepos"
+	if [ -n "$(ls -A /etc/yum.repos.d/ 2>/dev/null)" ]; then
+		logCmd "mv -v /etc/yum.repos.d/* /root/oldrepos/"
+	fi
+	if ! $is_desktop_grid; then
+		gpg_rpm_import
+		if [[ ! $is_airgap ]]; then
+			echo "https://repo.securityonion.net/file/so-repo/prod/3/oracle/9" > /etc/yum/mirror.txt
+			echo "https://so-repo-east.s3.us-east-005.backblazeb2.com/prod/3/oracle/9" >> /etc/yum/mirror.txt
+			echo "[main]" > /etc/yum.repos.d/securityonion.repo
+			echo "gpgcheck=1" >> /etc/yum.repos.d/securityonion.repo
+			echo "installonly_limit=3" >> /etc/yum.repos.d/securityonion.repo
+			echo "clean_requirements_on_remove=True" >> /etc/yum.repos.d/securityonion.repo
+			echo "best=True" >> /etc/yum.repos.d/securityonion.repo
+			echo "skip_if_unavailable=False" >> /etc/yum.repos.d/securityonion.repo
+			echo "cachedir=/opt/so/conf/reposync/cache" >> /etc/yum.repos.d/securityonion.repo
+			echo "keepcache=0" >> /etc/yum.repos.d/securityonion.repo
+			echo "[securityonionsync]" >> /etc/yum.repos.d/securityonion.repo
+			echo "name=Security Onion Repo repo" >> /etc/yum.repos.d/securityonion.repo
+			echo "mirrorlist=file:///etc/yum/mirror.txt" >> /etc/yum.repos.d/securityonion.repo
+			echo "enabled=1" >> /etc/yum.repos.d/securityonion.repo
+			echo "gpgcheck=1" >> /etc/yum.repos.d/securityonion.repo
+			logCmd "dnf repolist"
+		else
 			echo "[securityonion]" > /etc/yum.repos.d/securityonion.repo
 			echo "name=Security Onion Repo" >> /etc/yum.repos.d/securityonion.repo
 			echo "baseurl=https://$MSRV/repo" >> /etc/yum.repos.d/securityonion.repo
 			echo "enabled=1" >> /etc/yum.repos.d/securityonion.repo
 			echo "gpgcheck=1" >> /etc/yum.repos.d/securityonion.repo
-			echo "sslverify=0" >> /etc/yum.repos.d/securityonion.repo		
-		elif [[ $waitforstate ]]; then
-			echo "[securityonion]" > /etc/yum.repos.d/securityonion.repo
-			echo "name=Security Onion Repo" >> /etc/yum.repos.d/securityonion.repo
-			echo "baseurl=file:///nsm/repo/" >> /etc/yum.repos.d/securityonion.repo
-			echo "enabled=1" >> /etc/yum.repos.d/securityonion.repo
-			echo "gpgcheck=1" >> /etc/yum.repos.d/securityonion.repo
+			echo "sslverify=0" >> /etc/yum.repos.d/securityonion.repo
+			logCmd "dnf repolist"
 		fi
+	elif [[ ! $waitforstate ]]; then
+		echo "[securityonion]" > /etc/yum.repos.d/securityonion.repo
+		echo "name=Security Onion Repo" >> /etc/yum.repos.d/securityonion.repo
+		echo "baseurl=https://$MSRV/repo" >> /etc/yum.repos.d/securityonion.repo
+		echo "enabled=1" >> /etc/yum.repos.d/securityonion.repo
+		echo "gpgcheck=1" >> /etc/yum.repos.d/securityonion.repo
+		echo "sslverify=0" >> /etc/yum.repos.d/securityonion.repo
+	elif [[ $waitforstate ]]; then
+		echo "[securityonion]" > /etc/yum.repos.d/securityonion.repo
+		echo "name=Security Onion Repo" >> /etc/yum.repos.d/securityonion.repo
+		echo "baseurl=file:///nsm/repo/" >> /etc/yum.repos.d/securityonion.repo
+		echo "enabled=1" >> /etc/yum.repos.d/securityonion.repo
+		echo "gpgcheck=1" >> /etc/yum.repos.d/securityonion.repo
 	fi
-	if [[ $is_rpm ]]; then logCmd "dnf repolist all"; fi
+	logCmd "dnf repolist all"
 	if [[ $waitforstate ]]; then
-		if [[ $is_rpm ]]; then
-				# Build the repo locally so we can use it
-				echo "Syncing Repos"
-				repo_sync_local
-		fi
+		# Build the repo locally so we can use it
+		echo "Syncing Repos"
+		repo_sync_local
 	fi
 }
 
 repo_sync_local() {
 	SALTVERSION=$(grep "version:" ../salt/salt/master.defaults.yaml | grep -o "[0-9]\+\.[0-9]\+")
 	info "Repo Sync"
-	if [[ $is_supported ]]; then
-		# Sync the repo from the the SO repo locally.
-		# Check for reposync
-		info "Adding Repo Download Configuration"
-		mkdir -p /nsm/repo
-		mkdir -p /opt/so/conf/reposync/cache
-		echo "https://repo.securityonion.net/file/so-repo/prod/3/oracle/9" > /opt/so/conf/reposync/mirror.txt
-		echo "https://repo-alt.securityonion.net/prod/3/oracle/9" >> /opt/so/conf/reposync/mirror.txt
-		echo "[main]" > /opt/so/conf/reposync/repodownload.conf
-		echo "gpgcheck=1" >> /opt/so/conf/reposync/repodownload.conf
-		echo "installonly_limit=3" >> /opt/so/conf/reposync/repodownload.conf
-		echo "clean_requirements_on_remove=True" >> /opt/so/conf/reposync/repodownload.conf
-		echo "best=True" >> /opt/so/conf/reposync/repodownload.conf
-		echo "skip_if_unavailable=False" >> /opt/so/conf/reposync/repodownload.conf
-		echo "cachedir=/opt/so/conf/reposync/cache" >> /opt/so/conf/reposync/repodownload.conf
-		echo "keepcache=0" >> /opt/so/conf/reposync/repodownload.conf
-		echo "[securityonionsync]" >> /opt/so/conf/reposync/repodownload.conf
-		echo "name=Security Onion Repo repo" >> /opt/so/conf/reposync/repodownload.conf
-		echo "mirrorlist=file:///opt/so/conf/reposync/mirror.txt" >> /opt/so/conf/reposync/repodownload.conf
-		echo "enabled=1" >> /opt/so/conf/reposync/repodownload.conf
-		echo "gpgcheck=1" >> /opt/so/conf/reposync/repodownload.conf
-	
-		logCmd "dnf repolist"
-		
-		if [[ ! $is_airgap ]]; then
-        	curl --retry 5 --retry-delay 60 -A "netinstall/$SOVERSION/$OS/$(uname -r)/1" https://sigs.securityonion.net/checkup --output /tmp/install
-			retry 5 60 "dnf reposync --norepopath -g --delete -m -c /opt/so/conf/reposync/repodownload.conf --repoid=securityonionsync --download-metadata -p /nsm/repo/" >> "$setup_log" 2>&1 || fail_setup
-			# After the download is complete run createrepo
-			create_repo
-		fi
-	else
-		# Add the proper repos for unsupported stuff
-		echo "Adding Repos"
-		if [[ $is_rpm ]]; then
-			if [[ $is_rhel ]]; then
-				logCmd "subscription-manager repos --enable codeready-builder-for-rhel-9-$(arch)-rpms"
-				info "Install epel for rhel" 
-				logCmd "dnf -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm"
-				logCmd "dnf -y install https://dl.fedoraproject.org/pub/epel/epel-next-release-latest-9.noarch.rpm"
-			else  
-				logCmd "dnf config-manager --set-enabled crb"
-				logCmd "dnf -y install epel-release"
-			fi
-			dnf install -y yum-utils device-mapper-persistent-data lvm2
-			curl -fsSL https://repo.securityonion.net/file/so-repo/prod/3/so/so.repo | tee /etc/yum.repos.d/so.repo
-			rpm --import https://packages.broadcom.com/artifactory/api/security/keypair/SaltProjectKey/public
-			dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-			curl -fsSL "https://github.com/saltstack/salt-install-guide/releases/latest/download/salt.repo" | tee /etc/yum.repos.d/salt.repo
-			dnf repolist
-			curl --retry 5 --retry-delay 60 -A "netinstall/$SOVERSION/$OS/$(uname -r)/1" https://sigs.securityonion.net/checkup --output /tmp/install
-		else
-			echo "Not sure how you got here."
-			exit 1
-		fi
+	# Sync the repo from the SO repo locally.
+	info "Adding Repo Download Configuration"
+	mkdir -p /nsm/repo
+	mkdir -p /opt/so/conf/reposync/cache
+	echo "https://repo.securityonion.net/file/so-repo/prod/3/oracle/9" > /opt/so/conf/reposync/mirror.txt
+	echo "https://repo-alt.securityonion.net/prod/3/oracle/9" >> /opt/so/conf/reposync/mirror.txt
+	echo "[main]" > /opt/so/conf/reposync/repodownload.conf
+	echo "gpgcheck=1" >> /opt/so/conf/reposync/repodownload.conf
+	echo "installonly_limit=3" >> /opt/so/conf/reposync/repodownload.conf
+	echo "clean_requirements_on_remove=True" >> /opt/so/conf/reposync/repodownload.conf
+	echo "best=True" >> /opt/so/conf/reposync/repodownload.conf
+	echo "skip_if_unavailable=False" >> /opt/so/conf/reposync/repodownload.conf
+	echo "cachedir=/opt/so/conf/reposync/cache" >> /opt/so/conf/reposync/repodownload.conf
+	echo "keepcache=0" >> /opt/so/conf/reposync/repodownload.conf
+	echo "[securityonionsync]" >> /opt/so/conf/reposync/repodownload.conf
+	echo "name=Security Onion Repo repo" >> /opt/so/conf/reposync/repodownload.conf
+	echo "mirrorlist=file:///opt/so/conf/reposync/mirror.txt" >> /opt/so/conf/reposync/repodownload.conf
+	echo "enabled=1" >> /opt/so/conf/reposync/repodownload.conf
+	echo "gpgcheck=1" >> /opt/so/conf/reposync/repodownload.conf
+
+	logCmd "dnf repolist"
+
+	if [[ ! $is_airgap ]]; then
+		curl --retry 5 --retry-delay 60 -A "netinstall/$SOVERSION/$OS/$(uname -r)/1" https://sigs.securityonion.net/checkup --output /tmp/install
+		retry 5 60 "dnf reposync --norepopath -g --delete -m -c /opt/so/conf/reposync/repodownload.conf --repoid=securityonionsync --download-metadata -p /nsm/repo/" >> "$setup_log" 2>&1 || fail_setup
+		# After the download is complete run createrepo
+		create_repo
 	fi
 }
 
@@ -1909,57 +1783,13 @@ saltify() {
 	SALTVERSION=$(grep "version:" ../salt/salt/master.defaults.yaml | grep -o "[0-9]\+\.[0-9]\+")
 	info "Installing Salt $SALTVERSION"
 	chmod u+x ../salt/salt/scripts/bootstrap-salt.sh
-	if [[ $is_deb ]]; then
 
-		DEBIAN_FRONTEND=noninteractive retry 30 10 "apt-get -y -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" upgrade" >> "$setup_log" 2>&1 || fail_setup
-		if [ $OSVER == "focal" ]; then update-alternatives --install /usr/bin/python python /usr/bin/python3.10 10; fi
-		local pkg_arr=(
-			'apache2-utils'
-			'ca-certificates'
-			'curl'
-			'software-properties-common'
-			'apt-transport-https'
-			'openssl'
-			'netcat-openbsd'
-			'jq'
-			'gnupg'
-		)
-		retry 30 10 "apt-get -y install ${pkg_arr[*]}" || fail_setup
-
-		logCmd "mkdir -vp /etc/apt/keyrings"
-		logCmd "wget -q --inet4-only -O /etc/apt/keyrings/docker.pub https://download.docker.com/linux/ubuntu/gpg"
-
-		if [[ $is_ubuntu ]]; then
-			# Add Docker Repo
-			add-apt-repository -y "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" 
-		
-		else
-			# Add Docker Repo
-			curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-			echo "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $OSVER stable" > /etc/apt/sources.list.d/docker.list 
-		fi
-
-		logCmd "apt-key add /etc/apt/keyrings/docker.pub"
-
-		retry 30 10 "apt-get update" "" "Err:" || fail_setup
-		if [[ $waitforstate ]]; then
-			retry 30 10 "bash ../salt/salt/scripts/bootstrap-salt.sh -M -X stable $SALTVERSION" || fail_setup
-			retry 30 10 "apt-mark hold salt-minion salt-common salt-master" || fail_setup
-			retry 30 10 "apt-get -y install python3-pip python3-dateutil python3-m2crypto python3-packaging python3-influxdb python3-lxml" || exit 1
-		else
-			retry 30 10 "bash ../salt/salt/scripts/bootstrap-salt.sh -X stable $SALTVERSION" || fail_setup
-			retry 30 10 "apt-mark hold salt-minion salt-common" || fail_setup
-		fi
-	fi
-		
-	if [[ $is_rpm ]]; then
-		if [[ $waitforstate ]]; then 
-			# install all for a manager
-			retry 30 10 "bash ../salt/salt/scripts/bootstrap-salt.sh -r -M -X stable $SALTVERSION" || fail_setup
-		else
-			# just a minion
-			retry 30 10 "bash ../salt/salt/scripts/bootstrap-salt.sh -r -X stable $SALTVERSION" || fail_setup
-		fi
+	if [[ $waitforstate ]]; then
+		# install all for a manager
+		retry 30 10 "bash ../salt/salt/scripts/bootstrap-salt.sh -r -M -X stable $SALTVERSION" || fail_setup
+	else
+		# just a minion
+		retry 30 10 "bash ../salt/salt/scripts/bootstrap-salt.sh -r -X stable $SALTVERSION" || fail_setup
 	fi
 
 	salt_install_module_deps
@@ -2105,14 +1935,7 @@ set_proxy() {
 		"}" > /root/.docker/config.json
 
 	# Set proxy for package manager
-	if [[ $is_rpm ]]; then
-		echo "proxy=$so_proxy" >> /etc/yum.conf
-	else
-		# Set it up so the updates roll through the manager
-		printf '%s\n'\
-			"Acquire::http::Proxy \"$so_proxy\";"\
-			"Acquire::https::Proxy \"$so_proxy\";" > /etc/apt/apt.conf.d/00-proxy.conf
-	fi
+	echo "proxy=$so_proxy" >> /etc/yum.conf
 
 	# Set global git proxy
 	printf '%s\n'\
@@ -2302,23 +2125,13 @@ update_sudoers_for_testing() {
 }
 
 update_packages() {
-	if [[ $is_oracle ]]; then
-		logCmd "dnf repolist"
-		logCmd "dnf -y update --allowerasing --exclude=salt*,docker*,containerd*"
-		RMREPOFILES=("oracle-linux-ol9.repo" "uek-ol9.repo" "virt-ol9.repo")
-		info "Removing repo files added by oracle-repos package update"
-		for FILE in ${RMREPOFILES[@]}; do
-			logCmd "rm -f /etc/yum.repos.d/$FILE"
-		done
-	elif [[ $is_deb ]]; then
-		info "Running apt-get update"
-		retry 150 10 "apt-get -y update" "" "Err:" >> "$setup_log" 2>&1 || fail_setup
-		info "Running apt-get upgrade"
-		retry 150 10 "apt-get -y upgrade" >> "$setup_log" 2>&1 || fail_setup
-	else
-		info "Updating packages"
-		logCmd "dnf -y update --allowerasing --exclude=salt*,docker*,containerd*"
-	fi
+	logCmd "dnf repolist"
+	logCmd "dnf -y update --allowerasing --exclude=salt*,docker*,containerd*"
+	RMREPOFILES=("oracle-linux-ol9.repo" "uek-ol9.repo" "virt-ol9.repo")
+	info "Removing repo files added by oracle-repos package update"
+	for FILE in ${RMREPOFILES[@]}; do
+		logCmd "rm -f /etc/yum.repos.d/$FILE"
+	done
 }
 
 # This is used for development to speed up network install tests.
@@ -2328,15 +2141,7 @@ use_turbo_proxy() {
 		return
 	fi
 
-	if [[ $OS == 'centos' ]]; then
-		printf '%s\n' "proxy=${TURBO}:3142" >> /etc/yum.conf
-	else
-		printf '%s\n'\
-			"Acquire {"\
-			"  HTTP::proxy \"${TURBO}:3142\";"\
-			"  HTTPS::proxy \"${TURBO}:3142\";"\
-			"}" > /etc/apt/apt.conf.d/proxy.conf
-	fi
+	printf '%s\n' "proxy=${TURBO}:3142" >> /etc/yum.conf
 }
 
 wait_for_file() {

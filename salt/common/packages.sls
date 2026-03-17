@@ -1,52 +1,5 @@
 # we cannot import GLOBALS from vars/globals.map.jinja in this state since it is called in setup.virt.init
 # since it is early in setup of a new VM, the pillars imported in GLOBALS are not yet defined
-{% if grains.os_family == 'Debian' %}
-commonpkgs:
-  pkg.installed:
-    - skip_suggestions: True
-    - pkgs:
-      - apache2-utils
-      - wget
-      - ntpdate
-      - jq
-      - curl
-      - ca-certificates
-      - software-properties-common
-      - apt-transport-https
-      - openssl
-      - netcat-openbsd
-      - sqlite3
-      - libssl-dev
-      - procps
-      - python3-dateutil
-      - python3-docker
-      - python3-packaging
-      - python3-lxml
-      - git
-      - rsync
-      - vim
-      - tar
-      - unzip
-      - bc
-      {% if grains.oscodename != 'focal' %}
-      - python3-rich
-      {% endif %}
-
-{%     if grains.oscodename == 'focal' %}
-# since Ubuntu requires and internet connection we can use pip to install modules
-python3-pip:
-  pkg.installed
-
-python-rich:
-  pip.installed:
-    - name: rich
-    - target: /usr/local/lib/python3.8/dist-packages/
-    - require:
-      - pkg: python3-pip
-{%     endif %}
-{% endif %}
-
-{% if grains.os_family == 'RedHat' %}
 
 remove_mariadb:
   pkg.removed:
@@ -84,5 +37,3 @@ commonpkgs:
       - unzip
       - wget
       - yum-utils
-
-{% endif %}

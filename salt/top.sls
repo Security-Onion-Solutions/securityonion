@@ -81,7 +81,6 @@ base:
     - suricata
     - zeek
     - strelka
-    - curator.disabled
     - elastalert
     - utility
     - elasticfleet
@@ -111,7 +110,6 @@ base:
     - suricata
     - zeek
     - strelka
-    - curator.disabled
     - elastalert
     - utility
     - elasticfleet
@@ -139,7 +137,6 @@ base:
     - redis
     - elastic-fleet-package-registry
     - kibana
-    - curator.disabled
     - elastalert
     - utility
     - elasticfleet
@@ -168,7 +165,6 @@ base:
     - elasticsearch
     - logstash
     - redis
-    - curator.disabled
     - elastic-fleet-package-registry
     - kibana
     - elastalert
@@ -238,7 +234,6 @@ base:
     - elasticsearch
     - logstash
     - redis
-    - curator.disabled
     - strelka
     - suricata
     - zeek
