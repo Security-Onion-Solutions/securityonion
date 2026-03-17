@@ -61,7 +61,7 @@ so-influxdb:
     {% if DOCKER.containers['so-influxdb'].ulimits %}
     - ulimits:
     {%   for ULIMIT in DOCKER.containers['so-influxdb'].ulimits %}
-      - {{ ULIMIT }}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
     {%   endfor %}
     {% endif %}
     - watch:

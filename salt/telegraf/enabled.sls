@@ -69,7 +69,7 @@ so-telegraf:
     {% if DOCKER.containers['so-telegraf'].ulimits %}
     - ulimits:
     {%   for ULIMIT in DOCKER.containers['so-telegraf'].ulimits %}
-      - {{ ULIMIT }}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
     {%   endfor %}
     {% endif %}
     - watch:

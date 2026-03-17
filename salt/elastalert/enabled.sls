@@ -54,7 +54,7 @@ so-elastalert:
     {% if DOCKER.containers['so-elastalert'].ulimits %}
     - ulimits:
     {%   for ULIMIT in DOCKER.containers['so-elastalert'].ulimits %}
-      - {{ ULIMIT }}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
     {%   endfor %}
     {% endif %}
     - require:

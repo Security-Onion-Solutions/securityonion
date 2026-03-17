@@ -1,3 +1,4 @@
+{% from 'docker/docker.map.jinja' import DOCKER -%}
 {
   "registry-mirrors": [
     "https://:5000"
@@ -8,12 +9,16 @@
       "base": "172.17.0.0/24",
       "size": 24
     }
-  ],
+  ]
+{%- if DOCKER.default_ulimits %},
   "default-ulimits": {
-      "nofile": {
-        "Name": "nofile",
-        "Soft": 1048576,
-        "Hard": 1048576
-      }
+{%-   for ULIMIT in DOCKER.default_ulimits %}
+    "{{ ULIMIT.name }}": {
+      "Name": "{{ ULIMIT.name }}",
+      "Soft": {{ ULIMIT.soft }},
+      "Hard": {{ ULIMIT.hard }}
+    }{{ "," if not loop.last else "" }}
+{%-   endfor %}
   }
+{%- endif %}
 }

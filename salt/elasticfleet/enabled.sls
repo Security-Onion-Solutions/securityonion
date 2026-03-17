@@ -136,7 +136,7 @@ so-elastic-fleet:
     {% if DOCKER.containers['so-elastic-fleet'].ulimits %}
     - ulimits:
     {%   for ULIMIT in DOCKER.containers['so-elastic-fleet'].ulimits %}
-      - {{ ULIMIT }}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
     {%   endfor %}
     {% endif %}
     - watch:

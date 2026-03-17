@@ -44,7 +44,7 @@ strelka_filestream:
     {% if DOCKER.containers['so-strelka-filestream'].ulimits %}
     - ulimits:
     {%   for ULIMIT in DOCKER.containers['so-strelka-filestream'].ulimits %}
-      - {{ ULIMIT }}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
     {%   endfor %}
     {% endif %}
     - watch:

@@ -63,7 +63,7 @@ so-kafka:
     {% if DOCKER.containers['so-kafka'].ulimits %}
     - ulimits:
     {%   for ULIMIT in DOCKER.containers['so-kafka'].ulimits %}
-      - {{ ULIMIT }}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
     {%   endfor %}
     {% endif %}
     - watch:

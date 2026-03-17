@@ -44,7 +44,7 @@ strelka_backend:
     {% if DOCKER.containers['so-strelka-backend'].ulimits %}
     - ulimits:
     {%   for ULIMIT in DOCKER.containers['so-strelka-backend'].ulimits %}
-      - {{ ULIMIT }}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
     {%   endfor %}
     {% endif %}
     - restart_policy: on-failure

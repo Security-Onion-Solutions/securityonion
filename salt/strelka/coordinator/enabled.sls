@@ -47,7 +47,7 @@ strelka_coordinator:
     {% if DOCKER.containers['so-strelka-coordinator'].ulimits %}
     - ulimits:
     {%   for ULIMIT in DOCKER.containers['so-strelka-coordinator'].ulimits %}
-      - {{ ULIMIT }}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
     {%   endfor %}
     {% endif %}
 delete_so-strelka-coordinator_so-status.disabled:

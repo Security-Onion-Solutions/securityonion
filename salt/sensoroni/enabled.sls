@@ -43,7 +43,7 @@ so-sensoroni:
     {% if DOCKER.containers['so-sensoroni'].ulimits %}
     - ulimits:
     {%   for ULIMIT in DOCKER.containers['so-sensoroni'].ulimits %}
-      - {{ ULIMIT }}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
     {%   endfor %}
     {% endif %}
     - watch:

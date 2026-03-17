@@ -78,7 +78,7 @@ so-nginx:
     {% if DOCKER.containers[container_config].ulimits %}
     - ulimits:
     {%   for ULIMIT in DOCKER.containers[container_config].ulimits %}
-      - {{ ULIMIT }}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
     {%   endfor %}
     {% endif %}
     - cap_add: NET_BIND_SERVICE

@@ -21,7 +21,7 @@ so-zeek:
     {% if DOCKER.containers['so-zeek'].ulimits %}
     - ulimits:
     {%   for ULIMIT in DOCKER.containers['so-zeek'].ulimits %}
-      - {{ ULIMIT }}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
     {%   endfor %}
     {% endif %}
     - binds:

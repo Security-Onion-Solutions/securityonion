@@ -55,7 +55,7 @@ so-hydra:
     {% if DOCKER.containers['so-hydra'].ulimits %}
     - ulimits:
     {%   for ULIMIT in DOCKER.containers['so-hydra'].ulimits %}
-      - {{ ULIMIT }}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
     {%   endfor %}
     {% endif %}
     - restart_policy: unless-stopped

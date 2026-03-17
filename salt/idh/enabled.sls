@@ -42,7 +42,7 @@ so-idh:
     {% if DOCKER.containers['so-idh'].ulimits %}
     - ulimits:
     {%   for ULIMIT in DOCKER.containers['so-idh'].ulimits %}
-      - {{ ULIMIT }}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
     {%   endfor %}
     {% endif %}
     - watch:
