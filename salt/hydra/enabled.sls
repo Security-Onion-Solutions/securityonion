@@ -11,7 +11,7 @@
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
-{%   from 'docker/docker.map.jinja' import DOCKER %}
+{%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 {%   if 'api' in salt['pillar.get']('features', []) %}
 
@@ -26,29 +26,29 @@ so-hydra:
     - name: so-hydra
     - networks:
       - sobridge:
-        - ipv4_address: {{ DOCKER.containers['so-hydra'].ip }}
+        - ipv4_address: {{ DOCKERMERGED.containers['so-hydra'].ip }}
     - binds:
       - /opt/so/conf/hydra/:/hydra-conf:ro
       - /opt/so/log/hydra/:/hydra-log:rw
       - /nsm/hydra/db:/hydra-data:rw
-      {% if DOCKER.containers['so-hydra'].custom_bind_mounts %}
-        {% for BIND in DOCKER.containers['so-hydra'].custom_bind_mounts %}
+      {% if DOCKERMERGED.containers['so-hydra'].custom_bind_mounts %}
+        {% for BIND in DOCKERMERGED.containers['so-hydra'].custom_bind_mounts %}
       - {{ BIND }}
         {% endfor %}
       {% endif %}
     - port_bindings:
-      {% for BINDING in DOCKER.containers['so-hydra'].port_bindings %}
+      {% for BINDING in DOCKERMERGED.containers['so-hydra'].port_bindings %}
       - {{ BINDING }}
       {% endfor %}
-    {% if DOCKER.containers['so-hydra'].extra_hosts %}
+    {% if DOCKERMERGED.containers['so-hydra'].extra_hosts %}
     - extra_hosts:
-      {% for XTRAHOST in DOCKER.containers['so-hydra'].extra_hosts %}
+      {% for XTRAHOST in DOCKERMERGED.containers['so-hydra'].extra_hosts %}
       - {{ XTRAHOST }}
       {% endfor %}
     {% endif %}
-    {% if DOCKER.containers['so-hydra'].extra_env %}
+    {% if DOCKERMERGED.containers['so-hydra'].extra_env %}
     - environment:
-      {% for XTRAENV in DOCKER.containers['so-hydra'].extra_env %}
+      {% for XTRAENV in DOCKERMERGED.containers['so-hydra'].extra_env %}
       - {{ XTRAENV }}
       {% endfor %}
     {% endif %}

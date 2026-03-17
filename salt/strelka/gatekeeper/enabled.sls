@@ -5,7 +5,7 @@
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
-{%   from 'docker/docker.map.jinja' import DOCKER %}
+{%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 
 include:
@@ -18,29 +18,29 @@ strelka_gatekeeper:
     - name: so-strelka-gatekeeper
     - networks:
       - sobridge:
-        - ipv4_address: {{ DOCKER.containers['so-strelka-gatekeeper'].ip }}
+        - ipv4_address: {{ DOCKERMERGED.containers['so-strelka-gatekeeper'].ip }}
     - entrypoint: redis-server --save "" --appendonly no --maxmemory-policy allkeys-lru
     - extra_hosts:
       - {{ GLOBALS.hostname }}:{{ GLOBALS.node_ip }}
-      {% if DOCKER.containers['so-strelka-gatekeeper'].extra_hosts %}
-        {% for XTRAHOST in DOCKER.containers['so-strelka-gatekeeper'].extra_hosts %}
+      {% if DOCKERMERGED.containers['so-strelka-gatekeeper'].extra_hosts %}
+        {% for XTRAHOST in DOCKERMERGED.containers['so-strelka-gatekeeper'].extra_hosts %}
       - {{ XTRAHOST }}
         {% endfor %}
       {% endif %}
     - port_bindings:
-      {% for BINDING in DOCKER.containers['so-strelka-gatekeeper'].port_bindings %}
+      {% for BINDING in DOCKERMERGED.containers['so-strelka-gatekeeper'].port_bindings %}
       - {{ BINDING }}
       {% endfor %}
     - binds:
       - /nsm/strelka/gk-redis-data:/data:rw
-      {% if DOCKER.containers['so-strelka-gatekeeper'].custom_bind_mounts %}
-        {% for BIND in DOCKER.containers['so-strelka-gatekeeper'].custom_bind_mounts %}
+      {% if DOCKERMERGED.containers['so-strelka-gatekeeper'].custom_bind_mounts %}
+        {% for BIND in DOCKERMERGED.containers['so-strelka-gatekeeper'].custom_bind_mounts %}
       - {{ BIND }}
         {% endfor %}
       {% endif %}
-    {% if DOCKER.containers['so-strelka-gatekeeper'].extra_env %}
+    {% if DOCKERMERGED.containers['so-strelka-gatekeeper'].extra_env %}
     - environment:
-      {% for XTRAENV in DOCKER.containers['so-strelka-gatekeeper'].extra_env %}
+      {% for XTRAENV in DOCKERMERGED.containers['so-strelka-gatekeeper'].extra_env %}
       - {{ XTRAENV }}
       {% endfor %}
     {% endif %}   

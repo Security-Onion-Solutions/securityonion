@@ -6,7 +6,7 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
-{%   from 'docker/docker.map.jinja' import DOCKER %}
+{%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 
 include:
   - registry.ssl
@@ -20,10 +20,10 @@ so-dockerregistry:
     - hostname: so-registry
     - networks:
       - sobridge:
-        - ipv4_address: {{ DOCKER.containers['so-dockerregistry'].ip }}
+        - ipv4_address: {{ DOCKERMERGED.containers['so-dockerregistry'].ip }}
     - restart_policy: always
     - port_bindings:
-      {% for BINDING in DOCKER.containers['so-dockerregistry'].port_bindings %}
+      {% for BINDING in DOCKERMERGED.containers['so-dockerregistry'].port_bindings %}
       - {{ BINDING }}
       {% endfor %}
     - binds:
@@ -32,22 +32,22 @@ so-dockerregistry:
       - /nsm/docker-registry/docker:/var/lib/registry/docker:rw
       - /etc/pki/registry.crt:/etc/pki/registry.crt:ro
       - /etc/pki/registry.key:/etc/pki/registry.key:ro
-      {% if DOCKER.containers['so-dockerregistry'].custom_bind_mounts %}
-        {% for BIND in DOCKER.containers['so-dockerregistry'].custom_bind_mounts %}
+      {% if DOCKERMERGED.containers['so-dockerregistry'].custom_bind_mounts %}
+        {% for BIND in DOCKERMERGED.containers['so-dockerregistry'].custom_bind_mounts %}
       - {{ BIND }}
         {% endfor %}
       {% endif %}
-    {% if DOCKER.containers['so-dockerregistry'].extra_hosts %}
+    {% if DOCKERMERGED.containers['so-dockerregistry'].extra_hosts %}
     - extra_hosts:
-      {% for XTRAHOST in DOCKER.containers['so-dockerregistry'].extra_hosts %}
+      {% for XTRAHOST in DOCKERMERGED.containers['so-dockerregistry'].extra_hosts %}
       - {{ XTRAHOST }}
       {% endfor %}
     {% endif %}
     - client_timeout: 180
     - environment:
       - HOME=/root
-      {% if DOCKER.containers['so-dockerregistry'].extra_env %}
-        {% for XTRAENV in DOCKER.containers['so-dockerregistry'].extra_env %}
+      {% if DOCKERMERGED.containers['so-dockerregistry'].extra_env %}
+        {% for XTRAENV in DOCKERMERGED.containers['so-dockerregistry'].extra_env %}
       - {{ XTRAENV }}
         {% endfor %}
       {% endif %}

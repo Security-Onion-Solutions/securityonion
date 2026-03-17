@@ -5,7 +5,7 @@
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
-{%   from 'docker/docker.map.jinja' import DOCKER %}
+{%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 
 include:
@@ -18,26 +18,26 @@ strelka_backend:
     - binds:
       - /opt/so/conf/strelka/backend/:/etc/strelka/:ro
       - /opt/so/conf/strelka/rules/compiled/:/etc/yara/:ro
-      {% if DOCKER.containers['so-strelka-backend'].custom_bind_mounts %}
-        {% for BIND in DOCKER.containers['so-strelka-backend'].custom_bind_mounts %}
+      {% if DOCKERMERGED.containers['so-strelka-backend'].custom_bind_mounts %}
+        {% for BIND in DOCKERMERGED.containers['so-strelka-backend'].custom_bind_mounts %}
       - {{ BIND }}
         {% endfor %}
       {% endif %}
     - name: so-strelka-backend
     - networks:
       - sobridge:
-        - ipv4_address: {{ DOCKER.containers['so-strelka-backend'].ip }}
+        - ipv4_address: {{ DOCKERMERGED.containers['so-strelka-backend'].ip }}
     - command: strelka-backend
     - extra_hosts:
       - {{ GLOBALS.hostname }}:{{ GLOBALS.node_ip }}
-      {% if DOCKER.containers['so-strelka-backend'].extra_hosts %}
-        {% for XTRAHOST in DOCKER.containers['so-strelka-backend'].extra_hosts %}
+      {% if DOCKERMERGED.containers['so-strelka-backend'].extra_hosts %}
+        {% for XTRAHOST in DOCKERMERGED.containers['so-strelka-backend'].extra_hosts %}
       - {{ XTRAHOST }}
         {% endfor %}
       {% endif %}
-    {% if DOCKER.containers['so-strelka-backend'].extra_env %}
+    {% if DOCKERMERGED.containers['so-strelka-backend'].extra_env %}
     - environment:
-      {% for XTRAENV in DOCKER.containers['so-strelka-backend'].extra_env %}
+      {% for XTRAENV in DOCKERMERGED.containers['so-strelka-backend'].extra_env %}
       - {{ XTRAENV }}
       {% endfor %}
     {% endif %}

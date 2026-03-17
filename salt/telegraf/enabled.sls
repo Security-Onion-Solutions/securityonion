@@ -6,7 +6,7 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
-{%   from 'docker/docker.map.jinja' import DOCKER %}
+{%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   from 'telegraf/map.jinja' import TELEGRAFMERGED %}
 
 include:
@@ -25,8 +25,8 @@ so-telegraf:
       - HOST_SYS=/host/sys
       - HOST_MOUNT_PREFIX=/host
       - GODEBUG=x509ignoreCN=0
-      {% if DOCKER.containers['so-telegraf'].extra_env %}
-        {% for XTRAENV in DOCKER.containers['so-telegraf'].extra_env %}
+      {% if DOCKERMERGED.containers['so-telegraf'].extra_env %}
+        {% for XTRAENV in DOCKERMERGED.containers['so-telegraf'].extra_env %}
       - {{ XTRAENV }}
         {% endfor %}
       {% endif %}
@@ -55,14 +55,14 @@ so-telegraf:
       {% if GLOBALS.is_manager or GLOBALS.role == 'so-heavynode' %}
       - /opt/so/conf/telegraf/etc/escurl.config:/etc/telegraf/elasticsearch.config:ro
       {% endif %}
-      {% if DOCKER.containers['so-telegraf'].custom_bind_mounts %}
-        {% for BIND in DOCKER.containers['so-telegraf'].custom_bind_mounts %}
+      {% if DOCKERMERGED.containers['so-telegraf'].custom_bind_mounts %}
+        {% for BIND in DOCKERMERGED.containers['so-telegraf'].custom_bind_mounts %}
       - {{ BIND }}
         {% endfor %}
       {% endif %}
-    {% if DOCKER.containers['so-telegraf'].extra_hosts %}
+    {% if DOCKERMERGED.containers['so-telegraf'].extra_hosts %}
     - extra_hosts:
-      {% for XTRAHOST in DOCKER.containers['so-telegraf'].extra_hosts %}
+      {% for XTRAHOST in DOCKERMERGED.containers['so-telegraf'].extra_hosts %}
       - {{ XTRAHOST }}
       {% endfor %}
     {% endif %}
