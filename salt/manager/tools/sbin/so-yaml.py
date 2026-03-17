@@ -22,7 +22,7 @@ def showUsage(args):
     print('    removelistitem   - Remove a list item from a yaml key, if it exists and is a list. Requires KEY and LISTITEM args.', file=sys.stderr)
     print('    replacelistobject  - Replace a list object based on a condition. Requires KEY, CONDITION_FIELD, CONDITION_VALUE, and JSON_OBJECT args.', file=sys.stderr)
     print('    add              - Add a new key and set its value. Fails if key already exists. Requires KEY and VALUE args.', file=sys.stderr)
-    print('    get              - Displays (to stdout) the value stored in the given key. Requires KEY arg.', file=sys.stderr)
+    print('    get [-r]         - Displays (to stdout) the value stored in the given key. Requires KEY arg. Use -r for raw output without YAML formatting.', file=sys.stderr)
     print('    remove           - Removes a yaml key, if it exists. Requires KEY arg.', file=sys.stderr)
     print('    replace          - Replaces (or adds) a new key and set its value. Requires KEY and VALUE args.', file=sys.stderr)
     print('    help             - Prints this usage information.', file=sys.stderr)
@@ -332,6 +332,11 @@ def getKeyValue(content, key):
 
 
 def get(args):
+    raw = False
+    if len(args) > 0 and args[0] == '-r':
+        raw = True
+        args = args[1:]
+
     if len(args) != 2:
         print('Missing filename or key arg', file=sys.stderr)
         showUsage(None)
@@ -346,12 +351,15 @@ def get(args):
         print(f"Key '{key}' not found by so-yaml.py", file=sys.stderr)
         return 2
 
-    if isinstance(output, bool):
-        print(str(output).lower())
-    elif isinstance(output, (dict, list)):
-        print(yaml.safe_dump(output).strip())
+    if raw:
+        if isinstance(output, bool):
+            print(str(output).lower())
+        elif isinstance(output, (dict, list)):
+            print(yaml.safe_dump(output).strip())
+        else:
+            print(output)
     else:
-        print(output)
+        print(yaml.safe_dump(output))
     return 0
 
 

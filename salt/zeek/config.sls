@@ -156,6 +156,9 @@ zeekja4cfg:
     - source: salt://zeek/files/config.zeek.ja4
     - user: 937
     - group: 939
+    - template: jinja
+    - defaults:
+        JA4PLUS_ENABLED: {{ ZEEKMERGED.ja4plus_enabled }}
 
 # BPF compilation failed
 {% if ZEEKBPF and not ZEEK_BPF_STATUS %}

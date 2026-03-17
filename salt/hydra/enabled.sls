@@ -67,7 +67,7 @@ delete_so-hydra_so-status.disabled:
 
 wait_for_hydra:
   http.wait_for_successful_query:
-    - name: 'http://{{ GLOBALS.manager }}:4444/'
+    - name: 'http://{{ GLOBALS.manager }}:4444/health/alive'
     - ssl: True
     - verify_ssl: False
     - status:
