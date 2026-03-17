@@ -10,7 +10,7 @@
 
 vm.max_map_count:
   sysctl.present:
-    - value: 262144
+    - value: {{ ELASTICSEARCHMERGED.vm.max_map_count }}
 
 # Add ES Group
 elasticsearchgroup:
