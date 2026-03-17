@@ -43,7 +43,13 @@ strelka_gatekeeper:
       {% for XTRAENV in DOCKERMERGED.containers['so-strelka-gatekeeper'].extra_env %}
       - {{ XTRAENV }}
       {% endfor %}
-    {% endif %}   
+    {% endif %}
+    {% if DOCKER.containers['so-strelka-gatekeeper'].ulimits %}
+    - ulimits:
+    {%   for ULIMIT in DOCKER.containers['so-strelka-gatekeeper'].ulimits %}
+      - {{ ULIMIT }}
+    {%   endfor %}
+    {% endif %}
 
 delete_so-strelka-gatekeeper_so-status.disabled:
   file.uncomment:

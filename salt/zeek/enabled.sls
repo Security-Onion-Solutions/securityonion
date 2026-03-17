@@ -18,9 +18,12 @@ so-zeek:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-zeek:{{ GLOBALS.so_version }}
     - start: True
     - privileged: True
+    {% if DOCKER.containers['so-zeek'].ulimits %}
     - ulimits:
-      - core=0
-      - nofile=1048576:1048576
+    {%   for ULIMIT in DOCKER.containers['so-zeek'].ulimits %}
+      - {{ ULIMIT }}
+    {%   endfor %}
+    {% endif %}
     - binds:
       - /nsm/zeek/logs:/nsm/zeek/logs:rw
       - /nsm/zeek/spool:/nsm/zeek/spool:rw

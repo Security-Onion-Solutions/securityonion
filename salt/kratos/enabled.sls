@@ -45,6 +45,12 @@ so-kratos:
       - {{ XTRAENV }}
       {% endfor %}
     {% endif %}
+    {% if DOCKER.containers['so-kratos'].ulimits %}
+    - ulimits:
+    {%   for ULIMIT in DOCKER.containers['so-kratos'].ulimits %}
+      - {{ ULIMIT }}
+    {%   endfor %}
+    {% endif %}
     - restart_policy: unless-stopped
     - watch:
       - file: kratosschema

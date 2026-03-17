@@ -75,6 +75,12 @@ so-nginx:
       - {{ XTRAENV }}
       {% endfor %}
     {% endif %}
+    {% if DOCKER.containers[container_config].ulimits %}
+    - ulimits:
+    {%   for ULIMIT in DOCKER.containers[container_config].ulimits %}
+      - {{ ULIMIT }}
+    {%   endfor %}
+    {% endif %}
     - cap_add: NET_BIND_SERVICE
     - port_bindings:
       {% for BINDING in DOCKERMERGED.containers[container_config].port_bindings %}

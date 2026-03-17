@@ -45,6 +45,12 @@ so-elastic-fleet-package-registry:
       - {{ XTRAENV }}
         {% endfor %}
       {% endif %}
+    {% if DOCKER.containers['so-elastic-fleet-package-registry'].ulimits %}
+    - ulimits:
+    {%   for ULIMIT in DOCKER.containers['so-elastic-fleet-package-registry'].ulimits %}
+      - {{ ULIMIT }}
+    {%   endfor %}
+    {% endif %}
 delete_so-elastic-fleet-package-registry_so-status.disabled:
   file.uncomment:
     - name: /opt/so/conf/so-status/so-status.conf

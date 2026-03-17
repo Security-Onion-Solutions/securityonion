@@ -41,6 +41,12 @@ strelka_filestream:
       - {{ XTRAENV }}
       {% endfor %}
     {% endif %}
+    {% if DOCKER.containers['so-strelka-filestream'].ulimits %}
+    - ulimits:
+    {%   for ULIMIT in DOCKER.containers['so-strelka-filestream'].ulimits %}
+      - {{ ULIMIT }}
+    {%   endfor %}
+    {% endif %}
     - watch:
       - file: filestream_config
 

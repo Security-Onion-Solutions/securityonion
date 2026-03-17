@@ -51,6 +51,12 @@ so-redis:
       - {{ XTRAENV }}
       {% endfor %}
     {% endif %}
+    {% if DOCKER.containers['so-redis'].ulimits %}
+    - ulimits:
+    {%   for ULIMIT in DOCKER.containers['so-redis'].ulimits %}
+      - {{ ULIMIT }}
+    {%   endfor %}
+    {% endif %}
     - entrypoint: "redis-server /usr/local/etc/redis/redis.conf"
     - watch:
       - file: trusttheca

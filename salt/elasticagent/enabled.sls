@@ -54,6 +54,12 @@ so-elastic-agent:
       - {{ XTRAENV }}
         {% endfor %}
       {% endif %}
+    {% if DOCKER.containers['so-elastic-agent'].ulimits %}
+    - ulimits:
+    {%   for ULIMIT in DOCKER.containers['so-elastic-agent'].ulimits %}
+      - {{ ULIMIT }}
+    {%   endfor %}
+    {% endif %}
     - require:
       - file: create-elastic-agent-config
       - file: trusttheca

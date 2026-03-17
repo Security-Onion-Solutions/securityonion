@@ -78,6 +78,12 @@ so-soc:
       - {{ XTRAENV }}
     {%   endfor %}
     {% endif %}
+    {% if DOCKER.containers['so-soc'].ulimits %}
+    - ulimits:
+    {%   for ULIMIT in DOCKER.containers['so-soc'].ulimits %}
+      - {{ ULIMIT }}
+    {%   endfor %}
+    {% endif %}
     - watch:
       - file: trusttheca
       - file: /opt/so/conf/soc/*

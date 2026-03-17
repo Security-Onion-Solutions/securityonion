@@ -58,6 +58,12 @@ so-influxdb:
       - {{ XTRAHOST }}
       {% endfor %}
     {% endif %}
+    {% if DOCKER.containers['so-influxdb'].ulimits %}
+    - ulimits:
+    {%   for ULIMIT in DOCKER.containers['so-influxdb'].ulimits %}
+      - {{ ULIMIT }}
+    {%   endfor %}
+    {% endif %}
     - watch:
       - file: influxdbconf
       - x509: influxdb_key

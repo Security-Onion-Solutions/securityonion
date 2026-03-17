@@ -39,6 +39,12 @@ so-idh:
       - {{ XTRAENV }}
       {% endfor %}
     {% endif %}
+    {% if DOCKER.containers['so-idh'].ulimits %}
+    - ulimits:
+    {%   for ULIMIT in DOCKER.containers['so-idh'].ulimits %}
+      - {{ ULIMIT }}
+    {%   endfor %}
+    {% endif %}
     - watch:
       - file: opencanary_config
     - require:

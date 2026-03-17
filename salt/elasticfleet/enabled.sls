@@ -133,6 +133,12 @@ so-elastic-fleet:
       - {{ XTRAENV }}
         {% endfor %}
       {% endif %}
+    {% if DOCKER.containers['so-elastic-fleet'].ulimits %}
+    - ulimits:
+    {%   for ULIMIT in DOCKER.containers['so-elastic-fleet'].ulimits %}
+      - {{ ULIMIT }}
+    {%   endfor %}
+    {% endif %}
     - watch:
       - file: trusttheca
       - x509: etc_elasticfleet_key

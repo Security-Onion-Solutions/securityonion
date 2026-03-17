@@ -40,6 +40,12 @@ strelka_manager:
       - {{ XTRAENV }}
       {% endfor %}
     {% endif %}
+    {% if DOCKER.containers['so-strelka-manager'].ulimits %}
+    - ulimits:
+    {%   for ULIMIT in DOCKER.containers['so-strelka-manager'].ulimits %}
+      - {{ ULIMIT }}
+    {%   endfor %}
+    {% endif %}
     - watch:
       - file: manager_config
 

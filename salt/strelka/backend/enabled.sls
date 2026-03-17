@@ -41,6 +41,12 @@ strelka_backend:
       - {{ XTRAENV }}
       {% endfor %}
     {% endif %}
+    {% if DOCKER.containers['so-strelka-backend'].ulimits %}
+    - ulimits:
+    {%   for ULIMIT in DOCKER.containers['so-strelka-backend'].ulimits %}
+      - {{ ULIMIT }}
+    {%   endfor %}
+    {% endif %}
     - restart_policy: on-failure
     - watch:
       - file: strelkasensorcompiledrules
