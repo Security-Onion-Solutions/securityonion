@@ -51,9 +51,9 @@ so-dockerregistry:
       - {{ XTRAENV }}
         {% endfor %}
       {% endif %}
-    {% if DOCKER.containers['so-dockerregistry'].ulimits %}
+    {% if DOCKERMERGED.containers['so-dockerregistry'].ulimits %}
     - ulimits:
-    {%   for ULIMIT in DOCKER.containers['so-dockerregistry'].ulimits %}
+    {%   for ULIMIT in DOCKERMERGED.containers['so-dockerregistry'].ulimits %}
       - {{ ULIMIT }}
     {%   endfor %}
     {% endif %}

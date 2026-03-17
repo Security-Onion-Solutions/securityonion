@@ -51,9 +51,9 @@ so-elastalert:
       - {{ XTRAENV }}
         {% endfor %}
       {% endif %}
-    {% if DOCKER.containers['so-elastalert'].ulimits %}
+    {% if DOCKERMERGED.containers['so-elastalert'].ulimits %}
     - ulimits:
-    {%   for ULIMIT in DOCKER.containers['so-elastalert'].ulimits %}
+    {%   for ULIMIT in DOCKERMERGED.containers['so-elastalert'].ulimits %}
       - {{ ULIMIT }}
     {%   endfor %}
     {% endif %}

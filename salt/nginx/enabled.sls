@@ -75,9 +75,9 @@ so-nginx:
       - {{ XTRAENV }}
       {% endfor %}
     {% endif %}
-    {% if DOCKER.containers[container_config].ulimits %}
+    {% if DOCKERMERGED.containers[container_config].ulimits %}
     - ulimits:
-    {%   for ULIMIT in DOCKER.containers[container_config].ulimits %}
+    {%   for ULIMIT in DOCKERMERGED.containers[container_config].ulimits %}
       - {{ ULIMIT }}
     {%   endfor %}
     {% endif %}

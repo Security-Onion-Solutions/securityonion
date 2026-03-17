@@ -96,9 +96,9 @@ so-logstash:
       - {{ BIND }}
         {% endfor %}
       {% endif %}
-    {% if DOCKER.containers['so-logstash'].ulimits %}
+    {% if DOCKERMERGED.containers['so-logstash'].ulimits %}
     - ulimits:
-    {%   for ULIMIT in DOCKER.containers['so-logstash'].ulimits %}
+    {%   for ULIMIT in DOCKERMERGED.containers['so-logstash'].ulimits %}
       - {{ ULIMIT }}
     {%   endfor %}
     {% endif %}

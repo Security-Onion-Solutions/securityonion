@@ -40,9 +40,9 @@ so-sensoroni:
       - {{ XTRAENV }}
       {% endfor %}
     {% endif %}
-    {% if DOCKER.containers['so-sensoroni'].ulimits %}
+    {% if DOCKERMERGED.containers['so-sensoroni'].ulimits %}
     - ulimits:
-    {%   for ULIMIT in DOCKER.containers['so-sensoroni'].ulimits %}
+    {%   for ULIMIT in DOCKERMERGED.containers['so-sensoroni'].ulimits %}
       - {{ ULIMIT }}
     {%   endfor %}
     {% endif %}

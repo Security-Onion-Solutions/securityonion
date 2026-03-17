@@ -39,9 +39,9 @@ so-idh:
       - {{ XTRAENV }}
       {% endfor %}
     {% endif %}
-    {% if DOCKER.containers['so-idh'].ulimits %}
+    {% if DOCKERMERGED.containers['so-idh'].ulimits %}
     - ulimits:
-    {%   for ULIMIT in DOCKER.containers['so-idh'].ulimits %}
+    {%   for ULIMIT in DOCKERMERGED.containers['so-idh'].ulimits %}
       - {{ ULIMIT }}
     {%   endfor %}
     {% endif %}

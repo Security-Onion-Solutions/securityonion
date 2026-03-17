@@ -40,9 +40,9 @@ strelka_manager:
       - {{ XTRAENV }}
       {% endfor %}
     {% endif %}
-    {% if DOCKER.containers['so-strelka-manager'].ulimits %}
+    {% if DOCKERMERGED.containers['so-strelka-manager'].ulimits %}
     - ulimits:
-    {%   for ULIMIT in DOCKER.containers['so-strelka-manager'].ulimits %}
+    {%   for ULIMIT in DOCKERMERGED.containers['so-strelka-manager'].ulimits %}
       - {{ ULIMIT }}
     {%   endfor %}
     {% endif %}

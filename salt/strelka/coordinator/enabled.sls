@@ -44,9 +44,9 @@ strelka_coordinator:
       - {{ BIND }}
         {% endfor %}
       {% endif %}
-    {% if DOCKER.containers['so-strelka-coordinator'].ulimits %}
+    {% if DOCKERMERGED.containers['so-strelka-coordinator'].ulimits %}
     - ulimits:
-    {%   for ULIMIT in DOCKER.containers['so-strelka-coordinator'].ulimits %}
+    {%   for ULIMIT in DOCKERMERGED.containers['so-strelka-coordinator'].ulimits %}
       - {{ ULIMIT }}
     {%   endfor %}
     {% endif %}

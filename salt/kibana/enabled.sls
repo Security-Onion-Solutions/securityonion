@@ -51,9 +51,9 @@ so-kibana:
       {% for BINDING in DOCKERMERGED.containers['so-kibana'].port_bindings %}
       - {{ BINDING }}
       {% endfor %}
-    {% if DOCKER.containers['so-kibana'].ulimits %}
+    {% if DOCKERMERGED.containers['so-kibana'].ulimits %}
     - ulimits:
-    {%   for ULIMIT in DOCKER.containers['so-kibana'].ulimits %}
+    {%   for ULIMIT in DOCKERMERGED.containers['so-kibana'].ulimits %}
       - {{ ULIMIT }}
     {%   endfor %}
     {% endif %}

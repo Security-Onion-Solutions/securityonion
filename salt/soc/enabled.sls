@@ -78,9 +78,9 @@ so-soc:
       - {{ XTRAENV }}
     {%   endfor %}
     {% endif %}
-    {% if DOCKER.containers['so-soc'].ulimits %}
+    {% if DOCKERMERGED.containers['so-soc'].ulimits %}
     - ulimits:
-    {%   for ULIMIT in DOCKER.containers['so-soc'].ulimits %}
+    {%   for ULIMIT in DOCKERMERGED.containers['so-soc'].ulimits %}
       - {{ ULIMIT }}
     {%   endfor %}
     {% endif %}

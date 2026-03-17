@@ -45,14 +45,14 @@ so-elasticsearch:
       - discovery.type=single-node
       {% endif %}
       - ES_JAVA_OPTS=-Xms{{ GLOBALS.elasticsearch.es_heap }} -Xmx{{ GLOBALS.elasticsearch.es_heap }} -Des.transport.cname_in_publish_address=true -Dlog4j2.formatMsgNoLookups=true
-      {% if DOCKER.containers['so-elasticsearch'].extra_env %}
-        {% for XTRAENV in DOCKER.containers['so-elasticsearch'].extra_env %}
+      {% if DOCKERMERGED.containers['so-elasticsearch'].extra_env %}
+        {% for XTRAENV in DOCKERMERGED.containers['so-elasticsearch'].extra_env %}
       - {{ XTRAENV }}
         {% endfor %}
       {% endif %}
-    {% if DOCKER.containers['so-elasticsearch'].ulimits %}
+    {% if DOCKERMERGED.containers['so-elasticsearch'].ulimits %}
     - ulimits:
-    {%   for ULIMIT in DOCKER.containers['so-elasticsearch'].ulimits %}
+    {%   for ULIMIT in DOCKERMERGED.containers['so-elasticsearch'].ulimits %}
       - {{ ULIMIT }}
     {%   endfor %}
     {% endif %}

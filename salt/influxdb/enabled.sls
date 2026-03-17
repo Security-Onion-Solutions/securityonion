@@ -58,9 +58,9 @@ so-influxdb:
       - {{ XTRAHOST }}
       {% endfor %}
     {% endif %}
-    {% if DOCKER.containers['so-influxdb'].ulimits %}
+    {% if DOCKERMERGED.containers['so-influxdb'].ulimits %}
     - ulimits:
-    {%   for ULIMIT in DOCKER.containers['so-influxdb'].ulimits %}
+    {%   for ULIMIT in DOCKERMERGED.containers['so-influxdb'].ulimits %}
       - {{ ULIMIT }}
     {%   endfor %}
     {% endif %}

@@ -41,9 +41,9 @@ strelka_filestream:
       - {{ XTRAENV }}
       {% endfor %}
     {% endif %}
-    {% if DOCKER.containers['so-strelka-filestream'].ulimits %}
+    {% if DOCKERMERGED.containers['so-strelka-filestream'].ulimits %}
     - ulimits:
-    {%   for ULIMIT in DOCKER.containers['so-strelka-filestream'].ulimits %}
+    {%   for ULIMIT in DOCKERMERGED.containers['so-strelka-filestream'].ulimits %}
       - {{ ULIMIT }}
     {%   endfor %}
     {% endif %}

@@ -41,9 +41,9 @@ strelka_backend:
       - {{ XTRAENV }}
       {% endfor %}
     {% endif %}
-    {% if DOCKER.containers['so-strelka-backend'].ulimits %}
+    {% if DOCKERMERGED.containers['so-strelka-backend'].ulimits %}
     - ulimits:
-    {%   for ULIMIT in DOCKER.containers['so-strelka-backend'].ulimits %}
+    {%   for ULIMIT in DOCKERMERGED.containers['so-strelka-backend'].ulimits %}
       - {{ ULIMIT }}
     {%   endfor %}
     {% endif %}

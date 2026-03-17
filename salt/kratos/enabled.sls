@@ -45,9 +45,9 @@ so-kratos:
       - {{ XTRAENV }}
       {% endfor %}
     {% endif %}
-    {% if DOCKER.containers['so-kratos'].ulimits %}
+    {% if DOCKERMERGED.containers['so-kratos'].ulimits %}
     - ulimits:
-    {%   for ULIMIT in DOCKER.containers['so-kratos'].ulimits %}
+    {%   for ULIMIT in DOCKERMERGED.containers['so-kratos'].ulimits %}
       - {{ ULIMIT }}
     {%   endfor %}
     {% endif %}

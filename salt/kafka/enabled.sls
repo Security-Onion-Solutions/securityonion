@@ -60,9 +60,9 @@ so-kafka:
       {% if KAFKA_EXTERNAL_ACCESS %}
       - /opt/so/conf/kafka/kafka_server_jaas.conf:/opt/kafka/config/kafka_server_jaas.conf:ro
       {% endif %}
-    {% if DOCKER.containers['so-kafka'].ulimits %}
+    {% if DOCKERMERGED.containers['so-kafka'].ulimits %}
     - ulimits:
-    {%   for ULIMIT in DOCKER.containers['so-kafka'].ulimits %}
+    {%   for ULIMIT in DOCKERMERGED.containers['so-kafka'].ulimits %}
       - {{ ULIMIT }}
     {%   endfor %}
     {% endif %}

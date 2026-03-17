@@ -52,9 +52,9 @@ so-hydra:
       - {{ XTRAENV }}
       {% endfor %}
     {% endif %}
-    {% if DOCKER.containers['so-hydra'].ulimits %}
+    {% if DOCKERMERGED.containers['so-hydra'].ulimits %}
     - ulimits:
-    {%   for ULIMIT in DOCKER.containers['so-hydra'].ulimits %}
+    {%   for ULIMIT in DOCKERMERGED.containers['so-hydra'].ulimits %}
       - {{ ULIMIT }}
     {%   endfor %}
     {% endif %}

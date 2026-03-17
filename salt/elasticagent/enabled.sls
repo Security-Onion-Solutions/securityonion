@@ -54,9 +54,9 @@ so-elastic-agent:
       - {{ XTRAENV }}
         {% endfor %}
       {% endif %}
-    {% if DOCKER.containers['so-elastic-agent'].ulimits %}
+    {% if DOCKERMERGED.containers['so-elastic-agent'].ulimits %}
     - ulimits:
-    {%   for ULIMIT in DOCKER.containers['so-elastic-agent'].ulimits %}
+    {%   for ULIMIT in DOCKERMERGED.containers['so-elastic-agent'].ulimits %}
       - {{ ULIMIT }}
     {%   endfor %}
     {% endif %}

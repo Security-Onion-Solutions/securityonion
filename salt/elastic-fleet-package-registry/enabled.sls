@@ -45,9 +45,9 @@ so-elastic-fleet-package-registry:
       - {{ XTRAENV }}
         {% endfor %}
       {% endif %}
-    {% if DOCKER.containers['so-elastic-fleet-package-registry'].ulimits %}
+    {% if DOCKERMERGED.containers['so-elastic-fleet-package-registry'].ulimits %}
     - ulimits:
-    {%   for ULIMIT in DOCKER.containers['so-elastic-fleet-package-registry'].ulimits %}
+    {%   for ULIMIT in DOCKERMERGED.containers['so-elastic-fleet-package-registry'].ulimits %}
       - {{ ULIMIT }}
     {%   endfor %}
     {% endif %}

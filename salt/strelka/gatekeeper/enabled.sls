@@ -44,9 +44,9 @@ strelka_gatekeeper:
       - {{ XTRAENV }}
       {% endfor %}
     {% endif %}
-    {% if DOCKER.containers['so-strelka-gatekeeper'].ulimits %}
+    {% if DOCKERMERGED.containers['so-strelka-gatekeeper'].ulimits %}
     - ulimits:
-    {%   for ULIMIT in DOCKER.containers['so-strelka-gatekeeper'].ulimits %}
+    {%   for ULIMIT in DOCKERMERGED.containers['so-strelka-gatekeeper'].ulimits %}
       - {{ ULIMIT }}
     {%   endfor %}
     {% endif %}

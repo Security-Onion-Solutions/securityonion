@@ -51,9 +51,9 @@ so-redis:
       - {{ XTRAENV }}
       {% endfor %}
     {% endif %}
-    {% if DOCKER.containers['so-redis'].ulimits %}
+    {% if DOCKERMERGED.containers['so-redis'].ulimits %}
     - ulimits:
-    {%   for ULIMIT in DOCKER.containers['so-redis'].ulimits %}
+    {%   for ULIMIT in DOCKERMERGED.containers['so-redis'].ulimits %}
       - {{ ULIMIT }}
     {%   endfor %}
     {% endif %}

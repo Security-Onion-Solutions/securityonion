@@ -133,9 +133,9 @@ so-elastic-fleet:
       - {{ XTRAENV }}
         {% endfor %}
       {% endif %}
-    {% if DOCKER.containers['so-elastic-fleet'].ulimits %}
+    {% if DOCKERMERGED.containers['so-elastic-fleet'].ulimits %}
     - ulimits:
-    {%   for ULIMIT in DOCKER.containers['so-elastic-fleet'].ulimits %}
+    {%   for ULIMIT in DOCKERMERGED.containers['so-elastic-fleet'].ulimits %}
       - {{ ULIMIT }}
     {%   endfor %}
     {% endif %}

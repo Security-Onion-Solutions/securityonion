@@ -18,9 +18,9 @@ so-zeek:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-zeek:{{ GLOBALS.so_version }}
     - start: True
     - privileged: True
-    {% if DOCKER.containers['so-zeek'].ulimits %}
+    {% if DOCKERMERGED.containers['so-zeek'].ulimits %}
     - ulimits:
-    {%   for ULIMIT in DOCKER.containers['so-zeek'].ulimits %}
+    {%   for ULIMIT in DOCKERMERGED.containers['so-zeek'].ulimits %}
       - {{ ULIMIT }}
     {%   endfor %}
     {% endif %}
