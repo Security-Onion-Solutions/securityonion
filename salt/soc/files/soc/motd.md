@@ -18,7 +18,7 @@ For more coverage of your enterprise, you can deploy the Elastic Agent to endpoi
 
 ## What's New 
 
-To see all the latest features and fixes in this version of Security Onion, click the upper-right menu and then click the [What's New](/docs/release-notes.html) link.
+To see all the latest features and fixes in this version of Security Onion, click the upper-right menu and then click the [What's New](/docs/release-notes) link.
 
 ## Security Onion Pro
 
