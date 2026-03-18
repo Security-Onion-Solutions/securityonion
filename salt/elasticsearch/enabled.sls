@@ -6,7 +6,7 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
-{%   from 'docker/docker.map.jinja' import DOCKER %}
+{%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   from 'elasticsearch/config.map.jinja' import ELASTICSEARCH_NODES %}
 {%   from 'elasticsearch/config.map.jinja' import ELASTICSEARCH_SEED_HOSTS %}
 {%   from 'elasticsearch/config.map.jinja' import ELASTICSEARCHMERGED %}
@@ -28,15 +28,15 @@ so-elasticsearch:
     - user: elasticsearch
     - networks:
       - sobridge:
-        - ipv4_address: {{ DOCKER.containers['so-elasticsearch'].ip }}
+        - ipv4_address: {{ DOCKERMERGED.containers['so-elasticsearch'].ip }}
     - extra_hosts:
     {% for node in ELASTICSEARCH_NODES %}
     {%   for hostname, ip in node.items() %}
       - {{hostname}}:{{ip}}
     {%   endfor %}
     {% endfor %}
-    {% if DOCKER.containers['so-elasticsearch'].extra_hosts %}
-      {% for XTRAHOST in DOCKER.containers['so-elasticsearch'].extra_hosts %}
+    {% if DOCKERMERGED.containers['so-elasticsearch'].extra_hosts %}
+      {% for XTRAHOST in DOCKERMERGED.containers['so-elasticsearch'].extra_hosts %}
       - {{ XTRAHOST }}
       {% endfor %}
     {% endif %}
@@ -45,19 +45,19 @@ so-elasticsearch:
       - discovery.type=single-node
       {% endif %}
       - ES_JAVA_OPTS=-Xms{{ GLOBALS.elasticsearch.es_heap }} -Xmx{{ GLOBALS.elasticsearch.es_heap }} -Des.transport.cname_in_publish_address=true -Dlog4j2.formatMsgNoLookups=true
-      {% if DOCKER.containers['so-elasticsearch'].extra_env %}
-        {% for XTRAENV in DOCKER.containers['so-elasticsearch'].extra_env %}
+      {% if DOCKERMERGED.containers['so-elasticsearch'].extra_env %}
+        {% for XTRAENV in DOCKERMERGED.containers['so-elasticsearch'].extra_env %}
       - {{ XTRAENV }}
         {% endfor %}
       {% endif %}
-    {% if DOCKER.containers['so-elasticsearch'].ulimits %}
+    {% if DOCKERMERGED.containers['so-elasticsearch'].ulimits %}
     - ulimits:
-    {%   for ULIMIT in DOCKER.containers['so-elasticsearch'].ulimits %}
-      - {{ ULIMIT }}
+    {%   for ULIMIT in DOCKERMERGED.containers['so-elasticsearch'].ulimits %}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
     {%   endfor %}
     {% endif %}
     - port_bindings:
-      {% for BINDING in DOCKER.containers['so-elasticsearch'].port_bindings %}
+      {% for BINDING in DOCKERMERGED.containers['so-elasticsearch'].port_bindings %}
       - {{ BINDING }}
       {% endfor %}
     - binds:
@@ -77,8 +77,8 @@ so-elasticsearch:
       - {{ repo }}:{{ repo }}:rw
         {% endfor %}
       {% endif %}
-      {% if DOCKER.containers['so-elasticsearch'].custom_bind_mounts %}
-        {% for BIND in DOCKER.containers['so-elasticsearch'].custom_bind_mounts %}
+      {% if DOCKERMERGED.containers['so-elasticsearch'].custom_bind_mounts %}
+        {% for BIND in DOCKERMERGED.containers['so-elasticsearch'].custom_bind_mounts %}
       - {{ BIND }}
         {% endfor %}
       {% endif %}

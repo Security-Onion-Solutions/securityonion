@@ -6,7 +6,7 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
-{%   from 'docker/docker.map.jinja' import DOCKER %}
+{%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 
 include:
   - elastic-fleet-package-registry.config
@@ -21,34 +21,34 @@ so-elastic-fleet-package-registry:
     - user: 948
     - networks:
       - sobridge:
-        - ipv4_address: {{ DOCKER.containers['so-elastic-fleet-package-registry'].ip }}
+        - ipv4_address: {{ DOCKERMERGED.containers['so-elastic-fleet-package-registry'].ip }}
     - extra_hosts:
         - {{ GLOBALS.hostname }}:{{ GLOBALS.node_ip }}
-        {% if DOCKER.containers['so-elastic-fleet-package-registry'].extra_hosts %}
-          {% for XTRAHOST in DOCKER.containers['so-elastic-fleet-package-registry'].extra_hosts %}
+        {% if DOCKERMERGED.containers['so-elastic-fleet-package-registry'].extra_hosts %}
+          {% for XTRAHOST in DOCKERMERGED.containers['so-elastic-fleet-package-registry'].extra_hosts %}
         - {{ XTRAHOST }}
           {% endfor %}
         {% endif %}
     - port_bindings:
-      {% for BINDING in DOCKER.containers['so-elastic-fleet-package-registry'].port_bindings %}
+      {% for BINDING in DOCKERMERGED.containers['so-elastic-fleet-package-registry'].port_bindings %}
       - {{ BINDING }}
       {% endfor %}
-    {% if DOCKER.containers['so-elastic-fleet-package-registry'].custom_bind_mounts %}
+    {% if DOCKERMERGED.containers['so-elastic-fleet-package-registry'].custom_bind_mounts %}
     - binds:
-        {% for BIND in DOCKER.containers['so-elastic-fleet-package-registry'].custom_bind_mounts %}
+        {% for BIND in DOCKERMERGED.containers['so-elastic-fleet-package-registry'].custom_bind_mounts %}
       - {{ BIND }}
         {% endfor %}
     {% endif %}
-    {% if DOCKER.containers['so-elastic-fleet-package-registry'].extra_env %}
+    {% if DOCKERMERGED.containers['so-elastic-fleet-package-registry'].extra_env %}
     - environment:
-        {% for XTRAENV in DOCKER.containers['so-elastic-fleet-package-registry'].extra_env %}
+        {% for XTRAENV in DOCKERMERGED.containers['so-elastic-fleet-package-registry'].extra_env %}
       - {{ XTRAENV }}
         {% endfor %}
       {% endif %}
-    {% if DOCKER.containers['so-elastic-fleet-package-registry'].ulimits %}
+    {% if DOCKERMERGED.containers['so-elastic-fleet-package-registry'].ulimits %}
     - ulimits:
-    {%   for ULIMIT in DOCKER.containers['so-elastic-fleet-package-registry'].ulimits %}
-      - {{ ULIMIT }}
+    {%   for ULIMIT in DOCKERMERGED.containers['so-elastic-fleet-package-registry'].ulimits %}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
     {%   endfor %}
     {% endif %}
 delete_so-elastic-fleet-package-registry_so-status.disabled:

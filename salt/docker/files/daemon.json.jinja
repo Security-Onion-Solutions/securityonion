@@ -1,0 +1,24 @@
+{% from 'docker/docker.map.jinja' import DOCKERMERGED -%}
+{
+  "registry-mirrors": [
+    "https://:5000"
+  ],
+  "bip": "172.17.0.1/24",
+  "default-address-pools": [
+    {
+      "base": "172.17.0.0/24",
+      "size": 24
+    }
+  ]
+{%- if DOCKERMERGED.ulimits %},
+  "default-ulimits": {
+{%-   for ULIMIT in DOCKERMERGED.ulimits %}
+    "{{ ULIMIT.name }}": {
+      "Name": "{{ ULIMIT.name }}",
+      "Soft": {{ ULIMIT.soft }},
+      "Hard": {{ ULIMIT.hard }}
+    }{{ "," if not loop.last else "" }}
+{%-   endfor %}
+  }
+{%- endif %}
+}

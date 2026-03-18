@@ -1,6 +1,10 @@
 docker:
   range: '172.17.1.0/24'
   gateway: '172.17.1.1'
+  ulimits:
+    - name: nofile
+      soft: 1048576
+      hard: 1048576
   containers:
     'so-dockerregistry':
       final_octet: 20
@@ -27,9 +31,15 @@ docker:
       extra_hosts: []
       extra_env: []
       ulimits:
-        - memlock=-1:-1
-        - nofile=65536:65536
-        - nproc=4096
+        - name: memlock
+          soft: -1
+          hard: -1
+        - name: nofile
+          soft: 65536
+          hard: 65536
+        - name: nproc
+          soft: 4096
+          hard: 4096
     'so-influxdb':
       final_octet: 26
       port_bindings:
@@ -207,15 +217,21 @@ docker:
       extra_hosts: []
       extra_env: []
       ulimits:
-        - memlock=524288000
+        - name: memlock
+          soft: 524288000
+          hard: 524288000
     'so-zeek':
       final_octet: 99
       custom_bind_mounts: []
       extra_hosts: []
       extra_env: []
       ulimits:
-        - core=0
-        - nofile=1048576:1048576
+        - name: core
+          soft: 0
+          hard: 0
+        - name: nofile
+          soft: 1048576
+          hard: 1048576
     'so-kafka':
       final_octet: 88
       port_bindings:

@@ -5,7 +5,7 @@
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
-{%   from 'docker/docker.map.jinja' import DOCKER %}
+{%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 
 include:
@@ -19,36 +19,36 @@ so-kratos:
     - name: so-kratos
     - networks:
       - sobridge:
-        - ipv4_address: {{ DOCKER.containers['so-kratos'].ip }}
+        - ipv4_address: {{ DOCKERMERGED.containers['so-kratos'].ip }}
     - binds:
       - /opt/so/conf/kratos/:/kratos-conf:ro
       - /opt/so/log/kratos/:/kratos-log:rw
       - /nsm/kratos/db:/kratos-data:rw
-      {% if DOCKER.containers['so-kratos'].custom_bind_mounts %}
-        {% for BIND in DOCKER.containers['so-kratos'].custom_bind_mounts %}
+      {% if DOCKERMERGED.containers['so-kratos'].custom_bind_mounts %}
+        {% for BIND in DOCKERMERGED.containers['so-kratos'].custom_bind_mounts %}
       - {{ BIND }}
         {% endfor %}
       {% endif %}
     - port_bindings:
-      {% for BINDING in DOCKER.containers['so-kratos'].port_bindings %}
+      {% for BINDING in DOCKERMERGED.containers['so-kratos'].port_bindings %}
       - {{ BINDING }}
       {% endfor %}
-    {% if DOCKER.containers['so-kratos'].extra_hosts %}
+    {% if DOCKERMERGED.containers['so-kratos'].extra_hosts %}
     - extra_hosts:
-      {% for XTRAHOST in DOCKER.containers['so-kratos'].extra_hosts %}
+      {% for XTRAHOST in DOCKERMERGED.containers['so-kratos'].extra_hosts %}
       - {{ XTRAHOST }}
       {% endfor %}
     {% endif %}
-    {% if DOCKER.containers['so-kratos'].extra_env %}
+    {% if DOCKERMERGED.containers['so-kratos'].extra_env %}
     - environment:
-      {% for XTRAENV in DOCKER.containers['so-kratos'].extra_env %}
+      {% for XTRAENV in DOCKERMERGED.containers['so-kratos'].extra_env %}
       - {{ XTRAENV }}
       {% endfor %}
     {% endif %}
-    {% if DOCKER.containers['so-kratos'].ulimits %}
+    {% if DOCKERMERGED.containers['so-kratos'].ulimits %}
     - ulimits:
-    {%   for ULIMIT in DOCKER.containers['so-kratos'].ulimits %}
-      - {{ ULIMIT }}
+    {%   for ULIMIT in DOCKERMERGED.containers['so-kratos'].ulimits %}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
     {%   endfor %}
     {% endif %}
     - restart_policy: unless-stopped

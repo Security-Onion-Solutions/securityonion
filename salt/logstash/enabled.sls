@@ -6,7 +6,7 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
-{%   from 'docker/docker.map.jinja' import DOCKER %}
+{%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   from 'logstash/map.jinja' import LOGSTASH_MERGED %}
 {%   from 'logstash/map.jinja' import LOGSTASH_NODES %}
 {%   set lsheap = LOGSTASH_MERGED.settings.lsheap %}
@@ -32,7 +32,7 @@ so-logstash:
     - name: so-logstash
     - networks:
       - sobridge:
-        - ipv4_address: {{ DOCKER.containers['so-logstash'].ip }}
+        - ipv4_address: {{ DOCKERMERGED.containers['so-logstash'].ip }}
     - user: logstash
     - extra_hosts:
     {% for node in LOGSTASH_NODES %}
@@ -40,20 +40,20 @@ so-logstash:
       - {{hostname}}:{{ip}}
     {%   endfor %}
     {% endfor %}
-    {% if DOCKER.containers['so-logstash'].extra_hosts %}
-    {%   for XTRAHOST in DOCKER.containers['so-logstash'].extra_hosts %}
+    {% if DOCKERMERGED.containers['so-logstash'].extra_hosts %}
+    {%   for XTRAHOST in DOCKERMERGED.containers['so-logstash'].extra_hosts %}
       - {{ XTRAHOST }}
     {%   endfor %}
     {% endif %}
     - environment:
       - LS_JAVA_OPTS=-Xms{{ lsheap }} -Xmx{{ lsheap }}
-    {% if DOCKER.containers['so-logstash'].extra_env %}
-    {%   for XTRAENV in DOCKER.containers['so-logstash'].extra_env %}
+    {% if DOCKERMERGED.containers['so-logstash'].extra_env %}
+    {%   for XTRAENV in DOCKERMERGED.containers['so-logstash'].extra_env %}
       - {{ XTRAENV }}
     {%   endfor %}
     {% endif %}
     - port_bindings:
-      {% for BINDING in DOCKER.containers['so-logstash'].port_bindings %}
+      {% for BINDING in DOCKERMERGED.containers['so-logstash'].port_bindings %}
       - {{ BINDING }}
       {% endfor %}
     - binds:
@@ -91,15 +91,15 @@ so-logstash:
       - /opt/so/log/fleet/:/osquery/logs:ro
       - /opt/so/log/strelka:/strelka:ro
       {% endif %}
-      {% if DOCKER.containers['so-logstash'].custom_bind_mounts %}
-        {% for BIND in DOCKER.containers['so-logstash'].custom_bind_mounts %}
+      {% if DOCKERMERGED.containers['so-logstash'].custom_bind_mounts %}
+        {% for BIND in DOCKERMERGED.containers['so-logstash'].custom_bind_mounts %}
       - {{ BIND }}
         {% endfor %}
       {% endif %}
-    {% if DOCKER.containers['so-logstash'].ulimits %}
+    {% if DOCKERMERGED.containers['so-logstash'].ulimits %}
     - ulimits:
-    {%   for ULIMIT in DOCKER.containers['so-logstash'].ulimits %}
-      - {{ ULIMIT }}
+    {%   for ULIMIT in DOCKERMERGED.containers['so-logstash'].ulimits %}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
     {%   endfor %}
     {% endif %}
     - watch:

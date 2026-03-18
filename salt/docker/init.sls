@@ -3,7 +3,7 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-{% from 'docker/docker.map.jinja' import DOCKER %}
+{% from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 
 # docker service requires the ca.crt
@@ -41,11 +41,11 @@ dockeretc:
   file.directory:
     - name: /etc/docker
 
-# Manager daemon.json
+# Manager daemon.json.jinja
 docker_daemon:
   file.managed:
-    - source: salt://common/files/daemon.json
-    - name: /etc/docker/daemon.json
+    - source: salt://docker/files/daemon.json.jinja
+    - name: /etc/docker/daemon.json.jinja
     - template: jinja 
 
 # Make sure Docker is always running
@@ -75,8 +75,8 @@ dockerreserveports:
 sos_docker_net:
   docker_network.present:
     - name: sobridge
-    - subnet: {{ DOCKER.range }}
-    - gateway: {{ DOCKER.gateway }}
+    - subnet: {{ DOCKERMERGED.range }}
+    - gateway: {{ DOCKERMERGED.gateway }}
     - options:
         com.docker.network.bridge.name: 'sobridge'
         com.docker.network.driver.mtu: '1500'

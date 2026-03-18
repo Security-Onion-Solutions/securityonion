@@ -4,7 +4,7 @@
 # Elastic License 2.0.
 
 {% from 'vars/globals.map.jinja' import GLOBALS %}
-{% from 'docker/docker.map.jinja' import DOCKER %}
+{% from 'docker/docker.map.jinja' import DOCKERMERGED %}
 
 
 include:
@@ -23,27 +23,27 @@ so-sensoroni:
       - /opt/so/conf/sensoroni/templates:/opt/sensoroni/templates:ro
       - /opt/so/log/sensoroni:/opt/sensoroni/logs:rw
       - /nsm/suripcap/:/nsm/suripcap:rw
-      {% if DOCKER.containers['so-sensoroni'].custom_bind_mounts %}
-        {% for BIND in DOCKER.containers['so-sensoroni'].custom_bind_mounts %}
+      {% if DOCKERMERGED.containers['so-sensoroni'].custom_bind_mounts %}
+        {% for BIND in DOCKERMERGED.containers['so-sensoroni'].custom_bind_mounts %}
       - {{ BIND }}
         {% endfor %}
       {% endif %}
-    {% if DOCKER.containers['so-sensoroni'].extra_hosts %}
+    {% if DOCKERMERGED.containers['so-sensoroni'].extra_hosts %}
     - extra_hosts:
-      {% for XTRAHOST in DOCKER.containers['so-sensoroni'].extra_hosts %}
+      {% for XTRAHOST in DOCKERMERGED.containers['so-sensoroni'].extra_hosts %}
       - {{ XTRAHOST }}
       {% endfor %}
     {% endif %}
-    {% if DOCKER.containers['so-sensoroni'].extra_env %}
+    {% if DOCKERMERGED.containers['so-sensoroni'].extra_env %}
     - environment:
-      {% for XTRAENV in DOCKER.containers['so-sensoroni'].extra_env %}
+      {% for XTRAENV in DOCKERMERGED.containers['so-sensoroni'].extra_env %}
       - {{ XTRAENV }}
       {% endfor %}
     {% endif %}
-    {% if DOCKER.containers['so-sensoroni'].ulimits %}
+    {% if DOCKERMERGED.containers['so-sensoroni'].ulimits %}
     - ulimits:
-    {%   for ULIMIT in DOCKER.containers['so-sensoroni'].ulimits %}
-      - {{ ULIMIT }}
+    {%   for ULIMIT in DOCKERMERGED.containers['so-sensoroni'].ulimits %}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
     {%   endfor %}
     {% endif %}
     - watch:

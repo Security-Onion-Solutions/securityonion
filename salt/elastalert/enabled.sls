@@ -6,7 +6,7 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
-{%   from 'docker/docker.map.jinja' import DOCKER %}
+{%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 
 include:
   - elastalert.config
@@ -24,7 +24,7 @@ so-elastalert:
     - user: so-elastalert
     - networks:
       - sobridge:
-        - ipv4_address: {{ DOCKER.containers['so-elastalert'].ip }}
+        - ipv4_address: {{ DOCKERMERGED.containers['so-elastalert'].ip }}
     - detach: True
     - binds:
       - /opt/so/rules/elastalert:/opt/elastalert/rules/:ro
@@ -33,28 +33,28 @@ so-elastalert:
       - /opt/so/conf/elastalert/predefined/:/opt/elastalert/predefined/:ro
       - /opt/so/conf/elastalert/custom/:/opt/elastalert/custom/:ro
       - /opt/so/conf/elastalert/elastalert_config.yaml:/opt/elastalert/config.yaml:ro
-      {% if DOCKER.containers['so-elastalert'].custom_bind_mounts %}
-        {% for BIND in DOCKER.containers['so-elastalert'].custom_bind_mounts %}
+      {% if DOCKERMERGED.containers['so-elastalert'].custom_bind_mounts %}
+        {% for BIND in DOCKERMERGED.containers['so-elastalert'].custom_bind_mounts %}
       - {{ BIND }}
         {% endfor %}
       {% endif %}
     - extra_hosts:
       - {{ GLOBALS.manager }}:{{ GLOBALS.manager_ip }}
-      {% if DOCKER.containers['so-elastalert'].extra_hosts %}
-        {% for XTRAHOST in DOCKER.containers['so-elastalert'].extra_hosts %}
+      {% if DOCKERMERGED.containers['so-elastalert'].extra_hosts %}
+        {% for XTRAHOST in DOCKERMERGED.containers['so-elastalert'].extra_hosts %}
       - {{ XTRAHOST }}
         {% endfor %}
       {% endif %}
-      {% if DOCKER.containers['so-elastalert'].extra_env %}
+      {% if DOCKERMERGED.containers['so-elastalert'].extra_env %}
     - environment:
-        {% for XTRAENV in DOCKER.containers['so-elastalert'].extra_env %}
+        {% for XTRAENV in DOCKERMERGED.containers['so-elastalert'].extra_env %}
       - {{ XTRAENV }}
         {% endfor %}
       {% endif %}
-    {% if DOCKER.containers['so-elastalert'].ulimits %}
+    {% if DOCKERMERGED.containers['so-elastalert'].ulimits %}
     - ulimits:
-    {%   for ULIMIT in DOCKER.containers['so-elastalert'].ulimits %}
-      - {{ ULIMIT }}
+    {%   for ULIMIT in DOCKERMERGED.containers['so-elastalert'].ulimits %}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
     {%   endfor %}
     {% endif %}
     - require:
