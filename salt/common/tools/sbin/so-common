@@ -545,6 +545,22 @@ retry() {
         return $exitcode
 }
 
+rollover_index() {
+  idx=$1
+  exists=$(so-elasticsearch-query $idx -o /dev/null -w "%{http_code}")
+  if [[ $exists -eq 200 ]]; then
+    rollover=$(so-elasticsearch-query $idx/_rollover -o /dev/null -w "%{http_code}" -XPOST)
+
+    if [[ $rollover -eq 200 ]]; then
+      echo "Successfully triggered rollover for $idx..."
+    else
+      echo "Could not trigger rollover for $idx..."
+    fi
+  else
+    echo "Could not find index $idx..."
+  fi
+}
+
 run_check_net_err() {
 	local cmd=$1
 	local err_msg=${2:-"Unknown error occured, please check /root/$WHATWOULDYOUSAYYAHDOHERE.log for details."} # Really need to rename that variable

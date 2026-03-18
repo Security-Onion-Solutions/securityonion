@@ -403,7 +403,15 @@ migrate_pcap_to_suricata() {
 }
 
 post_to_3.0.0() {
-  echo "Nothing to apply"
+  for idx in "logs-idh-so" "logs-redis.log-default"; do
+    rollover_index "$idx"
+  done
+
+  # Remove ILM for so-case and so-detection indices
+  for idx in "so-case" "so-casehistory" "so-detection" "so-detectionhistory"; do
+    so-elasticsearch-query $idx/_ilm/remove -XPOST
+  done
+
   POSTVERSION=3.0.0
 }
 
