@@ -7,6 +7,22 @@ docker:
     description: Default docker IP range for containers.
     helpLink: docker.html
     advanced: True
+  ulimits:
+    description: Default ulimit settings applied to all containers via the Docker daemon. Each entry specifies a resource name (e.g. nofile, memlock, core, nproc) with soft and hard limits. Individual container ulimits override these defaults.
+    forcedType: "[]{}"
+    syntax: json
+    advanced: True
+    helpLink: docker.html
+    uiElements:
+    - field: name
+      label: Resource Name
+      required: True
+    - field: soft
+      label: Soft Limit
+      forcedType: int
+    - field: hard
+      label: Hard Limit
+      forcedType: int
   containers:
     so-dockerregistry: &dockerOptions
       final_octet:
@@ -40,11 +56,21 @@ docker:
         multiline: True
         forcedType: "[]string"
       ulimits:
-        description: Ulimits for the container.
+        description: Ulimit settings for the container. Each entry specifies a resource name (e.g. nofile, memlock, core, nproc) with optional soft and hard limits.
         advanced: True
         helpLink: docker.html
-        multiline: True
-        forcedType: "[]string"
+        forcedType: "[]{}"
+        syntax: json
+        uiElements:
+        - field: name
+          label: Resource Name
+          required: True
+        - field: soft
+          label: Soft Limit
+          forcedType: int
+        - field: hard
+          label: Hard Limit
+          forcedType: int
     so-elastic-fleet: *dockerOptions
     so-elasticsearch: *dockerOptions
     so-influxdb: *dockerOptions

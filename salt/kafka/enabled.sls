@@ -63,7 +63,7 @@ so-kafka:
     {% if DOCKERMERGED.containers['so-kafka'].ulimits %}
     - ulimits:
     {%   for ULIMIT in DOCKERMERGED.containers['so-kafka'].ulimits %}
-      - {{ ULIMIT }}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
     {%   endfor %}
     {% endif %}
     - watch:

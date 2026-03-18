@@ -48,7 +48,7 @@ so-kratos:
     {% if DOCKERMERGED.containers['so-kratos'].ulimits %}
     - ulimits:
     {%   for ULIMIT in DOCKERMERGED.containers['so-kratos'].ulimits %}
-      - {{ ULIMIT }}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
     {%   endfor %}
     {% endif %}
     - restart_policy: unless-stopped

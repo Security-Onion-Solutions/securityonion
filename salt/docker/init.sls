@@ -41,11 +41,11 @@ dockeretc:
   file.directory:
     - name: /etc/docker
 
-# Manager daemon.json
+# Manager daemon.json.jinja
 docker_daemon:
   file.managed:
-    - source: salt://docker/files/daemon.json
-    - name: /etc/docker/daemon.json
+    - source: salt://docker/files/daemon.json.jinja
+    - name: /etc/docker/daemon.json.jinja
     - template: jinja 
 
 # Make sure Docker is always running

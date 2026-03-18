@@ -54,7 +54,7 @@ so-dockerregistry:
     {% if DOCKERMERGED.containers['so-dockerregistry'].ulimits %}
     - ulimits:
     {%   for ULIMIT in DOCKERMERGED.containers['so-dockerregistry'].ulimits %}
-      - {{ ULIMIT }}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
     {%   endfor %}
     {% endif %}
     - retry:

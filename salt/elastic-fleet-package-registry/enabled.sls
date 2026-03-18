@@ -48,7 +48,7 @@ so-elastic-fleet-package-registry:
     {% if DOCKERMERGED.containers['so-elastic-fleet-package-registry'].ulimits %}
     - ulimits:
     {%   for ULIMIT in DOCKERMERGED.containers['so-elastic-fleet-package-registry'].ulimits %}
-      - {{ ULIMIT }}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
     {%   endfor %}
     {% endif %}
 delete_so-elastic-fleet-package-registry_so-status.disabled:

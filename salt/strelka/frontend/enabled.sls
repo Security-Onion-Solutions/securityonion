@@ -49,7 +49,7 @@ strelka_frontend:
     {% if DOCKERMERGED.containers['so-strelka-frontend'].ulimits %}
     - ulimits:
     {%   for ULIMIT in DOCKERMERGED.containers['so-strelka-frontend'].ulimits %}
-      - {{ ULIMIT }}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
     {%   endfor %}
     {% endif %}
     - watch:

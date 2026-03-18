@@ -99,7 +99,7 @@ so-logstash:
     {% if DOCKERMERGED.containers['so-logstash'].ulimits %}
     - ulimits:
     {%   for ULIMIT in DOCKERMERGED.containers['so-logstash'].ulimits %}
-      - {{ ULIMIT }}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
     {%   endfor %}
     {% endif %}
     - watch:

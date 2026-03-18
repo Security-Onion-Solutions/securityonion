@@ -81,7 +81,7 @@ so-soc:
     {% if DOCKERMERGED.containers['so-soc'].ulimits %}
     - ulimits:
     {%   for ULIMIT in DOCKERMERGED.containers['so-soc'].ulimits %}
-      - {{ ULIMIT }}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
     {%   endfor %}
     {% endif %}
     - watch:

@@ -53,7 +53,7 @@ so-elasticsearch:
     {% if DOCKERMERGED.containers['so-elasticsearch'].ulimits %}
     - ulimits:
     {%   for ULIMIT in DOCKERMERGED.containers['so-elasticsearch'].ulimits %}
-      - {{ ULIMIT }}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
     {%   endfor %}
     {% endif %}
     - port_bindings:

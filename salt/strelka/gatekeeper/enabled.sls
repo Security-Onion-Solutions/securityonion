@@ -47,7 +47,7 @@ strelka_gatekeeper:
     {% if DOCKERMERGED.containers['so-strelka-gatekeeper'].ulimits %}
     - ulimits:
     {%   for ULIMIT in DOCKERMERGED.containers['so-strelka-gatekeeper'].ulimits %}
-      - {{ ULIMIT }}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
     {%   endfor %}
     {% endif %}
 

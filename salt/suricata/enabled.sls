@@ -29,7 +29,7 @@ so-suricata:
     {% if SURICATAMERGED.config['af-packet'][0]['mmap-locked'] == "yes" and DOCKERMERGED.containers['so-suricata'].ulimits %}
     - ulimits:
     {%   for ULIMIT in DOCKERMERGED.containers['so-suricata'].ulimits %}
-      - {{ ULIMIT }}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
     {%   endfor %}
     {% endif %}
     - binds:

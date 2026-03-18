@@ -54,7 +54,7 @@ so-kibana:
     {% if DOCKERMERGED.containers['so-kibana'].ulimits %}
     - ulimits:
     {%   for ULIMIT in DOCKERMERGED.containers['so-kibana'].ulimits %}
-      - {{ ULIMIT }}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
     {%   endfor %}
     {% endif %}
     - watch:

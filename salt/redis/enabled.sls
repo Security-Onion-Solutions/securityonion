@@ -54,7 +54,7 @@ so-redis:
     {% if DOCKERMERGED.containers['so-redis'].ulimits %}
     - ulimits:
     {%   for ULIMIT in DOCKERMERGED.containers['so-redis'].ulimits %}
-      - {{ ULIMIT }}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
     {%   endfor %}
     {% endif %}
     - entrypoint: "redis-server /usr/local/etc/redis/redis.conf"
