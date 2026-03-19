@@ -43,8 +43,9 @@ elasticsearch:
       routing:
         allocation:
           disk:
-            threshold_enabled: 
+            threshold_enabled:
               description: Specifies whether the Elasticsearch node will monitor the available disk space for low disk space conditions and take action to protect the cluster.
+              forcedType: bool
               helpLink: elasticsearch
             watermark:
               low: 
@@ -56,18 +57,64 @@ elasticsearch:
               flood_stage: 
                 description: The max percentage of used disk space that will cause the node to take protective actions, such as blocking incoming events.
                 helpLink: elasticsearch
+    action:
+      destructive_requires_name:
+        description: Requires explicit index names when deleting indices. Prevents accidental deletion of indices via wildcard patterns.
+        advanced: True
+        forcedType: bool
+        helpLink: elasticsearch
     script:
-      max_compilations_rate: 
+      max_compilations_rate:
         description: Max rate of script compilations permitted in the Elasticsearch cluster. Larger values will consume more resources.
         global: True
         helpLink: elasticsearch
     indices:
+      id_field_data:
+        enabled:
+          description: Enables or disables loading of field data on the _id field.
+          advanced: True
+          forcedType: bool
+          helpLink: elasticsearch
       query:
         bool:
-          max_clause_count: 
+          max_clause_count:
             description: Max number of boolean clauses per query.
             global: True
             helpLink: elasticsearch
+    xpack:
+      ml:
+        enabled:
+          description: Enables or disables machine learning on the node.
+          forcedType: bool
+          advanced: True
+          helpLink: elasticsearch
+      security:
+        enabled:
+          description: Enables or disables Elasticsearch security features.
+          forcedType: bool
+          advanced: True
+          helpLink: elasticsearch
+        authc:
+          anonymous:
+            authz_exception:
+              description: Controls whether an authorization exception is thrown when anonymous user does not have the required privileges.
+              advanced: True
+              forcedType: bool
+              helpLink: elasticsearch
+        http:
+          ssl:
+            enabled:
+              description: Enables or disables TLS/SSL for the HTTP layer.
+              advanced: True
+              forcedType: bool
+              helpLink: elasticsearch
+        transport:
+          ssl:
+            enabled:
+              description: Enables or disables TLS/SSL for the transport layer.
+              advanced: True
+              forcedType: bool
+              helpLink: elasticsearch
   pipelines:
     custom001: &pipelines
       description:
@@ -265,8 +312,9 @@ elasticsearch:
               global: True
               helpLink: elasticsearch
     so-logs: &indexSettings
-      index_sorting: 
+      index_sorting:
         description: Sorts the index by event time, at the cost of additional processing resource consumption.
+        forcedType: bool
         global: True
         advanced: True
         helpLink: elasticsearch
@@ -610,6 +658,7 @@ elasticsearch:
     so-metrics-fleet_server_x_agent_status: &fleetMetricsSettings
       index_sorting:
         description: Sorts the index by event time, at the cost of additional processing resource consumption.
+        forcedType: bool
         advanced: True
         readonly: True
         helpLink: elasticsearch
@@ -650,11 +699,13 @@ elasticsearch:
         data_stream:
           hidden:
             description: Hide the data stream.
+            forcedType: bool
             advanced: True
             readonly: True
             helpLink: elasticsearch
           allow_custom_routing:
             description: Allow custom routing for the data stream.
+            forcedType: bool
             advanced: True
             readonly: True
             helpLink: elasticsearch
