@@ -6,7 +6,7 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
-{%   from 'docker/docker.map.jinja' import DOCKER %}
+{%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 
 
 include:
@@ -18,9 +18,12 @@ so-zeek:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-zeek:{{ GLOBALS.so_version }}
     - start: True
     - privileged: True
+    {% if DOCKERMERGED.containers['so-zeek'].ulimits %}
     - ulimits:
-      - core=0
-      - nofile=1048576:1048576
+    {%   for ULIMIT in DOCKERMERGED.containers['so-zeek'].ulimits %}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
+    {%   endfor %}
+    {% endif %}
     - binds:
       - /nsm/zeek/logs:/nsm/zeek/logs:rw
       - /nsm/zeek/spool:/nsm/zeek/spool:rw
@@ -36,21 +39,21 @@ so-zeek:
       - /opt/so/conf/zeek/bpf:/opt/zeek/etc/bpf:ro
       - /opt/so/conf/zeek/config.zeek:/opt/zeek/share/zeek/site/packages/ja4/config.zeek:ro
       - /opt/so/conf/zeek/zkg:/opt/so/conf/zeek/zkg:ro
-      {% if DOCKER.containers['so-zeek'].custom_bind_mounts %}
-        {% for BIND in DOCKER.containers['so-zeek'].custom_bind_mounts %}
+      {% if DOCKERMERGED.containers['so-zeek'].custom_bind_mounts %}
+        {% for BIND in DOCKERMERGED.containers['so-zeek'].custom_bind_mounts %}
       - {{ BIND }}
         {% endfor %}
       {% endif %} 
     - network_mode: host
-    {% if DOCKER.containers['so-zeek'].extra_hosts %}
+    {% if DOCKERMERGED.containers['so-zeek'].extra_hosts %}
     - extra_hosts:
-      {% for XTRAHOST in DOCKER.containers['so-zeek'].extra_hosts %}
+      {% for XTRAHOST in DOCKERMERGED.containers['so-zeek'].extra_hosts %}
       - {{ XTRAHOST }}
       {% endfor %}
     {% endif %}
-    {% if DOCKER.containers['so-zeek'].extra_env %}
+    {% if DOCKERMERGED.containers['so-zeek'].extra_env %}
     - environment:
-      {% for XTRAENV in DOCKER.containers['so-zeek'].extra_env %}
+      {% for XTRAENV in DOCKERMERGED.containers['so-zeek'].extra_env %}
       - {{ XTRAENV }}
       {% endfor %}
     {% endif %}

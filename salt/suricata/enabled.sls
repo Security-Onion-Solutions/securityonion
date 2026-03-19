@@ -6,7 +6,7 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
-{%   from 'docker/docker.map.jinja' import DOCKER %}
+{%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   from 'suricata/map.jinja' import SURICATAMERGED %}
 
 
@@ -20,16 +20,15 @@ so-suricata:
     - privileged: True
     - environment:
       - INTERFACE={{ GLOBALS.sensor.interface }}
-      {% if DOCKER.containers['so-suricata'].extra_env %}
-        {% for XTRAENV in DOCKER.containers['so-suricata'].extra_env %}
+      {% if DOCKERMERGED.containers['so-suricata'].extra_env %}
+        {% for XTRAENV in DOCKERMERGED.containers['so-suricata'].extra_env %}
       - {{ XTRAENV }}
         {% endfor %}
       {% endif %}
-    {# we look at SURICATAMERGED.config['af-packet'][0] since we only allow one interface and therefore always the first list item #}
-    {% if SURICATAMERGED.config['af-packet'][0]['mmap-locked'] == "yes" and DOCKER.containers['so-suricata'].ulimits %}
+    {% if DOCKERMERGED.containers['so-suricata'].ulimits %}
     - ulimits:
-    {%   for ULIMIT in DOCKER.containers['so-suricata'].ulimits %}
-      - {{ ULIMIT }}
+    {%   for ULIMIT in DOCKERMERGED.containers['so-suricata'].ulimits %}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
     {%   endfor %}
     {% endif %}
     - binds:
@@ -42,15 +41,15 @@ so-suricata:
       - /nsm/suricata/extracted:/var/log/suricata//filestore:rw
       - /opt/so/conf/suricata/bpf:/etc/suricata/bpf:ro
       - /nsm/suripcap/:/nsm/suripcap:rw
-      {% if DOCKER.containers['so-suricata'].custom_bind_mounts %}
-        {% for BIND in DOCKER.containers['so-suricata'].custom_bind_mounts %}
+      {% if DOCKERMERGED.containers['so-suricata'].custom_bind_mounts %}
+        {% for BIND in DOCKERMERGED.containers['so-suricata'].custom_bind_mounts %}
       - {{ BIND }}
         {% endfor %}
       {% endif %}
     - network_mode: host
-    {% if DOCKER.containers['so-suricata'].extra_hosts %}
+    {% if DOCKERMERGED.containers['so-suricata'].extra_hosts %}
     - extra_hosts:
-      {% for XTRAHOST in DOCKER.containers['so-suricata'].extra_hosts %}
+      {% for XTRAHOST in DOCKERMERGED.containers['so-suricata'].extra_hosts %}
       - {{ XTRAHOST }}
       {% endfor %}
     {% endif %}

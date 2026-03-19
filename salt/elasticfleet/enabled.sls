@@ -6,7 +6,7 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
-{%   from 'docker/docker.map.jinja' import DOCKER %}
+{%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   from 'elasticfleet/map.jinja' import ELASTICFLEETMERGED %}
 
 {#   This value is generated during node install and stored in minion pillar #}
@@ -94,17 +94,17 @@ so-elastic-fleet:
     - user: 947
     - networks:
       - sobridge:
-        - ipv4_address: {{ DOCKER.containers['so-elastic-fleet'].ip }}
+        - ipv4_address: {{ DOCKERMERGED.containers['so-elastic-fleet'].ip }}
     - extra_hosts:
         - {{ GLOBALS.manager }}:{{ GLOBALS.manager_ip }}
         - {{ GLOBALS.hostname }}:{{ GLOBALS.node_ip }}
-        {% if DOCKER.containers['so-elastic-fleet'].extra_hosts %}
-          {% for XTRAHOST in DOCKER.containers['so-elastic-fleet'].extra_hosts %}
+        {% if DOCKERMERGED.containers['so-elastic-fleet'].extra_hosts %}
+          {% for XTRAHOST in DOCKERMERGED.containers['so-elastic-fleet'].extra_hosts %}
         - {{ XTRAHOST }}
           {% endfor %}
         {% endif %}
     - port_bindings:
-      {% for BINDING in DOCKER.containers['so-elastic-fleet'].port_bindings %}
+      {% for BINDING in DOCKERMERGED.containers['so-elastic-fleet'].port_bindings %}
       - {{ BINDING }}
       {% endfor %}
     - binds:
@@ -112,8 +112,8 @@ so-elastic-fleet:
       - /etc/pki/elasticfleet-server.key:/etc/pki/elasticfleet-server.key:ro
       - /etc/pki/tls/certs/intca.crt:/etc/pki/tls/certs/intca.crt:ro
       - /opt/so/log/elasticfleet:/usr/share/elastic-agent/logs 
-     {% if DOCKER.containers['so-elastic-fleet'].custom_bind_mounts %}
-        {% for BIND in DOCKER.containers['so-elastic-fleet'].custom_bind_mounts %}
+     {% if DOCKERMERGED.containers['so-elastic-fleet'].custom_bind_mounts %}
+        {% for BIND in DOCKERMERGED.containers['so-elastic-fleet'].custom_bind_mounts %}
       - {{ BIND }}
         {% endfor %}
       {% endif %}      
@@ -128,11 +128,17 @@ so-elastic-fleet:
       - FLEET_CA=/etc/pki/tls/certs/intca.crt     
       - FLEET_SERVER_ELASTICSEARCH_CA=/etc/pki/tls/certs/intca.crt
       - LOGS_PATH=logs
-      {% if DOCKER.containers['so-elastic-fleet'].extra_env %}
-        {% for XTRAENV in DOCKER.containers['so-elastic-fleet'].extra_env %}
+      {% if DOCKERMERGED.containers['so-elastic-fleet'].extra_env %}
+        {% for XTRAENV in DOCKERMERGED.containers['so-elastic-fleet'].extra_env %}
       - {{ XTRAENV }}
         {% endfor %}
       {% endif %}
+    {% if DOCKERMERGED.containers['so-elastic-fleet'].ulimits %}
+    - ulimits:
+    {%   for ULIMIT in DOCKERMERGED.containers['so-elastic-fleet'].ulimits %}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
+    {%   endfor %}
+    {% endif %}
     - watch:
       - file: trusttheca
       - x509: etc_elasticfleet_key

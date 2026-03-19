@@ -1,5 +1,5 @@
 {%- from 'vars/globals.map.jinja' import GLOBALS %}
-{%- from 'docker/docker.map.jinja' import DOCKER %}
+{%- from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%- from 'firewall/map.jinja' import FIREWALL_MERGED %}
 {%- set role = GLOBALS.role.split('-')[1] %}
 {%- from 'firewall/containers.map.jinja' import NODE_CONTAINERS %}
@@ -8,9 +8,9 @@
 {%- set D1 = [] %}
 {%- set D2 = [] %}
 {%- for container in NODE_CONTAINERS %}
-{%-   set IP = DOCKER.containers[container].ip %}
-{%-   if DOCKER.containers[container].port_bindings is defined %}
-{%-     for binding in DOCKER.containers[container].port_bindings %}
+{%-   set IP = DOCKERMERGED.containers[container].ip %}
+{%-   if DOCKERMERGED.containers[container].port_bindings is defined %}
+{%-     for binding in DOCKERMERGED.containers[container].port_bindings %}
 {#-       cant split int so we convert to string #}
 {%-       set binding = binding|string %}
 {#-          split the port binding by /. if proto not specified, default is tcp #}
@@ -33,13 +33,13 @@
 {%-           set hostPort = bsa[0] %}
 {%-           set containerPort = bsa[1] %}
 {%-         endif %}
-{%-         do PR.append("-A POSTROUTING -s " ~ DOCKER.containers[container].ip ~ "/32 -d " ~ DOCKER.containers[container].ip ~ "/32 -p " ~  proto ~ " -m " ~ proto  ~ " --dport " ~ containerPort ~ " -j MASQUERADE") %}
+{%-         do PR.append("-A POSTROUTING -s " ~ DOCKERMERGED.containers[container].ip ~ "/32 -d " ~ DOCKERMERGED.containers[container].ip ~ "/32 -p " ~  proto ~ " -m " ~ proto  ~ " --dport " ~ containerPort ~ " -j MASQUERADE") %}
 {%-         if bindip | length and bindip != '0.0.0.0' %}
-{%-           do D1.append("-A DOCKER -d " ~ bindip ~ "/32 ! -i sobridge -p " ~ proto ~ " -m " ~ proto ~ " --dport " ~ hostPort ~ " -j DNAT --to-destination " ~ DOCKER.containers[container].ip ~ ":" ~ containerPort) %}
+{%-           do D1.append("-A DOCKER -d " ~ bindip ~ "/32 ! -i sobridge -p " ~ proto ~ " -m " ~ proto ~ " --dport " ~ hostPort ~ " -j DNAT --to-destination " ~ DOCKERMERGED.containers[container].ip ~ ":" ~ containerPort) %}
 {%-         else %}
-{%-           do D1.append("-A DOCKER ! -i sobridge -p " ~ proto ~ " -m " ~ proto ~ " --dport " ~ hostPort ~ " -j DNAT --to-destination " ~ DOCKER.containers[container].ip ~ ":" ~ containerPort) %}
+{%-           do D1.append("-A DOCKER ! -i sobridge -p " ~ proto ~ " -m " ~ proto ~ " --dport " ~ hostPort ~ " -j DNAT --to-destination " ~ DOCKERMERGED.containers[container].ip ~ ":" ~ containerPort) %}
 {%-         endif %}
-{%-         do D2.append("-A DOCKER -d " ~ DOCKER.containers[container].ip ~ "/32 ! -i sobridge -o sobridge -p " ~ proto ~ " -m " ~ proto ~ " --dport " ~ containerPort ~ " -j ACCEPT") %}
+{%-         do D2.append("-A DOCKER -d " ~ DOCKERMERGED.containers[container].ip ~ "/32 ! -i sobridge -o sobridge -p " ~ proto ~ " -m " ~ proto ~ " --dport " ~ containerPort ~ " -j ACCEPT") %}
 {%-     endfor %}
 {%-   endif %}
 {%- endfor %}
@@ -52,7 +52,7 @@
 :DOCKER - [0:0]
 -A PREROUTING -m addrtype --dst-type LOCAL -j DOCKER
 -A OUTPUT ! -d 127.0.0.0/8 -m addrtype --dst-type LOCAL -j DOCKER
--A POSTROUTING -s {{DOCKER.range}} ! -o sobridge -j MASQUERADE
+-A POSTROUTING -s {{DOCKERMERGED.range}} ! -o sobridge -j MASQUERADE
 {%- for rule in PR %}
 {{ rule }}
 {%- endfor %}
