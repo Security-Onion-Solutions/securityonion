@@ -167,7 +167,7 @@ zeekja4cfg:
     - group: 939
     - template: jinja
     - defaults:
-        JA4PLUS: {{ ZEEKMERGED.ja4plus }}
+        JA4PLUS: {{ ZEEKMERGED.ja4plus.enabled }}
 
 # BPF compilation failed
 {% if ZEEKBPF and not ZEEK_BPF_STATUS %}
