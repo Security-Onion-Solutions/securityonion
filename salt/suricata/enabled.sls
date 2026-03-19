@@ -25,8 +25,7 @@ so-suricata:
       - {{ XTRAENV }}
         {% endfor %}
       {% endif %}
-    {# we look at SURICATAMERGED.config['af-packet'][0] since we only allow one interface and therefore always the first list item #}
-    {% if SURICATAMERGED.config['af-packet'][0]['mmap-locked'] == "yes" and DOCKERMERGED.containers['so-suricata'].ulimits %}
+    {% if DOCKERMERGED.containers['so-suricata'].ulimits %}
     - ulimits:
     {%   for ULIMIT in DOCKERMERGED.containers['so-suricata'].ulimits %}
       - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
