@@ -383,23 +383,72 @@ check_minimum_version() {
 
 ### 3.0.0 Scripts ###
 
-up_to_3.0.0() {
-  determine_elastic_agent_upgrade
-  migrate_pcap_to_suricata
+convert_suricata_yes_no() {
+  echo "Starting suricata yes/no values to true/false conversion."
+  local SURICATA_FILE=/opt/so/saltstack/local/pillar/suricata/soc_suricata.sls
+  local MINIONDIR=/opt/so/saltstack/local/pillar/minions
+  local pillar_files=()
 
-  INSTALLEDVERSION=3.0.0
+  [[ -f "$SURICATA_FILE" ]] && pillar_files+=("$SURICATA_FILE")
+  for suffix in _eval _heavynode _sensor _standalone; do
+    for f in "$MINIONDIR"/*${suffix}.sls; do
+      [[ -f "$f" ]] && pillar_files+=("$f")
+    done
+  done
+
+  for pillar_file in "${pillar_files[@]}"; do
+    echo "Checking $pillar_file for suricata yes/no values."
+    local yaml_output
+    yaml_output=$(so-yaml.py get -r "$pillar_file" suricata 2>/dev/null) || continue
+
+    local keys_to_fix
+    keys_to_fix=$(python3 -c "
+import yaml, sys
+def find(d, prefix=''):
+    if isinstance(d, dict):
+        for k, v in d.items():
+            path = f'{prefix}.{k}' if prefix else k
+            if isinstance(v, dict):
+                find(v, path)
+            elif isinstance(v, str) and v.lower() in ('yes', 'no'):
+                print(f'{path} {v.lower()}')
+find(yaml.safe_load(sys.stdin) or {})
+" <<< "$yaml_output") || continue
+
+    while IFS=' ' read -r key value; do
+      [[ -z "$key" ]] && continue
+      if [[ "$value" == "yes" ]]; then
+        echo "Replacing suricata.${key} yes -> true in $pillar_file"
+        so-yaml.py replace "$pillar_file" "suricata.${key}" true
+      else
+        echo "Replacing suricata.${key} no -> false in $pillar_file"
+        so-yaml.py replace "$pillar_file" "suricata.${key}" false
+      fi
+    done <<< "$keys_to_fix"
+  done
+  echo "Completed suricata yes/no conversion."
 }
 
 migrate_pcap_to_suricata() {
+  echo "Starting pillar pcap.enabled to suricata.pcap.enabled migration."
   local MINIONDIR=/opt/so/saltstack/local/pillar/minions
   local PCAPFILE=/opt/so/saltstack/local/pillar/pcap/soc_pcap.sls
 
   for pillar_file in "$PCAPFILE" "$MINIONDIR"/*.sls; do
     [[ -f "$pillar_file" ]] || continue
     pcap_enabled=$(so-yaml.py get -r "$pillar_file" pcap.enabled 2>/dev/null) || continue
+    echo "Migrating pcap.enabled -> suricata.pcap.enabled in $pillar_file"
     so-yaml.py add "$pillar_file" suricata.pcap.enabled "$pcap_enabled"
     so-yaml.py remove "$pillar_file" pcap
   done
+  echo "Completed pcap.enabled to suricata.pcap.enabled pillar migration."
+}
+
+up_to_3.0.0() {
+  determine_elastic_agent_upgrade
+  migrate_pcap_to_suricata
+
+  INSTALLEDVERSION=3.0.0
 }
 
 post_to_3.0.0() {
@@ -411,6 +460,9 @@ post_to_3.0.0() {
   for idx in "so-case" "so-casehistory" "so-detection" "so-detectionhistory"; do
     so-elasticsearch-query $idx/_ilm/remove -XPOST
   done
+
+  # convert yes/no in suricata pillars to true/false
+  convert_suricata_yes_no
 
   POSTVERSION=3.0.0
 }
