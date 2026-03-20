@@ -1,6 +1,7 @@
 suricata:
-  enabled: 
+  enabled:
     description: Enables or disables the Suricata process. This process is used for triggering alerts and optionally for protocol metadata collection and full packet capture.
+    forcedType: bool
     helpLink: suricata
   thresholding:
     sids__yaml:
@@ -37,8 +38,9 @@ suricata:
       description: Enable compression of Suricata PCAP files.
       advanced: True
       helpLink: suricata
-    lz4-checksum: 
+    lz4-checksum:
       description: Enable PCAP lz4 checksum.
+      forcedType: bool
       advanced: True
       helpLink: suricata
     lz4-level: 
@@ -55,11 +57,10 @@ suricata:
       advanced: True
       readonly: True
       helpLink: suricata
-    use-stream-depth: 
-      description: Set to "no" to ignore the stream depth and capture the entire flow. Set to "yes" to truncate the flow based on the stream depth.
+    use-stream-depth:
+      description: Set to false to ignore the stream depth and capture the entire flow. Set to true to truncate the flow based on the stream depth.
+      forcedType: bool
       advanced: True
-      regex: ^(yes|no)$
-      regexFailureMessage: You must enter either yes or no.
       helpLink: suricata
     conditional: 
       description: Set to "all" to record PCAP for all flows. Set to "alerts" to only record PCAP for Suricata alerts. Set to "tag" to only record PCAP for tagged rules.
@@ -84,15 +85,16 @@ suricata:
         advanced: True
         regex: ^(cluster_flow|cluster_qm)$
       defrag:
+        description: Enable defragmentation of IP packets before processing.
+        forcedType: bool
         advanced: True
-        regex: ^(yes|no)$
       use-mmap:
         advanced: True
         readonly: True
       mmap-locked:
         description: Prevent swapping by locking the memory map.
+        forcedType: bool
         advanced: True
-        regex: ^(yes|no)$
         helpLink: suricata
       threads:
         description: The amount of worker threads.
@@ -116,9 +118,9 @@ suricata:
         forcedType: int
         helpLink: suricata
       use-emergency-flush:
-        description: In high-traffic environments, enabling this option to 'yes' aids in recovering from packet drop occurrences. However, it may lead to some packets, possibly at max ring flush, not being inspected.
+        description: In high-traffic environments, enabling this option aids in recovering from packet drop occurrences. However, it may lead to some packets, possibly at max ring flush, not being inspected.
+        forcedType: bool
         advanced: True
-        regex: ^(yes|no)$
         helpLink: suricata
       buffer-size:
         description: Increasing the value of the receive buffer may improve performance.
@@ -126,30 +128,33 @@ suricata:
         forcedType: int
         helpLink: suricata
       disable-promisc:
-        description: Promiscuous mode can be disabled by setting this to "yes".
+        description: Disable promiscuous mode on the capture interface.
+        forcedType: bool
         advanced: True
-        regex: ^(yes|no)$
         helpLink: suricata
       checksum-checks:
         description: "Opt for the checksum verification mode suitable for the interface. During capture, it's possible that some packets may exhibit invalid checksums due to the network card handling the checksum computation. You have several options: 'kernel': Relies on indications sent by the kernel for each packet (default). 'yes': Enforces checksum validation. 'no': Disables checksum validation. 'auto': Suricata employs a statistical approach to detect checksum offloading."
         advanced: True
-        regex: ^(kernel|yes|no|auto)$
+        options:
+        - kernel
+        - yes
+        - no
+        - auto
         helpLink: suricata
     threading:
       set-cpu-affinity:
-        description: Bind(yes) or unbind(no) management and worker threads to a core or range of cores.
-        regex: ^(yes|no)$
-        regexFailureMessage: You must enter either yes or no.
+        description: Bind or unbind management and worker threads to a core or range of cores.
+        forcedType: bool
         helpLink: suricata
       cpu-affinity:
         management-cpu-set:
           cpu:
-            description: Bind management threads to a core or range of cores. This can be a sigle core, list of cores, or list of range of cores. set-cpu-affinity must be set to 'yes' for this to be used.
+            description: Bind management threads to a core or range of cores. This can be a sigle core, list of cores, or list of range of cores. set-cpu-affinity must be set to true for this to be used.
             forcedType: "[]string"
             helpLink: suricata
         worker-cpu-set:
           cpu:
-            description: Bind worker threads to a core or range of cores. This can be a sigle core, list of cores, or list of range of cores. set-cpu-affinity must be set to 'yes' for this to be used.
+            description: Bind worker threads to a core or range of cores. This can be a sigle core, list of cores, or list of range of cores. set-cpu-affinity must be set to true for this to be used.
             forcedType: "[]string"
             helpLink: suricata
     vars:
@@ -198,11 +203,44 @@ suricata:
         GENEVE_PORTS: *suriportgroup
     outputs:
       eve-log:
+        pcap-file:
+          description: Log the PCAP filename that a packet was read from when processing pcap files.
+          forcedType: bool
+          advanced: True
+          helpLink: suricata
+        community-id:
+          description: Enable Community ID flow hashing for consistent event correlation across tools.
+          forcedType: bool
+          advanced: True
+          helpLink: suricata
         types:
           alert:
+            metadata:
+              app-layer:
+                description: Include app-layer metadata in alert events.
+                forcedType: bool
+                advanced: True
+                helpLink: suricata
+              flow:
+                description: Include flow metadata in alert events.
+                forcedType: bool
+                advanced: True
+                helpLink: suricata
+              rule:
+                metadata:
+                  description: Include rule metadata in alert events.
+                  forcedType: bool
+                  advanced: True
+                  helpLink: suricata
+                raw:
+                  description: Include raw rule text in alert events.
+                  forcedType: bool
+                  advanced: True
+                  helpLink: suricata
             xff:
               enabled:
                 description: Enable X-Forward-For support.
+                forcedType: bool
                 helpLink: suricata
               mode:
                 description: Operation mode. This should always be extra-data if you use PCAP.
@@ -242,8 +280,9 @@ suricata:
       max-frags: 
         description: Max number of fragments to keep
         helpLink: suricata
-      prealloc: 
+      prealloc:
         description: Preallocate memory.
+        forcedType: bool
         helpLink: suricata
       timeout:    
         description: Timeout value.
@@ -264,6 +303,7 @@ suricata:
         helpLink: suricata
       checksum-validation:
         description: Validate checksum of packets.
+        forcedType: bool
         helpLink: suricata
       reassembly:
         memcap:
@@ -286,6 +326,7 @@ suricata:
       teredo:
         enabled:
           description: Enable TEREDO capabilities
+          forcedType: bool
           helpLink: suricata
         ports:
           description: Ports to listen for. This should be a variable.
@@ -293,14 +334,58 @@ suricata:
       vxlan:
         enabled:
           description: Enable VXLAN capabilities.
+          forcedType: bool
           helpLink: suricata
-        ports: 
-          description: Ports to listen for. This should be a variable.    
+        ports:
+          description: Ports to listen for. This should be a variable.
           helpLink: suricata
       geneve:
         enabled:
           description: Enable VXLAN capabilities.
+          forcedType: bool
           helpLink: suricata
-        ports: 
-          description: Ports to listen for. This should be a variable.    
+        ports:
+          description: Ports to listen for. This should be a variable.
+          helpLink: suricata
+      recursion-level:
+        use-for-tracking:
+          description: Controls whether the decoder recursion level is used for flow tracking.
+          forcedType: bool
+          advanced: True
+          helpLink: suricata
+    vlan:
+      use-for-tracking:
+        description: Enable VLAN tracking for flow identification. When enabled, VLAN tags are used to differentiate flows.
+        forcedType: bool
+        advanced: True
+        helpLink: suricata
+    detect:
+      profiling:
+        grouping:
+          dump-to-disk:
+            description: Dump detection engine grouping information to disk for analysis.
+            forcedType: bool
+            advanced: True
+            helpLink: suricata
+          include-rules:
+            description: Include individual rule details in grouping profiling output.
+            forcedType: bool
+            advanced: True
+            helpLink: suricata
+          include-mpm-stats:
+            description: Include multi-pattern matcher statistics in grouping profiling output.
+            forcedType: bool
+            advanced: True
+            helpLink: suricata
+    security:
+      lua:
+        allow-rules:
+          description: Allow Lua rules in the Suricata ruleset. Enabling Lua rules may introduce security risks.
+          forcedType: bool
+          advanced: True
+          helpLink: suricata
+        allow-restricted-functions:
+          description: Allow restricted Lua functions such as file I/O. Enabling this may introduce security risks.
+          forcedType: bool
+          advanced: True
           helpLink: suricata
