@@ -383,11 +383,45 @@ check_minimum_version() {
 
 ### 3.0.0 Scripts ###
 
-up_to_3.0.0() {
-  determine_elastic_agent_upgrade
-  migrate_pcap_to_suricata
+convert_suricata_yes_no() {
+  local SURICATA_FILE=/opt/so/saltstack/local/pillar/suricata/soc_suricata.sls
+  local MINIONDIR=/opt/so/saltstack/local/pillar/minions
+  local pillar_files=()
 
-  INSTALLEDVERSION=3.0.0
+  [[ -f "$SURICATA_FILE" ]] && pillar_files+=("$SURICATA_FILE")
+  for suffix in _eval _heavynode _sensor _standalone; do
+    for f in "$MINIONDIR"/*${suffix}.sls; do
+      [[ -f "$f" ]] && pillar_files+=("$f")
+    done
+  done
+
+  for pillar_file in "${pillar_files[@]}"; do
+    local yaml_output
+    yaml_output=$(so-yaml.py get -r "$pillar_file" suricata 2>/dev/null) || continue
+
+    local keys_to_fix
+    keys_to_fix=$(python3 -c "
+import yaml, sys
+def find(d, prefix=''):
+    if isinstance(d, dict):
+        for k, v in d.items():
+            path = f'{prefix}.{k}' if prefix else k
+            if isinstance(v, dict):
+                find(v, path)
+            elif isinstance(v, str) and v.lower() in ('yes', 'no'):
+                print(f'{path} {v.lower()}')
+find(yaml.safe_load(sys.stdin) or {})
+" <<< "$yaml_output") || continue
+
+    while IFS=' ' read -r key value; do
+      [[ -z "$key" ]] && continue
+      if [[ "$value" == "yes" ]]; then
+        so-yaml.py replace "$pillar_file" "suricata.${key}" true
+      else
+        so-yaml.py replace "$pillar_file" "suricata.${key}" false
+      fi
+    done <<< "$keys_to_fix"
+  done
 }
 
 migrate_pcap_to_suricata() {
@@ -402,6 +436,13 @@ migrate_pcap_to_suricata() {
   done
 }
 
+up_to_3.0.0() {
+  determine_elastic_agent_upgrade
+  migrate_pcap_to_suricata
+
+  INSTALLEDVERSION=3.0.0
+}
+
 post_to_3.0.0() {
   for idx in "logs-idh-so" "logs-redis.log-default"; do
     rollover_index "$idx"
@@ -411,6 +452,9 @@ post_to_3.0.0() {
   for idx in "so-case" "so-casehistory" "so-detection" "so-detectionhistory"; do
     so-elasticsearch-query $idx/_ilm/remove -XPOST
   done
+
+  # convert yes/no in suricata pillars to true/false
+  convert_suricata_yes_no
 
   POSTVERSION=3.0.0
 }
