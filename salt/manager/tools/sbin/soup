@@ -384,6 +384,7 @@ check_minimum_version() {
 ### 3.0.0 Scripts ###
 
 convert_suricata_yes_no() {
+  echo "Starting suricata yes/no values to true/false conversion."
   local SURICATA_FILE=/opt/so/saltstack/local/pillar/suricata/soc_suricata.sls
   local MINIONDIR=/opt/so/saltstack/local/pillar/minions
   local pillar_files=()
@@ -396,6 +397,7 @@ convert_suricata_yes_no() {
   done
 
   for pillar_file in "${pillar_files[@]}"; do
+    echo "Checking $pillar_file for suricata yes/no values."
     local yaml_output
     yaml_output=$(so-yaml.py get -r "$pillar_file" suricata 2>/dev/null) || continue
 
@@ -416,24 +418,30 @@ find(yaml.safe_load(sys.stdin) or {})
     while IFS=' ' read -r key value; do
       [[ -z "$key" ]] && continue
       if [[ "$value" == "yes" ]]; then
+        echo "Replacing suricata.${key} yes -> true in $pillar_file"
         so-yaml.py replace "$pillar_file" "suricata.${key}" true
       else
+        echo "Replacing suricata.${key} no -> false in $pillar_file"
         so-yaml.py replace "$pillar_file" "suricata.${key}" false
       fi
     done <<< "$keys_to_fix"
   done
+  echo "Completed suricata yes/no conversion."
 }
 
 migrate_pcap_to_suricata() {
+  echo "Starting pillar pcap.enabled to suricata.pcap.enabled migration."
   local MINIONDIR=/opt/so/saltstack/local/pillar/minions
   local PCAPFILE=/opt/so/saltstack/local/pillar/pcap/soc_pcap.sls
 
   for pillar_file in "$PCAPFILE" "$MINIONDIR"/*.sls; do
     [[ -f "$pillar_file" ]] || continue
     pcap_enabled=$(so-yaml.py get -r "$pillar_file" pcap.enabled 2>/dev/null) || continue
+    echo "Migrating pcap.enabled -> suricata.pcap.enabled in $pillar_file"
     so-yaml.py add "$pillar_file" suricata.pcap.enabled "$pcap_enabled"
     so-yaml.py remove "$pillar_file" pcap
   done
+  echo "Completed pcap.enabled to suricata.pcap.enabled pillar migration."
 }
 
 up_to_3.0.0() {
