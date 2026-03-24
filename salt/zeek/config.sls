@@ -38,6 +38,7 @@ zeekzkgsync:
     - source: salt://zeek/zkg
     - user: 937
     - group: 939
+    - clean: True
     - makedirs: True
     - exclude_pat: README
 
