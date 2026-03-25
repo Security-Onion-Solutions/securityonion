@@ -30,17 +30,11 @@ wait_for_elasticsearch_elasticfleet:
 so-elastic-fleet-auto-configure-logstash-outputs:
   cmd.run:
     - name: /usr/sbin/so-elastic-fleet-outputs-update
-    - retry:
-        attempts: 4
-        interval: 30
 
 {# Separate from above in order to catch elasticfleet-logstash.crt changes and force update to fleet output policy #}
 so-elastic-fleet-auto-configure-logstash-outputs-force:
   cmd.run:
     - name: /usr/sbin/so-elastic-fleet-outputs-update --certs
-    - retry:
-        attempts: 4
-        interval: 30
     - onchanges:
         - x509: etc_elasticfleet_logstash_crt
         - x509: elasticfleet_kafka_crt
@@ -51,9 +45,6 @@ so-elastic-fleet-auto-configure-logstash-outputs-force:
 so-elastic-fleet-auto-configure-server-urls:
   cmd.run:
     - name: /usr/sbin/so-elastic-fleet-urls-update
-    - retry:
-        attempts: 4
-        interval: 30
 {% endif %}
 
 # Automatically update Fleet Server Elasticsearch URLs & Agent Artifact URLs
@@ -61,9 +52,6 @@ so-elastic-fleet-auto-configure-server-urls:
 so-elastic-fleet-auto-configure-elasticsearch-urls:
   cmd.run:
     - name: /usr/sbin/so-elastic-fleet-es-url-update
-    - retry:
-        attempts: 4
-        interval: 30
 
 so-elastic-fleet-auto-configure-artifact-urls:
   cmd.run:
@@ -158,32 +146,21 @@ so-elastic-fleet-package-statefile:
 so-elastic-fleet-package-upgrade:
   cmd.run:
     - name: /usr/sbin/so-elastic-fleet-package-upgrade
-    - retry:
-        attempts: 3
-        interval: 10
     - onchanges:
       - file: /opt/so/state/elastic_fleet_packages.txt
 
 so-elastic-fleet-integrations:
   cmd.run:
     - name: /usr/sbin/so-elastic-fleet-integration-policy-load
-    - retry:
-        attempts: 3
-        interval: 10
 
 so-elastic-agent-grid-upgrade:
   cmd.run:
     - name: /usr/sbin/so-elastic-agent-grid-upgrade
-    - retry:
-        attempts: 12
-        interval: 5
 
 so-elastic-fleet-integration-upgrade:
   cmd.run:
     - name: /usr/sbin/so-elastic-fleet-integration-upgrade
     - retry:
-        attempts: 3
-        interval: 10
 
 {# Optional integrations script doesn't need the retries like so-elastic-fleet-integration-upgrade which loads the default integrations #}
 so-elastic-fleet-addon-integrations:
