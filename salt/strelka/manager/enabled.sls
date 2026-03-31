@@ -5,7 +5,7 @@
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
-{%   from 'docker/docker.map.jinja' import DOCKER %}
+{%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 
 include:
@@ -17,28 +17,34 @@ strelka_manager:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-strelka-manager:{{ GLOBALS.so_version }}
     - binds:
       - /opt/so/conf/strelka/manager/:/etc/strelka/:ro
-      {% if DOCKER.containers['so-strelka-manager'].custom_bind_mounts %}
-        {% for BIND in DOCKER.containers['so-strelka-manager'].custom_bind_mounts %}
+      {% if DOCKERMERGED.containers['so-strelka-manager'].custom_bind_mounts %}
+        {% for BIND in DOCKERMERGED.containers['so-strelka-manager'].custom_bind_mounts %}
       - {{ BIND }}
         {% endfor %}
       {% endif %}
     - name: so-strelka-manager
     - networks:
       - sobridge:
-        - ipv4_address: {{ DOCKER.containers['so-strelka-manager'].ip }}
+        - ipv4_address: {{ DOCKERMERGED.containers['so-strelka-manager'].ip }}
     - command: strelka-manager
     - extra_hosts:
       - {{ GLOBALS.hostname }}:{{ GLOBALS.node_ip }}
-      {% if DOCKER.containers['so-strelka-manager'].extra_hosts %}
-        {% for XTRAHOST in DOCKER.containers['so-strelka-manager'].extra_hosts %}
+      {% if DOCKERMERGED.containers['so-strelka-manager'].extra_hosts %}
+        {% for XTRAHOST in DOCKERMERGED.containers['so-strelka-manager'].extra_hosts %}
       - {{ XTRAHOST }}
         {% endfor %}
       {% endif %}
-   {% if DOCKER.containers['so-strelka-manager'].extra_env %}
+   {% if DOCKERMERGED.containers['so-strelka-manager'].extra_env %}
     - environment:
-      {% for XTRAENV in DOCKER.containers['so-strelka-manager'].extra_env %}
+      {% for XTRAENV in DOCKERMERGED.containers['so-strelka-manager'].extra_env %}
       - {{ XTRAENV }}
       {% endfor %}
+    {% endif %}
+    {% if DOCKERMERGED.containers['so-strelka-manager'].ulimits %}
+    - ulimits:
+    {%   for ULIMIT in DOCKERMERGED.containers['so-strelka-manager'].ulimits %}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
+    {%   endfor %}
     {% endif %}
     - watch:
       - file: manager_config

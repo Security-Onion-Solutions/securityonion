@@ -10,7 +10,7 @@
 # and since this same logic is required during installation, it's included in this file.
 
 DEFAULT_SALT_DIR=/opt/so/saltstack/default
-DOC_BASE_URL="https://docs.securityonion.net/en/2.4"
+DOC_BASE_URL="https://securityonion.net/docs"
 
 if [ -z $NOROOT ]; then
 	# Check for prerequisites
@@ -333,8 +333,8 @@ get_elastic_agent_vars() {
 
 	if [ -f "$defaultsfile" ]; then
 		ELASTIC_AGENT_TARBALL_VERSION=$(egrep " +version: " $defaultsfile | awk -F: '{print $2}' | tr -d '[:space:]')
-		ELASTIC_AGENT_URL="https://repo.securityonion.net/file/so-repo/prod/2.4/elasticagent/elastic-agent_SO-$ELASTIC_AGENT_TARBALL_VERSION.tar.gz"
-		ELASTIC_AGENT_MD5_URL="https://repo.securityonion.net/file/so-repo/prod/2.4/elasticagent/elastic-agent_SO-$ELASTIC_AGENT_TARBALL_VERSION.md5"
+		ELASTIC_AGENT_URL="https://repo.securityonion.net/file/so-repo/prod/3/elasticagent/elastic-agent_SO-$ELASTIC_AGENT_TARBALL_VERSION.tar.gz"
+		ELASTIC_AGENT_MD5_URL="https://repo.securityonion.net/file/so-repo/prod/3/elasticagent/elastic-agent_SO-$ELASTIC_AGENT_TARBALL_VERSION.md5"
 		ELASTIC_AGENT_FILE="/nsm/elastic-fleet/artifacts/elastic-agent_SO-$ELASTIC_AGENT_TARBALL_VERSION.tar.gz"
 		ELASTIC_AGENT_MD5="/nsm/elastic-fleet/artifacts/elastic-agent_SO-$ELASTIC_AGENT_TARBALL_VERSION.md5"
 		ELASTIC_AGENT_EXPANSION_DIR=/nsm/elastic-fleet/artifacts/beats/elastic-agent
@@ -349,21 +349,16 @@ get_random_value() {
 }
 
 gpg_rpm_import() {
-	if [[ $is_oracle ]]; then
-	    if [[ "$WHATWOULDYOUSAYYAHDOHERE" == "setup" ]]; then
-	        local RPMKEYSLOC="../salt/repo/client/files/$OS/keys"
-	    else
-	        local RPMKEYSLOC="$UPDATE_DIR/salt/repo/client/files/$OS/keys"
-	    fi
-		RPMKEYS=('RPM-GPG-KEY-oracle' 'RPM-GPG-KEY-EPEL-9' 'SALT-PROJECT-GPG-PUBKEY-2023.pub' 'docker.pub' 'securityonion.pub')
-		for RPMKEY in "${RPMKEYS[@]}"; do
-    	        rpm --import $RPMKEYSLOC/$RPMKEY
-	        echo "Imported $RPMKEY"
-	    done
-	elif [[ $is_rpm ]]; then
-		echo "Importing the security onion GPG key"
-		rpm --import ../salt/repo/client/files/oracle/keys/securityonion.pub
+	if [[ "$WHATWOULDYOUSAYYAHDOHERE" == "setup" ]]; then
+		local RPMKEYSLOC="../salt/repo/client/files/$OS/keys"
+	else
+		local RPMKEYSLOC="$UPDATE_DIR/salt/repo/client/files/$OS/keys"
 	fi
+	RPMKEYS=('RPM-GPG-KEY-oracle' 'RPM-GPG-KEY-EPEL-9' 'SALT-PROJECT-GPG-PUBKEY-2023.pub' 'docker.pub' 'securityonion.pub')
+	for RPMKEY in "${RPMKEYS[@]}"; do
+		rpm --import $RPMKEYSLOC/$RPMKEY
+		echo "Imported $RPMKEY"
+	done
 }
 
 header() {
@@ -402,6 +397,25 @@ is_sensor_node() {
 
 is_single_node_grid() {
 	grep "role: so-" /etc/salt/grains | grep -E "eval|standalone|import" &> /dev/null
+}
+
+initialize_elasticsearch_indices() {
+    local index_names=$1
+    local default_entry=${2:-'{"@timestamp":"0"}'}
+
+    for idx in $index_names; do
+        if ! so-elasticsearch-query "$idx" --fail --retry 3 --retry-delay 30 >/dev/null 2>&1; then
+            echo "Index does not already exist. Initializing $idx index."
+
+            if retry 3 10 "so-elasticsearch-query "$idx/_doc" -d '$default_entry' -XPOST --fail 2>/dev/null" '"successful":1'; then
+                echo "Successfully initialized $idx index."
+            else
+                echo "Failed to initialize $idx index after 3 attempts."
+            fi
+        else
+            echo "Index $idx already exists. No action needed."
+        fi
+    done
 }
 
 lookup_bond_interfaces() {
@@ -531,6 +545,22 @@ retry() {
         return $exitcode
 }
 
+rollover_index() {
+  idx=$1
+  exists=$(so-elasticsearch-query $idx -o /dev/null -w "%{http_code}")
+  if [[ $exists -eq 200 ]]; then
+    rollover=$(so-elasticsearch-query $idx/_rollover -o /dev/null -w "%{http_code}" -XPOST)
+
+    if [[ $rollover -eq 200 ]]; then
+      echo "Successfully triggered rollover for $idx..."
+    else
+      echo "Could not trigger rollover for $idx..."
+    fi
+  else
+    echo "Could not find index $idx..."
+  fi
+}
+
 run_check_net_err() {
 	local cmd=$1
 	local err_msg=${2:-"Unknown error occured, please check /root/$WHATWOULDYOUSAYYAHDOHERE.log for details."} # Really need to rename that variable
@@ -554,21 +584,39 @@ run_check_net_err() {
 }
 
 wait_for_salt_minion() {
-	local minion="$1"
-	local timeout="${2:-5}"
-	local logfile="${3:-'/dev/stdout'}"
-	retry 60 5 "journalctl -u salt-minion.service | grep 'Minion is ready to receive requests'" >> "$logfile" 2>&1 || fail
-	local attempt=0
-	# each attempts would take about 15 seconds
-	local maxAttempts=20
-	until check_salt_minion_status "$minion" "$timeout" "$logfile"; do
-		attempt=$((attempt+1))
-		if [[ $attempt -eq $maxAttempts ]]; then
-			return 1
-		fi
-		sleep 10
-	done
-	return 0
+    local minion="$1"
+    local max_wait="${2:-30}"
+    local interval="${3:-2}"
+    local logfile="${4:-'/dev/stdout'}"
+    local elapsed=0
+
+	echo "$(date '+%a %d %b %Y %H:%M:%S.%6N') - Waiting for salt-minion '$minion' to be ready..."
+
+    while [ $elapsed -lt $max_wait ]; do
+        # Check if service is running
+		echo "$(date '+%a %d %b %Y %H:%M:%S.%6N') - Check if salt-minion service is running"
+        if ! systemctl is-active --quiet salt-minion; then
+            echo "$(date '+%a %d %b %Y %H:%M:%S.%6N') - salt-minion service not running (elapsed: ${elapsed}s)"
+            sleep $interval
+            elapsed=$((elapsed + interval))
+            continue
+        fi
+		echo "$(date '+%a %d %b %Y %H:%M:%S.%6N') - salt-minion service is running"
+
+        # Check if minion responds to ping
+		echo "$(date '+%a %d %b %Y %H:%M:%S.%6N') - Check if $minion responds to ping"
+        if salt "$minion" test.ping --timeout=3 --out=json 2>> "$logfile" | grep -q "true"; then
+            echo "$(date '+%a %d %b %Y %H:%M:%S.%6N') - salt-minion '$minion' is connected and ready!"
+            return 0
+        fi
+        
+        echo "$(date '+%a %d %b %Y %H:%M:%S.%6N') - Waiting... (${elapsed}s / ${max_wait}s)"
+        sleep $interval
+        elapsed=$((elapsed + interval))
+    done
+
+    echo "$(date '+%a %d %b %Y %H:%M:%S.%6N') - ERROR: salt-minion '$minion' not ready after $max_wait seconds"
+    return 1
 }
 
 salt_minion_count() {
@@ -578,69 +626,19 @@ salt_minion_count() {
 }
 
 set_os() {
-	if [ -f /etc/redhat-release ]; then
-		if grep -q "Rocky Linux release 9" /etc/redhat-release; then
-			OS=rocky
-			OSVER=9
-			is_rocky=true
-			is_rpm=true
-		elif grep -q "CentOS Stream release 9" /etc/redhat-release; then
-			OS=centos
-			OSVER=9
-			is_centos=true
-			is_rpm=true
-		elif grep -q "AlmaLinux release 9" /etc/redhat-release; then
-			OS=alma
-			OSVER=9
-			is_alma=true
-			is_rpm=true
-		elif grep -q "Red Hat Enterprise Linux release 9" /etc/redhat-release; then
-			if [ -f /etc/oracle-release ]; then
-				OS=oracle
-				OSVER=9
-				is_oracle=true
-				is_rpm=true
-			else
-				OS=rhel
-				OSVER=9
-				is_rhel=true
-				is_rpm=true
-			fi
-		fi
-		cron_service_name="crond"
-	elif [ -f /etc/os-release ]; then
-		if grep -q "UBUNTU_CODENAME=focal" /etc/os-release; then
-			OSVER=focal
-			UBVER=20.04
-			OS=ubuntu
-			is_ubuntu=true
-			is_deb=true
-		elif grep -q "UBUNTU_CODENAME=jammy" /etc/os-release; then
-			OSVER=jammy
-			UBVER=22.04
-			OS=ubuntu
-			is_ubuntu=true
-			is_deb=true
-		elif grep -q "VERSION_CODENAME=bookworm" /etc/os-release; then
-			OSVER=bookworm
-			DEBVER=12
-			is_debian=true
-			OS=debian
-			is_deb=true
-		fi
-		cron_service_name="cron"
+	if [ -f /etc/redhat-release ] && grep -q "Red Hat Enterprise Linux release 9" /etc/redhat-release && [ -f /etc/oracle-release ]; then
+		OS=oracle
+		OSVER=9
+		is_oracle=true
+		is_rpm=true
 	fi
+	cron_service_name="crond"
 }
 
 set_minionid() {
 	MINIONID=$(lookup_grain id)
 }
 
-set_palette() {
-	if [[ $is_deb ]]; then
-	    update-alternatives --set newt-palette /etc/newt/palette.original
-    fi
-}
 
 set_version() {
 	CURRENTVERSION=0.0.0

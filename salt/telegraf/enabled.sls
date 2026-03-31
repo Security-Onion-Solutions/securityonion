@@ -6,11 +6,12 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
-{%   from 'docker/docker.map.jinja' import DOCKER %}
+{%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   from 'telegraf/map.jinja' import TELEGRAFMERGED %}
 
-
 include:
+  - ca
+  - telegraf.ssl
   - telegraf.config
   - telegraf.sostatus
 
@@ -24,8 +25,8 @@ so-telegraf:
       - HOST_SYS=/host/sys
       - HOST_MOUNT_PREFIX=/host
       - GODEBUG=x509ignoreCN=0
-      {% if DOCKER.containers['so-telegraf'].extra_env %}
-        {% for XTRAENV in DOCKER.containers['so-telegraf'].extra_env %}
+      {% if DOCKERMERGED.containers['so-telegraf'].extra_env %}
+        {% for XTRAENV in DOCKERMERGED.containers['so-telegraf'].extra_env %}
       - {{ XTRAENV }}
         {% endfor %}
       {% endif %}
@@ -42,15 +43,10 @@ so-telegraf:
       - /proc:/host/proc:ro
       - /nsm:/host/nsm:ro
       - /etc:/host/etc:ro
-      {% if GLOBALS.role in ['so-manager', 'so-eval', 'so-managersearch' ] %}
-      - /etc/pki/ca.crt:/etc/telegraf/ca.crt:ro
-      {% else %}
       - /etc/pki/tls/certs/intca.crt:/etc/telegraf/ca.crt:ro
-      {% endif %}
-      - /etc/pki/influxdb.crt:/etc/telegraf/telegraf.crt:ro
-      - /etc/pki/influxdb.key:/etc/telegraf/telegraf.key:ro
+      - /etc/pki/telegraf.crt:/etc/telegraf/telegraf.crt:ro
+      - /etc/pki/telegraf.key:/etc/telegraf/telegraf.key:ro
       - /opt/so/conf/telegraf/scripts:/scripts:ro
-      - /opt/so/log/stenographer:/var/log/stenographer:ro
       - /opt/so/log/suricata:/var/log/suricata:ro
       - /opt/so/log/raid:/var/log/raid:ro
       - /opt/so/log/sostatus:/var/log/sostatus:ro
@@ -59,33 +55,38 @@ so-telegraf:
       {% if GLOBALS.is_manager or GLOBALS.role == 'so-heavynode' %}
       - /opt/so/conf/telegraf/etc/escurl.config:/etc/telegraf/elasticsearch.config:ro
       {% endif %}
-      {% if DOCKER.containers['so-telegraf'].custom_bind_mounts %}
-        {% for BIND in DOCKER.containers['so-telegraf'].custom_bind_mounts %}
+      {% if DOCKERMERGED.containers['so-telegraf'].custom_bind_mounts %}
+        {% for BIND in DOCKERMERGED.containers['so-telegraf'].custom_bind_mounts %}
       - {{ BIND }}
         {% endfor %}
       {% endif %}
-    {% if DOCKER.containers['so-telegraf'].extra_hosts %}
+    {% if DOCKERMERGED.containers['so-telegraf'].extra_hosts %}
     - extra_hosts:
-      {% for XTRAHOST in DOCKER.containers['so-telegraf'].extra_hosts %}
+      {% for XTRAHOST in DOCKERMERGED.containers['so-telegraf'].extra_hosts %}
       - {{ XTRAHOST }}
       {% endfor %}
     {% endif %}
+    {% if DOCKERMERGED.containers['so-telegraf'].ulimits %}
+    - ulimits:
+    {%   for ULIMIT in DOCKERMERGED.containers['so-telegraf'].ulimits %}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
+    {%   endfor %}
+    {% endif %}
     - watch:
+      - file: trusttheca
+      - x509: telegraf_crt
+      - x509: telegraf_key
       - file: tgrafconf
       - file: node_config
     {% for script in TELEGRAFMERGED.scripts[GLOBALS.role.split('-')[1]] %}
       - file: tgraf_sync_script_{{script}}
     {% endfor %}
-    - require: 
+    - require:
+      - file: trusttheca
+      - x509: telegraf_crt
+      - x509: telegraf_key
       - file: tgrafconf
       - file: node_config
-      {% if GLOBALS.role in ['so-manager', 'so-eval', 'so-managersearch' ] %}
-      - x509: pki_public_ca_crt
-      {% else %}
-      - x509: trusttheca
-      {% endif %}
-      - x509: influxdb_crt
-      - x509: influxdb_key
 
 delete_so-telegraf_so-status.disabled:
   file.uncomment:

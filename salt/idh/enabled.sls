@@ -6,7 +6,7 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
-{%   from 'docker/docker.map.jinja' import DOCKER %}
+{%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 
 include:
   - idh.config
@@ -20,24 +20,30 @@ so-idh:
     - network_mode: host
     - binds:
       - /nsm/idh:/var/tmp:rw
-      - /opt/so/conf/idh/http-skins:/usr/local/lib/python3.12/site-packages/opencanary/modules/data/http/skin:ro
+      - /opt/so/conf/idh/http-skins:/opt/opencanary/http-skins:ro
       - /opt/so/conf/idh/opencanary.conf:/etc/opencanaryd/opencanary.conf:ro
-      {% if DOCKER.containers['so-idh'].custom_bind_mounts %}
-        {% for BIND in DOCKER.containers['so-idh'].custom_bind_mounts %}
+      {% if DOCKERMERGED.containers['so-idh'].custom_bind_mounts %}
+        {% for BIND in DOCKERMERGED.containers['so-idh'].custom_bind_mounts %}
       - {{ BIND }}
         {% endfor %}
       {% endif %}
-    {% if DOCKER.containers['so-idh'].extra_hosts %}
+    {% if DOCKERMERGED.containers['so-idh'].extra_hosts %}
     - extra_hosts:
-      {% for XTRAHOST in DOCKER.containers['so-idh'].extra_hosts %}
+      {% for XTRAHOST in DOCKERMERGED.containers['so-idh'].extra_hosts %}
       - {{ XTRAHOST }}
       {% endfor %}
     {% endif %}
-    {% if DOCKER.containers['so-idh'].extra_env %}
+    {% if DOCKERMERGED.containers['so-idh'].extra_env %}
     - environment:
-      {% for XTRAENV in DOCKER.containers['so-idh'].extra_env %}
+      {% for XTRAENV in DOCKERMERGED.containers['so-idh'].extra_env %}
       - {{ XTRAENV }}
       {% endfor %}
+    {% endif %}
+    {% if DOCKERMERGED.containers['so-idh'].ulimits %}
+    - ulimits:
+    {%   for ULIMIT in DOCKERMERGED.containers['so-idh'].ulimits %}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
+    {%   endfor %}
     {% endif %}
     - watch:
       - file: opencanary_config

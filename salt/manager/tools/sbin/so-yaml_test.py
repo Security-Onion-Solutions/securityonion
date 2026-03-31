@@ -395,6 +395,17 @@ class TestRemove(unittest.TestCase):
             self.assertEqual(result, 0)
             self.assertIn("45\n...", mock_stdout.getvalue())
 
+    def test_get_int_raw(self):
+        with patch('sys.stdout', new=StringIO()) as mock_stdout:
+            filename = "/tmp/so-yaml_test-get.yaml"
+            file = open(filename, "w")
+            file.write("{key1: { child1: 123, child2: { deep1: 45 } }, key2: false, key3: [e,f,g]}")
+            file.close()
+
+            result = soyaml.get(["-r", filename, "key1.child2.deep1"])
+            self.assertEqual(result, 0)
+            self.assertEqual("45\n", mock_stdout.getvalue())
+
     def test_get_str(self):
         with patch('sys.stdout', new=StringIO()) as mock_stdout:
             filename = "/tmp/so-yaml_test-get.yaml"
@@ -405,6 +416,51 @@ class TestRemove(unittest.TestCase):
             result = soyaml.get([filename, "key1.child2.deep1"])
             self.assertEqual(result, 0)
             self.assertIn("hello\n...", mock_stdout.getvalue())
+
+    def test_get_str_raw(self):
+        with patch('sys.stdout', new=StringIO()) as mock_stdout:
+            filename = "/tmp/so-yaml_test-get.yaml"
+            file = open(filename, "w")
+            file.write("{key1: { child1: 123, child2: { deep1: \"hello\" } }, key2: false, key3: [e,f,g]}")
+            file.close()
+
+            result = soyaml.get(["-r", filename, "key1.child2.deep1"])
+            self.assertEqual(result, 0)
+            self.assertEqual("hello\n", mock_stdout.getvalue())
+
+    def test_get_bool(self):
+        with patch('sys.stdout', new=StringIO()) as mock_stdout:
+            filename = "/tmp/so-yaml_test-get.yaml"
+            file = open(filename, "w")
+            file.write("{key1: { child1: 123, child2: { deep1: 45 } }, key2: false, key3: [e,f,g]}")
+            file.close()
+
+            result = soyaml.get([filename, "key2"])
+            self.assertEqual(result, 0)
+            self.assertIn("false\n...", mock_stdout.getvalue())
+
+    def test_get_bool_raw(self):
+        with patch('sys.stdout', new=StringIO()) as mock_stdout:
+            filename = "/tmp/so-yaml_test-get.yaml"
+            file = open(filename, "w")
+            file.write("{key1: { child1: 123, child2: { deep1: 45 } }, key2: false, key3: [e,f,g]}")
+            file.close()
+
+            result = soyaml.get(["-r", filename, "key2"])
+            self.assertEqual(result, 0)
+            self.assertEqual("false\n", mock_stdout.getvalue())
+
+    def test_get_dict_raw(self):
+        with patch('sys.stdout', new=StringIO()) as mock_stdout:
+            filename = "/tmp/so-yaml_test-get.yaml"
+            file = open(filename, "w")
+            file.write("{key1: { child1: 123, child2: { deep1: 45 } }, key2: false, key3: [e,f,g]}")
+            file.close()
+
+            result = soyaml.get(["-r", filename, "key1"])
+            self.assertEqual(result, 0)
+            self.assertIn("child1: 123", mock_stdout.getvalue())
+            self.assertNotIn("...", mock_stdout.getvalue())
 
     def test_get_list(self):
         with patch('sys.stdout', new=StringIO()) as mock_stdout:
@@ -580,3 +636,340 @@ class TestRemoveListItem(unittest.TestCase):
                 soyaml.main()
                 sysmock.assert_called()
                 self.assertEqual("The existing value for the given key is not a list. No action was taken on the file.\n", mock_stderr.getvalue())
+
+
+class TestAppendListObject(unittest.TestCase):
+
+    def test_appendlistobject_missing_arg(self):
+        with patch('sys.exit', new=MagicMock()) as sysmock:
+            with patch('sys.stderr', new=StringIO()) as mock_stderr:
+                sys.argv = ["cmd", "help"]
+                soyaml.appendlistobject(["file", "key"])
+                sysmock.assert_called()
+                self.assertIn("Missing filename, key arg, or JSON object to append", mock_stderr.getvalue())
+
+    def test_appendlistobject(self):
+        filename = "/tmp/so-yaml_test-appendlistobject.yaml"
+        file = open(filename, "w")
+        file.write("{key1: { child1: 123 }, key2: [{name: item1, value: 10}]}")
+        file.close()
+
+        json_obj = '{"name": "item2", "value": 20}'
+        soyaml.appendlistobject([filename, "key2", json_obj])
+
+        file = open(filename, "r")
+        actual = file.read()
+        file.close()
+
+        expected = "key1:\n  child1: 123\nkey2:\n- name: item1\n  value: 10\n- name: item2\n  value: 20\n"
+        self.assertEqual(actual, expected)
+
+    def test_appendlistobject_nested(self):
+        filename = "/tmp/so-yaml_test-appendlistobject.yaml"
+        file = open(filename, "w")
+        file.write("{key1: { child1: [{name: a, id: 1}], child2: abc }, key2: false}")
+        file.close()
+
+        json_obj = '{"name": "b", "id": 2}'
+        soyaml.appendlistobject([filename, "key1.child1", json_obj])
+
+        file = open(filename, "r")
+        actual = file.read()
+        file.close()
+
+        # YAML doesn't guarantee key order in dictionaries, so check for content
+        self.assertIn("child1:", actual)
+        self.assertIn("name: a", actual)
+        self.assertIn("id: 1", actual)
+        self.assertIn("name: b", actual)
+        self.assertIn("id: 2", actual)
+        self.assertIn("child2: abc", actual)
+        self.assertIn("key2: false", actual)
+
+    def test_appendlistobject_nested_deep(self):
+        filename = "/tmp/so-yaml_test-appendlistobject.yaml"
+        file = open(filename, "w")
+        file.write("{key1: { child1: 123, child2: { deep1: 45, deep2: [{x: 1}] } }, key2: false}")
+        file.close()
+
+        json_obj = '{"x": 2, "y": 3}'
+        soyaml.appendlistobject([filename, "key1.child2.deep2", json_obj])
+
+        file = open(filename, "r")
+        actual = file.read()
+        file.close()
+
+        expected = "key1:\n  child1: 123\n  child2:\n    deep1: 45\n    deep2:\n    - x: 1\n    - x: 2\n      y: 3\nkey2: false\n"
+        self.assertEqual(actual, expected)
+
+    def test_appendlistobject_invalid_json(self):
+        filename = "/tmp/so-yaml_test-appendlistobject.yaml"
+        file = open(filename, "w")
+        file.write("{key1: [{name: item1}]}")
+        file.close()
+
+        with patch('sys.stderr', new=StringIO()) as mock_stderr:
+            result = soyaml.appendlistobject([filename, "key1", "{invalid json"])
+            self.assertEqual(result, 1)
+            self.assertIn("Invalid JSON string:", mock_stderr.getvalue())
+
+    def test_appendlistobject_not_dict(self):
+        filename = "/tmp/so-yaml_test-appendlistobject.yaml"
+        file = open(filename, "w")
+        file.write("{key1: [{name: item1}]}")
+        file.close()
+
+        with patch('sys.stderr', new=StringIO()) as mock_stderr:
+            # Try to append an array instead of an object
+            result = soyaml.appendlistobject([filename, "key1", "[1, 2, 3]"])
+            self.assertEqual(result, 1)
+            self.assertIn("The JSON string must represent an object (dictionary)", mock_stderr.getvalue())
+
+    def test_appendlistobject_not_dict_primitive(self):
+        filename = "/tmp/so-yaml_test-appendlistobject.yaml"
+        file = open(filename, "w")
+        file.write("{key1: [{name: item1}]}")
+        file.close()
+
+        with patch('sys.stderr', new=StringIO()) as mock_stderr:
+            # Try to append a primitive value
+            result = soyaml.appendlistobject([filename, "key1", "123"])
+            self.assertEqual(result, 1)
+            self.assertIn("The JSON string must represent an object (dictionary)", mock_stderr.getvalue())
+
+    def test_appendlistobject_key_noexist(self):
+        filename = "/tmp/so-yaml_test-appendlistobject.yaml"
+        file = open(filename, "w")
+        file.write("{key1: [{name: item1}]}")
+        file.close()
+
+        with patch('sys.exit', new=MagicMock()) as sysmock:
+            with patch('sys.stderr', new=StringIO()) as mock_stderr:
+                sys.argv = ["cmd", "appendlistobject", filename, "key2", '{"name": "item2"}']
+                soyaml.main()
+                sysmock.assert_called()
+                self.assertEqual("The key provided does not exist. No action was taken on the file.\n", mock_stderr.getvalue())
+
+    def test_appendlistobject_key_noexist_deep(self):
+        filename = "/tmp/so-yaml_test-appendlistobject.yaml"
+        file = open(filename, "w")
+        file.write("{key1: { child1: [{name: a}] }}")
+        file.close()
+
+        with patch('sys.exit', new=MagicMock()) as sysmock:
+            with patch('sys.stderr', new=StringIO()) as mock_stderr:
+                sys.argv = ["cmd", "appendlistobject", filename, "key1.child2", '{"name": "b"}']
+                soyaml.main()
+                sysmock.assert_called()
+                self.assertEqual("The key provided does not exist. No action was taken on the file.\n", mock_stderr.getvalue())
+
+    def test_appendlistobject_key_nonlist(self):
+        filename = "/tmp/so-yaml_test-appendlistobject.yaml"
+        file = open(filename, "w")
+        file.write("{key1: { child1: 123 }}")
+        file.close()
+
+        with patch('sys.exit', new=MagicMock()) as sysmock:
+            with patch('sys.stderr', new=StringIO()) as mock_stderr:
+                sys.argv = ["cmd", "appendlistobject", filename, "key1", '{"name": "item"}']
+                soyaml.main()
+                sysmock.assert_called()
+                self.assertEqual("The existing value for the given key is not a list. No action was taken on the file.\n", mock_stderr.getvalue())
+
+    def test_appendlistobject_key_nonlist_deep(self):
+        filename = "/tmp/so-yaml_test-appendlistobject.yaml"
+        file = open(filename, "w")
+        file.write("{key1: { child1: 123, child2: { deep1: 45 } }}")
+        file.close()
+
+        with patch('sys.exit', new=MagicMock()) as sysmock:
+            with patch('sys.stderr', new=StringIO()) as mock_stderr:
+                sys.argv = ["cmd", "appendlistobject", filename, "key1.child2.deep1", '{"name": "item"}']
+                soyaml.main()
+                sysmock.assert_called()
+                self.assertEqual("The existing value for the given key is not a list. No action was taken on the file.\n", mock_stderr.getvalue())
+
+
+class TestReplaceListObject(unittest.TestCase):
+
+    def test_replacelistobject_missing_arg(self):
+        with patch('sys.exit', new=MagicMock()) as sysmock:
+            with patch('sys.stderr', new=StringIO()) as mock_stderr:
+                sys.argv = ["cmd", "help"]
+                soyaml.replacelistobject(["file", "key", "field"])
+                sysmock.assert_called()
+                self.assertIn("Missing filename, key arg, condition field, condition value, or JSON object", mock_stderr.getvalue())
+
+    def test_replacelistobject(self):
+        filename = "/tmp/so-yaml_test-replacelistobject.yaml"
+        file = open(filename, "w")
+        file.write("{key1: [{name: item1, value: 10}, {name: item2, value: 20}]}")
+        file.close()
+
+        json_obj = '{"name": "item2", "value": 25, "extra": "field"}'
+        soyaml.replacelistobject([filename, "key1", "name", "item2", json_obj])
+
+        file = open(filename, "r")
+        actual = file.read()
+        file.close()
+
+        expected = "key1:\n- name: item1\n  value: 10\n- extra: field\n  name: item2\n  value: 25\n"
+        self.assertEqual(actual, expected)
+
+    def test_replacelistobject_nested(self):
+        filename = "/tmp/so-yaml_test-replacelistobject.yaml"
+        file = open(filename, "w")
+        file.write("{key1: { child1: [{id: '1', status: active}, {id: '2', status: inactive}] }}")
+        file.close()
+
+        json_obj = '{"id": "2", "status": "active", "updated": true}'
+        soyaml.replacelistobject([filename, "key1.child1", "id", "2", json_obj])
+
+        file = open(filename, "r")
+        actual = file.read()
+        file.close()
+
+        expected = "key1:\n  child1:\n  - id: '1'\n    status: active\n  - id: '2'\n    status: active\n    updated: true\n"
+        self.assertEqual(actual, expected)
+
+    def test_replacelistobject_nested_deep(self):
+        filename = "/tmp/so-yaml_test-replacelistobject.yaml"
+        file = open(filename, "w")
+        file.write("{key1: { child1: 123, child2: { deep1: 45, deep2: [{name: a, val: 1}, {name: b, val: 2}] } }}")
+        file.close()
+
+        json_obj = '{"name": "b", "val": 99}'
+        soyaml.replacelistobject([filename, "key1.child2.deep2", "name", "b", json_obj])
+
+        file = open(filename, "r")
+        actual = file.read()
+        file.close()
+
+        expected = "key1:\n  child1: 123\n  child2:\n    deep1: 45\n    deep2:\n    - name: a\n      val: 1\n    - name: b\n      val: 99\n"
+        self.assertEqual(actual, expected)
+
+    def test_replacelistobject_invalid_json(self):
+        filename = "/tmp/so-yaml_test-replacelistobject.yaml"
+        file = open(filename, "w")
+        file.write("{key1: [{name: item1}]}")
+        file.close()
+
+        with patch('sys.stderr', new=StringIO()) as mock_stderr:
+            result = soyaml.replacelistobject([filename, "key1", "name", "item1", "{invalid json"])
+            self.assertEqual(result, 1)
+            self.assertIn("Invalid JSON string:", mock_stderr.getvalue())
+
+    def test_replacelistobject_not_dict(self):
+        filename = "/tmp/so-yaml_test-replacelistobject.yaml"
+        file = open(filename, "w")
+        file.write("{key1: [{name: item1}]}")
+        file.close()
+
+        with patch('sys.stderr', new=StringIO()) as mock_stderr:
+            result = soyaml.replacelistobject([filename, "key1", "name", "item1", "[1, 2, 3]"])
+            self.assertEqual(result, 1)
+            self.assertIn("The JSON string must represent an object (dictionary)", mock_stderr.getvalue())
+
+    def test_replacelistobject_condition_not_found(self):
+        filename = "/tmp/so-yaml_test-replacelistobject.yaml"
+        file = open(filename, "w")
+        file.write("{key1: [{name: item1, value: 10}, {name: item2, value: 20}]}")
+        file.close()
+
+        with patch('sys.stderr', new=StringIO()) as mock_stderr:
+            json_obj = '{"name": "item3", "value": 30}'
+            result = soyaml.replacelistobject([filename, "key1", "name", "item3", json_obj])
+            self.assertEqual(result, 1)
+            self.assertIn("No list item found with name=item3", mock_stderr.getvalue())
+
+        # Verify file was not modified
+        file = open(filename, "r")
+        actual = file.read()
+        file.close()
+        self.assertIn("item1", actual)
+        self.assertIn("item2", actual)
+        self.assertNotIn("item3", actual)
+
+    def test_replacelistobject_key_noexist(self):
+        filename = "/tmp/so-yaml_test-replacelistobject.yaml"
+        file = open(filename, "w")
+        file.write("{key1: [{name: item1}]}")
+        file.close()
+
+        with patch('sys.exit', new=MagicMock()) as sysmock:
+            with patch('sys.stderr', new=StringIO()) as mock_stderr:
+                sys.argv = ["cmd", "replacelistobject", filename, "key2", "name", "item1", '{"name": "item2"}']
+                soyaml.main()
+                sysmock.assert_called()
+                self.assertEqual("The key provided does not exist. No action was taken on the file.\n", mock_stderr.getvalue())
+
+    def test_replacelistobject_key_noexist_deep(self):
+        filename = "/tmp/so-yaml_test-replacelistobject.yaml"
+        file = open(filename, "w")
+        file.write("{key1: { child1: [{name: a}] }}")
+        file.close()
+
+        with patch('sys.exit', new=MagicMock()) as sysmock:
+            with patch('sys.stderr', new=StringIO()) as mock_stderr:
+                sys.argv = ["cmd", "replacelistobject", filename, "key1.child2", "name", "a", '{"name": "b"}']
+                soyaml.main()
+                sysmock.assert_called()
+                self.assertEqual("The key provided does not exist. No action was taken on the file.\n", mock_stderr.getvalue())
+
+    def test_replacelistobject_key_nonlist(self):
+        filename = "/tmp/so-yaml_test-replacelistobject.yaml"
+        file = open(filename, "w")
+        file.write("{key1: { child1: 123 }}")
+        file.close()
+
+        with patch('sys.exit', new=MagicMock()) as sysmock:
+            with patch('sys.stderr', new=StringIO()) as mock_stderr:
+                sys.argv = ["cmd", "replacelistobject", filename, "key1", "name", "item", '{"name": "item"}']
+                soyaml.main()
+                sysmock.assert_called()
+                self.assertEqual("The existing value for the given key is not a list. No action was taken on the file.\n", mock_stderr.getvalue())
+
+    def test_replacelistobject_key_nonlist_deep(self):
+        filename = "/tmp/so-yaml_test-replacelistobject.yaml"
+        file = open(filename, "w")
+        file.write("{key1: { child1: 123, child2: { deep1: 45 } }}")
+        file.close()
+
+        with patch('sys.exit', new=MagicMock()) as sysmock:
+            with patch('sys.stderr', new=StringIO()) as mock_stderr:
+                sys.argv = ["cmd", "replacelistobject", filename, "key1.child2.deep1", "name", "item", '{"name": "item"}']
+                soyaml.main()
+                sysmock.assert_called()
+                self.assertEqual("The existing value for the given key is not a list. No action was taken on the file.\n", mock_stderr.getvalue())
+
+    def test_replacelistobject_string_condition_value(self):
+        filename = "/tmp/so-yaml_test-replacelistobject.yaml"
+        file = open(filename, "w")
+        file.write("{key1: [{name: item1, value: 10}, {name: item2, value: 20}]}")
+        file.close()
+
+        json_obj = '{"name": "item1", "value": 15}'
+        soyaml.replacelistobject([filename, "key1", "name", "item1", json_obj])
+
+        file = open(filename, "r")
+        actual = file.read()
+        file.close()
+
+        expected = "key1:\n- name: item1\n  value: 15\n- name: item2\n  value: 20\n"
+        self.assertEqual(actual, expected)
+
+    def test_replacelistobject_numeric_condition_value(self):
+        filename = "/tmp/so-yaml_test-replacelistobject.yaml"
+        file = open(filename, "w")
+        file.write("{key1: [{id: '1', status: active}, {id: '2', status: inactive}]}")
+        file.close()
+
+        json_obj = '{"id": "1", "status": "updated"}'
+        soyaml.replacelistobject([filename, "key1", "id", "1", json_obj])
+
+        file = open(filename, "r")
+        actual = file.read()
+        file.close()
+
+        expected = "key1:\n- id: '1'\n  status: updated\n- id: '2'\n  status: inactive\n"
+        self.assertEqual(actual, expected)

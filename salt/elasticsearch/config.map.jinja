@@ -6,8 +6,6 @@
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 {% import_yaml 'elasticsearch/defaults.yaml' as ELASTICSEARCHDEFAULTS with context %}
 
-{% set HIGHLANDER = salt['pillar.get']('global:highlander', False) %}
-
 {# this is a list of dicts containing hostname:ip for elasticsearch nodes that need to know about each other for cluster #}
 {% set ELASTICSEARCH_SEED_HOSTS = [] %}
 {% set node_data = salt['pillar.get']('elasticsearch:nodes', {GLOBALS.role.split('-')[1]: {GLOBALS.hostname: {'ip': GLOBALS.node_ip}}}) %}
@@ -36,13 +34,7 @@
       {% endfor %}
     {% endif %}
 {% elif grains.id.split('_') | last == 'searchnode' %}
-  {% if HIGHLANDER %}
-        {% do ELASTICSEARCHDEFAULTS.elasticsearch.config.node.roles.extend(['ml', 'master', 'transform']) %}
-  {% endif %}
   {% do ELASTICSEARCHDEFAULTS.elasticsearch.config.update({'discovery': {'seed_hosts': [GLOBALS.manager]}}) %}
-{% endif %}
-{% if HIGHLANDER %}
-      {% do ELASTICSEARCHDEFAULTS.elasticsearch.config.xpack.ml.update({'enabled': true}) %}
 {% endif %}
 
 {% do ELASTICSEARCHDEFAULTS.elasticsearch.config.node.update({'name': GLOBALS.hostname}) %}

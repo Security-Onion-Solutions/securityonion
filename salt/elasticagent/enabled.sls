@@ -6,9 +6,10 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
-{%   from 'docker/docker.map.jinja' import DOCKER %}
+{%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 
 include:
+  - ca
   - elasticagent.config
   - elasticagent.sostatus
 
@@ -21,17 +22,17 @@ so-elastic-agent:
     - user: 949
     - networks:
       - sobridge:
-        - ipv4_address: {{ DOCKER.containers['so-elastic-agent'].ip }}
+        - ipv4_address: {{ DOCKERMERGED.containers['so-elastic-agent'].ip }}
     - extra_hosts:
         - {{ GLOBALS.manager }}:{{ GLOBALS.manager_ip }}
         - {{ GLOBALS.hostname }}:{{ GLOBALS.node_ip }}
-        {% if DOCKER.containers['so-elastic-agent'].extra_hosts %}
-          {% for XTRAHOST in DOCKER.containers['so-elastic-agent'].extra_hosts %}
+        {% if DOCKERMERGED.containers['so-elastic-agent'].extra_hosts %}
+          {% for XTRAHOST in DOCKERMERGED.containers['so-elastic-agent'].extra_hosts %}
         - {{ XTRAHOST }}
           {% endfor %}
         {% endif %}
     - port_bindings:
-      {% for BINDING in DOCKER.containers['so-elastic-agent'].port_bindings %}
+      {% for BINDING in DOCKERMERGED.containers['so-elastic-agent'].port_bindings %}
       - {{ BINDING }}
       {% endfor %}
     - binds:
@@ -40,23 +41,31 @@ so-elastic-agent:
       - /etc/pki/tls/certs/intca.crt:/etc/pki/tls/certs/intca.crt:ro 
       - /nsm:/nsm:ro
       - /opt/so/log:/opt/so/log:ro
-     {% if DOCKER.containers['so-elastic-agent'].custom_bind_mounts %}
-        {% for BIND in DOCKER.containers['so-elastic-agent'].custom_bind_mounts %}
+     {% if DOCKERMERGED.containers['so-elastic-agent'].custom_bind_mounts %}
+        {% for BIND in DOCKERMERGED.containers['so-elastic-agent'].custom_bind_mounts %}
       - {{ BIND }}
         {% endfor %}
       {% endif %}
     - environment:
       - FLEET_CA=/etc/pki/tls/certs/intca.crt
       - LOGS_PATH=logs
-      {% if DOCKER.containers['so-elastic-agent'].extra_env %}
-        {% for XTRAENV in DOCKER.containers['so-elastic-agent'].extra_env %}
+      {% if DOCKERMERGED.containers['so-elastic-agent'].extra_env %}
+        {% for XTRAENV in DOCKERMERGED.containers['so-elastic-agent'].extra_env %}
       - {{ XTRAENV }}
         {% endfor %}
       {% endif %}
+    {% if DOCKERMERGED.containers['so-elastic-agent'].ulimits %}
+    - ulimits:
+    {%   for ULIMIT in DOCKERMERGED.containers['so-elastic-agent'].ulimits %}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
+    {%   endfor %}
+    {% endif %}
     - require:
       - file: create-elastic-agent-config
+      - file: trusttheca
     - watch:
       - file: create-elastic-agent-config
+      - file: trusttheca
 
 delete_so-elastic-agent_so-status.disabled:
   file.uncomment:

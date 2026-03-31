@@ -6,11 +6,12 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
-{%   from 'docker/docker.map.jinja' import DOCKER %}
+{%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   from 'soc/merged.map.jinja' import DOCKER_EXTRA_HOSTS %}
 {%   from 'soc/merged.map.jinja' import SOCMERGED %}
 
 include:
+  - ca
   - soc.config
   - soc.sostatus
 
@@ -21,7 +22,7 @@ so-soc:
     - name: so-soc
     - networks:
       - sobridge:
-        - ipv4_address: {{ DOCKER.containers['so-soc'].ip }}
+        - ipv4_address: {{ DOCKERMERGED.containers['so-soc'].ip }}
     - binds:
       - /nsm/rules:/nsm/rules:rw
       - /opt/so/conf/strelka:/opt/sensoroni/yara:rw
@@ -55,31 +56,39 @@ so-soc:
       - /opt/so/conf/soc/migrations:/opt/so/conf/soc/migrations:rw
       - /nsm/backup/detections-migration:/nsm/backup/detections-migration:ro
       - /opt/so/state:/opt/so/state:rw
-      - /etc/pki/ca.crt:/opt/sensoroni/html/so-ca.crt:ro
+      - /etc/pki/tls/certs/intca.crt:/opt/sensoroni/html/so-ca.crt:ro
     - extra_hosts:
     {% for node in DOCKER_EXTRA_HOSTS %}
     {%   for hostname, ip in node.items() %}
       - {{hostname}}:{{ip}}
     {%   endfor %}
     {% endfor %}
-    {% if DOCKER.containers['so-soc'].extra_hosts %}
-    {%   for XTRAHOST in DOCKER.containers['so-soc'].extra_hosts %}
+    {% if DOCKERMERGED.containers['so-soc'].extra_hosts %}
+    {%   for XTRAHOST in DOCKERMERGED.containers['so-soc'].extra_hosts %}
       - {{ XTRAHOST }}
     {%   endfor %}
     {% endif %}
     - port_bindings:
-    {% for BINDING in DOCKER.containers['so-soc'].port_bindings %}
+    {% for BINDING in DOCKERMERGED.containers['so-soc'].port_bindings %}
       - {{ BINDING }}
     {% endfor %}
-    {% if DOCKER.containers['so-soc'].extra_env %}
+    {% if DOCKERMERGED.containers['so-soc'].extra_env %}
     - environment:
-    {%   for XTRAENV in DOCKER.containers['so-soc'].extra_env %}
+    {%   for XTRAENV in DOCKERMERGED.containers['so-soc'].extra_env %}
       - {{ XTRAENV }}
     {%   endfor %}
     {% endif %}
+    {% if DOCKERMERGED.containers['so-soc'].ulimits %}
+    - ulimits:
+    {%   for ULIMIT in DOCKERMERGED.containers['so-soc'].ulimits %}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
+    {%   endfor %}
+    {% endif %}
     - watch:
+      - file: trusttheca
       - file: /opt/so/conf/soc/*
     - require:
+      - file: trusttheca
       - file: socdatadir
       - file: soclogdir
       - file: socconfig

@@ -1,44 +1,82 @@
 docker:
   gateway:
     description: Gateway for the default docker interface.
-    helpLink: docker.html
+    helpLink: docker
     advanced: True
   range:
     description: Default docker IP range for containers.
-    helpLink: docker.html
+    helpLink: docker
     advanced: True
+  ulimits:
+    description: |
+      Default ulimit settings applied to all containers via the Docker daemon. Each entry specifies a resource name (e.g. nofile, memlock, core, nproc) with soft and hard limits. Individual container ulimits override these defaults. Valid resource names include: cpu, fsize, data, stack, core, rss, nproc, nofile, memlock, as, locks, sigpending, msgqueue, nice, rtprio, rttime.
+    forcedType: "[]{}"
+    syntax: json
+    advanced: True
+    helpLink: docker.html
+    uiElements:
+    - field: name
+      label: Resource Name
+      required: True
+      regex: ^(cpu|fsize|data|stack|core|rss|nproc|nofile|memlock|as|locks|sigpending|msgqueue|nice|rtprio|rttime)$
+      regexFailureMessage: You must enter a valid ulimit name (cpu, fsize, data, stack, core, rss, nproc, nofile, memlock, as, locks, sigpending, msgqueue, nice, rtprio, rttime).
+    - field: soft
+      label: Soft Limit
+      forcedType: int
+    - field: hard
+      label: Hard Limit
+      forcedType: int
   containers:
     so-dockerregistry: &dockerOptions
       final_octet:
         description: Last octet of the container IP address.
-        helpLink: docker.html
+        helpLink: docker
         readonly: True
         advanced: True
         global: True
       port_bindings:
         description: List of port bindings for the container.
-        helpLink: docker.html
+        helpLink: docker
         advanced: True
         multiline: True
         forcedType: "[]string"
       custom_bind_mounts:
         description: List of custom local volume bindings.
         advanced: True
-        helpLink: docker.html
+        helpLink: docker
         multiline: True
         forcedType: "[]string"
       extra_hosts:
         description: List of additional host entries for the container.
         advanced: True
-        helpLink: docker.html
+        helpLink: docker
         multiline: True
         forcedType: "[]string"
       extra_env:
         description: List of additional ENV entries for the container.
         advanced: True
-        helpLink: docker.html
+        helpLink: docker
         multiline: True
         forcedType: "[]string"
+      ulimits:
+        description: |
+          Ulimit settings for the container. Each entry specifies a resource name (e.g. nofile, memlock, core, nproc) with optional soft and hard limits. Valid resource names include: cpu, fsize, data, stack, core, rss, nproc, nofile, memlock, as, locks, sigpending, msgqueue, nice, rtprio, rttime.
+        advanced: True
+        helpLink: docker.html
+        forcedType: "[]{}"
+        syntax: json
+        uiElements:
+        - field: name
+          label: Resource Name
+          required: True
+          regex: ^(cpu|fsize|data|stack|core|rss|nproc|nofile|memlock|as|locks|sigpending|msgqueue|nice|rtprio|rttime)$
+          regexFailureMessage: You must enter a valid ulimit name (cpu, fsize, data, stack, core, rss, nproc, nofile, memlock, as, locks, sigpending, msgqueue, nice, rtprio, rttime).
+        - field: soft
+          label: Soft Limit
+          forcedType: int
+        - field: hard
+          label: Hard Limit
+          forcedType: int
     so-elastic-fleet: *dockerOptions
     so-elasticsearch: *dockerOptions
     so-influxdb: *dockerOptions
@@ -62,43 +100,6 @@ docker:
     so-idh: *dockerOptions
     so-elastic-agent: *dockerOptions
     so-telegraf: *dockerOptions
-    so-steno: *dockerOptions
-    so-suricata:
-      final_octet:
-        description: Last octet of the container IP address.
-        helpLink: docker.html
-        readonly: True
-        advanced: True
-        global: True
-      port_bindings:
-        description: List of port bindings for the container.
-        helpLink: docker.html
-        advanced: True
-        multiline: True
-        forcedType: "[]string"
-      custom_bind_mounts:
-        description: List of custom local volume bindings.
-        advanced: True
-        helpLink: docker.html
-        multiline: True
-        forcedType: "[]string"
-      extra_hosts:
-        description: List of additional host entries for the container.
-        advanced: True
-        helpLink: docker.html
-        multiline: True
-        forcedType: "[]string"
-      extra_env:
-        description: List of additional ENV entries for the container.
-        advanced: True
-        helpLink: docker.html
-        multiline: True
-        forcedType: "[]string"
-      ulimits:
-        description: Ulimits for the container, in bytes.
-        advanced: True
-        helpLink: docker.html
-        multiline: True
-        forcedType: "[]string"
+    so-suricata: *dockerOptions
     so-zeek: *dockerOptions
     so-kafka: *dockerOptions

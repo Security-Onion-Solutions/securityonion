@@ -3,7 +3,7 @@
 {%- set ES_PASS = salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:pass', '') %}
 
 id: aea1ba80-1065-11ee-a369-97538913b6a9
-revision: 1
+revision: 4
 outputs:
   default:
     type: elasticsearch
@@ -22,242 +22,133 @@ agent:
     metrics: false
   features: {}
 inputs:
-  - id: logfile-logs-fefef78c-422f-4cfa-8abf-4cd1b9428f62
-    name: import-evtx-logs
-    revision: 2
-    type: logfile
-    use_output: default
-    meta:
-      package:
-        name: log
-        version:
-    data_stream:
-      namespace: so
-    package_policy_id: fefef78c-422f-4cfa-8abf-4cd1b9428f62
-    streams:
-      - id: logfile-log.log-fefef78c-422f-4cfa-8abf-4cd1b9428f62
-        data_stream:
-          dataset: import
-        paths:
-          - /nsm/import/*/evtx/*.json
-        processors:
-          - dissect:
-              field: log.file.path
-              tokenizer: '/nsm/import/%{import.id}/evtx/%{import.file}'
-              target_prefix: ''
-          - decode_json_fields:
-              fields:
-                - message
-              target: ''
-          - drop_fields:
-              ignore_missing: true
-              fields:
-                - host
-          - add_fields:
-              fields:
-                dataset: system.security
-                type: logs
-                namespace: default
-              target: data_stream
-          - add_fields:
-              fields:
-                dataset: system.security
-                module: system
-                imported: true
-              target: event
-          - then:
-              - add_fields:
-                  fields:
-                    dataset: windows.sysmon_operational
-                  target: data_stream
-              - add_fields:
-                  fields:
-                    dataset: windows.sysmon_operational
-                    module: windows
-                    imported: true
-                  target: event
-            if:
-              equals:
-                winlog.channel: Microsoft-Windows-Sysmon/Operational
-          - then:
-              - add_fields:
-                  fields:
-                    dataset: system.application
-                  target: data_stream
-              - add_fields:
-                  fields:
-                    dataset: system.application
-                  target: event
-            if:
-              equals:
-                winlog.channel: Application
-          - then:
-              - add_fields:
-                  fields:
-                    dataset: system.system
-                  target: data_stream
-              - add_fields:
-                  fields:
-                    dataset: system.system
-                  target: event
-            if:
-              equals:
-                winlog.channel: System
-          - then:
-              - add_fields:
-                  fields:
-                    dataset: windows.powershell_operational
-                  target: data_stream
-              - add_fields:
-                  fields:
-                    dataset: windows.powershell_operational
-                    module: windows
-                  target: event
-            if:
-              equals:
-                winlog.channel: Microsoft-Windows-PowerShell/Operational
-        tags:
-          - import
-  - id: logfile-redis-fc98c947-7d17-4861-a318-7ad075f6d1b0
-    name: redis-logs
-    revision: 2
-    type: logfile
-    use_output: default
-    meta:
-      package:
-        name: redis
-        version:
-    data_stream:
-      namespace: default
-    package_policy_id: fc98c947-7d17-4861-a318-7ad075f6d1b0
-    streams:
-      - id: logfile-redis.log-fc98c947-7d17-4861-a318-7ad075f6d1b0
-        data_stream:
-          dataset: redis.log
-          type: logs
-        exclude_files:
-          - .gz$
-        paths:
-          - /opt/so/log/redis/redis.log
-        tags:
-          - redis-log
-        exclude_lines:
-          - '^\s+[\-`(''.|_]'
-  - id: logfile-logs-3b56803d-5ade-4c93-b25e-9b37182f66b8
+  - id: filestream-filestream-85820eb0-25ef-11f0-a18d-1b26f69b8310
     name: import-suricata-logs
-    revision: 2
-    type: logfile
+    revision: 3
+    type: filestream
     use_output: default
     meta:
       package:
-        name: log
+        name: filestream
         version:
     data_stream:
       namespace: so
-    package_policy_id: 3b56803d-5ade-4c93-b25e-9b37182f66b8
+    package_policy_id: 85820eb0-25ef-11f0-a18d-1b26f69b8310
     streams:
-      - id: logfile-log.log-3b56803d-5ade-4c93-b25e-9b37182f66b8
+      - id: filestream-filestream.generic-85820eb0-25ef-11f0-a18d-1b26f69b8310
         data_stream:
           dataset: import
-        pipeline: suricata.common
         paths:
           - /nsm/import/*/suricata/eve*.json
+        pipeline: suricata.common
+        prospector.scanner.recursive_glob: true
+        prospector.scanner.exclude_files:
+          - \.gz$
+        ignore_older: 72h
+        clean_inactive: -1
+        parsers: null
         processors:
           - add_fields:
+              target: event
               fields:
+                category: network
                 module: suricata
                 imported: true
-                category: network
-              target: event
           - dissect:
+              tokenizer: /nsm/import/%{import.id}/suricata/%{import.file}
               field: log.file.path
-              tokenizer: '/nsm/import/%{import.id}/suricata/%{import.file}'
               target_prefix: ''
-  - id: logfile-logs-c327e1a3-1ebe-449c-a8eb-f6f35032e69d
-    name: soc-server-logs
-    revision: 2
-    type: logfile
+        file_identity.native: null
+        prospector.scanner.fingerprint.enabled: false
+  - id: filestream-filestream-86b4e960-25ef-11f0-a18d-1b26f69b8310
+    name: import-zeek-logs
+    revision: 3
+    type: filestream
     use_output: default
     meta:
       package:
-        name: log
+        name: filestream
         version:
     data_stream:
       namespace: so
-    package_policy_id: c327e1a3-1ebe-449c-a8eb-f6f35032e69d
+    package_policy_id: 86b4e960-25ef-11f0-a18d-1b26f69b8310
     streams:
-      - id: logfile-log.log-c327e1a3-1ebe-449c-a8eb-f6f35032e69d
+      - id: filestream-filestream.generic-86b4e960-25ef-11f0-a18d-1b26f69b8310
         data_stream:
-          dataset: soc
-        pipeline: common
+          dataset: import
         paths:
-          - /opt/so/log/soc/sensoroni-server.log
+          - /nsm/import/*/zeek/logs/*.log
+        prospector.scanner.recursive_glob: true
+        prospector.scanner.exclude_files:
+          - >-
+            (broker|capture_loss|cluster|conn-summary|console|ecat_arp_info|known_certs|known_hosts|known_services|loaded_scripts|ntp|ocsp|packet_filter|reporter|stats|stderr|stdout).log$
+        clean_inactive: -1
+        parsers: null
         processors:
-          - decode_json_fields:
-              add_error_key: true
-              process_array: true
-              max_depth: 2
-              fields:
-                - message
-              target: soc
+          - dissect:
+              tokenizer: /nsm/import/%{import.id}/zeek/logs/%{import.file}
+              field: log.file.path
+              target_prefix: ''
+          - script:
+              lang: javascript
+              source: |
+                function process(event) {
+                  var pl = event.Get("import.file").slice(0,-4);
+                  event.Put("@metadata.pipeline", "zeek." + pl);
+                }
           - add_fields:
-              fields:
-                module: soc
-                dataset_temp: server
-                category: host
               target: event
-          - rename:
-              ignore_missing: true
               fields:
-                - from: soc.fields.sourceIp
-                  to: source.ip
-                - from: soc.fields.status
-                  to: http.response.status_code
-                - from: soc.fields.method
-                  to: http.request.method
-                - from: soc.fields.path
-                  to: url.path
-                - from: soc.message
-                  to: event.action
-                - from: soc.level
-                  to: log.level
-        tags:
-          - so-soc
-  - id: logfile-logs-906e0d4c-9ec3-4c6a-bef6-e347ec9fd073
+                category: network
+                module: zeek
+                imported: true
+          - add_tags:
+              tags: ics
+              when:
+                regexp:
+                  import.file: >-
+                    ^bacnet*|^bsap*|^cip*|^cotp*|^dnp3*|^ecat*|^enip*|^modbus*|^opcua*|^profinet*|^s7comm*
+        file_identity.native: null
+        prospector.scanner.fingerprint.enabled: false
+  - id: filestream-filestream-91741240-25ef-11f0-a18d-1b26f69b8310
     name: soc-sensoroni-logs
-    revision: 2
-    type: logfile
+    revision: 3
+    type: filestream
     use_output: default
     meta:
       package:
-        name: log
+        name: filestream
         version:
     data_stream:
       namespace: so
-    package_policy_id: 906e0d4c-9ec3-4c6a-bef6-e347ec9fd073
+    package_policy_id: 91741240-25ef-11f0-a18d-1b26f69b8310
     streams:
-      - id: logfile-log.log-906e0d4c-9ec3-4c6a-bef6-e347ec9fd073
+      - id: filestream-filestream.generic-91741240-25ef-11f0-a18d-1b26f69b8310
         data_stream:
           dataset: soc
-        pipeline: common
         paths:
           - /opt/so/log/sensoroni/sensoroni.log
+        pipeline: common
+        prospector.scanner.recursive_glob: true
+        prospector.scanner.exclude_files:
+          - \.gz$
+        clean_inactive: -1
+        parsers: null
         processors:
           - decode_json_fields:
-              add_error_key: true
-              process_array: true
-              max_depth: 2
               fields:
                 - message
               target: sensoroni
+              process_array: true
+              max_depth: 2
+              add_error_key: true
           - add_fields:
+              target: event
               fields:
+                category: host
                 module: soc
                 dataset_temp: sensoroni
-                category: host
-              target: event
           - rename:
-              ignore_missing: true
               fields:
                 - from: sensoroni.fields.sourceIp
                   to: source.ip
@@ -271,141 +162,100 @@ inputs:
                   to: event.action
                 - from: sensoroni.level
                   to: log.level
-  - id: logfile-logs-df0d7f2c-221f-433b-b18b-d1cf83250515
-    name: soc-salt-relay-logs
-    revision: 2
-    type: logfile
-    use_output: default
-    meta:
-      package:
-        name: log
-        version:
-    data_stream:
-      namespace: so
-    package_policy_id: df0d7f2c-221f-433b-b18b-d1cf83250515
-    streams:
-      - id: logfile-log.log-df0d7f2c-221f-433b-b18b-d1cf83250515
-        data_stream:
-          dataset: soc
-        pipeline: common
-        paths:
-          - /opt/so/log/soc/salt-relay.log
-        processors:
-          - dissect:
-              field: message
-              tokenizer: '%{soc.ts} | %{event.action}'
-              target_prefix: ''
-          - add_fields:
-              fields:
-                module: soc
-                dataset_temp: salt_relay
-                category: host
-              target: event
-        tags:
-          - so-soc
-  - id: logfile-logs-74bd2366-fe52-493c-bddc-843a017fc4d0
-    name: soc-auth-sync-logs
-    revision: 2
-    type: logfile
-    use_output: default
-    meta:
-      package:
-        name: log
-        version:
-    data_stream:
-      namespace: so
-    package_policy_id: 74bd2366-fe52-493c-bddc-843a017fc4d0
-    streams:
-      - id: logfile-log.log-74bd2366-fe52-493c-bddc-843a017fc4d0
-        data_stream:
-          dataset: soc
-        pipeline: common
-        paths:
-          - /opt/so/log/soc/sync.log
-        processors:
-          - dissect:
-              field: message
-              tokenizer: '%{event.action}'
-              target_prefix: ''
-          - add_fields:
-              fields:
-                module: soc
-                dataset_temp: auth_sync
-                category: host
-              target: event
-        tags:
-          - so-soc
-  - id: logfile-logs-d151d9bf-ff2a-4529-9520-c99244bc0253
+              ignore_missing: true
+        file_identity.native: null
+        prospector.scanner.fingerprint.enabled: false
+  - id: filestream-filestream-976e3900-25ef-11f0-a18d-1b26f69b8310
     name: suricata-logs
-    revision: 2
-    type: logfile
+    revision: 3
+    type: filestream
     use_output: default
     meta:
       package:
-        name: log
+        name: filestream
         version:
     data_stream:
       namespace: so
-    package_policy_id: d151d9bf-ff2a-4529-9520-c99244bc0253
+    package_policy_id: 976e3900-25ef-11f0-a18d-1b26f69b8310
     streams:
-      - id: logfile-log.log-d151d9bf-ff2a-4529-9520-c99244bc0253
+      - id: filestream-filestream.generic-976e3900-25ef-11f0-a18d-1b26f69b8310
         data_stream:
           dataset: suricata
-        pipeline: suricata.common
         paths:
           - /nsm/suricata/eve*.json
+        pipeline: suricata.common
+        prospector.scanner.recursive_glob: true
+        prospector.scanner.exclude_files:
+          - \.gz$
+        clean_inactive: -1
+        parsers: null
         processors:
           - add_fields:
-              fields:
-                module: suricata
-                category: network
               target: event
-  - id: logfile-logs-31f94d05-ae75-40ee-b9c5-0e0356eff327
+              fields:
+                category: network
+                module: suricata
+        file_identity.native: null
+        prospector.scanner.fingerprint.enabled: false
+  - id: filestream-filestream-95091fe0-25ef-11f0-a18d-1b26f69b8310
     name: strelka-logs
-    revision: 2
-    type: logfile
+    revision: 3
+    type: filestream
     use_output: default
     meta:
       package:
-        name: log
+        name: filestream
         version:
     data_stream:
       namespace: so
-    package_policy_id: 31f94d05-ae75-40ee-b9c5-0e0356eff327
+    package_policy_id: 95091fe0-25ef-11f0-a18d-1b26f69b8310
     streams:
-      - id: logfile-log.log-31f94d05-ae75-40ee-b9c5-0e0356eff327
+      - id: filestream-filestream.generic-95091fe0-25ef-11f0-a18d-1b26f69b8310
         data_stream:
           dataset: strelka
-        pipeline: strelka.file
         paths:
           - /nsm/strelka/log/strelka.log
+        pipeline: strelka.file
+        prospector.scanner.recursive_glob: true
+        prospector.scanner.exclude_files:
+          - \.gz$
+        clean_inactive: -1
+        parsers: null
         processors:
           - add_fields:
-              fields:
-                module: strelka
-                category: file
               target: event
-  - id: logfile-logs-6197fe84-9b58-4d9b-8464-3d517f28808d
+              fields:
+                category: file
+                module: strelka
+        file_identity.native: null
+        prospector.scanner.fingerprint.enabled: false
+  - id: filestream-filestream-9f309ca0-25ef-11f0-a18d-1b26f69b8310
     name: zeek-logs
-    revision: 1
-    type: logfile
+    revision: 2
+    type: filestream
     use_output: default
     meta:
       package:
-        name: log
-        version: 
+        name: filestream
+        version:
     data_stream:
       namespace: so
-    package_policy_id: 6197fe84-9b58-4d9b-8464-3d517f28808d
+    package_policy_id: 9f309ca0-25ef-11f0-a18d-1b26f69b8310
     streams:
-      - id: logfile-log.log-6197fe84-9b58-4d9b-8464-3d517f28808d
+      - id: filestream-filestream.generic-9f309ca0-25ef-11f0-a18d-1b26f69b8310
         data_stream:
           dataset: zeek
         paths:
           - /nsm/zeek/logs/current/*.log
+        prospector.scanner.recursive_glob: true
+        prospector.scanner.exclude_files:
+          - >-
+            (broker|capture_loss|cluster|conn-summary|console|ecat_arp_info|known_certs|known_hosts|known_services|loaded_scripts|ntp|ocsp|packet_filter|reporter|stats|stderr|stdout).log$
+        clean_inactive: -1
+        parsers: null
         processors:
           - dissect:
-              tokenizer: '/nsm/zeek/logs/current/%{pipeline}.log'
+              tokenizer: /nsm/zeek/logs/current/%{pipeline}.log
               field: log.file.path
               trim_chars: .log
               target_prefix: ''
@@ -427,18 +277,17 @@ inputs:
                 regexp:
                   pipeline: >-
                     ^bacnet*|^bsap*|^cip*|^cotp*|^dnp3*|^ecat*|^enip*|^modbus*|^opcua*|^profinet*|^s7comm*
-        exclude_files:
-          - >-
-            broker|capture_loss|cluster|ecat_arp_info|known_hosts|known_services|loaded_scripts|ntp|ocsp|packet_filter|reporter|stats|stderr|stdout.log$
+        file_identity.native: null
+        prospector.scanner.fingerprint.enabled: false
   - id: udp-udp-35051de0-46a5-11ee-8d5d-9f98c8182f60
     name: syslog-udp-514
-    revision: 3
+    revision: 4
     type: udp
     use_output: default
     meta:
       package:
         name: udp
-        version: 1.10.0
+        version:
     data_stream:
       namespace: so
     package_policy_id: 35051de0-46a5-11ee-8d5d-9f98c8182f60
@@ -458,13 +307,13 @@ inputs:
           - syslog
   - id: tcp-tcp-33d37bb0-46a5-11ee-8d5d-9f98c8182f60
     name: syslog-tcp-514
-    revision: 3
+    revision: 4
     type: tcp
     use_output: default
     meta:
       package:
         name: tcp
-        version: 1.10.0
+        version:
     data_stream:
       namespace: so
     package_policy_id: 33d37bb0-46a5-11ee-8d5d-9f98c8182f60

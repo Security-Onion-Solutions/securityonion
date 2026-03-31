@@ -1,11 +1,15 @@
 elasticsearch:
   enabled: false
-  version: 8.18.8
+  version: 9.0.8
   index_clean: true
+  vm:
+    max_map_count: 1048576
   config:
     action:
       destructive_requires_name: true
     cluster:
+      logsdb:
+        enabled: false
       routing:
         allocation:
           disk:
@@ -115,7 +119,7 @@ elasticsearch:
         ignore_missing_component_templates: []
         index_patterns:
         - so-case*
-        priority: 500
+        priority: 501
         template:
           mappings:
             date_detection: false
@@ -127,8 +131,6 @@ elasticsearch:
                 match_mapping_type: string
           settings:
             index:
-              lifecycle:
-                name: so-case-logs
               mapping:
                 total_fields:
                   limit: 1500
@@ -139,14 +141,7 @@ elasticsearch:
               sort:
                 field: '@timestamp'
                 order: desc
-      policy:
-        phases:
-          hot:
-            actions: {}
-            min_age: 0ms
     so-common:
-      close: 30
-      delete: 365
       index_sorting: false
       index_template:
         composed_of:
@@ -210,7 +205,9 @@ elasticsearch:
         - common-settings
         - common-dynamic-mappings
         - winlog-mappings
-        data_stream: {}
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
         ignore_missing_component_templates: []
         index_patterns:
         - logs-*-so*
@@ -270,7 +267,7 @@ elasticsearch:
         ignore_missing_component_templates: []
         index_patterns:
         - so-detection*
-        priority: 500
+        priority: 501
         template:
           mappings:
             date_detection: false
@@ -282,8 +279,6 @@ elasticsearch:
                 match_mapping_type: string
           settings:
             index:
-              lifecycle:
-                name: so-detection-logs
               mapping:
                 total_fields:
                   limit: 1500
@@ -294,11 +289,6 @@ elasticsearch:
               sort:
                 field: '@timestamp'
                 order: desc
-      policy:
-        phases:
-          hot:
-            actions: {}
-            min_age: 0ms
     sos-backup:
       index_sorting: false
       index_template:
@@ -458,7 +448,7 @@ elasticsearch:
         ignore_missing_component_templates: []
         index_patterns:
         - endgame*
-        priority: 500
+        priority: 501
         template:
           mappings:
             date_detection: false
@@ -506,8 +496,6 @@ elasticsearch:
                 priority: 50
             min_age: 30d
     so-idh:
-      close: 30
-      delete: 365
       index_sorting: false
       index_template:
         composed_of:
@@ -562,10 +550,13 @@ elasticsearch:
         - dtc-user_agent-mappings
         - common-settings
         - common-dynamic-mappings
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
         ignore_missing_component_templates: []
         index_patterns:
-        - so-idh-*
-        priority: 500
+        - logs-idh-so*
+        priority: 501
         template:
           mappings:
             date_detection: false
@@ -675,11 +666,13 @@ elasticsearch:
         - common-dynamic-mappings
         - winlog-mappings
         - hash-mappings
-        data_stream: {}
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
         ignore_missing_component_templates: []
         index_patterns:
         - logs-import-so*
-        priority: 500
+        priority: 501
         template:
           mappings:
             date_detection: false
@@ -691,7 +684,6 @@ elasticsearch:
                 match_mapping_type: string
           settings:
             index:
-              final_pipeline: .fleet_final_pipeline-1
               lifecycle:
                 name: so-import-logs
               mapping:
@@ -735,7 +727,7 @@ elasticsearch:
         ignore_missing_component_templates: []
         index_patterns:
         - so-ip*
-        priority: 500
+        priority: 501
         template:
           mappings:
             date_detection: false
@@ -750,19 +742,12 @@ elasticsearch:
               mapping:
                 total_fields:
                   limit: 1500
-              lifecycle:
-                name: so-ip-mappings-logs
               number_of_replicas: 0
               number_of_shards: 1
               refresh_interval: 30s
               sort:
                 field: '@timestamp'
                 order: desc
-      policy:
-        phases:
-          hot:
-            actions: {}
-            min_age: 0ms
     so-items:
       index_sorting: false
       index_template:
@@ -771,7 +756,7 @@ elasticsearch:
         ignore_missing_component_templates: []
         index_patterns:
         - .items-default-**
-        priority: 500
+        priority: 501
         template:
           mappings:
             date_detection: false
@@ -850,60 +835,18 @@ elasticsearch:
                 priority: 50
             min_age: 30d
     so-kratos:
-      close: 30
-      delete: 365
       index_sorting: false
       index_template:
         composed_of:
         - agent-mappings
         - dtc-agent-mappings
-        - base-mappings
-        - dtc-base-mappings
-        - client-mappings
-        - dtc-client-mappings
-        - container-mappings
-        - destination-mappings
-        - dtc-destination-mappings
-        - pb-override-destination-mappings
-        - dll-mappings
-        - dns-mappings
-        - dtc-dns-mappings
-        - ecs-mappings
-        - dtc-ecs-mappings
-        - error-mappings
         - event-mappings
-        - dtc-event-mappings
         - file-mappings
-        - dtc-file-mappings
-        - group-mappings
         - host-mappings
         - dtc-host-mappings
         - http-mappings
         - dtc-http-mappings
-        - log-mappings
         - metadata-mappings
-        - network-mappings
-        - dtc-network-mappings
-        - observer-mappings
-        - dtc-observer-mappings
-        - organization-mappings
-        - package-mappings
-        - process-mappings
-        - dtc-process-mappings
-        - related-mappings
-        - rule-mappings
-        - dtc-rule-mappings
-        - server-mappings
-        - service-mappings
-        - dtc-service-mappings
-        - source-mappings
-        - dtc-source-mappings
-        - pb-override-source-mappings
-        - threat-mappings
-        - tls-mappings
-        - url-mappings
-        - user_agent-mappings
-        - dtc-user_agent-mappings
         - common-settings
         - common-dynamic-mappings
         data_stream:
@@ -912,7 +855,7 @@ elasticsearch:
         ignore_missing_component_templates: []
         index_patterns:
         - logs-kratos-so*
-        priority: 500
+        priority: 501
         template:
           mappings:
             date_detection: false
@@ -960,8 +903,6 @@ elasticsearch:
                 priority: 50
             min_age: 30d
     so-hydra:
-      close: 30
-      delete: 365
       index_sorting: false
       index_template:
         composed_of:
@@ -1022,7 +963,7 @@ elasticsearch:
         ignore_missing_component_templates: []
         index_patterns:
         - logs-hydra-so*
-        priority: 500
+        priority: 501
         template:
           mappings:
             date_detection: false
@@ -1077,7 +1018,7 @@ elasticsearch:
         ignore_missing_component_templates: []
         index_patterns:
         - .lists-default-**
-        priority: 500
+        priority: 501
         template:
           mappings:
             date_detection: false
@@ -1563,6 +1504,9 @@ elasticsearch:
         - so-fleet_integrations.ip_mappings-1
         - so-fleet_globals-1
         - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
         ignore_missing_component_templates:
         - logs-elastic_agent.cloudbeat@custom
         index_patterns:
@@ -1798,6 +1742,9 @@ elasticsearch:
         - so-fleet_integrations.ip_mappings-1
         - so-fleet_globals-1
         - so-fleet_agent_id_verification-1
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
         ignore_missing_component_templates:
         - logs-elastic_agent.heartbeat@custom
         index_patterns:
@@ -3057,8 +3004,6 @@ elasticsearch:
                 priority: 50
             min_age: 30d
     so-logs-soc:
-      close: 30
-      delete: 365
       index_sorting: false
       index_template:
         composed_of:
@@ -3113,11 +3058,13 @@ elasticsearch:
         - dtc-user_agent-mappings
         - common-settings
         - common-dynamic-mappings
-        data_stream: {}
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
         ignore_missing_component_templates: []
         index_patterns:
         - logs-soc-so*
-        priority: 500
+        priority: 501
         template:
           mappings:
             date_detection: false
@@ -3707,10 +3654,13 @@ elasticsearch:
         - vulnerability-mappings
         - common-settings
         - common-dynamic-mappings
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
         ignore_missing_component_templates: []
         index_patterns:
         - logs-logstash-default*
-        priority: 500
+        priority: 501
         template:
           mappings:
             date_detection: false
@@ -4008,10 +3958,13 @@ elasticsearch:
         - vulnerability-mappings
         - common-settings
         - common-dynamic-mappings
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
         ignore_missing_component_templates: []
         index_patterns:
-        - logs-redis-default*
-        priority: 500
+        - logs-redis.log*
+        priority: 501
         template:
           mappings:
             date_detection: false
@@ -4122,11 +4075,13 @@ elasticsearch:
         - common-settings
         - common-dynamic-mappings
         - hash-mappings
-        data_stream: {}
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
         ignore_missing_component_templates: []
         index_patterns:
         - logs-strelka-so*
-        priority: 500
+        priority: 501
         template:
           mappings:
             date_detection: false
@@ -4236,11 +4191,13 @@ elasticsearch:
         - common-settings
         - common-dynamic-mappings
         - hash-mappings
-        data_stream: {}
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
         ignore_missing_component_templates: []
         index_patterns:
         - logs-suricata-so*
-        priority: 500
+        priority: 501
         template:
           mappings:
             date_detection: false
@@ -4350,11 +4307,13 @@ elasticsearch:
         - common-settings
         - common-dynamic-mappings
         - hash-mappings
-        data_stream: {}
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
         ignore_missing_component_templates: []
         index_patterns:
         - logs-suricata.alerts-*
-        priority: 500
+        priority: 501
         template:
           mappings:
             date_detection: false
@@ -4464,11 +4423,13 @@ elasticsearch:
         - vulnerability-mappings
         - common-settings
         - common-dynamic-mappings
-        data_stream: {}
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
         ignore_missing_component_templates: []
         index_patterns:
         - logs-syslog-so*
-        priority: 500
+        priority: 501
         template:
           mappings:
             date_detection: false
@@ -4580,11 +4541,13 @@ elasticsearch:
         - common-settings
         - common-dynamic-mappings
         - hash-mappings
-        data_stream: {}
+        data_stream:
+          allow_custom_routing: false
+          hidden: false
         ignore_missing_component_templates: []
         index_patterns:
         - logs-zeek-so*
-        priority: 500
+        priority: 501
         template:
           mappings:
             date_detection: false

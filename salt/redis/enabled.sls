@@ -5,10 +5,12 @@
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
-{%   from 'docker/docker.map.jinja' import DOCKER %}
+{%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 
 include:
+  - ca
+  - redis.ssl
   - redis.config
   - redis.sostatus
 
@@ -19,9 +21,9 @@ so-redis:
     - user: socore
     - networks:
       - sobridge:
-        - ipv4_address: {{ DOCKER.containers['so-redis'].ip }}
+        - ipv4_address: {{ DOCKERMERGED.containers['so-redis'].ip }}
     - port_bindings:
-      {% for BINDING in DOCKER.containers['so-redis'].port_bindings %}
+      {% for BINDING in DOCKERMERGED.containers['so-redis'].port_bindings %}
       - {{ BINDING }}
       {% endfor %}
     - binds:
@@ -31,40 +33,40 @@ so-redis:
       - /nsm/redis/data:/data:rw
       - /etc/pki/redis.crt:/certs/redis.crt:ro
       - /etc/pki/redis.key:/certs/redis.key:ro
-      {% if grains['role'] in ['so-manager', 'so-managersearch', 'so-standalone', 'so-import'] %}
-      - /etc/pki/ca.crt:/certs/ca.crt:ro
-      {% else %}
       - /etc/pki/tls/certs/intca.crt:/certs/ca.crt:ro
-      {% endif %}
-      {% if DOCKER.containers['so-redis'].custom_bind_mounts %}
-        {% for BIND in DOCKER.containers['so-redis'].custom_bind_mounts %}
+      {% if DOCKERMERGED.containers['so-redis'].custom_bind_mounts %}
+        {% for BIND in DOCKERMERGED.containers['so-redis'].custom_bind_mounts %}
       - {{ BIND }}
         {% endfor %}
       {% endif %}
-    {% if DOCKER.containers['so-redis'].extra_hosts %}
+    {% if DOCKERMERGED.containers['so-redis'].extra_hosts %}
     - extra_hosts:
-      {% for XTRAHOST in DOCKER.containers['so-redis'].extra_hosts %}
+      {% for XTRAHOST in DOCKERMERGED.containers['so-redis'].extra_hosts %}
       - {{ XTRAHOST }}
       {% endfor %}
     {% endif %}
-    {% if DOCKER.containers['so-redis'].extra_env %}
+    {% if DOCKERMERGED.containers['so-redis'].extra_env %}
     - environment:
-      {% for XTRAENV in DOCKER.containers['so-redis'].extra_env %}
+      {% for XTRAENV in DOCKERMERGED.containers['so-redis'].extra_env %}
       - {{ XTRAENV }}
       {% endfor %}
     {% endif %}
+    {% if DOCKERMERGED.containers['so-redis'].ulimits %}
+    - ulimits:
+    {%   for ULIMIT in DOCKERMERGED.containers['so-redis'].ulimits %}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
+    {%   endfor %}
+    {% endif %}
     - entrypoint: "redis-server /usr/local/etc/redis/redis.conf"
     - watch:
-      - file: /opt/so/conf/redis/etc
-    - require:
-      - file: redisconf
+      - file: trusttheca
       - x509: redis_crt
       - x509: redis_key
-      {% if grains['role'] in ['so-manager', 'so-managersearch', 'so-standalone', 'so-import'] %}
-      - x509: pki_public_ca_crt
-      {% else %}
-      - x509: trusttheca
-      {% endif %}
+      - file: /opt/so/conf/redis/etc
+    - require:
+      - file: trusttheca
+      - x509: redis_crt
+      - x509: redis_key
 
 delete_so-redis_so-status.disabled:
   file.uncomment:

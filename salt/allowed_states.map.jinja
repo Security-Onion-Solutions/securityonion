@@ -15,11 +15,7 @@
     'salt.minion-check',
     'sensoroni',
     'salt.lasthighstate',
-    'salt.minion'
-] %}
-
-{% set ssl_states = [
-    'ssl',
+    'salt.minion',
     'telegraf',
     'firewall',
     'schedule',
@@ -28,7 +24,7 @@
 
 {% set manager_states = [
     'salt.master',
-    'ca',
+    'ca.server',
     'registry',
     'manager',
     'nginx',
@@ -42,7 +38,6 @@
 ] %}
 
 {% set sensor_states = [
-    'pcap',
     'suricata',
     'healthcheck',
     'tcpreplay',
@@ -75,28 +70,24 @@
     {# Map role-specific states #}
     {% set role_states = {
         'so-eval': (
-            ssl_states +
             manager_states +
             sensor_states +
-            elastic_stack_states | reject('equalto', 'logstash') | list
+            elastic_stack_states | reject('equalto', 'logstash') | list +
+            ['logstash.ssl']
         ),
         'so-heavynode': (
-            ssl_states +
             sensor_states +
             ['elasticagent', 'elasticsearch', 'logstash', 'redis', 'nginx']
         ),
         'so-idh': (
-            ssl_states +
             ['idh']
         ),
         'so-import': (
-            ssl_states +
             manager_states +
             sensor_states | reject('equalto', 'strelka') | reject('equalto', 'healthcheck') | list +
-            ['elasticsearch', 'elasticsearch.auth', 'kibana', 'kibana.secrets', 'strelka.manager']
+            ['elasticsearch', 'elasticsearch.auth', 'kibana', 'kibana.secrets', 'logstash.ssl', 'strelka.manager']
         ),
         'so-manager': (
-            ssl_states +
             manager_states +
             ['salt.cloud', 'libvirt.packages', 'libvirt.ssh.users', 'strelka.manager'] +
             stig_states +
@@ -104,7 +95,6 @@
             elastic_stack_states
         ),
         'so-managerhype': (
-            ssl_states +
             manager_states +
             ['salt.cloud', 'strelka.manager', 'hypervisor', 'libvirt'] +
             stig_states +
@@ -112,7 +102,6 @@
             elastic_stack_states
         ),
         'so-managersearch': (
-            ssl_states +
             manager_states +
             ['salt.cloud', 'libvirt.packages', 'libvirt.ssh.users', 'strelka.manager'] +
             stig_states +
@@ -120,12 +109,10 @@
             elastic_stack_states
         ),
         'so-searchnode': (
-            ssl_states +
             ['kafka.ca', 'kafka.ssl', 'elasticsearch', 'logstash', 'nginx'] +
             stig_states
         ),
         'so-standalone': (
-            ssl_states +
             manager_states +
             ['salt.cloud', 'libvirt.packages', 'libvirt.ssh.users'] +
             sensor_states +
@@ -134,29 +121,24 @@
             elastic_stack_states
         ),
         'so-sensor': (
-            ssl_states +
             sensor_states +
             ['nginx'] +
             stig_states
         ),
         'so-fleet': (
-            ssl_states +
             stig_states +
             ['logstash', 'nginx', 'healthcheck', 'elasticfleet']
         ),
         'so-receiver': (
-            ssl_states +
             kafka_states +
             stig_states +
             ['logstash', 'redis']
         ),
         'so-hypervisor': (
-            ssl_states +
             stig_states +
             ['hypervisor', 'libvirt']
         ),
         'so-desktop': (
-            ['ssl', 'docker_clean', 'telegraf'] +
             stig_states
         )
     } %}

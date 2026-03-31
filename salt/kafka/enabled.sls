@@ -12,7 +12,7 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
-{%   from 'docker/docker.map.jinja' import DOCKER %}
+{%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   set KAFKANODES = salt['pillar.get']('kafka:nodes') %}
 {%   set KAFKA_EXTERNAL_ACCESS = salt['pillar.get']('kafka:config:external_access:enabled', default=False) %}
 {%   if 'gmd' in salt['pillar.get']('features', []) %}
@@ -31,22 +31,22 @@ so-kafka:
     - name: so-kafka
     - networks:
       - sobridge:
-        - ipv4_address: {{ DOCKER.containers['so-kafka'].ip }}
+        - ipv4_address: {{ DOCKERMERGED.containers['so-kafka'].ip }}
     - user: kafka
     - environment:
         KAFKA_HEAP_OPTS: -Xmx2G -Xms1G
-        KAFKA_OPTS: "-javaagent:/opt/jolokia/agents/jolokia-agent-jvm-javaagent.jar=port=8778,host={{ DOCKER.containers['so-kafka'].ip }},policyLocation=file:/opt/jolokia/jolokia.xml {%- if KAFKA_EXTERNAL_ACCESS %} -Djava.security.auth.login.config=/opt/kafka/config/kafka_server_jaas.conf {% endif -%}"
+        KAFKA_OPTS: "-javaagent:/opt/jolokia/agents/jolokia-agent-jvm-javaagent.jar=port=8778,host={{ DOCKERMERGED.containers['so-kafka'].ip }},policyLocation=file:/opt/jolokia/jolokia.xml {%- if KAFKA_EXTERNAL_ACCESS %} -Djava.security.auth.login.config=/opt/kafka/config/kafka_server_jaas.conf {% endif -%}"
     - extra_hosts:
       {% for node in KAFKANODES %}
       - {{ node }}:{{ KAFKANODES[node].ip }}
       {% endfor %}
-      {% if DOCKER.containers['so-kafka'].extra_hosts %}
-      {%   for XTRAHOST in DOCKER.containers['so-kafka'].extra_hosts %}
+      {% if DOCKERMERGED.containers['so-kafka'].extra_hosts %}
+      {%   for XTRAHOST in DOCKERMERGED.containers['so-kafka'].extra_hosts %}
       - {{ XTRAHOST }}
       {%   endfor %}
       {% endif %}
     - port_bindings:
-      {% for BINDING in DOCKER.containers['so-kafka'].port_bindings %}
+      {% for BINDING in DOCKERMERGED.containers['so-kafka'].port_bindings %}
       - {{ BINDING }}
       {% endfor %}
     - binds:
@@ -60,6 +60,12 @@ so-kafka:
       {% if KAFKA_EXTERNAL_ACCESS %}
       - /opt/so/conf/kafka/kafka_server_jaas.conf:/opt/kafka/config/kafka_server_jaas.conf:ro
       {% endif %}
+    {% if DOCKERMERGED.containers['so-kafka'].ulimits %}
+    - ulimits:
+    {%   for ULIMIT in DOCKERMERGED.containers['so-kafka'].ulimits %}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
+    {%   endfor %}
+    {% endif %}
     - watch:
       {% for sc in ['server', 'client'] %}
       - file: kafka_kraft_{{sc}}_properties
@@ -68,6 +74,8 @@ so-kafka:
       - file: kafka_server_jaas_properties
       {% endif %}
       - file: kafkacertz
+      - x509: kafka_crt
+      - file: kafka_pkcs12_perms
     - require:
       - file: kafkacertz
 

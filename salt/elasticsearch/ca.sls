@@ -26,14 +26,14 @@ catrustscript:
         GLOBALS: {{ GLOBALS }}
 {%   endif %}
 
-cacertz:
+elasticsearch_cacerts:
   file.managed:
     - name: /opt/so/conf/ca/cacerts
     - source: salt://elasticsearch/cacerts
     - user: 939
     - group: 939
 
-capemz:
+elasticsearch_capems:
   file.managed:
     - name: /opt/so/conf/ca/tls-ca-bundle.pem
     - source: salt://elasticsearch/tls-ca-bundle.pem
