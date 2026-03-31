@@ -1,46 +1,46 @@
-### 2.4.210-20260302 ISO image released on 2026/03/02
+### 3.0.0-20260331 ISO image released on 2026/03/31
 
 
 ### Download and Verify
 
-2.4.210-20260302 ISO image:  
-https://download.securityonion.net/file/securityonion/securityonion-2.4.210-20260302.iso
+3.0.0-20260331 ISO image:  
+https://download.securityonion.net/file/securityonion/securityonion-3.0.0-20260331.iso
  
-MD5: 575F316981891EBED2EE4E1F42A1F016  
-SHA1: 600945E8823221CBC5F1C056084A71355308227E  
-SHA256: A6AA6471125F07FA6E2796430E94BEAFDEF728E833E9728FDFA7106351EBC47E  
+MD5: ECD318A1662A6FDE0EF213F5A9BD4B07  
+SHA1: E55BE314440CCF3392DC0B06BC5E270B43176D9C  
+SHA256: 7FC47405E335CBE5C2B6C51FE7AC60248F35CBE504907B8B5A33822B23F8F4D5  
 
 Signature for ISO image:  
-https://github.com/Security-Onion-Solutions/securityonion/raw/2.4/main/sigs/securityonion-2.4.210-20260302.iso.sig
+https://github.com/Security-Onion-Solutions/securityonion/raw/3/main/sigs/securityonion-3.0.0-20260331.iso.sig
 
 Signing key:  
-https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/2.4/main/KEYS  
+https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/3/main/KEYS  
 
 For example, here are the steps you can use on most Linux distributions to download and verify our Security Onion ISO image.
 
 Download and import the signing key:  
 ```
-wget https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/2.4/main/KEYS -O - | gpg --import -  
+wget https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/3/main/KEYS -O - | gpg --import -  
 ```
 
 Download the signature file for the ISO:  
 ```
-wget https://github.com/Security-Onion-Solutions/securityonion/raw/2.4/main/sigs/securityonion-2.4.210-20260302.iso.sig
+wget https://github.com/Security-Onion-Solutions/securityonion/raw/3/main/sigs/securityonion-3.0.0-20260331.iso.sig
 ```
 
 Download the ISO image:  
 ```
-wget https://download.securityonion.net/file/securityonion/securityonion-2.4.210-20260302.iso
+wget https://download.securityonion.net/file/securityonion/securityonion-3.0.0-20260331.iso
 ```
 
 Verify the downloaded ISO image using the signature file:  
 ```
-gpg --verify securityonion-2.4.210-20260302.iso.sig securityonion-2.4.210-20260302.iso
+gpg --verify securityonion-3.0.0-20260331.iso.sig securityonion-3.0.0-20260331.iso
 ```
 
 The output should show "Good signature" and the Primary key fingerprint should match what's shown below:
 ```
-gpg: Signature made Mon 02 Mar 2026 11:55:24 AM EST using RSA key ID FE507013
+gpg: Signature made Mon 30 Mar 2026 06:22:14 PM EDT using RSA key ID FE507013
 gpg: Good signature from "Security Onion Solutions, LLC <info@securityonionsolutions.com>"
 gpg: WARNING: This key is not certified with a trusted signature!
 gpg:          There is no indication that the signature belongs to the owner.
