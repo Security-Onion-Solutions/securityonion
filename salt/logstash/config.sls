@@ -10,11 +10,10 @@
 {%   from 'logstash/map.jinja' import LOGSTASH_MERGED %}
 {%   set ASSIGNED_PIPELINES = LOGSTASH_MERGED.assigned_pipelines.roles[GLOBALS.role.split('-')[1]] %}
 
+{%   if GLOBALS.role not in ['so-receiver','so-fleet'] %}
 include:
-  - ssl
-  {% if GLOBALS.role not in ['so-receiver','so-fleet'] %}
   - elasticsearch
-  {% endif %}
+{%   endif %}
 
 # Create the logstash group
 logstashgroup:
@@ -36,10 +35,6 @@ logstash:
     - uid: 931
     - gid: 931
     - home: /opt/so/conf/logstash
-
-lslibdir:
-  file.absent:
-    - name: /opt/so/conf/logstash/lib
 
 logstash_sbin:
   file.recurse:

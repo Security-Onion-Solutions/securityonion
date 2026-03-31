@@ -3,7 +3,6 @@
 include:
   - idh.openssh
 
-{% if grains.os_family == 'RedHat' %}
 idh_sshd_selinux:
   selinux.port_policy_present:
     - port: {{ openssh_map.config.port }}
@@ -13,7 +12,6 @@ idh_sshd_selinux:
       - file: openssh_config
     - require:
       - pkg: python_selinux_mgmt_tools
-{% endif %}
 
 openssh_config:
   file.replace:

@@ -6,11 +6,12 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
-{%   from 'docker/docker.map.jinja' import DOCKER %}
+{%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   set PASSWORD = salt['pillar.get']('secrets:influx_pass') %}
 {%   set TOKEN = salt['pillar.get']('influxdb:token') %}
 
 include:
+  - influxdb.ssl
   - influxdb.config
   - influxdb.sostatus
 
@@ -20,7 +21,7 @@ so-influxdb:
     - hostname: influxdb
     - networks:
       - sobridge:
-        - ipv4_address: {{ DOCKER.containers['so-influxdb'].ip }}
+        - ipv4_address: {{ DOCKERMERGED.containers['so-influxdb'].ip }}
     - environment:
       - INFLUXD_CONFIG_PATH=/conf/config.yaml
       - INFLUXDB_HTTP_LOG_ENABLED=false
@@ -30,8 +31,8 @@ so-influxdb:
       - DOCKER_INFLUXDB_INIT_ORG=Security Onion
       - DOCKER_INFLUXDB_INIT_BUCKET=telegraf/so_short_term
       - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN={{ TOKEN }}
-      {% if DOCKER.containers['so-influxdb'].extra_env %}
-        {% for XTRAENV in DOCKER.containers['so-influxdb'].extra_env %}
+      {% if DOCKERMERGED.containers['so-influxdb'].extra_env %}
+        {% for XTRAENV in DOCKERMERGED.containers['so-influxdb'].extra_env %}
       - {{ XTRAENV }}
         {% endfor %}
       {% endif %}
@@ -42,23 +43,31 @@ so-influxdb:
       - /nsm/influxdb:/var/lib/influxdb2:rw
       - /etc/pki/influxdb.crt:/conf/influxdb.crt:ro
       - /etc/pki/influxdb.key:/conf/influxdb.key:ro
-      {% if DOCKER.containers['so-influxdb'].custom_bind_mounts %}
-        {% for BIND in DOCKER.containers['so-influxdb'].custom_bind_mounts %}
+      {% if DOCKERMERGED.containers['so-influxdb'].custom_bind_mounts %}
+        {% for BIND in DOCKERMERGED.containers['so-influxdb'].custom_bind_mounts %}
       - {{ BIND }}
         {% endfor %}
       {% endif %}
     - port_bindings:
-      {% for BINDING in DOCKER.containers['so-influxdb'].port_bindings %}
+      {% for BINDING in DOCKERMERGED.containers['so-influxdb'].port_bindings %}
       - {{ BINDING }}
       {% endfor %}
-    {% if DOCKER.containers['so-influxdb'].extra_hosts %}
+    {% if DOCKERMERGED.containers['so-influxdb'].extra_hosts %}
     - extra_hosts:
-      {% for XTRAHOST in DOCKER.containers['so-influxdb'].extra_hosts %}
+      {% for XTRAHOST in DOCKERMERGED.containers['so-influxdb'].extra_hosts %}
       - {{ XTRAHOST }}
       {% endfor %}
     {% endif %}
+    {% if DOCKERMERGED.containers['so-influxdb'].ulimits %}
+    - ulimits:
+    {%   for ULIMIT in DOCKERMERGED.containers['so-influxdb'].ulimits %}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
+    {%   endfor %}
+    {% endif %}
     - watch:
       - file: influxdbconf
+      - x509: influxdb_key
+      - x509: influxdb_crt
     - require:
       - file: influxdbconf
       - x509: influxdb_key

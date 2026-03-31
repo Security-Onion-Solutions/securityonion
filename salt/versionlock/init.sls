@@ -3,7 +3,7 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-{% if grains.os_family == 'Debian' or (grains.os_family == 'RedHat' and salt['pkg.version']('python3-dnf-plugin-versionlock') !=  "") %}
+{% if salt['pkg.version']('python3-dnf-plugin-versionlock') != "" %}
 {%   from 'versionlock/map.jinja' import VERSIONLOCKMERGED %}
 {%   for pkg in VERSIONLOCKMERGED.hold %}
 {{pkg}}_held:

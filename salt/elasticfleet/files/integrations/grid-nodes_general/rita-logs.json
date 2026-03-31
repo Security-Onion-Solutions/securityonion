@@ -1,18 +1,17 @@
 {
   "package": {
-    "name": "log",
+    "name": "filestream",
     "version": ""
   },
   "name": "rita-logs",
-  "namespace": "so",
   "description": "RITA Logs",
   "policy_id": "so-grid-nodes_general",
-  "vars": {},
+  "namespace": "so",
   "inputs": {
-    "logs-logfile": {
+    "filestream-filestream": {
       "enabled": true,
       "streams": {
-        "log.logs": {
+        "filestream.generic": {
           "enabled": true,
           "vars": {
             "paths": [
@@ -20,15 +19,28 @@
               "/nsm/rita/exploded-dns.csv",
               "/nsm/rita/long-connections.csv"
             ],
-            "exclude_files": [],
-            "ignore_older": "72h",
             "data_stream.dataset": "rita",
-            "tags": [],
+            "parsers": "#- ndjson:\n#    target: \"\"\n#    message_key: msg\n#- multiline:\n#    type: count\n#    count_lines: 3\n",
+            "exclude_files": [
+              "\\.gz$"
+            ],
+            "include_files": [],
             "processors": "- dissect:\n    tokenizer: \"/nsm/rita/%{pipeline}.csv\"\n    field: \"log.file.path\"\n    trim_chars: \".csv\"\n    target_prefix: \"\"\n- script:\n      lang: javascript\n      source: >\n        function process(event) {\n          var pl = event.Get(\"pipeline\").split(\"-\");\n          if (pl.length > 1) {\n            pl = pl[1];\n          }\n          else {\n            pl = pl[0];\n          }\n          event.Put(\"@metadata.pipeline\", \"rita.\" + pl);\n        }\n- add_fields:\n    target: event\n    fields:\n      category: network\n      module: rita",
-            "custom": "exclude_lines: ['^Score', '^Source', '^Domain', '^No results']"
+            "tags": [],
+            "recursive_glob": true,
+            "ignore_older": "72h",
+            "clean_inactive": -1,
+            "harvester_limit": 0,
+            "fingerprint": false,
+            "fingerprint_offset": 0,
+            "fingerprint_length": "64",
+            "file_identity_native": true,
+            "exclude_lines": [],
+            "include_lines": []
           }
         }
       }
     }
-  }
+  },
+  "force": true
 }

@@ -23,7 +23,7 @@ function update_fleet_urls() {
 }
 
 # Get current list of Fleet Server URLs
-RAW_JSON=$(curl -K /opt/so/conf/elasticsearch/curl.config 'http://localhost:5601/api/fleet/fleet_server_hosts/grid-default')
+RAW_JSON=$(curl -K /opt/so/conf/elasticsearch/curl.config 'http://localhost:5601/api/fleet/fleet_server_hosts/grid-default' --retry 3 --retry-delay 30 --fail 2>/dev/null)
 
 # Check to make sure that the server responded with good data - else, bail from script
 CHECKSUM=$(jq -r '.item.id' <<< "$RAW_JSON")

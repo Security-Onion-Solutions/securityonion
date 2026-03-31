@@ -1,26 +1,42 @@
 {
   "package": {
-    "name": "log",
+    "name": "filestream",
     "version": ""
   },
   "name": "soc-server-logs",
-  "namespace": "so",
   "description": "Security Onion Console Logs",
   "policy_id": "so-grid-nodes_general",
+  "namespace": "so",
   "inputs": {
-    "logs-logfile": {
+    "filestream-filestream": {
       "enabled": true,
       "streams": {
-        "log.logs": {
+        "filestream.generic": {
           "enabled": true,
           "vars": {
             "paths": [
               "/opt/so/log/soc/sensoroni-server.log"
             ],
             "data_stream.dataset": "soc",
-            "tags": ["so-soc"],
+            "pipeline": "common",
+            "parsers": "#- ndjson:\n#    target: \"\"\n#    message_key: msg\n#- multiline:\n#    type: count\n#    count_lines: 3\n",
+            "exclude_files": [
+              "\\.gz$"
+            ],
+            "include_files": [],
             "processors": "- decode_json_fields:\n    fields: [\"message\"]\n    target: \"soc\"\n    process_array: true\n    max_depth: 2\n    add_error_key: true      \n- add_fields:\n    target: event\n    fields:\n      category: host\n      module: soc\n      dataset_temp: server\n- rename:\n    fields:\n      - from: \"soc.fields.sourceIp\"\n        to: \"source.ip\"\n      - from: \"soc.fields.status\"\n        to: \"http.response.status_code\"\n      - from: \"soc.fields.method\"\n        to: \"http.request.method\"\n      - from: \"soc.fields.path\"\n        to: \"url.path\"\n      - from: \"soc.message\"\n        to: \"event.action\"\n      - from: \"soc.level\"\n        to: \"log.level\"\n    ignore_missing: true",
-            "custom": "pipeline: common"
+            "tags": [
+              "so-soc"
+            ],
+            "recursive_glob": true,
+            "clean_inactive": -1,
+            "harvester_limit": 0,
+            "fingerprint": false,
+            "fingerprint_offset": 0,
+            "fingerprint_length": "64",
+            "file_identity_native": true,
+            "exclude_lines": [],
+            "include_lines": []
           }
         }
       }

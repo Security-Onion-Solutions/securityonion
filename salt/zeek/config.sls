@@ -32,6 +32,16 @@ zeekpolicydir:
     - group: 939
     - makedirs: True
 
+zeekzkgsync:
+  file.recurse:
+    - name: /opt/so/conf/zeek/zkg
+    - source: salt://zeek/zkg
+    - user: 937
+    - group: 939
+    - clean: True
+    - makedirs: True
+    - exclude_pat: README
+
 # Zeek Log Directory
 zeeklogdir:
   file.directory:
@@ -156,6 +166,9 @@ zeekja4cfg:
     - source: salt://zeek/files/config.zeek.ja4
     - user: 937
     - group: 939
+    - template: jinja
+    - defaults:
+        JA4PLUS: {{ ZEEKMERGED.ja4plus.enabled }}
 
 # BPF compilation failed
 {% if ZEEKBPF and not ZEEK_BPF_STATUS %}

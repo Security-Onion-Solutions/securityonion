@@ -5,17 +5,12 @@
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
-
-include:
-  - ssl
-  - elasticsearch.ca
-
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 {%   from 'elasticsearch/config.map.jinja' import ELASTICSEARCHMERGED %}
 
 vm.max_map_count:
   sysctl.present:
-    - value: 262144
+    - value: {{ ELASTICSEARCHMERGED.vm.max_map_count }}
 
 # Add ES Group
 elasticsearchgroup:
@@ -103,10 +98,6 @@ esrolesdir:
     - group: 939
     - makedirs: True
 
-eslibdir:
-  file.absent:
-    - name: /opt/so/conf/elasticsearch/lib
-
 esingestdynamicconf:
   file.recurse:
     - name: /opt/so/conf/elasticsearch/ingest
@@ -123,11 +114,6 @@ esingestconf:
     - user: 930
     - group: 939
     - show_changes: False
-
-# Remove .fleet_final_pipeline-1 because we are using global@custom now
-so-fleet-final-pipeline-remove:
-  file.absent:
-    - name: /opt/so/conf/elasticsearch/ingest/.fleet_final_pipeline-1
 
 # Auto-generate Elasticsearch ingest node pipelines from pillar
 {% for pipeline, config in ELASTICSEARCHMERGED.pipelines.items() %}

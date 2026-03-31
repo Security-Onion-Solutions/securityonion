@@ -20,11 +20,6 @@ kernel.printk:
   sysctl.present:
     - value: "3 4 1 3"
 
-# Remove variables.txt from /tmp - This is temp
-rmvariablesfile:
-  file.absent:
-    - name: /tmp/variables.txt
-
 # Add socore Group
 socoregroup:
   group.present:
@@ -149,35 +144,13 @@ common_sbin_jinja:
       - so-import-pcap
 {% endif %}
 
-{% if GLOBALS.role == 'so-heavynode' %}
-remove_so-pcap-import_heavynode:
-  file.absent:
-    - name: /usr/sbin/so-pcap-import
-
-remove_so-import-pcap_heavynode:
-  file.absent:
-    - name: /usr/sbin/so-import-pcap
-{% endif %}
-
-{% if not GLOBALS.is_manager%}
-# prior to 2.4.50 these scripts were in common/tools/sbin on the manager because of soup and distributed to non managers
-# these two states remove the scripts from non manager nodes
-remove_soup:
-  file.absent:
-    - name: /usr/sbin/soup
-
-remove_so-firewall:
-  file.absent:
-    - name: /usr/sbin/so-firewall
-{% endif %}
-
 so-status_script:
   file.managed:
     - name: /usr/sbin/so-status
     - source: salt://common/tools/sbin/so-status
     - mode: 755
 
-{% if GLOBALS.role in GLOBALS.sensor_roles %}
+{% if GLOBALS.is_sensor %}
 # Add sensor cleanup
 so-sensor-clean:
   cron.present:

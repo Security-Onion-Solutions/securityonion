@@ -1,26 +1,42 @@
 {
   "package": {
-    "name": "log",
+    "name": "filestream",
     "version": ""
   },
   "name": "soc-salt-relay-logs",
-  "namespace": "so",
   "description": "Security Onion - Salt Relay - Logs",
   "policy_id": "so-grid-nodes_general",
+  "namespace": "so",
   "inputs": {
-    "logs-logfile": {
+    "filestream-filestream": {
       "enabled": true,
       "streams": {
-        "log.logs": {
+        "filestream.generic": {
           "enabled": true,
           "vars": {
             "paths": [
               "/opt/so/log/soc/salt-relay.log"
             ],
             "data_stream.dataset": "soc",
-            "tags": ["so-soc"],
+            "pipeline": "common",
+            "parsers": "#- ndjson:\n#    target: \"\"\n#    message_key: msg\n#- multiline:\n#    type: count\n#    count_lines: 3\n",
+            "exclude_files": [
+              "\\.gz$"
+            ],
+            "include_files": [],
             "processors": "- dissect:\n    tokenizer: \"%{soc.ts} | %{event.action}\"\n    field: \"message\"\n    target_prefix: \"\"\n- add_fields:\n    target: event\n    fields:\n      category: host\n      module: soc\n      dataset_temp: salt_relay",
-            "custom": "pipeline: common"
+            "tags": [
+              "so-soc"
+            ],
+            "recursive_glob": true,
+            "clean_inactive": -1,
+            "harvester_limit": 0,
+            "fingerprint": false,
+            "fingerprint_offset": 0,
+            "fingerprint_length": "64",
+            "file_identity_native": true,
+            "exclude_lines": [],
+            "include_lines": []
           }
         }
       }

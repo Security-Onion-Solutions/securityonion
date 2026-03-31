@@ -1,26 +1,40 @@
 {
   "package": {
-    "name": "log",
+    "name": "filestream",
     "version": ""
   },
   "name": "idh-logs",
-  "namespace": "so",
   "description": "IDH integration",
   "policy_id": "so-grid-nodes_general",
+  "namespace": "so",
   "inputs": {
-    "logs-logfile": {
+    "filestream-filestream": {
       "enabled": true,
       "streams": {
-        "log.logs": {
+        "filestream.generic": {
           "enabled": true,
           "vars": {
             "paths": [
               "/nsm/idh/opencanary.log"
             ],
             "data_stream.dataset": "idh",
-            "tags": [],
+            "pipeline": "common",
+            "parsers": "#- ndjson:\n#    target: \"\"\n#    message_key: msg\n#- multiline:\n#    type: count\n#    count_lines: 3\n",
+            "exclude_files": [
+              "\\.gz$"
+            ],
+            "include_files": [],
             "processors": "\n- decode_json_fields:\n    fields: [\"message\"]\n    target: \"\"\n    add_error_key: true\n- convert:\n    fields:\n      - {from: \"logtype\", to: \"event.code\", type: \"string\"}\n- drop_fields:\n    when:\n      equals:\n        event.code: \"1001\"\n    fields: [\"src_host\", \"src_port\", \"dst_host\", \"dst_port\" ]\n    ignore_missing: true\n- rename:\n    fields:\n      - from: \"src_host\"\n        to: \"source.ip\"\n      - from: \"src_port\"\n        to: \"source.port\"\n      - from: \"dst_host\"\n        to: \"destination.host\"\n      - from: \"dst_port\"\n        to: \"destination.port\"\n    ignore_missing: true\n- drop_fields:\n    fields: '[\"prospector\", \"input\", \"offset\", \"beat\"]'\n- add_fields:\n    target: event\n    fields:\n      category: host\n      module: opencanary",
-            "custom": "pipeline: common"
+            "tags": [],
+            "recursive_glob": true,
+            "clean_inactive": -1,
+            "harvester_limit": 0,
+            "fingerprint": false,
+            "fingerprint_offset": 0,
+            "fingerprint_length": "64",
+            "file_identity_native": true,
+            "exclude_lines": [],
+            "include_lines": []
           }
         }
       }

@@ -1,8 +1,9 @@
 elasticsearch:
   enabled:
     description: Enables or disables the Elasticsearch process. This process provides the log event storage system. WARNING - Disabling this process is unsupported.
+    forcedType: bool
     advanced: True
-    helpLink: elasticsearch.html
+    helpLink: elasticsearch
   version:
     description: "This specifies the version of the following containers: so-elastic-fleet-package-registry, so-elastic-agent, so-elastic-fleet, so-kibana, so-logstash and so-elasticsearch. Modifying this value in the Elasticsearch defaults.yaml will result in catastrophic grid failure."
     readonly: True
@@ -10,15 +11,20 @@ elasticsearch:
     advanced: True
   esheap:
     description: Specify the memory heap size in (m)egabytes for Elasticsearch.
-    helpLink: elasticsearch.html
+    helpLink: elasticsearch
   index_clean:
     description: Determines if indices should be considered for deletion by available disk space in the cluster. Otherwise, indices will only be deleted by the age defined in the ILM settings. This setting only applies to EVAL, STANDALONE, and HEAVY NODE installations. Other installations can only use ILM settings.
     forcedType: bool
-    helpLink: elasticsearch.html
+    helpLink: elasticsearch
+  vm:
+    max_map_count:
+      description: The maximum number of memory map areas a process may use. Elasticsearch uses a mmapfs directory by default to store its indices. The default operating system limits on mmap counts could be too low, which may result in out of memory exceptions.
+      forcedType: int
+      helpLink: elasticsearch
   retention: 
     retention_pct:
       decription: Total percentage of space used by Elasticsearch for multi node clusters
-      helpLink: elasticsearch.html
+      helpLink: elasticsearch
       global: True
   config:
     cluster:
@@ -26,48 +32,102 @@ elasticsearch:
         description: The name of the Security Onion Elasticsearch cluster, for identification purposes.
         readonly: True
         global: True
-        helpLink: elasticsearch.html
+        helpLink: elasticsearch
+      logsdb:
+        enabled:
+          description: Enables or disables the Elasticsearch logsdb index mode. When enabled, most logs-* datastreams will convert to logsdb from standard after rolling over.
+          forcedType: bool
+          global: True
+          advanced: True
+          helpLink: elasticsearch
       routing:
         allocation:
           disk:
-            threshold_enabled: 
+            threshold_enabled:
               description: Specifies whether the Elasticsearch node will monitor the available disk space for low disk space conditions and take action to protect the cluster.
-              helpLink: elasticsearch.html
+              forcedType: bool
+              helpLink: elasticsearch
             watermark:
               low: 
                 description: The lower percentage of used disk space representing a healthy node.
-                helpLink: elasticsearch.html
+                helpLink: elasticsearch
               high: 
                 description: The higher percentage of used disk space representing an unhealthy node.
-                helpLink: elasticsearch.html
+                helpLink: elasticsearch
               flood_stage: 
                 description: The max percentage of used disk space that will cause the node to take protective actions, such as blocking incoming events.
-                helpLink: elasticsearch.html
+                helpLink: elasticsearch
+    action:
+      destructive_requires_name:
+        description: Requires explicit index names when deleting indices. Prevents accidental deletion of indices via wildcard patterns.
+        advanced: True
+        forcedType: bool
+        helpLink: elasticsearch
     script:
-      max_compilations_rate: 
+      max_compilations_rate:
         description: Max rate of script compilations permitted in the Elasticsearch cluster. Larger values will consume more resources.
         global: True
-        helpLink: elasticsearch.html
+        helpLink: elasticsearch
     indices:
+      id_field_data:
+        enabled:
+          description: Enables or disables loading of field data on the _id field.
+          advanced: True
+          forcedType: bool
+          helpLink: elasticsearch
       query:
         bool:
-          max_clause_count: 
+          max_clause_count:
             description: Max number of boolean clauses per query.
             global: True
-            helpLink: elasticsearch.html
+            helpLink: elasticsearch
+    xpack:
+      ml:
+        enabled:
+          description: Enables or disables machine learning on the node.
+          forcedType: bool
+          advanced: True
+          helpLink: elasticsearch
+      security:
+        enabled:
+          description: Enables or disables Elasticsearch security features.
+          forcedType: bool
+          advanced: True
+          helpLink: elasticsearch
+        authc:
+          anonymous:
+            authz_exception:
+              description: Controls whether an authorization exception is thrown when anonymous user does not have the required privileges.
+              advanced: True
+              forcedType: bool
+              helpLink: elasticsearch
+        http:
+          ssl:
+            enabled:
+              description: Enables or disables TLS/SSL for the HTTP layer.
+              advanced: True
+              forcedType: bool
+              helpLink: elasticsearch
+        transport:
+          ssl:
+            enabled:
+              description: Enables or disables TLS/SSL for the transport layer.
+              advanced: True
+              forcedType: bool
+              helpLink: elasticsearch
   pipelines:
     custom001: &pipelines
       description:
         description: Description of the ingest node pipeline
         global: True
         advanced: True
-        helpLink: elasticsearch.html
+        helpLink: elasticsearch
       processors:
         description: Processors for the ingest node pipeline
         global: True
         advanced: True
         multiline: True
-        helpLink: elasticsearch.html
+        helpLink: elasticsearch
     custom002: *pipelines
     custom003: *pipelines
     custom004: *pipelines
@@ -77,13 +137,6 @@ elasticsearch:
     custom008: *pipelines
     custom009: *pipelines
     custom010: *pipelines
-  managed_integrations:
-    description: List of integrations to add into SOC config UI. Enter the full or partial integration name. Eg. 1password, 1pass
-    forcedType: "[]string"
-    multiline: True
-    global: True
-    advanced: True
-    helpLink: elasticsearch.html
   index_settings:
     global_overrides:
       index_template:
@@ -94,24 +147,24 @@ elasticsearch:
                 description: Number of replicas required for all indices. Multiple replicas protects against data loss, but also increases storage costs. This setting will be applied to all indices.
                 forcedType: int
                 global: True
-                helpLink: elasticsearch.html
+                helpLink: elasticsearch
               refresh_interval: 
                 description: Seconds between index refreshes. Shorter intervals can cause query performance to suffer since this is a synchronous and resource-intensive operation.
                 global: True
-                helpLink: elasticsearch.html
+                helpLink: elasticsearch
               number_of_shards: 
                 description: Number of shards required for this index. Using multiple shards increases fault tolerance, but also increases storage and network costs.
                 global: True
-                helpLink: elasticsearch.html
+                helpLink: elasticsearch
               sort:
                 field:
                   description: The field to sort by. Must set index_sorting to True.
                   global: True
-                  helpLink: elasticsearch.html
+                  helpLink: elasticsearch
                 order:
                   description: The order to sort by. Must set index_sorting to True.
                   global: True
-                  helpLink: elasticsearch.html
+                  helpLink: elasticsearch
       policy:
         phases:
           hot:
@@ -121,16 +174,16 @@ elasticsearch:
                   description: Priority of index. This is used for recovery after a node restart. Indices with higher priorities are recovered before indices with lower priorities.
                   forcedType: int
                   global: True
-                  helpLink: elasticsearch.html
+                  helpLink: elasticsearch
               rollover:
                 max_age:
                   description: Maximum age of index.  Once an index reaches this limit, it will be rolled over into a new index.
                   global: True
-                  helpLink: elasticsearch.html
+                  helpLink: elasticsearch
                 max_primary_shard_size:
                   description: Maximum primary shard size. Once an index reaches this limit, it will be rolled over into a new index.
                   global: True
-                  helpLink: elasticsearch.html
+                  helpLink: elasticsearch
               shrink:
                 method:
                   description: Shrink the index to a new index with fewer primary shards. Shrink operation is by count or size.
@@ -178,13 +231,13 @@ elasticsearch:
               regex: ^[0-9]{1,5}d$
               forcedType: string
               global: True
-              helpLink: elasticsearch.html
+              helpLink: elasticsearch
             actions:
               set_priority:
                 priority:
                   description: Used for index recovery after a node restart. Indices with higher priorities are recovered before indices with lower priorities.
                   global: True
-                  helpLink: elasticsearch.html
+                  helpLink: elasticsearch
               allocate:
                 number_of_replicas:
                   description: Set the number of replicas. Remains the same as the previous phase by default.
@@ -197,14 +250,14 @@ elasticsearch:
               regex: ^[0-9]{1,5}d$
               forcedType: string
               global: True
-              helpLink: elasticsearch.html
+              helpLink: elasticsearch
             actions:
               set_priority:
                 priority:
                   description: Priority of index. This is used for recovery after a node restart. Indices with higher priorities are recovered before indices with lower priorities.
                   forcedType: int
                   global: True
-                  helpLink: elasticsearch.html
+                  helpLink: elasticsearch
               shrink:
                 method:
                   description: Shrink the index to a new index with fewer primary shards. Shrink operation is by count or size.
@@ -257,13 +310,14 @@ elasticsearch:
               regex: ^[0-9]{1,5}d$
               forcedType: string
               global: True
-              helpLink: elasticsearch.html
+              helpLink: elasticsearch
     so-logs: &indexSettings
-      index_sorting: 
+      index_sorting:
         description: Sorts the index by event time, at the cost of additional processing resource consumption.
+        forcedType: bool
         global: True
         advanced: True
-        helpLink: elasticsearch.html
+        helpLink: elasticsearch
       index_template:
         index_patterns:
           description: Patterns for matching multiple indices or tables.
@@ -271,7 +325,7 @@ elasticsearch:
           multiline: True
           global: True
           advanced: True
-          helpLink: elasticsearch.html
+          helpLink: elasticsearch
         template:
           settings:
             index:
@@ -280,35 +334,35 @@ elasticsearch:
                 forcedType: int
                 global: True
                 advanced: True
-                helpLink: elasticsearch.html
+                helpLink: elasticsearch
               mapping:
                 total_fields:
                   limit:
                     description: Max number of fields that can exist on a single index. Larger values will consume more resources.
                     global: True
                     advanced: True
-                    helpLink: elasticsearch.html
+                    helpLink: elasticsearch
               refresh_interval: 
                 description: Seconds between index refreshes. Shorter intervals can cause query performance to suffer since this is a synchronous and resource-intensive operation.
                 global: True
                 advanced: True
-                helpLink: elasticsearch.html
+                helpLink: elasticsearch
               number_of_shards: 
                 description: Number of shards required for this index. Using multiple shards increases fault tolerance, but also increases storage and network costs.
                 global: True
                 advanced: True
-                helpLink: elasticsearch.html
+                helpLink: elasticsearch
               sort:
                 field:
                   description: The field to sort by. Must set index_sorting to True.
                   global: True
                   advanced: True
-                  helpLink: elasticsearch.html
+                  helpLink: elasticsearch
                 order:
                   description: The order to sort by. Must set index_sorting to True.
                   global: True
                   advanced: True
-                  helpLink: elasticsearch.html
+                  helpLink: elasticsearch
           mappings:
             _meta:
               package:
@@ -316,43 +370,43 @@ elasticsearch:
                   description: Meta settings for the mapping.
                   global: True
                   advanced: True
-                  helpLink: elasticsearch.html
+                  helpLink: elasticsearch
               managed_by:
                   description: Meta settings for the mapping.
                   global: True
                   advanced: True
-                  helpLink: elasticsearch.html
+                  helpLink: elasticsearch
               managed:
                   description: Meta settings for the mapping.
                   forcedType: bool
                   global: True
                   advanced: True
-                  helpLink: elasticsearch.html
+                  helpLink: elasticsearch
         composed_of:
           description: The index template is composed of these component templates.
           forcedType: "[]string"
           global: True
           advanced: True
-          helpLink: elasticsearch.html
+          helpLink: elasticsearch
         priority:
           description: The priority of the index template.
           forcedType: int
           global: True
           advanced: True
-          helpLink: elasticsearch.html
+          helpLink: elasticsearch
         data_stream:
           hidden:
             description: Hide the data stream.
             forcedType: bool
             global: True
             advanced: True
-            helpLink: elasticsearch.html
+            helpLink: elasticsearch
           allow_custom_routing:
             description: Allow custom routing for the data stream.
             forcedType: bool
             global: True
             advanced: True
-            helpLink: elasticsearch.html
+            helpLink: elasticsearch
       policy:
         phases:
           hot:
@@ -360,7 +414,7 @@ elasticsearch:
               description: Minimum age of index. This determines when the index should be moved to the hot tier.
               global: True
               advanced: True
-              helpLink: elasticsearch.html
+              helpLink: elasticsearch
             actions:
               set_priority:
                 priority:
@@ -368,18 +422,18 @@ elasticsearch:
                   forcedType: int
                   global: True
                   advanced: True
-                  helpLink: elasticsearch.html
+                  helpLink: elasticsearch
               rollover:
                 max_age:
                   description: Maximum age of index.  Once an index reaches this limit, it will be rolled over into a new index.
                   global: True
                   advanced: True
-                  helpLink: elasticsearch.html
+                  helpLink: elasticsearch
                 max_primary_shard_size:
                   description: Maximum primary shard size. Once an index reaches this limit, it will be rolled over into a new index.
                   global: True
                   advanced: True
-                  helpLink: elasticsearch.html
+                  helpLink: elasticsearch
               shrink:
                 method:
                   description: Shrink the index to a new index with fewer primary shards. Shrink operation is by count or size.
@@ -428,7 +482,7 @@ elasticsearch:
               forcedType: string
               global: True
               advanced: True
-              helpLink: elasticsearch.html
+              helpLink: elasticsearch
             actions:
               set_priority:
                 priority:
@@ -436,18 +490,18 @@ elasticsearch:
                   forcedType: int
                   global: True
                   advanced: True
-                  helpLink: elasticsearch.html
+                  helpLink: elasticsearch
               rollover:
                 max_age:
                   description: Maximum age of index.  Once an index reaches this limit, it will be rolled over into a new index.
                   global: True
                   advanced: True
-                  helpLink: elasticsearch.html
+                  helpLink: elasticsearch
                 max_primary_shard_size:
                   description: Maximum primary shard size. Once an index reaches this limit, it will be rolled over into a new index.
                   global: True
                   advanced: True
-                  helpLink: elasticsearch.html
+                  helpLink: elasticsearch
               shrink:
                 method:
                   description: Shrink the index to a new index with fewer primary shards. Shrink operation is by count or size.
@@ -501,7 +555,7 @@ elasticsearch:
               forcedType: string
               global: True
               advanced: True
-              helpLink: elasticsearch.html
+              helpLink: elasticsearch
             actions:
               set_priority:
                 priority:
@@ -509,7 +563,7 @@ elasticsearch:
                   forcedType: int
                   global: True
                   advanced: True
-                  helpLink: elasticsearch.html
+                  helpLink: elasticsearch
               allocate:
                 number_of_replicas:
                   description: Set the number of replicas. Remains the same as the previous phase by default.
@@ -523,25 +577,25 @@ elasticsearch:
               forcedType: string
               global: True
               advanced: True
-              helpLink: elasticsearch.html
+              helpLink: elasticsearch
         _meta:
           package:
             name:
               description: Meta settings for the mapping.
               global: True
               advanced: True
-              helpLink: elasticsearch.html
+              helpLink: elasticsearch
           managed_by:
             description: Meta settings for the mapping.
             global: True
             advanced: True
-            helpLink: elasticsearch.html
+            helpLink: elasticsearch
           managed:
             description: Meta settings for the mapping.
             forcedType: bool
             global: True
             advanced: True
-            helpLink: elasticsearch.html
+            helpLink: elasticsearch
     so-logs-system_x_auth: *indexSettings
     so-logs-system_x_syslog: *indexSettings
     so-logs-system_x_system: *indexSettings
@@ -604,20 +658,21 @@ elasticsearch:
     so-metrics-fleet_server_x_agent_status: &fleetMetricsSettings
       index_sorting:
         description: Sorts the index by event time, at the cost of additional processing resource consumption.
+        forcedType: bool
         advanced: True
         readonly: True
-        helpLink: elasticsearch.html
+        helpLink: elasticsearch
       index_template:
         ignore_missing_component_templates:
           description: Ignore component templates if they aren't in Elasticsearch.
           advanced: True
           readonly: True
-          helpLink: elasticsearch.html
+          helpLink: elasticsearch
         index_patterns:
           description: Patterns for matching multiple indices or tables.
           advanced: True
           readonly: True
-          helpLink: elasticsearch.html
+          helpLink: elasticsearch
         template:
           settings:
             index:
@@ -625,33 +680,35 @@ elasticsearch:
                 description: Type of mode used for this index. Time series indices can be used for metrics to reduce necessary storage.
                 advanced: True
                 readonly: True
-                helpLink: elasticsearch.html
+                helpLink: elasticsearch
               number_of_replicas:
                 description: Number of replicas required for this index. Multiple replicas protects against data loss, but also increases storage costs.
                 advanced: True
                 readonly: True
-                helpLink: elasticsearch.html
+                helpLink: elasticsearch
         composed_of:
           description: The index template is composed of these component templates.
           advanced: True
           readonly: True
-          helpLink: elasticsearch.html
+          helpLink: elasticsearch
         priority:
           description: The priority of the index template.
           advanced: True
           readonly: True
-          helpLink: elasticsearch.html
+          helpLink: elasticsearch
         data_stream:
           hidden:
             description: Hide the data stream.
+            forcedType: bool
             advanced: True
             readonly: True
-            helpLink: elasticsearch.html
+            helpLink: elasticsearch
           allow_custom_routing:
             description: Allow custom routing for the data stream.
+            forcedType: bool
             advanced: True
             readonly: True
-            helpLink: elasticsearch.html
+            helpLink: elasticsearch
     so-metrics-fleet_server_x_agent_versions: *fleetMetricsSettings
   so_roles:
     so-manager: &soroleSettings
@@ -662,7 +719,7 @@ elasticsearch:
             forcedType: "[]string"
             global: False
             advanced: True
-            helpLink: elasticsearch.html
+            helpLink: elasticsearch
     so-managersearch: *soroleSettings
     so-standalone: *soroleSettings
     so-searchnode: *soroleSettings

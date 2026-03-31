@@ -23,15 +23,6 @@ sync_runners:
     - name: saltutil.sync_runners
 {% endif %}
 
-# prior to 2.4.30 this engine ran on the manager with salt-minion
-# this has changed to running with the salt-master in 2.4.30
-remove_engines_config:
-  file.absent:
-    - name: /etc/salt/minion.d/engines.conf
-    - source: salt://salt/files/engines.conf
-    - watch_in:
-      - service: salt_minion_service
-
 checkmine_engine:
   file.managed:
     - name: /etc/salt/engines/checkmine.py

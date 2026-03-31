@@ -6,7 +6,7 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
-{%   from 'docker/docker.map.jinja' import DOCKER %}
+{%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   from 'elasticsearch/config.map.jinja' import ELASTICSEARCH_NODES %}
 {%   from 'elasticsearch/config.map.jinja' import ELASTICSEARCH_SEED_HOSTS %}
 {%   from 'elasticsearch/config.map.jinja' import ELASTICSEARCHMERGED %}
@@ -14,6 +14,9 @@
 {%   from 'elasticsearch/template.map.jinja' import ES_INDEX_SETTINGS %}
 
 include:
+  - ca
+  - elasticsearch.ca
+  - elasticsearch.ssl
   - elasticsearch.config
   - elasticsearch.sostatus
 
@@ -25,15 +28,15 @@ so-elasticsearch:
     - user: elasticsearch
     - networks:
       - sobridge:
-        - ipv4_address: {{ DOCKER.containers['so-elasticsearch'].ip }}
+        - ipv4_address: {{ DOCKERMERGED.containers['so-elasticsearch'].ip }}
     - extra_hosts:
     {% for node in ELASTICSEARCH_NODES %}
     {%   for hostname, ip in node.items() %}
       - {{hostname}}:{{ip}}
     {%   endfor %}
     {% endfor %}
-    {% if DOCKER.containers['so-elasticsearch'].extra_hosts %}
-      {% for XTRAHOST in DOCKER.containers['so-elasticsearch'].extra_hosts %}
+    {% if DOCKERMERGED.containers['so-elasticsearch'].extra_hosts %}
+      {% for XTRAHOST in DOCKERMERGED.containers['so-elasticsearch'].extra_hosts %}
       - {{ XTRAHOST }}
       {% endfor %}
     {% endif %}
@@ -42,17 +45,19 @@ so-elasticsearch:
       - discovery.type=single-node
       {% endif %}
       - ES_JAVA_OPTS=-Xms{{ GLOBALS.elasticsearch.es_heap }} -Xmx{{ GLOBALS.elasticsearch.es_heap }} -Des.transport.cname_in_publish_address=true -Dlog4j2.formatMsgNoLookups=true
-      ulimits:
-      - memlock=-1:-1
-      - nofile=65536:65536
-      - nproc=4096
-      {% if DOCKER.containers['so-elasticsearch'].extra_env %}
-        {% for XTRAENV in DOCKER.containers['so-elasticsearch'].extra_env %}
+      {% if DOCKERMERGED.containers['so-elasticsearch'].extra_env %}
+        {% for XTRAENV in DOCKERMERGED.containers['so-elasticsearch'].extra_env %}
       - {{ XTRAENV }}
         {% endfor %}
       {% endif %}
+    {% if DOCKERMERGED.containers['so-elasticsearch'].ulimits %}
+    - ulimits:
+    {%   for ULIMIT in DOCKERMERGED.containers['so-elasticsearch'].ulimits %}
+      - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
+    {%   endfor %}
+    {% endif %}
     - port_bindings:
-      {% for BINDING in DOCKER.containers['so-elasticsearch'].port_bindings %}
+      {% for BINDING in DOCKERMERGED.containers['so-elasticsearch'].port_bindings %}
       - {{ BINDING }}
       {% endfor %}
     - binds:
@@ -61,11 +66,7 @@ so-elasticsearch:
       - /nsm/elasticsearch:/usr/share/elasticsearch/data:rw
       - /opt/so/log/elasticsearch:/var/log/elasticsearch:rw
       - /opt/so/conf/ca/cacerts:/usr/share/elasticsearch/jdk/lib/security/cacerts:ro
-      {% if GLOBALS.is_manager %}
-      - /etc/pki/ca.crt:/usr/share/elasticsearch/config/ca.crt:ro
-      {% else %}
       - /etc/pki/tls/certs/intca.crt:/usr/share/elasticsearch/config/ca.crt:ro
-      {% endif %}
       - /etc/pki/elasticsearch.crt:/usr/share/elasticsearch/config/elasticsearch.crt:ro
       - /etc/pki/elasticsearch.key:/usr/share/elasticsearch/config/elasticsearch.key:ro
       - /etc/pki/elasticsearch.p12:/usr/share/elasticsearch/config/elasticsearch.p12:ro
@@ -76,28 +77,27 @@ so-elasticsearch:
       - {{ repo }}:{{ repo }}:rw
         {% endfor %}
       {% endif %}
-      {% if DOCKER.containers['so-elasticsearch'].custom_bind_mounts %}
-        {% for BIND in DOCKER.containers['so-elasticsearch'].custom_bind_mounts %}
+      {% if DOCKERMERGED.containers['so-elasticsearch'].custom_bind_mounts %}
+        {% for BIND in DOCKERMERGED.containers['so-elasticsearch'].custom_bind_mounts %}
       - {{ BIND }}
         {% endfor %}
       {% endif %}
     - watch:
-      - file: cacertz
+      - file: trusttheca
+      - x509: elasticsearch_crt
+      - x509: elasticsearch_key
+      - file: elasticsearch_cacerts
       - file: esyml
     - require:
+      - file: trusttheca
+      - x509: elasticsearch_crt
+      - x509: elasticsearch_key
+      - file: elasticsearch_cacerts
       - file: esyml
       - file: eslog4jfile
       - file: nsmesdir
       - file: eslogdir
-      - file: cacertz
-      - x509: /etc/pki/elasticsearch.crt
-      - x509: /etc/pki/elasticsearch.key
       - file: elasticp12perms
-      {% if GLOBALS.is_manager %}
-      - x509: pki_public_ca_crt
-      {% else %}
-      - x509: trusttheca
-      {% endif %}
       - cmd: auth_users_roles_inode
       - cmd: auth_users_inode
 
