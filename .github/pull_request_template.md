@@ -1,19 +1,13 @@
 ## Description
 
 <!-- 
-Provide a description for your pull request. Note any breaking changes.
--->
-
-## Testing
-
-<!-- 
-Describe the testing you performed for this pull request.
+Explain the purpose of the pull request. Be brief or detailed depending on the scope of the changes.
 -->
 
 ## Related Issues
 
 <!-- 
-List any related issues that this pull request addresses.
+Optionally, list any related issues that this pull request addresses.
 -->
 
 ## Checklist
@@ -24,5 +18,5 @@ List any related issues that this pull request addresses.
 ## Questions or Comments
 
 <!--
-If you have any questions or comments about this pull request, please add them here.
+If you have any questions or comments about this pull request, add them here.
 -->
