@@ -3,7 +3,8 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-{% if '2.4' in salt['cp.get_file_str']('/etc/soversion') %}
+{% set soversion = salt['cp.get_file_str']('/etc/soversion') %}
+{% if '2.4' in soversion or soversion.startswith('3.') %}
 
 {%   import_yaml '/opt/so/saltstack/local/pillar/global/soc_global.sls' as SOC_GLOBAL %}
 {%   if SOC_GLOBAL.global.airgap %}
