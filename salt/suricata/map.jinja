@@ -11,9 +11,19 @@
 {# before we change outputs back to list, enable pcap-log if suricata is the pcapengine #}
 {% if GLOBALS.pcap_engine in ["SURICATA", "TRANSITION"] %}
 
-{%   from 'bpf/pcap.map.jinja' import PCAPBPF, PCAP_BPF_STATUS %}
-{%   if PCAPBPF and PCAP_BPF_STATUS %}
-{%     do SURICATAMERGED.config.outputs['pcap-log'].update({'bpf-filter': PCAPBPF|join(" ")}) %}
+{%   if GLOBALS.pcap_engine == "SURICATA" %}
+{%     from 'bpf/pcap.map.jinja' import PCAPBPF, PCAP_BPF_STATUS %}
+{%     if PCAPBPF and PCAP_BPF_STATUS %}
+{%       do SURICATAMERGED.config.outputs['pcap-log'].update({'bpf-filter': PCAPBPF|join(" ")}) %}
+{%     endif %}
+{%   elif GLOBALS.pcap_engine == "TRANSITION" %}
+{%     import_yaml 'bpf/defaults.yaml' as BPFDEFAULTS %}
+{%     set BPFMERGED = salt['pillar.get']('bpf', BPFDEFAULTS.bpf, merge=True) %}
+{%     import 'bpf/macros.jinja' as MACROS %}
+{{     MACROS.remove_comments(BPFMERGED, 'pcap') }}
+{%     if BPFMERGED.pcap %}
+{%       do SURICATAMERGED.config.outputs['pcap-log'].update({'bpf-filter': BPFMERGED.pcap|join(" ")}) %}
+{%     endif %}
 {%   endif %}
 
 {%   set PCAP = salt['pillar.get']('pcap', {'enabled': false}) %}
