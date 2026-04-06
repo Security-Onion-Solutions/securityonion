@@ -2128,6 +2128,26 @@ failed_soup_restore_items() {
 main() {
   trap 'check_err $?' EXIT
 
+  # If running 3.X.X, we need to fetch the correct soup and supporting scripts
+  # from the 3/main branch before proceeding, otherwise we'll clone 2.4/main
+  # and end up with incompatible scripts.
+  if [[ "$INSTALLEDVERSION" == 3.* && "$BRANCH" != "3/main" ]]; then
+    echo "Detected Security Onion $INSTALLEDVERSION. Fetching soup from 3/main branch."
+    rm -rf /tmp/sogh
+    mkdir -p /tmp/sogh
+    cd /tmp/sogh
+    git clone -b 3/main https://github.com/Security-Onion-Solutions/securityonion.git
+    if [ ! -f "$UPDATE_DIR/VERSION" ]; then
+      echo "Unable to clone 3/main branch from Github. Please check your Internet access."
+      exit 1
+    fi
+    cp "$UPDATE_DIR/salt/manager/tools/sbin/soup" /usr/sbin/soup
+    cp "$UPDATE_DIR/salt/common/tools/sbin/so-common" /usr/sbin/so-common
+    cp "$UPDATE_DIR/salt/common/tools/sbin/so-image-common" /usr/sbin/so-image-common
+    echo "Updated soup scripts from 3/main. Restarting soup."
+    exec env BRANCH=3/main soup "$@"
+  fi
+
   if [ -n "$BRANCH" ]; then
     echo "SOUP will use the $BRANCH branch."
     echo ""
