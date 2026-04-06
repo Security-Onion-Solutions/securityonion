@@ -80,7 +80,6 @@ base:
     - kibana
     - suricata
     - zeek
-    - strelka
     - elastalert
     - utility
     - elasticfleet
@@ -109,7 +108,6 @@ base:
     - kibana
     - suricata
     - zeek
-    - strelka
     - elastalert
     - utility
     - elasticfleet
@@ -123,7 +121,6 @@ base:
     - registry
     - nginx
     - influxdb
-    - strelka.manager
     - soc
     - kratos
     - hydra
@@ -153,7 +150,6 @@ base:
     - registry
     - nginx
     - influxdb
-    - strelka.manager
     - soc
     - kratos
     - hydra
@@ -181,7 +177,6 @@ base:
     - manager
     - nginx
     - influxdb
-    - strelka.manager
     - soc
     - kratos
     - hydra
@@ -219,7 +214,6 @@ base:
     - suricata
     - healthcheck
     - zeek
-    - strelka
     - elasticfleet.install_agent_grid
     - stig
     - pcap.cleanup
@@ -234,7 +228,6 @@ base:
     - elasticsearch
     - logstash
     - redis
-    - strelka
     - suricata
     - zeek
     - elasticfleet.install_agent_grid

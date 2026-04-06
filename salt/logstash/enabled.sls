@@ -89,7 +89,6 @@ so-logstash:
       - /nsm/zeek:/nsm/zeek:ro
       - /nsm/suricata:/suricata:ro
       - /opt/so/log/fleet/:/osquery/logs:ro
-      - /opt/so/log/strelka:/strelka:ro
       {% endif %}
       {% if DOCKERMERGED.containers['so-logstash'].custom_bind_mounts %}
         {% for BIND in DOCKERMERGED.containers['so-logstash'].custom_bind_mounts %}
