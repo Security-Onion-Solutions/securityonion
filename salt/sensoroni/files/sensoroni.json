@@ -14,7 +14,7 @@
     "serverUrl": "https://{{ GLOBALS.url_base }}/sensoroniagents",
     "verifyCert": false,
     "modules": {
-{%- if SENSORONIMERGED.config.analyze.enabled %} 
+{%- if SENSORONIMERGED.config.analyze.enabled %}
       "analyze": {
         "timeoutMs": {{ SENSORONIMERGED.config.analyze.timeout_ms }},
         "parallelLimit": {{ SENSORONIMERGED.config.analyze.parallel_limit }}
@@ -31,11 +31,27 @@
       "statickeyauth": {
         "apiKey": "{{ GLOBALS.sensoroni_key }}"
 {%  if GLOBALS.is_sensor %}
-      },     
+      },
       "suriquery": {
         "pcapInputPath": "/nsm/suripcap",
         "pcapOutputPath": "/nsm/pcapout",
         "pcapMaxCount": {{ SENSORONIMERGED.config.suripcap.pcapMaxCount }}
+{%- endif %}
+{%- if SENSORONIMERGED.config.fileanalyze.enabled %}
+      },
+      "fileanalyze": {
+        "watchDirs": {{ SENSORONIMERGED.config.fileanalyze.watchDirs | tojson }},
+        "processedDir": "{{ SENSORONIMERGED.config.fileanalyze.processedDir }}",
+        "historyDir": "{{ SENSORONIMERGED.config.fileanalyze.historyDir }}",
+        "logFile": "{{ SENSORONIMERGED.config.fileanalyze.logFile }}",
+        "concurrency": {{ SENSORONIMERGED.config.fileanalyze.concurrency }},
+        "maxDepth": {{ SENSORONIMERGED.config.fileanalyze.maxDepth }},
+        "recycleSeconds": {{ SENSORONIMERGED.config.fileanalyze.recycleSeconds }},
+        "dedupMaxEntries": {{ SENSORONIMERGED.config.fileanalyze.dedupMaxEntries }},
+        "dedupTTLSeconds": {{ SENSORONIMERGED.config.fileanalyze.dedupTTLSeconds }},
+        "yaraRulesPath": "{{ SENSORONIMERGED.config.fileanalyze.yaraRulesPath }}",
+        "passwordsPath": "{{ SENSORONIMERGED.config.fileanalyze.passwordsPath }}",
+        "scannerTimeout": {{ SENSORONIMERGED.config.fileanalyze.scannerTimeout }}
 {%- endif %}
       }
     }
