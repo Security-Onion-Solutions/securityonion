@@ -10,7 +10,7 @@
 {%   from 'suricata/map.jinja' import SURICATAMERGED %}
 {%   from 'bpf/suricata.map.jinja' import SURICATABPF, SURICATA_BPF_STATUS, SURICATA_BPF_CALC %}
 
-{%   if GLOBALS.pcap_engine in ["SURICATA", "TRANSITION"] %}
+{%   if GLOBALS.pcap_engine == "SURICATA" %}
 {%     from 'bpf/pcap.map.jinja' import PCAPBPF, PCAP_BPF_STATUS, PCAP_BPF_CALC %}
 # BPF compilation and configuration
 {%     if PCAPBPF and not PCAP_BPF_STATUS %}
