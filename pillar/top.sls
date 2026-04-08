@@ -38,6 +38,9 @@ base:
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
     - elasticsearch.auth
     {% endif %}
+    {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/postgres/auth.sls') %}
+    - postgres.auth
+    {% endif %}
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/kibana/secrets.sls') %}
     - kibana.secrets
     {% endif %}
@@ -60,6 +63,8 @@ base:
     - redis.adv_redis
     - influxdb.soc_influxdb
     - influxdb.adv_influxdb
+    - postgres.soc_postgres
+    - postgres.adv_postgres
     - elasticsearch.nodes
     - elasticsearch.soc_elasticsearch
     - elasticsearch.adv_elasticsearch
@@ -101,6 +106,9 @@ base:
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
     - elasticsearch.auth
     {% endif %}
+    {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/postgres/auth.sls') %}
+    - postgres.auth
+    {% endif %}
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/kibana/secrets.sls') %}
     - kibana.secrets
     {% endif %}
@@ -126,6 +134,8 @@ base:
     - redis.adv_redis
     - influxdb.soc_influxdb
     - influxdb.adv_influxdb
+    - postgres.soc_postgres
+    - postgres.adv_postgres
     - backup.soc_backup
     - backup.adv_backup
     - zeek.soc_zeek
@@ -146,6 +156,9 @@ base:
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
     - elasticsearch.auth
     {% endif %}
+    {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/postgres/auth.sls') %}
+    - postgres.auth
+    {% endif %}
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/kibana/secrets.sls') %}
     - kibana.secrets
     {% endif %}
@@ -160,6 +173,8 @@ base:
     - redis.adv_redis
     - influxdb.soc_influxdb
     - influxdb.adv_influxdb
+    - postgres.soc_postgres
+    - postgres.adv_postgres
     - elasticsearch.nodes
     - elasticsearch.soc_elasticsearch
     - elasticsearch.adv_elasticsearch
@@ -260,6 +275,9 @@ base:
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
     - elasticsearch.auth
     {% endif %}
+    {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/postgres/auth.sls') %}
+    - postgres.auth
+    {% endif %}
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/kibana/secrets.sls') %}
     - kibana.secrets
     {% endif %}
@@ -285,6 +303,8 @@ base:
     - redis.adv_redis
     - influxdb.soc_influxdb
     - influxdb.adv_influxdb
+    - postgres.soc_postgres
+    - postgres.adv_postgres
     - zeek.soc_zeek
     - zeek.adv_zeek
     - bpf.soc_bpf
