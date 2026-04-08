@@ -33,7 +33,7 @@
 {%   do SURICATAMERGED.config.outputs['pcap-log'].update({'conditional': SURICATAMERGED.pcap.conditional}) %}
 {%   do SURICATAMERGED.config.outputs['pcap-log'].update({'dir': SURICATAMERGED.pcap.dir}) %}
 {#   multiply maxsize by 1000 since it is saved in GB, i.e. 52 = 52000MB. filesize is also saved in MB and we strip the MB and convert to int #}
-{%   set maxfiles = (SURICATAMERGED.pcap.maxsize * 1000 / (SURICATAMERGED.pcap.filesize[:-2] | int) / SURICATAMERGED.config['af-packet'].threads | int) | round | int %}
+{%   set maxfiles = ([1, (SURICATAMERGED.pcap.maxsize * 1000 / (SURICATAMERGED.pcap.filesize[:-2] | int) / SURICATAMERGED.config['af-packet'].threads | int) | round(0, 'ceil') | int] | max) %}
 {%   do SURICATAMERGED.config.outputs['pcap-log'].update({'max-files': maxfiles}) %}
 {% endif %}
 
