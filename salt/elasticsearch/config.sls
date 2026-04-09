@@ -91,6 +91,13 @@ estemplatedir:
     - group: 939
     - makedirs: True
 
+esaddontemplatedir:
+  file.directory:
+    - name: /opt/so/conf/elasticsearch/templates/addon-index
+    - user: 930
+    - group: 939
+    - makedirs: True
+
 esrolesdir:
   file.directory:
     - name: /opt/so/conf/elasticsearch/roles

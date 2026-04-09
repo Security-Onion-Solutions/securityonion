@@ -3,64 +3,26 @@
   this file except in compliance with the Elastic License 2.0. #}
 
 
-{% import_json '/opt/so/state/esfleet_package_components.json' as ADDON_PACKAGE_COMPONENTS %}
+{% import_json '/opt/so/state/esfleet_content_package_components.json' as ADDON_CONTENT_PACKAGE_COMPONENTS %}
 {% import_json '/opt/so/state/esfleet_component_templates.json' as INSTALLED_COMPONENT_TEMPLATES %}
 {% import_yaml 'elasticfleet/defaults.yaml' as ELASTICFLEETDEFAULTS %}
 
 {% set CORE_ESFLEET_PACKAGES = ELASTICFLEETDEFAULTS.get('elasticfleet', {}).get('packages', {}) %}
-{% set ADDON_INTEGRATION_DEFAULTS = {} %}
+{% set ADDON_CONTENT_INTEGRATION_DEFAULTS = {} %}
+{% set DEBUG_STUFF = {} %}
 
-{# Some fleet integrations don't follow the standard naming convention #}
-{% set WEIRD_INTEGRATIONS = {
-    'awsfirehose.logs': 'awsfirehose',
-    'awsfirehose.metrics': 'aws.cloudwatch',
-    'cribl.logs': 'cribl',
-    'cribl.metrics': 'cribl',
-    'sentinel_one_cloud_funnel.logins': 'sentinel_one_cloud_funnel.login',
-    'azure_application_insights.app_insights': 'azure.app_insights',
-    'azure_application_insights.app_state': 'azure.app_state',
-    'azure_billing.billing': 'azure.billing',
-    'azure_functions.metrics': 'azure.function',
-    'azure_ai_foundry.metrics': 'azure.ai_foundry',
-    'azure_metrics.compute_vm_scaleset': 'azure.compute_vm_scaleset',
-    'azure_metrics.compute_vm': 'azure.compute_vm',
-    'azure_metrics.container_instance': 'azure.container_instance',
-    'azure_metrics.container_registry': 'azure.container_registry',
-    'azure_metrics.container_service': 'azure.container_service',
-    'azure_metrics.database_account': 'azure.database_account',
-    'azure_metrics.monitor': 'azure.monitor',
-    'azure_metrics.storage_account': 'azure.storage_account',
-    'azure_openai.metrics': 'azure.open_ai',
-    'beat.state': 'beats.stack_monitoring.state',
-    'beat.stats': 'beats.stack_monitoring.stats',
-    'enterprisesearch.health': 'enterprisesearch.stack_monitoring.health',
-    'enterprisesearch.stats': 'enterprisesearch.stack_monitoring.stats',
-    'kibana.cluster_actions': 'kibana.stack_monitoring.cluster_actions',
-    'kibana.cluster_rules': 'kibana.stack_monitoring.cluster_rules',
-    'kibana.node_actions': 'kibana.stack_monitoring.node_actions',
-    'kibana.node_rules': 'kibana.stack_monitoring.node_rules',
-    'kibana.stats': 'kibana.stack_monitoring.stats',
-    'kibana.status': 'kibana.stack_monitoring.status',
-    'logstash.node_cel': 'logstash.stack_monitoring.node',
-    'logstash.node_stats': 'logstash.stack_monitoring.node_stats',
-    'synthetics.browser': 'synthetics-browser',
-    'synthetics.browser_network': 'synthetics-browser.network',
-    'synthetics.browser_screenshot': 'synthetics-browser.screenshot',
-    'synthetics.http': 'synthetics-http',
-    'synthetics.icmp': 'synthetics-icmp',
-    'synthetics.tcp': 'synthetics-tcp',
-    'swimlane.swimlane_api': 'swimlane.api',
-    'swimlane.tenant_api': 'swimlane.tenant',
-    'swimlane.turbine_api': 'turbine.api'
-   } %}
-
-{% for pkg in ADDON_PACKAGE_COMPONENTS %}
+{% for pkg in ADDON_CONTENT_PACKAGE_COMPONENTS %}
 {%   if pkg.name in CORE_ESFLEET_PACKAGES %}
-{#     skip core integrations #}
+{#     skip core content packages #}
 {%   elif pkg.name not in CORE_ESFLEET_PACKAGES %}
-{#     generate defaults for each integration #}
-{%     if pkg.dataStreams is defined and pkg.dataStreams is not none and pkg.dataStreams | length > 0 %}
+{#     generate defaults for each content package #}
+{%     if pkg.dataStreams is defined and pkg.dataStreams is not none and pkg.dataStreams | length > 0%}
 {%       for pattern in pkg.dataStreams %}
+{#         in ES 9.3.2 'input' type integrations no longer create default component templates and instead they wait for user input during 'integration' setup (fleet ui config)
+             title: generic is an artifact of that and is not in use #}
+{%         if pattern.title == "generic" %}
+{%           continue %}
+{%         endif %}
 {%         if "metrics-" in pattern.name %}
 {%           set integration_type = "metrics-" %}
 {%         elif "logs-" in pattern.name %}
@@ -68,18 +30,13 @@
 {%         else %}
 {%           set integration_type = "" %}
 {%         endif %}
-{%         set component_name = pkg.name ~ "." ~ pattern.title %}
+{#         on content integrations the component name is user defined at the time it is added to an agent policy #}
+{%         set component_name = pattern.title %}
 {%         set index_pattern = pattern.name %}
-
-{#         fix weirdly named components #}
-{%         if component_name in WEIRD_INTEGRATIONS %}
-{%           set component_name = WEIRD_INTEGRATIONS[component_name] %}
-{%         endif %}
 {#           component_name_x maintains the functionality of merging local pillar changes with generated 'defaults' via SOC UI #}
 {%           set component_name_x = component_name.replace(".","_x_") %}
 {#           pillar overrides/merge expects the key names to follow the naming in elasticsearch/defaults.yaml eg. so-logs-1password_x_item_usages . The _x_ is replaced later on in elasticsearch/template.map.jinja #}
-{%           set integration_key = "so-" ~ integration_type ~ component_name_x %}
-
+{%           set integration_key = "so-" ~ integration_type ~ pkg.name + '_x_' ~ component_name_x %}
 {#           Default integration settings #}
 {%           set integration_defaults = {
                "index_sorting": false,
@@ -157,8 +114,10 @@
                }
              } %}
 
-{%         do ADDON_INTEGRATION_DEFAULTS.update({integration_key: integration_defaults}) %}
+
+{%         do ADDON_CONTENT_INTEGRATION_DEFAULTS.update({integration_key: integration_defaults}) %}
 {%       endfor %}
+{%     else %}
 {%     endif %}
 {%   endif %}
 {% endfor %}
