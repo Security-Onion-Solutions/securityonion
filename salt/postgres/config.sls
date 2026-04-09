@@ -54,6 +54,14 @@ postgresconf:
     - defaults:
         PGMERGED: {{ PGMERGED }}
 
+postgres_sbin:
+  file.recurse:
+    - name: /usr/sbin
+    - source: salt://postgres/tools/sbin
+    - user: 939
+    - group: 939
+    - file_mode: 755
+
 {% else %}
 
 {{sls}}_state_not_allowed:
