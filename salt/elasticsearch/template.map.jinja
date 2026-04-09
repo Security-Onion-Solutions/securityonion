@@ -14,11 +14,12 @@
 
 {% set ES_INDEX_SETTINGS_ORIG = ELASTICSEARCHDEFAULTS.elasticsearch.index_settings %}
 
+{% set ALL_ADDON_INTEGRATION_DEFAULTS = {} %}
+{% set ALL_ADDON_SETTINGS_ORIG = {} %}
+{% set ALL_ADDON_SETTINGS_GLOBAL_OVERRIDES = {} %}
+{% set ALL_ADDON_SETTINGS = {} %}
 {# start generation of integration default index_settings #}
 {% if salt['file.file_exists']('/opt/so/state/esfleet_component_templates.json') %}
-{%   set ALL_ADDON_INTEGRATION_DEFAULTS = {} %}
-{%   set ALL_ADDON_SETTINGS_ORIG = {} %}
-{%   set ALL_ADDON_SETTINGS_GLOBAL_OVERRIDES = {} %}
 {#   import integration type defaults #}
 {%   if salt['file.file_exists']('/opt/so/state/esfleet_integration_package_components.json') %}
 {%     set check_integration_package_components = salt['file.stats']('/opt/so/state/esfleet_integration_package_components.json') %}
@@ -64,7 +65,6 @@
 {% endif %}
 
 {% set ES_INDEX_SETTINGS = {} %}
-{% set ALL_ADDON_SETTINGS = {}%}
 {% macro create_final_index_template(DEFINED_SETTINGS, GLOBAL_OVERRIDES, FINAL_INDEX_SETTINGS) %}
 
 {% do GLOBAL_OVERRIDES.update(salt['defaults.merge'](GLOBAL_OVERRIDES, ES_INDEX_PILLAR, in_place=False)) %}
