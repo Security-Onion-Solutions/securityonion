@@ -16,6 +16,7 @@ include:
 so-kibana:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-kibana:{{ GLOBALS.so_version }}
+    - restart_policy: unless-stopped
     - hostname: kibana
     - user: kibana
     - networks:

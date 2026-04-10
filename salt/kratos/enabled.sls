@@ -51,6 +51,7 @@ so-kratos:
       - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
     {%   endfor %}
     {% endif %}
+    # Intentionally unless-stopped -- matches the fleet default.
     - restart_policy: unless-stopped
     - watch:
       - file: kratosschema

@@ -47,6 +47,10 @@ strelka_backend:
       - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
     {%   endfor %}
     {% endif %}
+    # Intentionally `on-failure` (not unless-stopped) -- strelka backend shuts
+    # down cleanly during rule reloads and we do not want those clean exits to
+    # trigger an auto-restart. Do not homogenize; see the container
+    # auto-restart section of the plan.
     - restart_policy: on-failure
     - watch:
       - file: strelkasensorcompiledrules

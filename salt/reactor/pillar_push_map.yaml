@@ -1,0 +1,128 @@
+# One pillar directory can map to multiple (state, tgt) actions.
+# tgt is a raw salt compound expression. tgt_type is always "compound".
+# Per-action `batch` / `batch_wait` override the orch defaults (25% / 15s).
+#
+# Notes:
+#   - `bpf` is a pillar-only dir (no state of its own) consumed by both
+#     zeek and suricata via macros, so a bpf pillar change re-applies both.
+#   - suricata/strelka/zeek/elasticsearch/redis/kafka/logstash etc. have
+#     their own pillar dirs AND their own state, so they map 1:1 (or 1:2
+#     in strelka's case, because of the split init.sls / manager.sls).
+#   - `data` and `node_data` pillar dirs are intentionally omitted --
+#     they're pillar-only data consumed by many states; trying to handle
+#     them generically would amount to a highstate.
+#
+# The role sets here were verified line-by-line against salt/top.sls. If
+# salt/top.sls changes how an app is targeted, update the corresponding
+# compound here.
+
+# firewall: the one pillar everyone touches. Applied everywhere intentionally
+# because every host's iptables needs to know about every other host in the
+# grid. Salt's firewall state is idempotent (file.managed + iptables-restore
+# onchanges in salt/firewall/init.sls), so hosts whose rendered firewall is
+# unchanged do a file comparison and no-op without touching iptables -- actual
+# reload happens only on the hosts whose rules actually changed. Fleetwide
+# blast radius is intentional and matches the pre-plan behavior via highstate.
+# Adding N sensors in a burst coalesces into one dispatch via the drainer.
+firewall:
+  - state: firewall
+    tgt: '*'
+
+# bpf is pillar-only (no state); consumed by both zeek and suricata as macros.
+# Both states run on sensor_roles + so-import per salt/top.sls.
+bpf:
+  - state: zeek
+    tgt: 'G@role:so-eval or G@role:so-heavynode or G@role:so-import or G@role:so-sensor or G@role:so-standalone'
+  - state: suricata
+    tgt: 'G@role:so-eval or G@role:so-heavynode or G@role:so-import or G@role:so-sensor or G@role:so-standalone'
+
+# ca is applied universally.
+ca:
+  - state: ca
+    tgt: '*'
+
+# elastalert: eval, standalone, manager, managerhype, managersearch (NOT import).
+elastalert:
+  - state: elastalert
+    tgt: 'G@role:so-eval or G@role:so-manager or G@role:so-managerhype or G@role:so-managersearch or G@role:so-standalone'
+
+# elasticsearch: 8 roles.
+elasticsearch:
+  - state: elasticsearch
+    tgt: 'G@role:so-eval or G@role:so-heavynode or G@role:so-import or G@role:so-manager or G@role:so-managerhype or G@role:so-managersearch or G@role:so-searchnode or G@role:so-standalone'
+
+# elasticagent: so-heavynode only.
+elasticagent:
+  - state: elasticagent
+    tgt: 'G@role:so-heavynode'
+
+# elasticfleet: base state only on pillar change. elasticfleet.install_agent_grid
+# is a deploy/enrollment step, not a config reload; leave it to the next highstate.
+elasticfleet:
+  - state: elasticfleet
+    tgt: 'G@role:so-eval or G@role:so-fleet or G@role:so-import or G@role:so-manager or G@role:so-managerhype or G@role:so-managersearch or G@role:so-standalone'
+
+# healthcheck: eval, sensor, standalone only.
+healthcheck:
+  - state: healthcheck
+    tgt: 'G@role:so-eval or G@role:so-sensor or G@role:so-standalone'
+
+# influxdb: manager_roles exactly.
+influxdb:
+  - state: influxdb
+    tgt: 'G@role:so-eval or G@role:so-import or G@role:so-manager or G@role:so-managerhype or G@role:so-managersearch or G@role:so-standalone'
+
+# kafka: standalone, manager, managerhype, managersearch, searchnode, receiver.
+kafka:
+  - state: kafka
+    tgt: 'G@role:so-manager or G@role:so-managerhype or G@role:so-managersearch or G@role:so-receiver or G@role:so-searchnode or G@role:so-standalone'
+
+# kibana: manager_roles exactly.
+kibana:
+  - state: kibana
+    tgt: 'G@role:so-eval or G@role:so-import or G@role:so-manager or G@role:so-managerhype or G@role:so-managersearch or G@role:so-standalone'
+
+# logstash: 8 roles, no eval/import.
+logstash:
+  - state: logstash
+    tgt: 'G@role:so-fleet or G@role:so-heavynode or G@role:so-manager or G@role:so-managerhype or G@role:so-managersearch or G@role:so-receiver or G@role:so-searchnode or G@role:so-standalone'
+
+# nginx: 10 specific roles. NOT receiver, idh, hypervisor, desktop.
+nginx:
+  - state: nginx
+    tgt: 'G@role:so-eval or G@role:so-fleet or G@role:so-heavynode or G@role:so-import or G@role:so-manager or G@role:so-managerhype or G@role:so-managersearch or G@role:so-searchnode or G@role:so-sensor or G@role:so-standalone'
+
+# redis: 6 roles. standalone, manager, managerhype, managersearch, heavynode, receiver.
+# (NOT eval, NOT import, NOT searchnode.)
+redis:
+  - state: redis
+    tgt: 'G@role:so-heavynode or G@role:so-manager or G@role:so-managerhype or G@role:so-managersearch or G@role:so-receiver or G@role:so-standalone'
+
+# soc: manager_roles exactly.
+soc:
+  - state: soc
+    tgt: 'G@role:so-eval or G@role:so-import or G@role:so-manager or G@role:so-managerhype or G@role:so-managersearch or G@role:so-standalone'
+
+# strelka: sensor-side only on pillar change (sensor_roles). strelka.manager is
+# intentionally NOT fired on pillar changes -- YARA rule and strelka config
+# pillar changes are consumed by the sensor-side strelka backend, and re-running
+# strelka.manager on managers is both unnecessary and disruptive. strelka.manager
+# is left to the 2-hour highstate.
+strelka:
+  - state: strelka
+    tgt: 'G@role:so-eval or G@role:so-heavynode or G@role:so-sensor or G@role:so-standalone'
+
+# suricata: sensor_roles + so-import (5 roles).
+suricata:
+  - state: suricata
+    tgt: 'G@role:so-eval or G@role:so-heavynode or G@role:so-import or G@role:so-sensor or G@role:so-standalone'
+
+# telegraf: universal.
+telegraf:
+  - state: telegraf
+    tgt: '*'
+
+# zeek: sensor_roles + so-import (5 roles).
+zeek:
+  - state: zeek
+    tgt: 'G@role:so-eval or G@role:so-heavynode or G@role:so-import or G@role:so-sensor or G@role:so-standalone'

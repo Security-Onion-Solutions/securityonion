@@ -23,6 +23,7 @@ include:
 so-elasticsearch:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elasticsearch:{{ ELASTICSEARCHMERGED.version }}
+    - restart_policy: unless-stopped
     - hostname: elasticsearch
     - name: so-elasticsearch
     - user: elasticsearch

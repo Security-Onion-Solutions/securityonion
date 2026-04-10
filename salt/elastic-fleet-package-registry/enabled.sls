@@ -15,6 +15,7 @@ include:
 so-elastic-fleet-package-registry:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elastic-fleet-package-registry:{{ GLOBALS.so_version }}
+    - restart_policy: unless-stopped
     - name: so-elastic-fleet-package-registry
     - hostname: Fleet-package-reg-{{ GLOBALS.hostname }}
     - detach: True

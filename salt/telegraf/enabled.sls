@@ -18,6 +18,7 @@ include:
 so-telegraf:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-telegraf:{{ GLOBALS.so_version }}
+    - restart_policy: unless-stopped
     - user: 939
     - group_add: 939,920
     - environment:

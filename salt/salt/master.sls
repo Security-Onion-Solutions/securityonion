@@ -10,6 +10,7 @@
 #    software that is protected by the license key."
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
+{% from 'global/map.jinja' import GLOBALMERGED %}
 {% if sls in allowed_states %}
 
 include:
@@ -61,6 +62,22 @@ engines_config:
   file.managed:
     - name: /etc/salt/master.d/engines.conf
     - source: salt://salt/files/engines.conf
+
+{% if GLOBALMERGED.push.enabled %}
+reactor_pushstate_config:
+  file.managed:
+    - name: /etc/salt/master.d/reactor_pushstate.conf
+    - source: salt://salt/files/reactor_pushstate.conf
+    - watch_in:
+      - service: salt_master_service
+    - order: last
+{% else %}
+reactor_pushstate_config:
+  file.absent:
+    - name: /etc/salt/master.d/reactor_pushstate.conf
+    - watch_in:
+      - service: salt_master_service
+{% endif %}
 
 # update the bootstrap script when used for salt-cloud
 salt_bootstrap_cloud:

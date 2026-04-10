@@ -88,6 +88,7 @@ elasticagent_syncartifacts:
 so-elastic-fleet:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elastic-agent:{{ GLOBALS.so_version }}
+    - restart_policy: unless-stopped
     - name: so-elastic-fleet
     - hostname: FleetServer-{{ GLOBALS.hostname }}
     - detach: True

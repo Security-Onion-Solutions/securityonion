@@ -16,6 +16,7 @@ include:
 so-elastic-agent:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elastic-agent:{{ GLOBALS.so_version }}
+    - restart_policy: unless-stopped
     - name: so-elastic-agent
     - hostname: {{ GLOBALS.hostname }}
     - detach: True

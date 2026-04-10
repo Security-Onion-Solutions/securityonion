@@ -18,6 +18,7 @@ so-zeek:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-zeek:{{ GLOBALS.so_version }}
     - start: True
     - privileged: True
+    - restart_policy: unless-stopped
     {% if DOCKERMERGED.containers['so-zeek'].ulimits %}
     - ulimits:
     {%   for ULIMIT in DOCKERMERGED.containers['so-zeek'].ulimits %}

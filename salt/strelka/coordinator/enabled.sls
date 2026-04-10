@@ -15,6 +15,7 @@ include:
 strelka_coordinator:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-redis:{{ GLOBALS.so_version }}
+    - restart_policy: unless-stopped
     - name: so-strelka-coordinator
     - networks:
       - sobridge:

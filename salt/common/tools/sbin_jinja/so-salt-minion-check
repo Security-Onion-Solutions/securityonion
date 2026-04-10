@@ -1,5 +1,3 @@
-{% import_yaml 'salt/minion.defaults.yaml' as SALT_MINION_DEFAULTS -%}
-
 #!/bin/bash
 #
 # Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
@@ -25,7 +23,8 @@ SYSTEM_START_TIME=$(date -d "$(</proc/uptime awk '{print $1}') seconds ago" +%s)
 LAST_HIGHSTATE_END=$([ -e "/opt/so/log/salt/lasthighstate" ] && date -r /opt/so/log/salt/lasthighstate +%s || echo 0)
 LAST_HEALTHCHECK_STATE_APPLY=$([ -e "/opt/so/log/salt/state-apply-test" ] && date -r /opt/so/log/salt/state-apply-test +%s || echo 0)
 # SETTING THRESHOLD TO ANYTHING UNDER 600 seconds may cause a lot of salt-minion restarts since the job to touch the file occurs every 5-8 minutes by default
-THRESHOLD={{SALT_MINION_DEFAULTS.salt.minion.check_threshold}} #within how many seconds the file /opt/so/log/salt/state-apply-test must have been touched/modified before the salt minion is restarted
+# THRESHOLD is derived from the global push highstate interval + 1 hour, so the minion-check grace period tracks the schedule automatically.
+THRESHOLD=$(( ({{ salt['pillar.get']('global:push:highstate_interval_hours', 2) }} + 1) * 3600 )) #within how many seconds the file /opt/so/log/salt/state-apply-test must have been touched/modified before the salt minion is restarted
 THRESHOLD_DATE=$((LAST_HEALTHCHECK_STATE_APPLY+THRESHOLD))
 
 logCmd() {

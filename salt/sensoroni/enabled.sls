@@ -14,6 +14,7 @@ include:
 so-sensoroni:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-soc:{{ GLOBALS.so_version }}
+    - restart_policy: unless-stopped
     - network_mode: host
     - binds:
       - /nsm/import:/nsm/import:rw

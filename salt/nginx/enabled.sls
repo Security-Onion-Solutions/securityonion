@@ -34,6 +34,7 @@ make-rule-dir-nginx:
 so-nginx:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-nginx:{{ GLOBALS.so_version }}
+    - restart_policy: unless-stopped
     - hostname: so-nginx
     - networks:
       - sobridge:
