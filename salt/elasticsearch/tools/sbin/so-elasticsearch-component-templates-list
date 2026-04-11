@@ -6,8 +6,19 @@
 # Elastic License 2.0.
 
 . /usr/sbin/so-common
-if [ "$1" == "" ]; then
-    curl -K /opt/so/conf/elasticsearch/curl.config -s -k -L https://localhost:9200/_component_template | jq '.component_templates[] |.name'| sort
+
+if [[ -z "$1" ]]; then
+    if output=$(so-elasticsearch-query "_component_template" --retry 3 --retry-delay 1 --fail); then
+        jq '[.component_templates[] | .name] | sort' <<< "$output"
+    else
+        echo "Failed to retrieve component templates from Elasticsearch."
+        exit 1
+    fi
 else
-    curl -K /opt/so/conf/elasticsearch/curl.config -s -k -L https://localhost:9200/_component_template/$1 | jq
+    if output=$(so-elasticsearch-query "_component_template/$1" --retry 3 --retry-delay 1 --fail); then
+        jq <<< "$output"
+    else
+        echo "Failed to retrieve component template '$1' from Elasticsearch."
+        exit 1
+    fi
 fi
