@@ -10,7 +10,10 @@
 {%   from 'elasticsearch/config.map.jinja' import ELASTICSEARCH_NODES %}
 {%   from 'elasticsearch/config.map.jinja' import ELASTICSEARCH_SEED_HOSTS %}
 {%   from 'elasticsearch/config.map.jinja' import ELASTICSEARCHMERGED %}
-{%   from 'elasticsearch/template.map.jinja' import ES_INDEX_SETTINGS, ALL_ADDON_SETTINGS, SO_MANAGED_INDICES %}
+{%   from 'elasticsearch/template.map.jinja' import ES_INDEX_SETTINGS, SO_MANAGED_INDICES %}
+{%   if GLOBALS.role != 'so-heavynode' %}
+{%     from 'elasticsearch/template.map.jinja' import ALL_ADDON_SETTINGS %}
+{%   endif %}
 
 include:
   - ca
@@ -140,17 +143,17 @@ so_index_template_{{index}}:
     - defaults:
         TEMPLATE_CONFIG: {{ settings.index_template }}
     - template: jinja
-    - show_changes: False
     - onchanges_in:
       - file: so-elasticsearch-templates-reload
 {%       endif %}
 {%     endfor %}
 
+{%     if GLOBALS.role != "so-heavynode" %}
 # Auto-generate optional index templates for integration | input | content packages
 #   These index templates are not used by default (until user adds package to an agent policy).
 #   Pre-configured with standard defaults, and incorporated into SOC configuration for user customization.
-{%     for index,settings in ALL_ADDON_SETTINGS.items() %}
-{%       if settings.index_template is defined %}
+{%       for index,settings in ALL_ADDON_SETTINGS.items() %}
+{%         if settings.index_template is defined %}
 addon_index_template_{{index}}:
   file.managed:
     - name: /opt/so/conf/elasticsearch/templates/addon-index/{{ index }}-template.json
@@ -161,8 +164,9 @@ addon_index_template_{{index}}:
     - show_changes: False
     - onchanges_in:
       - file: addon-elasticsearch-templates-reload
-{%       endif %}
-{%     endfor %}
+{%         endif %}
+{%       endfor %}
+{%     endif %}
 
 {%     if GLOBALS.role in GLOBALS.manager_roles %}
 so-es-cluster-settings:
@@ -195,7 +199,11 @@ addon-elasticsearch-templates-reload:
 
 so-elasticsearch-templates:
   cmd.run:
+{%-    if GLOBALS.role == "so-heavynode" %}
+    - name: /usr/sbin/so-elasticsearch-templates-load --heavynode
+{%-    else %}
     - name: /usr/sbin/so-elasticsearch-templates-load
+{%-     endif %}
     - cwd: /opt/so
     - template: jinja
     - require:
