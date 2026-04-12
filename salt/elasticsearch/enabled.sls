@@ -197,6 +197,7 @@ addon-elasticsearch-templates-reload:
   file.absent:
     - name: /opt/so/state/addon_estemplates.txt
 
+# so-elasticsearch-templates-load will have its first successful run during the 'so-elastic-fleet-setup' script
 so-elasticsearch-templates:
   cmd.run:
 {%-    if GLOBALS.role == "so-heavynode" %}
