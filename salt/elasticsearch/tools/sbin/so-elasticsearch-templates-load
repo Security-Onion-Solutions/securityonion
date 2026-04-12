@@ -6,19 +6,22 @@
 
 . /usr/sbin/so-common
 
-SO_STATE_FILE_SUCCESS=/opt/so/state/estemplates.txt
-ADDON_STATE_FILE_SUCCESS=/opt/so/state/addon-estemplates.txt
+SO_STATEFILE_SUCCESS=/opt/so/state/estemplates.txt
+ADDON_STATEFILE_SUCCESS=/opt/so/state/addon-estemplates.txt
 ELASTICSEARCH_TEMPLATES_DIR="/opt/so/conf/elasticsearch/templates"
 SO_TEMPLATES_DIR="${ELASTICSEARCH_TEMPLATES_DIR}/index"
 ADDON_TEMPLATES_DIR="${ELASTICSEARCH_TEMPLATES_DIR}/addon-index"
-LOAD_FAILURES=0
-LOAD_FAILURES_NAMES=()
+SO_LOAD_FAILURES=0
+ADDON_LOAD_FAILURES=0
+SO_LOAD_FAILURES_NAMES=()
+ADDON_LOAD_FAILURES_NAMES=()
 IS_HEAVYNODE="false"
 FORCE="false"
 VERBOSE="false"
+SHOULD_EXIT_ON_FAILURE="true"
 
 # If soup is running, ignore errors
-pgrep soup >/dev/null && should_exit_on_failure=0
+pgrep soup >/dev/null && SHOULD_EXIT_ON_FAILURE="false"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -35,7 +38,7 @@ while [[ $# -gt 0 ]]; do
         echo "Usage: $0 [options]"
         echo "Options:"
         echo "  --heavynode     Only loads index templates specific to heavynodes"
-        echo "  --force     Force reload all templates regardless of state file (default: false)"
+        echo "  --force     Force reload all templates regardless of statefiles (default: false)"
         echo "  --verbose     Enable verbose output"
         exit 1
         ;;
@@ -114,8 +117,8 @@ load_component_templates() {
         fi
 
         if ! load_template "_component_template/${tmpl_name}" "$component"; then
-            LOAD_FAILURES=$((LOAD_FAILURES + 1))
-            LOAD_FAILURES_NAMES+=("$component")
+            SO_LOAD_FAILURES=$((SO_LOAD_FAILURES + 1))
+            SO_LOAD_FAILURES_NAMES+=("$component")
         fi
     done
 
@@ -125,17 +128,22 @@ load_component_templates() {
     fi
 }
 
-if [[ "$FORCE" == "true" || ! -f "$SO_STATE_FILE_SUCCESS" ]]; then
+check_elasticsearch_responsive() {
     # Cannot load templates if Elasticsearch is not responding.
     #  NOTE: Slightly faster exit w/ failure than previous "retry 240 1" if there is a problem with Elasticsearch the
     #    script should exit sooner rather than hang at the 'so-elasticsearch-templates' salt state.
     retry 3 15 "so-elasticsearch-query / --output /dev/null --fail" ||
         fail "Elasticsearch is not responding. Please review Elasticsearch logs /opt/so/log/elasticsearch/securityonion.log for more details. Additionally, consider running so-elasticsearch-troubleshoot."
+}
+
+if [[ "$FORCE" == "true" || ! -f "$SO_STATEFILE_SUCCESS" ]]; then
+    check_elasticsearch_responsive
 
     if [[ "$IS_HEAVYNODE" == "false" ]]; then
         # TODO: Better way to check if fleet server is installed vs checking for Elastic Defend component template.
         fleet_check="logs-endpoint.alerts@package"
         if ! so-elasticsearch-query "_component_template/$fleet_check" --output /dev/null --retry 5 --retry-delay 3 --fail; then
+            # This check prevents so-elasticsearch-templates-load from running before so-elastic-fleet-setup has run.
             echo -e "\nPackage $fleet_check not yet installed. Fleet Server may not be fully configured yet."
             # Fleet Server is required because some SO index templates depend on components installed via
             #  specific integrations eg Elastic Defend. These are components that we do not manually create / manage
@@ -145,6 +153,7 @@ if [[ "$FORCE" == "true" || ! -f "$SO_STATE_FILE_SUCCESS" ]]; then
         fi
     fi
 
+    # load_component_templates "Name" "directory" "append '-mappings'?"
     load_component_templates "ECS" "ecs" "true"
     load_component_templates "Elastic Agent" "elastic-agent"
     load_component_templates "Security Onion" "so"
@@ -167,31 +176,73 @@ if [[ "$FORCE" == "true" || ! -f "$SO_STATE_FILE_SUCCESS" ]]; then
 
         if check_required_component_template_exists "$so_idx_tmpl"; then
             if ! load_template "_index_template/$tmpl_name" "$so_idx_tmpl"; then
-                LOAD_FAILURES=$((LOAD_FAILURES + 1))
-                LOAD_FAILURES_NAMES+=("$so_idx_tmpl")
+                SO_LOAD_FAILURES=$((SO_LOAD_FAILURES + 1))
+                SO_LOAD_FAILURES_NAMES+=("$so_idx_tmpl")
             fi
         else
             echo "Skipping over $so_idx_tmpl due to missing required component template(s)."
-            LOAD_FAILURES=$((LOAD_FAILURES + 1))
-            LOAD_FAILURES_NAMES+=("$so_idx_tmpl")
+            SO_LOAD_FAILURES=$((SO_LOAD_FAILURES + 1))
+            SO_LOAD_FAILURES_NAMES+=("$so_idx_tmpl")
 
             continue
         fi
     done
 
-    if [[ $LOAD_FAILURES -eq 0 ]]; then
-        echo "All templates loaded successfully."
+    if [[ $SO_LOAD_FAILURES -eq 0 ]]; then
+        echo "All Security Onion core templates loaded successfully."
 
-        touch "$SO_STATE_FILE_SUCCESS"
+        touch "$SO_STATEFILE_SUCCESS"
     else
-        echo "Encountered $LOAD_FAILURES failure(s) loading templates:"
-        for failed_template in "${LOAD_FAILURES_NAMES[@]}"; do
+        echo "Encountered $SO_LOAD_FAILURES failure(s) loading templates:"
+        for failed_template in "${SO_LOAD_FAILURES_NAMES[@]}"; do
             echo "  - $failed_template"
         done
+        if [[ "$SHOULD_EXIT_ON_FAILURE" == "true" ]]; then
+            fail "Failed to load all Security Onion core templates successfully."
+        fi
     fi
-
 else
 
-    echo "Templates already loaded"
+    echo "Security Onion core templates already loaded"
+fi
+
+# Start loading addon templates
+if [[ (-f "$SO_STATEFILE_SUCCESS" && "$IS_HEAVYNODE" == "false" && ! -f "$ADDON_STATEFILE_SUCCESS") || "$FORCE" == "true" ]]; then
+
+    check_elasticsearch_responsive
+
+    echo -e "\nLoading addon integration index templates...\n"
+    component_templates=$(so-elasticsearch-component-templates-list)
+
+    for addon_idx_tmpl in "${ADDON_TEMPLATES_DIR}"/*.json; do
+        tmpl_name=$(basename "${addon_idx_tmpl%-template.json}")
+
+        if check_required_component_template_exists "$addon_idx_tmpl"; then
+            if ! load_template "_index_template/${tmpl_name}" "$addon_idx_tmpl"; then
+                ADDON_LOAD_FAILURES=$((ADDON_LOAD_FAILURES + 1))
+                ADDON_LOAD_FAILURES_NAMES+=("$addon_idx_tmpl")
+            fi
+        else
+            echo "Skipping over $addon_idx_tmpl due to missing required component template(s)."
+            ADDON_LOAD_FAILURES=$((ADDON_LOAD_FAILURES + 1))
+            ADDON_LOAD_FAILURES_NAMES+=("$addon_idx_tmpl")
+
+            continue
+        fi
+    done
+
+    if [[ $ADDON_LOAD_FAILURES -eq 0 ]]; then
+        echo "All addon integration templates loaded successfully."
+
+        touch "$ADDON_STATEFILE_SUCCESS"
+    else
+        echo "Encountered $ADDON_LOAD_FAILURES failure(s) loading addon integration templates:"
+        for failed_template in "${ADDON_LOAD_FAILURES_NAMES[@]}"; do
+            echo "  - $failed_template"
+        done
+        if [[ "$SHOULD_EXIT_ON_FAILURE" == "true" ]]; then
+            fail "Failed to load all addon integration templates successfully."
+        fi
+    fi
 
 fi
