@@ -66,6 +66,8 @@ so-elasticsearch-ilm-policy-load-script:
     - group: 939
     - mode: 754
     - template: jinja
+    - defaults:
+        GLOBALS: {{ GLOBALS }}
     - show_changes: False
 
 so-elasticsearch-pipelines-script:

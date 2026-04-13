@@ -179,6 +179,7 @@ so-es-cluster-settings:
       - file: elasticsearch_sbin_jinja
 {%     endif %}
 
+# heavynodes will only load ILM policies for SO managed indices. (Indicies defined in elasticsearch/defaults.yaml)
 so-elasticsearch-ilm-policy-load:
   cmd.run:
     - name: /usr/sbin/so-elasticsearch-ilm-policy-load
