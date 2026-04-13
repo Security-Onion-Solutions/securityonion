@@ -207,7 +207,7 @@ else
 fi
 
 # Start loading addon templates
-if [[ (-f "$SO_STATEFILE_SUCCESS" && "$IS_HEAVYNODE" == "false" && ! -f "$ADDON_STATEFILE_SUCCESS") || "$FORCE" == "true" ]]; then
+if [[ (-f "$SO_STATEFILE_SUCCESS" && "$IS_HEAVYNODE" == "false" && ! -f "$ADDON_STATEFILE_SUCCESS") || ("$IS_HEAVYNODE" == "false" && "$FORCE" == "true") ]]; then
 
     check_elasticsearch_responsive
 
@@ -245,4 +245,9 @@ if [[ (-f "$SO_STATEFILE_SUCCESS" && "$IS_HEAVYNODE" == "false" && ! -f "$ADDON_
         fi
     fi
 
+elif [[ ! -f "$SO_STATEFILE_SUCCESS" && "$IS_HEAVYNODE" == "false" ]]; then
+    echo "Skipping loading addon integration templates until Security Onion core templates have been loaded."
+
+elif [[ -f "$ADDON_STATEFILE_SUCCESS" && "$IS_HEAVYNODE" == "false" && "$FORCE" == "false" ]]; then
+    echo "Addon integration templates already loaded"
 fi
