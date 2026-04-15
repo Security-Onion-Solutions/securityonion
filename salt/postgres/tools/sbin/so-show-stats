@@ -1,0 +1,110 @@
+#!/bin/bash
+
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+# Point-in-time host metrics from the Telegraf Postgres backend.
+# Sanity-check tool for verifying metrics are landing before the grid
+# dashboards consume them.
+
+. /usr/sbin/so-common
+
+usage() {
+  cat <<EOF
+Usage: $0 [minion_id]
+
+Shows the most recent CPU, memory, disk, and load metrics for each minion
+from the so_telegraf Postgres database. Without an argument, reports on
+every minion that has data. With a minion_id, limits output to that one.
+
+Requires: sudo, so-postgres running, global.telegraf_output set to
+POSTGRES or BOTH.
+EOF
+  exit 1
+}
+
+if [ "$(id -u)" -ne 0 ]; then
+  echo "This script must be run using sudo!"
+  exit 1
+fi
+
+case "${1:-}" in
+  -h|--help) usage ;;
+esac
+
+FILTER_MINION="${1:-}"
+
+so_psql() {
+  docker exec so-postgres psql -U postgres -d so_telegraf -At -F $'\t' "$@"
+}
+
+if ! docker exec so-postgres psql -U postgres -lqt 2>/dev/null | cut -d\| -f1 | grep -qw so_telegraf; then
+  echo "Database so_telegraf not found. Is global.telegraf_output set to POSTGRES or BOTH?"
+  exit 2
+fi
+
+# List telegraf schemas (role-per-minion naming convention: so_telegraf_<sanitized_minion_id>)
+SCHEMAS=$(so_psql -c "SELECT schema_name FROM information_schema.schemata WHERE schema_name LIKE 'so_telegraf_%' ORDER BY schema_name;")
+
+if [ -z "$SCHEMAS" ]; then
+  echo "No minion schemas found in so_telegraf."
+  exit 0
+fi
+
+print_metric() {
+  local schema="$1" table="$2" query="$3"
+  # Confirm table exists in this schema before querying
+  local exists
+  exists=$(so_psql -c "SELECT 1 FROM information_schema.tables WHERE table_schema='${schema}' AND table_name='${table}' LIMIT 1;")
+  [ -z "$exists" ] && return 0
+  so_psql -c "$query"
+}
+
+for schema in $SCHEMAS; do
+  minion="${schema#so_telegraf_}"
+  if [ -n "$FILTER_MINION" ]; then
+    # Compare against the sanitized form used in schema names
+    want=$(echo "$FILTER_MINION" | tr '.-' '_' | tr '[:upper:]' '[:lower:]')
+    [ "$minion" != "$want" ] && continue
+  fi
+
+  echo "===================================================================="
+  echo " Minion: $minion"
+  echo "===================================================================="
+
+  print_metric "$schema" "cpu" "
+    SELECT 'cpu          ' AS metric,
+           to_char(time, 'YYYY-MM-DD HH24:MI:SS') AS ts,
+           round((100 - usage_idle)::numeric, 1) || '% used'
+    FROM \"${schema}\".cpu
+    WHERE cpu = 'cpu-total'
+    ORDER BY time DESC LIMIT 1;"
+
+  print_metric "$schema" "mem" "
+    SELECT 'memory       ' AS metric,
+           to_char(time, 'YYYY-MM-DD HH24:MI:SS') AS ts,
+           round(used_percent::numeric, 1) || '% used (' ||
+           pg_size_pretty(used) || ' of ' || pg_size_pretty(total) || ')'
+    FROM \"${schema}\".mem
+    ORDER BY time DESC LIMIT 1;"
+
+  print_metric "$schema" "disk" "
+    SELECT 'disk ' || rpad(path, 8) AS metric,
+           to_char(time, 'YYYY-MM-DD HH24:MI:SS') AS ts,
+           round(used_percent::numeric, 1) || '% used (' ||
+           pg_size_pretty(used) || ' of ' || pg_size_pretty(total) || ')'
+    FROM \"${schema}\".disk
+    WHERE time = (SELECT max(time) FROM \"${schema}\".disk)
+    ORDER BY path;"
+
+  print_metric "$schema" "system" "
+    SELECT 'load         ' AS metric,
+           to_char(time, 'YYYY-MM-DD HH24:MI:SS') AS ts,
+           load1 || ' / ' || load5 || ' / ' || load15 || ' (1/5/15m)'
+    FROM \"${schema}\".system
+    ORDER BY time DESC LIMIT 1;"
+
+  echo ""
+done
