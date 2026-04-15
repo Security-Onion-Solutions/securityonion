@@ -1,0 +1,103 @@
+#!/bin/bash
+
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+# Deletes Telegraf metric rows older than the configured retention window from
+# every minion schema in the so_telegraf database. Intended to run daily from
+# cron. Retention comes from pillar (postgres.telegraf.retention_days),
+# defaulting to 14 days. An explicit --days argument overrides the pillar.
+
+. /usr/sbin/so-common
+
+usage() {
+  cat <<EOF
+Usage: $0 [--days N] [--dry-run]
+
+  --days N    Override retention in days (default: pillar
+              postgres.telegraf.retention_days, fallback 14)
+  --dry-run   Report what would be deleted without modifying anything
+EOF
+  exit 1
+}
+
+if [ "$(id -u)" -ne 0 ]; then
+  echo "This script must be run using sudo!"
+  exit 1
+fi
+
+DAYS=""
+DRY_RUN=0
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --days) DAYS="$2"; shift 2 ;;
+    --dry-run) DRY_RUN=1; shift ;;
+    -h|--help) usage ;;
+    *) usage ;;
+  esac
+done
+
+if [ -z "$DAYS" ]; then
+  DAYS=$(salt-call --local --out=newline_values_only pillar.get postgres:telegraf:retention_days 2>/dev/null)
+fi
+if ! [[ "$DAYS" =~ ^[0-9]+$ ]] || [ "$DAYS" -lt 1 ]; then
+  DAYS=14
+fi
+
+log() {
+  echo "$(date '+%Y-%m-%d %H:%M:%S') so-telegraf-trim: $*"
+}
+
+so_psql() {
+  docker exec so-postgres psql -U postgres -d so_telegraf -At -F $'\t' "$@"
+}
+
+if ! docker exec so-postgres psql -U postgres -lqt 2>/dev/null | cut -d\| -f1 | grep -qw so_telegraf; then
+  log "Database so_telegraf not present; nothing to trim."
+  exit 0
+fi
+
+log "Trimming rows older than ${DAYS} days (dry_run=${DRY_RUN})."
+
+TOTAL_DELETED=0
+
+# One row per (schema, table) we might want to trim.
+# Column name is 'time' for all telegraf output plugin tables; skip metadata
+# tables (tag_* used for tags_as_foreign_keys).
+ROWS=$(so_psql -c "
+  SELECT table_schema || '.' || table_name
+  FROM information_schema.columns
+  WHERE column_name = 'time'
+    AND data_type IN ('timestamp with time zone', 'timestamp without time zone')
+    AND table_schema LIKE 'so_telegraf_%'
+  ORDER BY 1;")
+
+if [ -z "$ROWS" ]; then
+  log "No telegraf metric tables found."
+  exit 0
+fi
+
+for qualified in $ROWS; do
+  if [ "$DRY_RUN" -eq 1 ]; then
+    count=$(so_psql -c "SELECT count(*) FROM \"${qualified%.*}\".\"${qualified#*.}\" WHERE time < now() - interval '${DAYS} days';")
+    log "would delete ${count:-0} rows from ${qualified}"
+  else
+    # RETURNING count via a CTE so we can log how much was trimmed per table
+    deleted=$(so_psql -c "
+      WITH d AS (
+        DELETE FROM \"${qualified%.*}\".\"${qualified#*.}\"
+        WHERE time < now() - interval '${DAYS} days'
+        RETURNING 1
+      )
+      SELECT count(*) FROM d;")
+    deleted=${deleted:-0}
+    TOTAL_DELETED=$((TOTAL_DELETED + deleted))
+    [ "$deleted" -gt 0 ] && log "deleted ${deleted} rows from ${qualified}"
+  fi
+done
+
+if [ "$DRY_RUN" -eq 0 ]; then
+  log "Trim complete. Total rows deleted: ${TOTAL_DELETED}."
+fi

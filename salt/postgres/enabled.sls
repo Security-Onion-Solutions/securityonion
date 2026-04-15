@@ -16,6 +16,7 @@ include:
   - postgres.ssl
   - postgres.config
   - postgres.sostatus
+  - postgres.telegraf_users
 
 so-postgres:
   docker_container.running:
@@ -78,6 +79,21 @@ delete_so-postgres_so-status.disabled:
   file.uncomment:
     - name: /opt/so/conf/so-status/so-status.conf
     - regex: ^so-postgres$
+
+so_telegraf_trim:
+{% if GLOBALS.telegraf_output in ['POSTGRES', 'BOTH'] %}
+  cron.present:
+{% else %}
+  cron.absent:
+{% endif %}
+    - name: /usr/sbin/so-telegraf-trim >> /opt/so/log/postgres/telegraf-trim.log 2>&1
+    - identifier: so_telegraf_trim
+    - user: root
+    - minute: '17'
+    - hour: '3'
+    - daymonth: '*'
+    - month: '*'
+    - dayweek: '*'
 
 {% else %}
 
