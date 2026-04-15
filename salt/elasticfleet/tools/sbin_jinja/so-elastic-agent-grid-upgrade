@@ -6,6 +6,11 @@
 
 . /usr/sbin/so-common
 {%- import_yaml 'elasticsearch/defaults.yaml' as ELASTICSEARCHDEFAULTS %}
+{%- import_yaml 'elasticfleet/defaults.yaml' as ELASTICFLEETDEFAULTS %}
+{# Optionally override Elasticsearch version for Elastic Agent patch releases #}
+{%- if ELASTICFLEETDEFAULTS.elasticfleet.patch_version is defined %}
+{%-   do ELASTICSEARCHDEFAULTS.update({'elasticsearch': {'version': ELASTICFLEETDEFAULTS.elasticfleet.patch_version}}) %}
+{%- endif %}
 
 # Only run on Managers
 if ! is_manager_node; then

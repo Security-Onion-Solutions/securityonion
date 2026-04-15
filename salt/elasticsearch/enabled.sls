@@ -10,8 +10,10 @@
 {%   from 'elasticsearch/config.map.jinja' import ELASTICSEARCH_NODES %}
 {%   from 'elasticsearch/config.map.jinja' import ELASTICSEARCH_SEED_HOSTS %}
 {%   from 'elasticsearch/config.map.jinja' import ELASTICSEARCHMERGED %}
-{%   set TEMPLATES = salt['pillar.get']('elasticsearch:templates', {}) %}
-{%   from 'elasticsearch/template.map.jinja' import ES_INDEX_SETTINGS %}
+{%   from 'elasticsearch/template.map.jinja' import ES_INDEX_SETTINGS, SO_MANAGED_INDICES %}
+{%   if GLOBALS.role != 'so-heavynode' %}
+{%     from 'elasticsearch/template.map.jinja' import ALL_ADDON_SETTINGS %}
+{%   endif %}
 
 include:
   - ca
@@ -117,40 +119,52 @@ escomponenttemplates:
     - onchanges_in:
       - file: so-elasticsearch-templates-reload
     - show_changes: False
-      
-# Auto-generate templates from defaults file
+
+# Clean up legacy and non-SO managed templates from the elasticsearch/templates/index/ directory
+so_index_template_dir:
+  file.directory:
+    - name: /opt/so/conf/elasticsearch/templates/index
+    - clean: True
+    {%- if SO_MANAGED_INDICES %}
+    - require:
+      {%- for index in SO_MANAGED_INDICES %}
+      - file: so_index_template_{{index}}
+      {%- endfor %}
+    {%- endif %}
+
+# Auto-generate index templates for SO managed indices (directly defined in elasticsearch/defaults.yaml)
+#   These index templates are for the core SO datasets and are always required
 {%     for index, settings in ES_INDEX_SETTINGS.items() %}
- {%      if settings.index_template is defined %}
-es_index_template_{{index}}:
+{%       if settings.index_template is defined %}
+so_index_template_{{index}}:
   file.managed:
     - name: /opt/so/conf/elasticsearch/templates/index/{{ index }}-template.json
     - source: salt://elasticsearch/base-template.json.jinja
     - defaults:
-      TEMPLATE_CONFIG: {{ settings.index_template }}
+        TEMPLATE_CONFIG: {{ settings.index_template }}
     - template: jinja
-    - show_changes: False
     - onchanges_in:
       - file: so-elasticsearch-templates-reload
 {%       endif %}
 {%     endfor %}
 
-{%     if TEMPLATES %}
-# Sync custom templates to /opt/so/conf/elasticsearch/templates
-{%       for TEMPLATE in TEMPLATES %}
-es_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}:
+{%     if GLOBALS.role != "so-heavynode" %}
+# Auto-generate optional index templates for integration | input | content packages
+#   These index templates are not used by default (until user adds package to an agent policy).
+#   Pre-configured with standard defaults, and incorporated into SOC configuration for user customization.
+{%       for index,settings in ALL_ADDON_SETTINGS.items() %}
+{%         if settings.index_template is defined %}
+addon_index_template_{{index}}:
   file.managed:
-    - source: salt://elasticsearch/templates/index/{{TEMPLATE}}
-{%         if 'jinja' in TEMPLATE.split('.')[-1] %}
-    - name: /opt/so/conf/elasticsearch/templates/index/{{TEMPLATE.split('/')[1] | replace(".jinja", "")}}
+    - name: /opt/so/conf/elasticsearch/templates/addon-index/{{ index }}-template.json
+    - source: salt://elasticsearch/base-template.json.jinja
+    - defaults:
+        TEMPLATE_CONFIG: {{ settings.index_template }}
     - template: jinja
-{%         else %}
-    - name: /opt/so/conf/elasticsearch/templates/index/{{TEMPLATE.split('/')[1]}}
-{%         endif %}
-    - user: 930
-    - group: 939
     - show_changes: False
     - onchanges_in:
-      - file: so-elasticsearch-templates-reload
+      - file: addon-elasticsearch-templates-reload
+{%         endif %}
 {%       endfor %}
 {%     endif %}
 
@@ -165,6 +179,7 @@ so-es-cluster-settings:
       - file: elasticsearch_sbin_jinja
 {%     endif %}
 
+# heavynodes will only load ILM policies for SO managed indices. (Indicies defined in elasticsearch/defaults.yaml)
 so-elasticsearch-ilm-policy-load:
   cmd.run:
     - name: /usr/sbin/so-elasticsearch-ilm-policy-load
@@ -179,9 +194,18 @@ so-elasticsearch-templates-reload:
   file.absent:
     - name: /opt/so/state/estemplates.txt
 
+addon-elasticsearch-templates-reload:
+  file.absent:
+    - name: /opt/so/state/addon_estemplates.txt
+
+# so-elasticsearch-templates-load will have its first successful run during the 'so-elastic-fleet-setup' script
 so-elasticsearch-templates:
   cmd.run:
+{%-    if GLOBALS.role == "so-heavynode" %}
+    - name: /usr/sbin/so-elasticsearch-templates-load --heavynode
+{%-    else %}
     - name: /usr/sbin/so-elasticsearch-templates-load
+{%-     endif %}
     - cwd: /opt/so
     - template: jinja
     - require:
