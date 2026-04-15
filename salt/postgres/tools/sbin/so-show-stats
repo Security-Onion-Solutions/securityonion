@@ -62,6 +62,33 @@ print_metric() {
   so_psql -c "$query"
 }
 
+# Telegraf's postgresql output stores tag values either as individual columns
+# on the <metric>_tag table or as a single JSONB "tags" column, depending on
+# plugin version. Returns a SQL expression that extracts the named tag
+# regardless of layout. Empty string if the tag table doesn't exist.
+tag_expr() {
+  local schema="$1" table="$2" tag="$3" alias="$4"
+  local has_col
+  has_col=$(so_psql -c "
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='${schema}' AND table_name='${table}_tag' AND column_name='${tag}'
+    LIMIT 1;")
+  if [ -n "$has_col" ]; then
+    echo "${alias}.${tag}"
+    return
+  fi
+  local has_tags
+  has_tags=$(so_psql -c "
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='${schema}' AND table_name='${table}_tag' AND column_name='tags'
+    LIMIT 1;")
+  if [ -n "$has_tags" ]; then
+    echo "(${alias}.tags->>'${tag}')"
+    return
+  fi
+  echo ""
+}
+
 for schema in $SCHEMAS; do
   minion="${schema#so_telegraf_}"
   if [ -n "$FILTER_MINION" ]; then
@@ -74,37 +101,45 @@ for schema in $SCHEMAS; do
   echo " Minion: $minion"
   echo "===================================================================="
 
-  print_metric "$schema" "cpu" "
-    SELECT 'cpu          ' AS metric,
-           to_char(time, 'YYYY-MM-DD HH24:MI:SS') AS ts,
-           round((100 - usage_idle)::numeric, 1) || '% used'
-    FROM \"${schema}\".cpu
-    WHERE cpu = 'cpu-total'
-    ORDER BY time DESC LIMIT 1;"
+  cpu_tag=$(tag_expr "$schema" "cpu" "cpu" "t")
+  if [ -n "$cpu_tag" ]; then
+    print_metric "$schema" "cpu" "
+      SELECT 'cpu          ' AS metric,
+             to_char(c.time, 'YYYY-MM-DD HH24:MI:SS') AS ts,
+             round((100 - c.usage_idle)::numeric, 1) || '% used'
+      FROM \"${schema}\".cpu c
+      JOIN \"${schema}\".cpu_tag t USING (tag_id)
+      WHERE ${cpu_tag} = 'cpu-total'
+      ORDER BY c.time DESC LIMIT 1;"
+  fi
 
   print_metric "$schema" "mem" "
     SELECT 'memory       ' AS metric,
-           to_char(time, 'YYYY-MM-DD HH24:MI:SS') AS ts,
-           round(used_percent::numeric, 1) || '% used (' ||
-           pg_size_pretty(used) || ' of ' || pg_size_pretty(total) || ')'
-    FROM \"${schema}\".mem
-    ORDER BY time DESC LIMIT 1;"
+           to_char(m.time, 'YYYY-MM-DD HH24:MI:SS') AS ts,
+           round(m.used_percent::numeric, 1) || '% used (' ||
+           pg_size_pretty(m.used) || ' of ' || pg_size_pretty(m.total) || ')'
+    FROM \"${schema}\".mem m
+    ORDER BY m.time DESC LIMIT 1;"
 
-  print_metric "$schema" "disk" "
-    SELECT 'disk ' || rpad(path, 8) AS metric,
-           to_char(time, 'YYYY-MM-DD HH24:MI:SS') AS ts,
-           round(used_percent::numeric, 1) || '% used (' ||
-           pg_size_pretty(used) || ' of ' || pg_size_pretty(total) || ')'
-    FROM \"${schema}\".disk
-    WHERE time = (SELECT max(time) FROM \"${schema}\".disk)
-    ORDER BY path;"
+  disk_path=$(tag_expr "$schema" "disk" "path" "t")
+  if [ -n "$disk_path" ]; then
+    print_metric "$schema" "disk" "
+      SELECT 'disk ' || rpad(${disk_path}, 12) AS metric,
+             to_char(d.time, 'YYYY-MM-DD HH24:MI:SS') AS ts,
+             round(d.used_percent::numeric, 1) || '% used (' ||
+             pg_size_pretty(d.used) || ' of ' || pg_size_pretty(d.total) || ')'
+      FROM \"${schema}\".disk d
+      JOIN \"${schema}\".disk_tag t USING (tag_id)
+      WHERE d.time = (SELECT max(time) FROM \"${schema}\".disk)
+      ORDER BY ${disk_path};"
+  fi
 
   print_metric "$schema" "system" "
     SELECT 'load         ' AS metric,
-           to_char(time, 'YYYY-MM-DD HH24:MI:SS') AS ts,
-           load1 || ' / ' || load5 || ' / ' || load15 || ' (1/5/15m)'
-    FROM \"${schema}\".system
-    ORDER BY time DESC LIMIT 1;"
+           to_char(s.time, 'YYYY-MM-DD HH24:MI:SS') AS ts,
+           s.load1 || ' / ' || s.load5 || ' / ' || s.load15 || ' (1/5/15m)'
+    FROM \"${schema}\".system s
+    ORDER BY s.time DESC LIMIT 1;"
 
   echo ""
 done
