@@ -28,6 +28,14 @@ postgres_telegraf_group_role:
         GRANT CONNECT ON DATABASE so_telegraf TO so_telegraf;
         CREATE SCHEMA IF NOT EXISTS telegraf AUTHORIZATION so_telegraf;
         GRANT USAGE, CREATE ON SCHEMA telegraf TO so_telegraf;
+        CREATE EXTENSION IF NOT EXISTS pg_partman;
+        CREATE EXTENSION IF NOT EXISTS pg_cron;
+        -- Hourly partman maintenance. cron.schedule is idempotent by jobname.
+        SELECT cron.schedule(
+          'telegraf-partman-maintenance',
+          '17 * * * *',
+          'CALL partman.run_maintenance_proc()'
+        );
         EOSQL
     - require:
       - docker_container: so-postgres
@@ -59,6 +67,28 @@ postgres_telegraf_role_{{ u }}:
 
 {%     endif %}
 {%   endfor %}
+
+# Reconcile partman retention from pillar. Runs after role/schema setup so
+# any partitioned parents Telegraf has already created get their retention
+# refreshed whenever postgres.telegraf.retention_days changes.
+{%   set retention = salt['pillar.get']('postgres:telegraf:retention_days', 14) %}
+postgres_telegraf_retention_reconcile:
+  cmd.run:
+    - name: |
+        docker exec -i so-postgres psql -v ON_ERROR_STOP=1 -U postgres -d so_telegraf <<'EOSQL'
+        DO $$
+        BEGIN
+            IF EXISTS (SELECT 1 FROM pg_catalog.pg_extension WHERE extname = 'pg_partman') THEN
+                UPDATE partman.part_config
+                SET retention = '{{ retention }} days',
+                    retention_keep_table = false
+                WHERE parent_table LIKE 'telegraf.%';
+            END IF;
+        END
+        $$;
+        EOSQL
+    - require:
+      - cmd: postgres_telegraf_group_role
 
 {% endif %}
 
