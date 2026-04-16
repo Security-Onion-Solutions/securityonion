@@ -8,16 +8,21 @@
 # Point-in-time host metrics from the Telegraf Postgres backend.
 # Sanity-check tool for verifying metrics are landing before the grid
 # dashboards consume them.
+#
+# Assumes Telegraf's postgresql output is configured with
+# tags_as_foreign_keys = true, tags_as_jsonb = true, fields_as_jsonb = true,
+# so metric tables are (time, tag_id, fields jsonb) and tag tables are
+# (tag_id, tags jsonb).
 
 . /usr/sbin/so-common
 
 usage() {
   cat <<EOF
-Usage: $0 [minion_id]
+Usage: $0 [host]
 
-Shows the most recent CPU, memory, disk, and load metrics for each minion
+Shows the most recent CPU, memory, disk, and load metrics for each host
 from the so_telegraf Postgres database. Without an argument, reports on
-every minion that has data. With a minion_id, limits output to that one.
+every host that has data. With a host, limits output to that one.
 
 Requires: sudo, so-postgres running, global.telegraf_output set to
 POSTGRES or BOTH.
@@ -46,49 +51,21 @@ if ! docker exec so-postgres psql -U postgres -lqt 2>/dev/null | cut -d\| -f1 | 
   exit 2
 fi
 
-# Telegraf's postgresql output stores tag values either as individual columns
-# on the <metric>_tag table or as a single JSONB "tags" column, depending on
-# plugin version. Returns a SQL expression that extracts the named tag
-# regardless of layout. Empty string if the tag table doesn't exist.
-tag_expr() {
-  local table="$1" tag="$2" alias="$3"
-  local has_col
-  has_col=$(so_psql -c "
-    SELECT 1 FROM information_schema.columns
-    WHERE table_schema='${SCHEMA}' AND table_name='${table}_tag' AND column_name='${tag}'
-    LIMIT 1;")
-  if [ -n "$has_col" ]; then
-    echo "${alias}.${tag}"
-    return
-  fi
-  local has_tags
-  has_tags=$(so_psql -c "
-    SELECT 1 FROM information_schema.columns
-    WHERE table_schema='${SCHEMA}' AND table_name='${table}_tag' AND column_name='tags'
-    LIMIT 1;")
-  if [ -n "$has_tags" ]; then
-    echo "(${alias}.tags->>'${tag}')"
-    return
-  fi
-  echo ""
-}
-
 table_exists() {
   local table="$1"
   [ -n "$(so_psql -c "SELECT 1 FROM information_schema.tables WHERE table_schema='${SCHEMA}' AND table_name='${table}' LIMIT 1;")" ]
 }
 
 # Discover hosts from cpu_tag (every minion reports cpu).
-host_expr=$(tag_expr "cpu" "host" "t")
-if [ -z "$host_expr" ]; then
-  echo "Unable to determine host tag column on ${SCHEMA}.cpu_tag. Has Telegraf written any rows yet?"
+if ! table_exists "cpu_tag"; then
+  echo "${SCHEMA}.cpu_tag not found. Has Telegraf written any rows yet?"
   exit 0
 fi
 
 HOSTS=$(so_psql -c "
-  SELECT DISTINCT ${host_expr}
-  FROM \"${SCHEMA}\".cpu_tag t
-  WHERE ${host_expr} IS NOT NULL
+  SELECT DISTINCT tags->>'host'
+  FROM \"${SCHEMA}\".cpu_tag
+  WHERE tags ? 'host'
   ORDER BY 1;")
 
 if [ -z "$HOSTS" ]; then
@@ -97,8 +74,7 @@ if [ -z "$HOSTS" ]; then
 fi
 
 print_metric() {
-  local query="$1"
-  so_psql -c "$query"
+  so_psql -c "$1"
 }
 
 for host in $HOSTS; do
@@ -110,59 +86,57 @@ for host in $HOSTS; do
   echo " Host: $host"
   echo "===================================================================="
 
-  cpu_host=$(tag_expr "cpu" "host" "t")
-  cpu_tag=$(tag_expr "cpu" "cpu" "t")
-  if [ -n "$cpu_host" ] && [ -n "$cpu_tag" ]; then
+  if table_exists "cpu"; then
     print_metric "
       SELECT 'cpu          ' AS metric,
              to_char(c.time, 'YYYY-MM-DD HH24:MI:SS') AS ts,
-             round((100 - c.usage_idle)::numeric, 1) || '% used'
+             round((100 - (c.fields->>'usage_idle')::numeric), 1) || '% used'
       FROM \"${SCHEMA}\".cpu c
       JOIN \"${SCHEMA}\".cpu_tag t USING (tag_id)
-      WHERE ${cpu_host} = '${host}' AND ${cpu_tag} = 'cpu-total'
+      WHERE t.tags->>'host' = '${host}' AND t.tags->>'cpu' = 'cpu-total'
       ORDER BY c.time DESC LIMIT 1;"
   fi
 
-  mem_host=$(tag_expr "mem" "host" "t")
-  if [ -n "$mem_host" ] && table_exists "mem"; then
+  if table_exists "mem"; then
     print_metric "
       SELECT 'memory       ' AS metric,
              to_char(m.time, 'YYYY-MM-DD HH24:MI:SS') AS ts,
-             round(m.used_percent::numeric, 1) || '% used (' ||
-             pg_size_pretty(m.used) || ' of ' || pg_size_pretty(m.total) || ')'
+             round((m.fields->>'used_percent')::numeric, 1) || '% used (' ||
+             pg_size_pretty((m.fields->>'used')::bigint) || ' of ' ||
+             pg_size_pretty((m.fields->>'total')::bigint) || ')'
       FROM \"${SCHEMA}\".mem m
       JOIN \"${SCHEMA}\".mem_tag t USING (tag_id)
-      WHERE ${mem_host} = '${host}'
+      WHERE t.tags->>'host' = '${host}'
       ORDER BY m.time DESC LIMIT 1;"
   fi
 
-  disk_host=$(tag_expr "disk" "host" "t")
-  disk_path=$(tag_expr "disk" "path" "t")
-  if [ -n "$disk_host" ] && [ -n "$disk_path" ] && table_exists "disk"; then
+  if table_exists "disk"; then
     print_metric "
-      SELECT 'disk ' || rpad(${disk_path}, 12) AS metric,
+      SELECT 'disk ' || rpad(t.tags->>'path', 12) AS metric,
              to_char(d.time, 'YYYY-MM-DD HH24:MI:SS') AS ts,
-             round(d.used_percent::numeric, 1) || '% used (' ||
-             pg_size_pretty(d.used) || ' of ' || pg_size_pretty(d.total) || ')'
+             round((d.fields->>'used_percent')::numeric, 1) || '% used (' ||
+             pg_size_pretty((d.fields->>'used')::bigint) || ' of ' ||
+             pg_size_pretty((d.fields->>'total')::bigint) || ')'
       FROM \"${SCHEMA}\".disk d
       JOIN \"${SCHEMA}\".disk_tag t USING (tag_id)
-      WHERE ${disk_host} = '${host}'
+      WHERE t.tags->>'host' = '${host}'
         AND d.time = (SELECT max(d2.time)
                       FROM \"${SCHEMA}\".disk d2
                       JOIN \"${SCHEMA}\".disk_tag t2 USING (tag_id)
-                      WHERE ${disk_host/t./t2.} = '${host}')
-      ORDER BY ${disk_path};"
+                      WHERE t2.tags->>'host' = '${host}')
+      ORDER BY t.tags->>'path';"
   fi
 
-  sys_host=$(tag_expr "system" "host" "t")
-  if [ -n "$sys_host" ] && table_exists "system"; then
+  if table_exists "system"; then
     print_metric "
       SELECT 'load         ' AS metric,
              to_char(s.time, 'YYYY-MM-DD HH24:MI:SS') AS ts,
-             s.load1 || ' / ' || s.load5 || ' / ' || s.load15 || ' (1/5/15m)'
+             (s.fields->>'load1') || ' / ' ||
+             (s.fields->>'load5') || ' / ' ||
+             (s.fields->>'load15') || ' (1/5/15m)'
       FROM \"${SCHEMA}\".system s
       JOIN \"${SCHEMA}\".system_tag t USING (tag_id)
-      WHERE ${sys_host} = '${host}'
+      WHERE t.tags->>'host' = '${host}'
       ORDER BY s.time DESC LIMIT 1;"
   fi
 
