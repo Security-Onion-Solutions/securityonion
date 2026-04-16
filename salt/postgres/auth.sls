@@ -13,6 +13,24 @@
   {% set CHARS = DIGITS~LOWERCASE~UPPERCASE~SYMBOLS %}
   {% set so_postgres_user_pass = salt['pillar.get']('postgres:auth:users:so_postgres_user:pass', salt['random.get_str'](72, chars=CHARS)) %}
 
+  {# Per-minion Telegraf Postgres credentials. Merge currently-up minions with any #}
+  {# previously-known entries in pillar so existing passwords persist across runs. #}
+  {% set existing = salt['pillar.get']('postgres:auth:users', {}) %}
+  {% set up_minions = salt['saltutil.runner']('manage.up') or [] %}
+  {% set telegraf_users = {} %}
+  {% for key, entry in existing.items() %}
+    {%- if key.startswith('telegraf_') and entry.get('user') and entry.get('pass') %}
+      {%- do telegraf_users.update({key: entry}) %}
+    {%- endif %}
+  {% endfor %}
+  {% for mid in up_minions %}
+    {%- set safe = mid | replace('.','_') | replace('-','_') | lower %}
+    {%- set key = 'telegraf_' ~ safe %}
+    {%- if key not in telegraf_users %}
+      {%- do telegraf_users.update({key: {'user': 'so_telegraf_' ~ safe, 'pass': salt['random.get_str'](72, chars=CHARS)}}) %}
+    {%- endif %}
+  {% endfor %}
+
 postgres_auth_pillar:
   file.managed:
     - name: /opt/so/saltstack/local/pillar/postgres/auth.sls
@@ -25,6 +43,11 @@ postgres_auth_pillar:
               so_postgres_user:
                 user: so_postgres
                 pass: "{{ so_postgres_user_pass }}"
+              {% for key, entry in telegraf_users.items() %}
+              {{ key }}:
+                user: {{ entry.user }}
+                pass: "{{ entry.pass }}"
+              {% endfor %}
     - show_changes: False
 {% else %}
 
