@@ -10,6 +10,28 @@
 {% set TG_OUT = (GLOBALS.telegraf_output | default('INFLUXDB')) | upper %}
 {% if TG_OUT in ['POSTGRES', 'BOTH'] %}
 
+# Provision the shared group role and schema once. Every per-minion role is a
+# member of so_telegraf, and each Telegraf connection does SET ROLE so_telegraf
+# (via options='-c role=so_telegraf' in the connection string) so tables created
+# on first write are owned by the group role and every member can INSERT/SELECT.
+postgres_telegraf_group_role:
+  cmd.run:
+    - name: |
+        docker exec -i so-postgres psql -v ON_ERROR_STOP=1 -U postgres -d so_telegraf <<'EOSQL'
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'so_telegraf') THEN
+                CREATE ROLE so_telegraf NOLOGIN;
+            END IF;
+        END
+        $$;
+        GRANT CONNECT ON DATABASE so_telegraf TO so_telegraf;
+        CREATE SCHEMA IF NOT EXISTS telegraf AUTHORIZATION so_telegraf;
+        GRANT USAGE, CREATE ON SCHEMA telegraf TO so_telegraf;
+        EOSQL
+    - require:
+      - docker_container: so-postgres
+
 {%   set users = salt['pillar.get']('postgres:auth:users', {}) %}
 {%   for key, entry in users.items() %}
 {%     if key.startswith('telegraf_') and entry.get('user') and entry.get('pass') %}
@@ -30,10 +52,10 @@ postgres_telegraf_role_{{ u }}:
         END
         $$;
         GRANT CONNECT ON DATABASE so_telegraf TO "{{ u }}";
-        CREATE SCHEMA IF NOT EXISTS "{{ u }}" AUTHORIZATION "{{ u }}";
+        GRANT so_telegraf TO "{{ u }}";
         EOSQL
     - require:
-      - docker_container: so-postgres
+      - cmd: postgres_telegraf_group_role
 
 {%     endif %}
 {%   endfor %}

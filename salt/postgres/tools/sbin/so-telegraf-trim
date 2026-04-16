@@ -63,15 +63,15 @@ log "Trimming rows older than ${DAYS} days (dry_run=${DRY_RUN})."
 
 TOTAL_DELETED=0
 
-# One row per (schema, table) we might want to trim.
-# Column name is 'time' for all telegraf output plugin tables; skip metadata
-# tables (tag_* used for tags_as_foreign_keys).
+# Every metric table in the shared telegraf schema has a 'time' column.
+# Tag tables (<metric>_tag) don't, so filtering on the column presence is
+# enough to scope the trim to metric tables only.
 ROWS=$(so_psql -c "
   SELECT table_schema || '.' || table_name
   FROM information_schema.columns
   WHERE column_name = 'time'
     AND data_type IN ('timestamp with time zone', 'timestamp without time zone')
-    AND table_schema LIKE 'so_telegraf_%'
+    AND table_schema = 'telegraf'
   ORDER BY 1;")
 
 if [ -z "$ROWS" ]; then
