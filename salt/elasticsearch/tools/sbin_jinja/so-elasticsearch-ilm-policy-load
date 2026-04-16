@@ -7,6 +7,9 @@
 . /usr/sbin/so-common
 
 {%- from 'elasticsearch/template.map.jinja' import ES_INDEX_SETTINGS %}
+{%- if GLOBALS.role != "so-heavynode" %}
+{%-   from 'elasticsearch/template.map.jinja' import ALL_ADDON_SETTINGS %}
+{%- endif %}
 
 {%- for index, settings in ES_INDEX_SETTINGS.items() %}
 {%-   if settings.policy is defined %}
@@ -33,3 +36,13 @@
 {%-   endif %}
 {%- endfor %}
 echo
+{%- if GLOBALS.role != "so-heavynode" %}
+{%-   for index, settings in ALL_ADDON_SETTINGS.items() %}
+{%-     if settings.policy is defined %}
+  echo
+  echo "Setting up {{ index }}-logs policy..."
+  curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -s -k -L -X PUT "https://localhost:9200/_ilm/policy/{{ index }}-logs" -H 'Content-Type: application/json' -d'{ "policy": {{ settings.policy | tojson(true) }} }'
+  echo
+{%-     endif %}
+{%-   endfor %}
+{%- endif %}

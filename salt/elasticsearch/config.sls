@@ -66,6 +66,8 @@ so-elasticsearch-ilm-policy-load-script:
     - group: 939
     - mode: 754
     - template: jinja
+    - defaults:
+        GLOBALS: {{ GLOBALS }}
     - show_changes: False
 
 so-elasticsearch-pipelines-script:
@@ -87,6 +89,13 @@ esingestdir:
 estemplatedir:
   file.directory:
     - name: /opt/so/conf/elasticsearch/templates/index
+    - user: 930
+    - group: 939
+    - makedirs: True
+
+esaddontemplatedir:
+  file.directory:
+    - name: /opt/so/conf/elasticsearch/templates/addon-index
     - user: 930
     - group: 939
     - makedirs: True

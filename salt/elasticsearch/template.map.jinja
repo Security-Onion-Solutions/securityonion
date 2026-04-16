@@ -14,15 +14,42 @@
 
 {% set ES_INDEX_SETTINGS_ORIG = ELASTICSEARCHDEFAULTS.elasticsearch.index_settings %}
 
+{% set ALL_ADDON_INTEGRATION_DEFAULTS = {} %}
+{% set ALL_ADDON_SETTINGS_ORIG = {} %}
+{% set ALL_ADDON_SETTINGS_GLOBAL_OVERRIDES = {} %}
+{% set ALL_ADDON_SETTINGS = {} %}
 {# start generation of integration default index_settings #}
-{% if salt['file.file_exists']('/opt/so/state/esfleet_package_components.json') and salt['file.file_exists']('/opt/so/state/esfleet_component_templates.json') %}
-{%   set check_package_components = salt['file.stats']('/opt/so/state/esfleet_package_components.json') %}
-{%   if check_package_components.size > 1 %}
-{%    from 'elasticfleet/integration-defaults.map.jinja' import ADDON_INTEGRATION_DEFAULTS %}
-{%    for index, settings in ADDON_INTEGRATION_DEFAULTS.items() %}
-{%      do ES_INDEX_SETTINGS_ORIG.update({index: settings}) %}
-{%    endfor %}
-{%   endif%}
+{% if salt['file.file_exists']('/opt/so/state/esfleet_component_templates.json') %}
+{#   import integration type defaults #}
+{%   if salt['file.file_exists']('/opt/so/state/esfleet_package_components.json') %}
+{%     set check_integration_package_components = salt['file.stats']('/opt/so/state/esfleet_package_components.json') %}
+{%     if check_integration_package_components.size > 1 %}
+{%       from 'elasticfleet/integration-defaults.map.jinja' import ADDON_INTEGRATION_DEFAULTS %}
+{%       do ALL_ADDON_INTEGRATION_DEFAULTS.update(ADDON_INTEGRATION_DEFAULTS) %}
+{%     endif %}
+{%   endif %}
+
+{#   import input type defaults #}
+{%   if salt['file.file_exists']('/opt/so/state/esfleet_input_package_components.json') %}
+{%     set check_input_package_components = salt['file.stats']('/opt/so/state/esfleet_input_package_components.json') %}
+{%     if check_input_package_components.size > 1 %}
+{%       from 'elasticfleet/input-defaults.map.jinja' import ADDON_INPUT_INTEGRATION_DEFAULTS %}
+{%       do ALL_ADDON_INTEGRATION_DEFAULTS.update(ADDON_INPUT_INTEGRATION_DEFAULTS) %}
+{%     endif %}
+{%   endif %}
+
+{#   import content type defaults #}
+{%   if salt['file.file_exists']('/opt/so/state/esfleet_content_package_components.json') %}
+{%     set check_content_package_components = salt['file.stats']('/opt/so/state/esfleet_content_package_components.json') %}
+{%     if check_content_package_components.size > 1 %}
+{%       from 'elasticfleet/content-defaults.map.jinja' import ADDON_CONTENT_INTEGRATION_DEFAULTS %}
+{%       do ALL_ADDON_INTEGRATION_DEFAULTS.update(ADDON_CONTENT_INTEGRATION_DEFAULTS) %}
+{%     endif %}
+{%   endif %}
+
+{%   for index, settings in ALL_ADDON_INTEGRATION_DEFAULTS.items() %}
+{%     do ALL_ADDON_SETTINGS_ORIG.update({index: settings}) %}
+{%   endfor %}
 {% endif %}
 {# end generation of integration default index_settings #}
 
@@ -31,25 +58,33 @@
 {%   do ES_INDEX_SETTINGS_GLOBAL_OVERRIDES.update({index: salt['defaults.merge'](ELASTICSEARCHDEFAULTS.elasticsearch.index_settings[index], PILLAR_GLOBAL_OVERRIDES, in_place=False)}) %}
 {% endfor %}
 
+{% if ALL_ADDON_SETTINGS_ORIG.keys() | length > 0 %}
+{%   for index in ALL_ADDON_SETTINGS_ORIG.keys() %}
+{%     do ALL_ADDON_SETTINGS_GLOBAL_OVERRIDES.update({index: salt['defaults.merge'](ALL_ADDON_SETTINGS_ORIG[index], PILLAR_GLOBAL_OVERRIDES, in_place=False)}) %}
+{%   endfor %}
+{% endif %}
+
 {% set ES_INDEX_SETTINGS = {} %}
-{% do ES_INDEX_SETTINGS_GLOBAL_OVERRIDES.update(salt['defaults.merge'](ES_INDEX_SETTINGS_GLOBAL_OVERRIDES, ES_INDEX_PILLAR, in_place=False)) %}
-{% for index, settings in ES_INDEX_SETTINGS_GLOBAL_OVERRIDES.items() %}
+{% macro create_final_index_template(DEFINED_SETTINGS, GLOBAL_OVERRIDES, FINAL_INDEX_SETTINGS) %}
+
+{% do GLOBAL_OVERRIDES.update(salt['defaults.merge'](GLOBAL_OVERRIDES, ES_INDEX_PILLAR, in_place=False)) %}
+{% for index, settings in GLOBAL_OVERRIDES.items() %}
 
 {#   prevent this action from being performed on custom defined indices. #}
 {#   the custom defined index is not present in either of the dictionaries and fails to reder. #}
-{%   if index in ES_INDEX_SETTINGS_ORIG and index in ES_INDEX_SETTINGS_GLOBAL_OVERRIDES %}
+{%   if index in DEFINED_SETTINGS and index in GLOBAL_OVERRIDES %}
 
 {#     dont merge policy from the global_overrides if policy isn't defined in the original index settingss #}
 {#     this will prevent so-elasticsearch-ilm-policy-load from trying to load policy on non ILM manged indices #}
-{%     if not ES_INDEX_SETTINGS_ORIG[index].policy is defined and ES_INDEX_SETTINGS_GLOBAL_OVERRIDES[index].policy is defined %}
-{%       do ES_INDEX_SETTINGS_GLOBAL_OVERRIDES[index].pop('policy') %}
+{%     if not DEFINED_SETTINGS[index].policy is defined and GLOBAL_OVERRIDES[index].policy is defined %}
+{%       do GLOBAL_OVERRIDES[index].pop('policy') %}
 {%     endif %}
 
 {#     this prevents and index from inderiting a policy phase from global overrides if it wasnt defined in the defaults. #}
-{%     if ES_INDEX_SETTINGS_GLOBAL_OVERRIDES[index].policy is defined %}
-{%       for phase in ES_INDEX_SETTINGS_GLOBAL_OVERRIDES[index].policy.phases.copy() %}
-{%         if ES_INDEX_SETTINGS_ORIG[index].policy.phases[phase] is not defined %}
-{%           do ES_INDEX_SETTINGS_GLOBAL_OVERRIDES[index].policy.phases.pop(phase) %}
+{%     if GLOBAL_OVERRIDES[index].policy is defined %}
+{%       for phase in GLOBAL_OVERRIDES[index].policy.phases.copy() %}
+{%         if DEFINED_SETTINGS[index].policy.phases[phase] is not defined %}
+{%           do GLOBAL_OVERRIDES[index].policy.phases.pop(phase) %}
 {%         endif %}
 {%       endfor %}
 {%     endif %}
@@ -111,5 +146,14 @@
 {%     endfor %}
 {%   endif %}
 
-{%   do ES_INDEX_SETTINGS.update({index | replace("_x_", "."): ES_INDEX_SETTINGS_GLOBAL_OVERRIDES[index]}) %}
+{%   do FINAL_INDEX_SETTINGS.update({index | replace("_x_", "."): GLOBAL_OVERRIDES[index]}) %}
+{% endfor %}
+{% endmacro %}
+
+{{ create_final_index_template(ES_INDEX_SETTINGS_ORIG, ES_INDEX_SETTINGS_GLOBAL_OVERRIDES, ES_INDEX_SETTINGS) }}
+{{ create_final_index_template(ALL_ADDON_SETTINGS_ORIG, ALL_ADDON_SETTINGS_GLOBAL_OVERRIDES, ALL_ADDON_SETTINGS) }}
+
+{% set SO_MANAGED_INDICES = [] %}
+{% for index, settings in ES_INDEX_SETTINGS.items() %}
+{%   do SO_MANAGED_INDICES.append(index) %}
 {% endfor %}
