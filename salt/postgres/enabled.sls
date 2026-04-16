@@ -80,20 +80,14 @@ delete_so-postgres_so-status.disabled:
     - name: /opt/so/conf/so-status/so-status.conf
     - regex: ^so-postgres$
 
+# Retention is now handled by pg_partman (hourly maintenance via pg_cron
+# scheduled from postgres/telegraf_users.sls). The so-telegraf-trim script
+# stays on disk for manual/emergency use but is no longer scheduled.
 so_telegraf_trim:
-{% if GLOBALS.telegraf_output in ['POSTGRES', 'BOTH'] %}
-  cron.present:
-{% else %}
   cron.absent:
-{% endif %}
     - name: /usr/sbin/so-telegraf-trim >> /opt/so/log/postgres/telegraf-trim.log 2>&1
     - identifier: so_telegraf_trim
     - user: root
-    - minute: '17'
-    - hour: '3'
-    - daymonth: '*'
-    - month: '*'
-    - dayweek: '*'
 
 {% else %}
 

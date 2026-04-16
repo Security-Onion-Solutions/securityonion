@@ -135,9 +135,33 @@ elastic_fleet_bulk_package_install() {
     fi
 }
 
-elastic_fleet_installed_packages() {
-    if ! fleet_api "epm/packages/installed?perPage=500"; then
+elastic_fleet_get_package_list_by_type() {
+    if ! output=$(fleet_api "epm/packages"); then
         return 1
+    else
+        is_integration=$(jq '[.items[] | select(.type=="integration") | .name ]' <<< "$output")
+        is_input=$(jq '[.items[] | select(.type=="input") | .name ]' <<< "$output")
+        is_content=$(jq '[.items[] | select(.type=="content") | .name ]' <<< "$output")
+        jq -n --argjson is_integration "${is_integration:-[]}" \
+              --argjson is_input "${is_input:-[]}" \
+              --argjson is_content "${is_content:-[]}" \
+              '{"integration": $is_integration,"input": $is_input, "content": $is_content}'
+    fi
+}
+elastic_fleet_installed_packages_components() {
+    package_type=${1,,}
+    if [[ "$package_type" != "integration" && "$package_type" != "input" && "$package_type" != "content" ]]; then
+        echo "Error: Invalid package type ${package_type}. Valid types are 'integration', 'input', or 'content'."
+        return 1
+    fi
+
+    packages_by_type=$(elastic_fleet_get_package_list_by_type)
+    packages=$(jq --arg package_type "$package_type" '.[$package_type]' <<< "$packages_by_type")
+
+    if ! output=$(fleet_api "epm/packages/installed?perPage=500"); then
+        return 1
+    else
+        jq -c --argjson packages "$packages" '[.items[] | select(.name | IN($packages[])) | {name: .name, dataStreams: .dataStreams}]' <<< "$output"
     fi
 }
 

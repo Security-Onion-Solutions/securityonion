@@ -102,7 +102,6 @@ base:
     - node_data.ips
     - secrets
     - healthcheck.eval
-    - elasticsearch.index_templates
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
     - elasticsearch.auth
     {% endif %}
@@ -152,7 +151,6 @@ base:
     - logstash.nodes
     - logstash.soc_logstash
     - logstash.adv_logstash
-    - elasticsearch.index_templates
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
     - elasticsearch.auth
     {% endif %}
@@ -271,7 +269,6 @@ base:
   '*_import':
     - node_data.ips
     - secrets
-    - elasticsearch.index_templates
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
     - elasticsearch.auth
     {% endif %}
