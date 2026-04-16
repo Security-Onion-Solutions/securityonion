@@ -363,12 +363,8 @@ preupgrade_changes() {
     echo "Checking to see if changes are needed."
 
     [[ "$INSTALLEDVERSION" =~ ^2\.4\.21[0-9]+$ ]] && up_to_3.0.0
-<<<<<<< HEAD
     [[ "$INSTALLEDVERSION" == 3.0.0 ]] && up_to_3.1.0   
 
-=======
-    [[ "$INSTALLEDVERSION" =~ ^3\.0\.[0-9]+$ ]] && up_to_3.1.0
->>>>>>> 470b3bd4da726e7cce13cbc82aab9b897da4c342
     true
 }
 
@@ -377,11 +373,8 @@ postupgrade_changes() {
     echo "Running post upgrade processes."
 
     [[ "$POSTVERSION" =~ ^2\.4\.21[0-9]+$ ]] && post_to_3.0.0
-<<<<<<< HEAD
     [[ "$POSTVERSION" =~ 3.0.0 ]] && post_to_3.1.0
-=======
-    [[ "$POSTVERSION" =~ ^3\.0\.[0-9]+$ ]] && post_to_3.1.0
->>>>>>> 470b3bd4da726e7cce13cbc82aab9b897da4c342
+    
     true
 }
 
@@ -463,7 +456,17 @@ up_to_3.0.0() {
 }
 
 post_to_3.0.0() {
-  echo "Nothing to do"
+  for idx in "logs-idh-so" "logs-redis.log-default"; do
+    rollover_index "$idx"
+  done
+
+  # Remove ILM for so-case and so-detection indices
+  for idx in "so-case" "so-casehistory" "so-detection" "so-detectionhistory"; do
+    so-elasticsearch-query $idx/_ilm/remove -XPOST
+  done
+
+  # convert yes/no in suricata pillars to true/false
+  convert_suricata_yes_no
 
   POSTVERSION=3.0.0
 }
@@ -471,25 +474,12 @@ post_to_3.0.0() {
 ### 3.0.0 End ###
 
 ### 3.1.0 Start ###
-<<<<<<< HEAD
 up_to_3.1.0() {
   echo "Nothing to do"
-=======
-
-up_to_3.1.0() {
->>>>>>> 470b3bd4da726e7cce13cbc82aab9b897da4c342
   INSTALLEDVERSION=3.1.0
 }
 
 post_to_3.1.0() {
-<<<<<<< HEAD
-  echo "Nothing to do"
-
-  POSTVERSION=3.1.0
-}
-### 3.1.1 End ###
-
-=======
   # Provision per-minion Telegraf Postgres users for every minion known to the
   # manager. postgres.auth iterates manage.up to generate any missing passwords;
   # postgres.telegraf_users reconciles the roles and schemas inside the so-postgres
@@ -497,13 +487,11 @@ post_to_3.1.0() {
   # picks up the new credentials on the first apply after soup.
   echo "Provisioning Telegraf Postgres users for existing minions."
   salt-call --local state.apply postgres.auth postgres.telegraf_users || true
-  salt '*' state.sls telegraf || true
 
   POSTVERSION=3.1.0
 }
 
 ### 3.1.0 End ###
->>>>>>> 470b3bd4da726e7cce13cbc82aab9b897da4c342
 
 repo_sync() {
   echo "Sync the local repo."
