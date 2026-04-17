@@ -34,10 +34,9 @@ postgres_wait_ready:
 postgres_create_telegraf_db:
   cmd.run:
     - name: |
-        docker exec -i so-postgres psql -v ON_ERROR_STOP=1 -U postgres -d postgres <<'EOSQL'
-        SELECT 'CREATE DATABASE so_telegraf'
-        WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'so_telegraf')\gexec
-        EOSQL
+        if ! docker exec so-postgres psql -U postgres -tAc "SELECT 1 FROM pg_database WHERE datname='so_telegraf'" | grep -q 1; then
+          docker exec so-postgres psql -v ON_ERROR_STOP=1 -U postgres -c "CREATE DATABASE so_telegraf"
+        fi
     - require:
       - cmd: postgres_wait_ready
 

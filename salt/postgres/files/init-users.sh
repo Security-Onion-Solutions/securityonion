@@ -20,7 +20,6 @@ EOSQL
 # Bootstrap the Telegraf metrics database. Per-minion roles + schemas are
 # reconciled on every state.apply by postgres/telegraf_users.sls; this block
 # only ensures the shared database exists on first initialization.
-psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
-    SELECT 'CREATE DATABASE so_telegraf'
-    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'so_telegraf')\gexec
-EOSQL
+if ! psql -U "$POSTGRES_USER" -tAc "SELECT 1 FROM pg_database WHERE datname='so_telegraf'" | grep -q 1; then
+    psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -c "CREATE DATABASE so_telegraf"
+fi
