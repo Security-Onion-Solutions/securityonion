@@ -10,6 +10,19 @@
 {% set TG_OUT = (GLOBALS.telegraf_output | default('INFLUXDB')) | upper %}
 {% if TG_OUT in ['POSTGRES', 'BOTH'] %}
 
+# Ensure the shared Telegraf database exists. init-users.sh only runs on a
+# fresh data dir, so hosts upgraded onto an existing /nsm/postgres volume
+# would otherwise never get so_telegraf.
+postgres_create_telegraf_db:
+  cmd.run:
+    - name: |
+        docker exec -i so-postgres psql -v ON_ERROR_STOP=1 -U postgres -d postgres <<'EOSQL'
+        SELECT 'CREATE DATABASE so_telegraf'
+        WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'so_telegraf')\gexec
+        EOSQL
+    - require:
+      - docker_container: so-postgres
+
 # Provision the shared group role and schema once. Every per-minion role is a
 # member of so_telegraf, and each Telegraf connection does SET ROLE so_telegraf
 # (via options='-c role=so_telegraf' in the connection string) so tables created
@@ -28,7 +41,8 @@ postgres_telegraf_group_role:
         GRANT CONNECT ON DATABASE so_telegraf TO so_telegraf;
         CREATE SCHEMA IF NOT EXISTS telegraf AUTHORIZATION so_telegraf;
         GRANT USAGE, CREATE ON SCHEMA telegraf TO so_telegraf;
-        CREATE EXTENSION IF NOT EXISTS pg_partman;
+        CREATE SCHEMA IF NOT EXISTS partman;
+        CREATE EXTENSION IF NOT EXISTS pg_partman SCHEMA partman;
         CREATE EXTENSION IF NOT EXISTS pg_cron;
         -- Hourly partman maintenance. cron.schedule is idempotent by jobname.
         SELECT cron.schedule(
@@ -38,7 +52,7 @@ postgres_telegraf_group_role:
         );
         EOSQL
     - require:
-      - docker_container: so-postgres
+      - cmd: postgres_create_telegraf_db
 
 {%   set users = salt['pillar.get']('postgres:auth:users', {}) %}
 {%   for key, entry in users.items() %}
