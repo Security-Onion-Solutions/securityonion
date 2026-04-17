@@ -65,10 +65,16 @@ postgres_telegraf_group_role:
         -- on first write of each metric, which needs USAGE on the partman
         -- schema, EXECUTE on its functions/procedures, and write access to
         -- partman.part_config so it can register new partitioned parents.
-        GRANT USAGE ON SCHEMA partman TO so_telegraf;
+        GRANT USAGE, CREATE ON SCHEMA partman TO so_telegraf;
         GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA partman TO so_telegraf;
         GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA partman TO so_telegraf;
         GRANT EXECUTE ON ALL PROCEDURES IN SCHEMA partman TO so_telegraf;
+        -- partman creates per-parent template tables (partman.template_*) at
+        -- runtime; default privileges extend DML/sequence access to them.
+        ALTER DEFAULT PRIVILEGES IN SCHEMA partman
+            GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO so_telegraf;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA partman
+            GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO so_telegraf;
         -- Hourly partman maintenance. cron.schedule is idempotent by jobname.
         SELECT cron.schedule(
           'telegraf-partman-maintenance',
