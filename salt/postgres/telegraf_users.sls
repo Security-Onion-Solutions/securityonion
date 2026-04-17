@@ -10,6 +10,24 @@
 {% set TG_OUT = (GLOBALS.telegraf_output | default('INFLUXDB')) | upper %}
 {% if TG_OUT in ['POSTGRES', 'BOTH'] %}
 
+# docker_container.running returns as soon as the container starts, but on
+# first-init docker-entrypoint.sh runs init scripts and then restarts
+# postgres, so the next docker exec can hit "the database system is shutting
+# down". Wait for pg_isready before any psql work.
+postgres_wait_ready:
+  cmd.run:
+    - name: |
+        for i in $(seq 1 60); do
+          if docker exec so-postgres pg_isready -U postgres -q 2>/dev/null; then
+            exit 0
+          fi
+          sleep 2
+        done
+        echo "so-postgres did not become ready within 120s" >&2
+        exit 1
+    - require:
+      - docker_container: so-postgres
+
 # Ensure the shared Telegraf database exists. init-users.sh only runs on a
 # fresh data dir, so hosts upgraded onto an existing /nsm/postgres volume
 # would otherwise never get so_telegraf.
@@ -21,7 +39,7 @@ postgres_create_telegraf_db:
         WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'so_telegraf')\gexec
         EOSQL
     - require:
-      - docker_container: so-postgres
+      - cmd: postgres_wait_ready
 
 # Provision the shared group role and schema once. Every per-minion role is a
 # member of so_telegraf, and each Telegraf connection does SET ROLE so_telegraf
