@@ -15,6 +15,12 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
     END
     \$\$;
     GRANT ALL PRIVILEGES ON DATABASE "$POSTGRES_DB" TO "$SO_POSTGRES_USER";
+    -- Lock the SOC database down at the connect layer; PUBLIC gets CONNECT
+    -- by default, which would let per-minion telegraf roles open sessions
+    -- here. They have no schema/table grants inside so reads fail, but
+    -- revoking CONNECT closes the soft edge entirely.
+    REVOKE CONNECT ON DATABASE "$POSTGRES_DB" FROM PUBLIC;
+    GRANT CONNECT ON DATABASE "$POSTGRES_DB" TO "$SO_POSTGRES_USER";
 EOSQL
 
 # Bootstrap the Telegraf metrics database. Per-minion roles + schemas are
