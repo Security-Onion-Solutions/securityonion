@@ -61,6 +61,14 @@ postgres_telegraf_group_role:
         CREATE SCHEMA IF NOT EXISTS partman;
         CREATE EXTENSION IF NOT EXISTS pg_partman SCHEMA partman;
         CREATE EXTENSION IF NOT EXISTS pg_cron;
+        -- Telegraf (running as so_telegraf) calls partman.create_parent()
+        -- on first write of each metric, which needs USAGE on the partman
+        -- schema, EXECUTE on its functions/procedures, and write access to
+        -- partman.part_config so it can register new partitioned parents.
+        GRANT USAGE ON SCHEMA partman TO so_telegraf;
+        GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA partman TO so_telegraf;
+        GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA partman TO so_telegraf;
+        GRANT EXECUTE ON ALL PROCEDURES IN SCHEMA partman TO so_telegraf;
         -- Hourly partman maintenance. cron.schedule is idempotent by jobname.
         SELECT cron.schedule(
           'telegraf-partman-maintenance',
