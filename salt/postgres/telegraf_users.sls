@@ -34,10 +34,9 @@ postgres_wait_ready:
 postgres_create_telegraf_db:
   cmd.run:
     - name: |
-        docker exec -i so-postgres psql -v ON_ERROR_STOP=1 -U postgres -d postgres <<'EOSQL'
-        SELECT 'CREATE DATABASE so_telegraf'
-        WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'so_telegraf')\gexec
-        EOSQL
+        if ! docker exec so-postgres psql -U postgres -tAc "SELECT 1 FROM pg_database WHERE datname='so_telegraf'" | grep -q 1; then
+          docker exec so-postgres psql -v ON_ERROR_STOP=1 -U postgres -c "CREATE DATABASE so_telegraf"
+        fi
     - require:
       - cmd: postgres_wait_ready
 
@@ -62,6 +61,20 @@ postgres_telegraf_group_role:
         CREATE SCHEMA IF NOT EXISTS partman;
         CREATE EXTENSION IF NOT EXISTS pg_partman SCHEMA partman;
         CREATE EXTENSION IF NOT EXISTS pg_cron;
+        -- Telegraf (running as so_telegraf) calls partman.create_parent()
+        -- on first write of each metric, which needs USAGE on the partman
+        -- schema, EXECUTE on its functions/procedures, and write access to
+        -- partman.part_config so it can register new partitioned parents.
+        GRANT USAGE, CREATE ON SCHEMA partman TO so_telegraf;
+        GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA partman TO so_telegraf;
+        GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA partman TO so_telegraf;
+        GRANT EXECUTE ON ALL PROCEDURES IN SCHEMA partman TO so_telegraf;
+        -- partman creates per-parent template tables (partman.template_*) at
+        -- runtime; default privileges extend DML/sequence access to them.
+        ALTER DEFAULT PRIVILEGES IN SCHEMA partman
+            GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO so_telegraf;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA partman
+            GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO so_telegraf;
         -- Hourly partman maintenance. cron.schedule is idempotent by jobname.
         SELECT cron.schedule(
           'telegraf-partman-maintenance',
