@@ -11,19 +11,22 @@
 {% if TG_OUT in ['POSTGRES', 'BOTH'] %}
 
 # docker_container.running returns as soon as the container starts, but on
-# first-init docker-entrypoint.sh runs init scripts and then restarts
-# postgres, so the next docker exec can hit "the database system is shutting
-# down". Wait for pg_isready before any psql work.
+# first-init docker-entrypoint.sh starts a temporary postgres with
+# `listen_addresses=''` to run /docker-entrypoint-initdb.d scripts, then
+# shuts it down before exec'ing the real CMD. A default pg_isready check
+# (Unix socket) passes during that ephemeral phase and races the shutdown
+# with "the database system is shutting down". Checking TCP readiness on
+# 127.0.0.1 only succeeds after the final postgres binds the port.
 postgres_wait_ready:
   cmd.run:
     - name: |
         for i in $(seq 1 60); do
-          if docker exec so-postgres pg_isready -U postgres -q 2>/dev/null; then
+          if docker exec so-postgres pg_isready -h 127.0.0.1 -U postgres -q 2>/dev/null; then
             exit 0
           fi
           sleep 2
         done
-        echo "so-postgres did not become ready within 120s" >&2
+        echo "so-postgres did not accept TCP connections within 120s" >&2
         exit 1
     - require:
       - docker_container: so-postgres
