@@ -6,8 +6,9 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
+{%   from 'telegraf/map.jinja' import TELEGRAFMERGED %}
 
-{% set TG_OUT = salt['pillar.get']('telegraf:output', 'BOTH') | upper %}
+{% set TG_OUT = TELEGRAFMERGED.output | upper %}
 {% if TG_OUT in ['POSTGRES', 'BOTH'] %}
 
 # docker_container.running returns as soon as the container starts, but on

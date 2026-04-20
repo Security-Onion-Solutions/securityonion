@@ -65,11 +65,10 @@ postgresconf:
 postgreshba:
   file.managed:
     - name: /opt/so/conf/postgres/pg_hba.conf
-    - source: salt://postgres/files/pg_hba.conf.jinja
+    - source: salt://postgres/files/pg_hba.conf
     - user: 939
     - group: 939
     - mode: 640
-    - template: jinja
 
 postgres_super_secret:
   file.managed:
