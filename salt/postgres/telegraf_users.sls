@@ -7,7 +7,7 @@
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 
-{% set TG_OUT = (GLOBALS.telegraf_output | default('INFLUXDB')) | upper %}
+{% set TG_OUT = salt['pillar.get']('telegraf:output', 'BOTH') | upper %}
 {% if TG_OUT in ['POSTGRES', 'BOTH'] %}
 
 # docker_container.running returns as soon as the container starts, but on
