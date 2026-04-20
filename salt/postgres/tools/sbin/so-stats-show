@@ -42,6 +42,15 @@ esac
 FILTER_HOST="${1:-}"
 SCHEMA="telegraf"
 
+# Host values are interpolated into SQL below. Hostnames are [A-Za-z0-9._-];
+# any other character in a tag value or CLI arg is rejected to prevent a
+# stored-tag (or CLI) → SQL injection via a compromised Telegraf writer.
+HOST_RE='^[A-Za-z0-9._-]+$'
+if [ -n "$FILTER_HOST" ] && ! [[ "$FILTER_HOST" =~ $HOST_RE ]]; then
+  echo "Invalid host filter: $FILTER_HOST" >&2
+  exit 1
+fi
+
 so_psql() {
   docker exec so-postgres psql -U postgres -d so_telegraf -At -F $'\t' "$@"
 }
@@ -78,6 +87,10 @@ print_metric() {
 }
 
 for host in $HOSTS; do
+  if ! [[ "$host" =~ $HOST_RE ]]; then
+    echo "Skipping host with invalid characters in tag value: $host" >&2
+    continue
+  fi
   if [ -n "$FILTER_HOST" ] && [ "$host" != "$FILTER_HOST" ]; then
     continue
   fi
