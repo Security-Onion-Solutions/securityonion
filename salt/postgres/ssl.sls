@@ -42,7 +42,8 @@ postgresKeyperms:
   file.managed:
     - replace: False
     - name: /etc/pki/postgres.key
-    - mode: 640
+    - mode: 400
+    - user: 939
     - group: 939
 
 {% else %}

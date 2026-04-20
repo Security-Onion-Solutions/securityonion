@@ -7,9 +7,7 @@
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 {%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
-{%   set PASSWORD = salt['pillar.get']('secrets:postgres_pass') %}
 {%   set SO_POSTGRES_USER = salt['pillar.get']('postgres:auth:users:so_postgres_user:user', 'so_postgres') %}
-{%   set SO_POSTGRES_PASS = salt['pillar.get']('postgres:auth:users:so_postgres_user:pass', '') %}
 
 include:
   - postgres.auth
@@ -31,9 +29,12 @@ so-postgres:
       {% endfor %}
     - environment:
       - POSTGRES_DB=securityonion
-      - POSTGRES_PASSWORD={{ PASSWORD }}
+      # Passwords are delivered via mounted 0600 secret files, not plaintext env vars.
+      # The upstream postgres image resolves POSTGRES_PASSWORD_FILE; entrypoint.sh and
+      # init-users.sh resolve SO_POSTGRES_PASS_FILE the same way.
+      - POSTGRES_PASSWORD_FILE=/run/secrets/postgres_password
       - SO_POSTGRES_USER={{ SO_POSTGRES_USER }}
-      - SO_POSTGRES_PASS={{ SO_POSTGRES_PASS }}
+      - SO_POSTGRES_PASS_FILE=/run/secrets/so_postgres_pass
       {% if DOCKERMERGED.containers['so-postgres'].extra_env %}
         {% for XTRAENV in DOCKERMERGED.containers['so-postgres'].extra_env %}
       - {{ XTRAENV }}
@@ -43,6 +44,8 @@ so-postgres:
       - /opt/so/log/postgres/:/log:rw
       - /nsm/postgres:/var/lib/postgresql/data:rw
       - /opt/so/conf/postgres/postgresql.conf:/conf/postgresql.conf:ro
+      - /opt/so/conf/postgres/pg_hba.conf:/conf/pg_hba.conf:ro
+      - /opt/so/conf/postgres/secrets:/run/secrets:ro
       - /opt/so/conf/postgres/init/init-users.sh:/docker-entrypoint-initdb.d/init-users.sh:ro
       - /etc/pki/postgres.crt:/conf/postgres.crt:ro
       - /etc/pki/postgres.key:/conf/postgres.key:ro
@@ -66,12 +69,18 @@ so-postgres:
     {% endif %}
     - watch:
       - file: postgresconf
+      - file: postgreshba
       - file: postgresinitusers
+      - file: postgres_super_secret
+      - file: postgres_app_secret
       - x509: postgres_crt
       - x509: postgres_key
     - require:
       - file: postgresconf
+      - file: postgreshba
       - file: postgresinitusers
+      - file: postgres_super_secret
+      - file: postgres_app_secret
       - x509: postgres_crt
       - x509: postgres_key
 
@@ -79,15 +88,6 @@ delete_so-postgres_so-status.disabled:
   file.uncomment:
     - name: /opt/so/conf/so-status/so-status.conf
     - regex: ^so-postgres$
-
-# Retention is now handled by pg_partman (hourly maintenance via pg_cron
-# scheduled from postgres/telegraf_users.sls). The so-telegraf-trim script
-# stays on disk for manual/emergency use but is no longer scheduled.
-so_telegraf_trim:
-  cron.absent:
-    - name: /usr/sbin/so-telegraf-trim >> /opt/so/log/postgres/telegraf-trim.log 2>&1
-    - identifier: so_telegraf_trim
-    - user: root
 
 {% else %}
 

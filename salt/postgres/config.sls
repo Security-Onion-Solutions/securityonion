@@ -15,6 +15,14 @@ postgresconfdir:
     - group: 939
     - makedirs: True
 
+postgressecretsdir:
+  file.directory:
+    - name: /opt/so/conf/postgres/secrets
+    - user: 939
+    - group: 939
+    - mode: 700
+    - makedirs: True
+
 postgresdatadir:
   file.directory:
     - name: /nsm/postgres
@@ -54,12 +62,43 @@ postgresconf:
     - defaults:
         PGMERGED: {{ PGMERGED }}
 
+postgreshba:
+  file.managed:
+    - name: /opt/so/conf/postgres/pg_hba.conf
+    - source: salt://postgres/files/pg_hba.conf.jinja
+    - user: 939
+    - group: 939
+    - mode: 640
+    - template: jinja
+
+postgres_super_secret:
+  file.managed:
+    - name: /opt/so/conf/postgres/secrets/postgres_password
+    - user: 939
+    - group: 939
+    - mode: 600
+    - contents_pillar: 'secrets:postgres_pass'
+    - show_changes: False
+    - require:
+      - file: postgressecretsdir
+
+postgres_app_secret:
+  file.managed:
+    - name: /opt/so/conf/postgres/secrets/so_postgres_pass
+    - user: 939
+    - group: 939
+    - mode: 600
+    - contents_pillar: 'postgres:auth:users:so_postgres_user:pass'
+    - show_changes: False
+    - require:
+      - file: postgressecretsdir
+
 postgres_sbin:
   file.recurse:
     - name: /usr/sbin
     - source: salt://postgres/tools/sbin
-    - user: 939
-    - group: 939
+    - user: root
+    - group: root
     - file_mode: 755
 
 {% else %}
