@@ -1,7 +1,89 @@
 postgres:
+  enabled:
+    description: Whether the PostgreSQL database container is enabled on this grid. Backs the assistant store and the Telegraf metrics database.
+    forcedType: bool
+    readonly: True
+    helpLink: influxdb
   telegraf:
     retention_days:
       description: Number of days of Telegraf metrics to keep in the so_telegraf database. Older partitions are dropped hourly by pg_partman.
       forcedType: int
+      helpLink: influxdb
+  config:
+    max_connections:
+      description: Maximum number of concurrent PostgreSQL connections.
+      forcedType: int
+      global: True
+      helpLink: influxdb
+    shared_buffers:
+      description: Amount of memory PostgreSQL uses for shared buffers (e.g. 256MB, 1GB). Raising this improves read cache hit rate at the cost of system RAM.
+      global: True
+      helpLink: influxdb
+    log_min_messages:
+      description: Minimum severity of server messages written to the PostgreSQL log.
+      options:
+        - debug1
+        - info
+        - notice
+        - warning
+        - error
+        - log
+        - fatal
+      global: True
+      helpLink: influxdb
+    listen_addresses:
+      description: Interfaces PostgreSQL listens on. Must remain '*' so clients on the docker bridge network can connect.
+      global: True
+      advanced: True
+      helpLink: influxdb
+    port:
+      description: TCP port PostgreSQL listens on inside the container. Firewall rules and container port mapping assume 5432.
+      forcedType: int
+      global: True
+      advanced: True
+      helpLink: influxdb
+    ssl:
+      description: Whether PostgreSQL accepts TLS connections. Must remain 'on' — pg_hba.conf requires hostssl for TCP.
+      global: True
+      advanced: True
+      helpLink: influxdb
+    ssl_cert_file:
+      description: Path (inside the container) to the TLS server certificate. Salt-managed.
+      global: True
+      advanced: True
+      helpLink: influxdb
+    ssl_key_file:
+      description: Path (inside the container) to the TLS server private key. Salt-managed.
+      global: True
+      advanced: True
+      helpLink: influxdb
+    ssl_ca_file:
+      description: Path (inside the container) to the CA bundle PostgreSQL uses to verify client certificates. Salt-managed.
+      global: True
+      advanced: True
+      helpLink: influxdb
+    hba_file:
+      description: Path (inside the container) to the pg_hba.conf authentication file. Salt-managed — edit salt/postgres/files/pg_hba.conf.
+      global: True
+      advanced: True
+      helpLink: influxdb
+    log_destination:
+      description: Where PostgreSQL writes its server log. 'stderr' routes to the container log stream.
+      global: True
+      advanced: True
+      helpLink: influxdb
+    logging_collector:
+      description: Whether to run a separate logging collector process. Disabled because the docker log stream already captures stderr.
+      global: True
+      advanced: True
+      helpLink: influxdb
+    shared_preload_libraries:
+      description: Comma-separated list of extensions loaded at server start. Required for pg_cron which drives pg_partman maintenance — do not remove.
+      global: True
+      advanced: True
+      helpLink: influxdb
+    cron.database_name:
+      description: Database pg_cron schedules jobs in. Must be so_telegraf so partman maintenance runs in the right database context.
+      global: True
       advanced: True
       helpLink: influxdb
