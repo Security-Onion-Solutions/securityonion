@@ -5,11 +5,12 @@
 # this file except in compliance with the Elastic License 2.0.
 
 . /usr/sbin/so-common
+. /usr/sbin/so-elastic-fleet-common
 {%- import_yaml 'elasticsearch/defaults.yaml' as ELASTICSEARCHDEFAULTS %}
 {%- import_yaml 'elasticfleet/defaults.yaml' as ELASTICFLEETDEFAULTS %}
 {# Optionally override Elasticsearch version for Elastic Agent patch releases #}
 {%- if ELASTICFLEETDEFAULTS.elasticfleet.patch_version is defined %}
-{%-   do ELASTICSEARCHDEFAULTS.update({'elasticsearch': {'version': ELASTICFLEETDEFAULTS.elasticfleet.patch_version}}) %}
+{%-   do ELASTICSEARCHDEFAULTS.elasticsearch.update({'version': ELASTICFLEETDEFAULTS.elasticfleet.patch_version}) %}
 {%- endif %}
 
 # Only run on Managers
@@ -19,13 +20,10 @@ if ! is_manager_node; then
 fi
 
 # Get current list of Grid Node Agents that need to be upgraded
-RAW_JSON=$(curl -K /opt/so/conf/elasticsearch/curl.config -L "http://localhost:5601/api/fleet/agents?perPage=20&page=1&kuery=NOT%20agent.version%3A%20{{ELASTICSEARCHDEFAULTS.elasticsearch.version}}%20AND%20policy_id%3A%20so-grid-nodes_%2A&showInactive=false&getStatusSummary=true" --retry 3 --retry-delay 30 --fail 2>/dev/null)
+if ! RAW_JSON=$(fleet_api "agents?perPage=20&page=1&kuery=NOT%20agent.version%3A%20{{ELASTICSEARCHDEFAULTS.elasticsearch.version | urlencode }}%20AND%20policy_id%3A%20so-grid-nodes_%2A&showInactive=false&getStatusSummary=true" -H 'kbn-xsrf: true' -H 'Content-Type: application/json'); then
 
-# Check to make sure that the server responded with good data - else, bail from script
-CHECKSUM=$(jq -r '.page' <<< "$RAW_JSON")
-if [ "$CHECKSUM" -ne 1 ]; then
- printf "Failed to query for current Grid Agents...\n"
- exit 1
+    printf "Failed to query for current Grid Agents...\n"
+    exit 1
 fi
 
 # Generate list of Node Agents that need updates
@@ -36,10 +34,12 @@ if [ "$OUTDATED_LIST" != '[]' ]; then
    printf "Initiating upgrades for $AGENTNUMBERS Agents to Elastic {{ELASTICSEARCHDEFAULTS.elasticsearch.version}}...\n\n"
 
    # Generate updated JSON payload
-   JSON_STRING=$(jq -n --arg ELASTICVERSION {{ELASTICSEARCHDEFAULTS.elasticsearch.version}} --arg UPDATELIST $OUTDATED_LIST '{"version": $ELASTICVERSION,"agents": $UPDATELIST }')
+   JSON_STRING=$(jq -n --arg ELASTICVERSION "{{ELASTICSEARCHDEFAULTS.elasticsearch.version}}" --argjson UPDATELIST "$OUTDATED_LIST" '{"version": $ELASTICVERSION,"agents": $UPDATELIST }')
 
    # Update Node Agents
-   curl -K /opt/so/conf/elasticsearch/curl.config -L -X POST "http://localhost:5601/api/fleet/agents/bulk_upgrade" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"
+   if ! fleet_api "agents/bulk_upgrade" -XPOST -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$JSON_STRING"; then
+       printf "Failed to initiate Agent upgrades...\n"
+   fi
 else
     printf "No Agents need updates... Exiting\n\n"
     exit 0
