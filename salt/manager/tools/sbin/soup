@@ -491,10 +491,11 @@ post_to_3.1.0() {
   /usr/sbin/so-kibana-space-defaults
 
   # One-time backfill for minions that existed before the postgres Telegraf
-  # feature shipped. Generate the aggregate pillar on the manager and create
-  # the per-minion DB roles, then fan each minion's cred into its own pillar
-  # file. Going forward the reactor handles each new salt-key accept with a
-  # targeted fan-out, so a manager highstate no longer needs to iterate.
+  # feature shipped. postgres.auth's up_minions fallback loop generates any
+  # missing aggregate pillar entries; postgres.telegraf_users CREATEs the
+  # matching DB roles; then the bash loop below copies each minion's cred
+  # into its own pillar file. Going forward, so-minion owns add/delete for
+  # every new minion, so this backfill is only needed on the upgrade boundary.
   echo "Provisioning Telegraf Postgres users for existing minions."
   salt-call --local state.apply postgres.auth,postgres.telegraf_users queue=True || true
 

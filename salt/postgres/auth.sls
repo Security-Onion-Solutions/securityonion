@@ -49,38 +49,6 @@ postgres_auth_pillar:
                 pass: "{{ entry.pass }}"
               {% endfor %}
     - show_changes: False
-
-  {# Fan a specific minion's telegraf cred out to its own pillar file. Only
-     runs when postgres_fanout_minion pillar is provided — otherwise this state
-     is a no-op. That keeps manager highstates from doing N so-yaml.py forks
-     when nothing changed. The reactor passes postgres_fanout_minion through
-     the orch on salt-key accept; soup handles bulk backfill separately. #}
-  {% set fanout_mid = salt['pillar.get']('postgres_fanout_minion') %}
-  {% if fanout_mid %}
-    {%- set safe = fanout_mid | replace('.','_') | replace('-','_') | lower %}
-    {%- set key = 'telegraf_' ~ safe %}
-    {%- set entry = telegraf_users.get(key) %}
-    {%- if entry %}
-
-postgres_telegraf_minion_pillar_{{ safe }}:
-  cmd.run:
-    - name: |
-        set -e
-        PILLAR_FILE=/opt/so/saltstack/local/pillar/minions/{{ fanout_mid }}.sls
-        if [ ! -f "$PILLAR_FILE" ]; then
-          echo '{}' > "$PILLAR_FILE"
-          chown socore:socore "$PILLAR_FILE" 2>/dev/null || true
-          chmod 640 "$PILLAR_FILE"
-        fi
-        /usr/sbin/so-yaml.py replace "$PILLAR_FILE" postgres.telegraf.user '{{ entry.user }}'
-        /usr/sbin/so-yaml.py replace "$PILLAR_FILE" postgres.telegraf.pass '{{ entry.pass }}'
-    - unless: |
-        [ "$(/usr/sbin/so-yaml.py get -r /opt/so/saltstack/local/pillar/minions/{{ fanout_mid }}.sls postgres.telegraf.user 2>/dev/null)" = '{{ entry.user }}' ]
-    - require:
-      - file: postgres_auth_pillar
-
-    {%- endif %}
-  {% endif %}
 {% else %}
 
 {{sls}}_state_not_allowed:
