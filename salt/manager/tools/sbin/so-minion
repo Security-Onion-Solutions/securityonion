@@ -273,11 +273,48 @@ function deleteMinionFiles () {
 		log "ERROR" "Failed to delete $PILLARFILE"
 		return 1
 	fi
-	
+
 	rm -f $ADVPILLARFILE
 	if [ $? -ne 0 ]; then
 		log "ERROR" "Failed to delete $ADVPILLARFILE"
 		return 1
+	fi
+}
+
+# Remove this minion's postgres Telegraf credential from both the aggregate
+# pillar and the postgres database. Paired with add_telegraf_to_minion:
+# add/delete cycle both here and in the DB. Always returns 0 so a dead or
+# unreachable so-postgres doesn't block minion deletion — in that case we
+# log a warning and leave the role behind for manual cleanup.
+function remove_postgres_telegraf_from_minion() {
+	local MINION_SAFE
+	MINION_SAFE=$(echo "$MINION_ID" | tr '.-' '__' | tr '[:upper:]' '[:lower:]')
+	local PG_USER="so_telegraf_${MINION_SAFE}"
+	local AGGREGATE=/opt/so/saltstack/local/pillar/postgres/auth.sls
+
+	log "INFO" "Removing postgres telegraf cred for $MINION_ID"
+
+	if [[ -f "$AGGREGATE" ]]; then
+		so-yaml.py remove "$AGGREGATE" "postgres.auth.users.telegraf_${MINION_SAFE}" >/dev/null 2>&1 || true
+	fi
+
+	if docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^so-postgres$'; then
+		if ! docker exec -i so-postgres psql -v ON_ERROR_STOP=1 -U postgres -d so_telegraf >/dev/null 2>&1 <<EOSQL
+DO \$\$
+BEGIN
+    IF EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '$PG_USER') THEN
+        EXECUTE format('REASSIGN OWNED BY %I TO so_telegraf', '$PG_USER');
+        EXECUTE format('DROP OWNED BY %I', '$PG_USER');
+        EXECUTE format('DROP ROLE %I', '$PG_USER');
+    END IF;
+END
+\$\$;
+EOSQL
+		then
+			log "WARN" "Failed to drop postgres role $PG_USER; aggregate pillar entry was removed — drop manually if the role persists"
+		fi
+	else
+		log "WARN" "so-postgres container is not running; skipping DB role cleanup for $PG_USER"
 	fi
 }
 
@@ -1100,6 +1137,7 @@ case "$OPERATION" in
 
 	"delete")
 		log "INFO" "Removing minion $MINION_ID"
+		remove_postgres_telegraf_from_minion
 		deleteMinionFiles || {
 			log "ERROR" "Failed to delete minion files for $MINION_ID"
 			exit 1
