@@ -49,6 +49,35 @@ postgres_auth_pillar:
                 pass: "{{ entry.pass }}"
               {% endfor %}
     - show_changes: False
+
+  {# Fan each minion's telegraf cred out to its own pillar file. The minions/
+     <id>.sls file is only served to that specific minion via pillar/top.sls
+     (`- minions.{{ grains.id }}`), so sensors, heavynodes, etc. see their own
+     credential without the admin password or anyone else's. Run per up-minion
+     so we have the original minion id (not just the safe-normalized version). #}
+  {% for mid in up_minions %}
+    {%- set safe = mid | replace('.','_') | replace('-','_') | lower %}
+    {%- set key = 'telegraf_' ~ safe %}
+    {%- set entry = telegraf_users.get(key) %}
+    {%- if entry %}
+
+postgres_telegraf_minion_pillar_{{ safe }}:
+  cmd.run:
+    - name: |
+        set -e
+        PILLAR_FILE=/opt/so/saltstack/local/pillar/minions/{{ mid }}.sls
+        if [ ! -f "$PILLAR_FILE" ]; then
+          echo '{}' > "$PILLAR_FILE"
+          chown socore:socore "$PILLAR_FILE" 2>/dev/null || true
+          chmod 640 "$PILLAR_FILE"
+        fi
+        /usr/sbin/so-yaml.py replace "$PILLAR_FILE" postgres.telegraf.user '{{ entry.user }}'
+        /usr/sbin/so-yaml.py replace "$PILLAR_FILE" postgres.telegraf.pass '{{ entry.pass }}'
+    - require:
+      - file: postgres_auth_pillar
+
+    {%- endif %}
+  {% endfor %}
 {% else %}
 
 {{sls}}_state_not_allowed:
