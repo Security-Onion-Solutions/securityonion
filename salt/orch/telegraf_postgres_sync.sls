@@ -12,6 +12,8 @@
 # Target the manager via role grains — same pattern as orch/delete_hypervisor.sls.
 # The reactor doesn't know the manager's minion id, and grains.master on the
 # runner is a hostname, not a targetable id.
+{% set FANOUT_MINION = salt['pillar.get']('postgres_fanout_minion', '') %}
+
 manager_sync_telegraf_pg_users:
   salt.state:
     - tgt: 'G@role:so-manager or G@role:so-managerhype or G@role:so-managersearch or G@role:so-standalone or G@role:so-eval'
@@ -20,3 +22,7 @@ manager_sync_telegraf_pg_users:
       - postgres.auth
       - postgres.telegraf_users
     - queue: True
+    {% if FANOUT_MINION %}
+    - pillar:
+        postgres_fanout_minion: {{ FANOUT_MINION }}
+    {% endif %}

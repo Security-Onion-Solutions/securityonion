@@ -10,6 +10,8 @@
   runner.state.orchestrate:
     - args:
       - mods: orch.telegraf_postgres_sync
+      - pillar:
+          postgres_fanout_minion: {{ data['id'] }}
 
 {% do salt.log.info('telegraf_user_sync reactor: syncing telegraf PG user for minion %s' % data['id']) %}
 

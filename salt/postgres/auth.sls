@@ -50,13 +50,14 @@ postgres_auth_pillar:
               {% endfor %}
     - show_changes: False
 
-  {# Fan each minion's telegraf cred out to its own pillar file. The minions/
-     <id>.sls file is only served to that specific minion via pillar/top.sls
-     (`- minions.{{ grains.id }}`), so sensors, heavynodes, etc. see their own
-     credential without the admin password or anyone else's. Run per up-minion
-     so we have the original minion id (not just the safe-normalized version). #}
-  {% for mid in up_minions %}
-    {%- set safe = mid | replace('.','_') | replace('-','_') | lower %}
+  {# Fan a specific minion's telegraf cred out to its own pillar file. Only
+     runs when postgres_fanout_minion pillar is provided — otherwise this state
+     is a no-op. That keeps manager highstates from doing N so-yaml.py forks
+     when nothing changed. The reactor passes postgres_fanout_minion through
+     the orch on salt-key accept; soup handles bulk backfill separately. #}
+  {% set fanout_mid = salt['pillar.get']('postgres_fanout_minion') %}
+  {% if fanout_mid %}
+    {%- set safe = fanout_mid | replace('.','_') | replace('-','_') | lower %}
     {%- set key = 'telegraf_' ~ safe %}
     {%- set entry = telegraf_users.get(key) %}
     {%- if entry %}
@@ -65,7 +66,7 @@ postgres_telegraf_minion_pillar_{{ safe }}:
   cmd.run:
     - name: |
         set -e
-        PILLAR_FILE=/opt/so/saltstack/local/pillar/minions/{{ mid }}.sls
+        PILLAR_FILE=/opt/so/saltstack/local/pillar/minions/{{ fanout_mid }}.sls
         if [ ! -f "$PILLAR_FILE" ]; then
           echo '{}' > "$PILLAR_FILE"
           chown socore:socore "$PILLAR_FILE" 2>/dev/null || true
@@ -73,18 +74,13 @@ postgres_telegraf_minion_pillar_{{ safe }}:
         fi
         /usr/sbin/so-yaml.py replace "$PILLAR_FILE" postgres.telegraf.user '{{ entry.user }}'
         /usr/sbin/so-yaml.py replace "$PILLAR_FILE" postgres.telegraf.pass '{{ entry.pass }}'
-    {#- Skip if this minion's pillar file already carries a matching user.
-        Passwords are generated once per minion (see the `if key not in telegraf_users`
-        guard above) and never rotate, so once a cred is fanned out the file
-        doesn't need to be rewritten on subsequent auth runs. If we ever add
-        rotation, we'd need to delete postgres.telegraf to force a re-fan. #}
     - unless: |
-        [ "$(/usr/sbin/so-yaml.py get -r /opt/so/saltstack/local/pillar/minions/{{ mid }}.sls postgres.telegraf.user 2>/dev/null)" = '{{ entry.user }}' ]
+        [ "$(/usr/sbin/so-yaml.py get -r /opt/so/saltstack/local/pillar/minions/{{ fanout_mid }}.sls postgres.telegraf.user 2>/dev/null)" = '{{ entry.user }}' ]
     - require:
       - file: postgres_auth_pillar
 
     {%- endif %}
-  {% endfor %}
+  {% endif %}
 {% else %}
 
 {{sls}}_state_not_allowed:
