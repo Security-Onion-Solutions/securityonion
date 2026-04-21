@@ -285,7 +285,8 @@ def add(args):
 def removeKey(content, key):
     pieces = key.split(".", 1)
     if len(pieces) > 1:
-        removeKey(content[pieces[0]], pieces[1])
+        if pieces[0] in content:
+            removeKey(content[pieces[0]], pieces[1])
     else:
         content.pop(key, None)
 
