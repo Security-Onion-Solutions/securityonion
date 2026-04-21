@@ -542,6 +542,37 @@ function add_telegraf_to_minion() {
         log "ERROR" "Failed to add telegraf configuration to $PILLARFILE"
         return 1
     fi
+
+    # Provision the per-minion postgres Telegraf credential so telegraf.conf
+    # renders correctly on the minion's first highstate and postgres.telegraf_users
+    # picks up the matching aggregate entry on the next manager apply.
+    #
+    # Writes:
+    #   - postgres.telegraf.{user,pass} into the minion's own pillar file
+    #     (distributed to only this minion via pillar/top.sls).
+    #   - postgres.auth.users.telegraf_<safe>.{user,pass} into the aggregate
+    #     pillar so postgres.telegraf_users CREATE ROLE finds it.
+    #
+    # An existing password is reused if the aggregate already has one (re-add),
+    # so rerunning so-minion for the same minion keeps the cred stable.
+    local MINION_SAFE
+    MINION_SAFE=$(echo "$MINION_ID" | tr '.-' '__' | tr '[:upper:]' '[:lower:]')
+    local PG_USER="so_telegraf_${MINION_SAFE}"
+    local AGGREGATE=/opt/so/saltstack/local/pillar/postgres/auth.sls
+    local PG_PASS=""
+    if [[ -f "$AGGREGATE" ]]; then
+        PG_PASS=$(so-yaml.py get -r "$AGGREGATE" "postgres.auth.users.telegraf_${MINION_SAFE}.pass" 2>/dev/null || true)
+    fi
+    if [[ -z "$PG_PASS" ]]; then
+        PG_PASS=$(tr -dc 'A-Za-z0-9~!@#^&*()_=+[]|;:,.<>?-' < /dev/urandom | head -c 72)
+    fi
+
+    so-yaml.py replace "$PILLARFILE" postgres.telegraf.user "$PG_USER" >/dev/null
+    so-yaml.py replace "$PILLARFILE" postgres.telegraf.pass "$PG_PASS" >/dev/null
+    if [[ -f "$AGGREGATE" ]]; then
+        so-yaml.py replace "$AGGREGATE" "postgres.auth.users.telegraf_${MINION_SAFE}.user" "$PG_USER" >/dev/null
+        so-yaml.py replace "$AGGREGATE" "postgres.auth.users.telegraf_${MINION_SAFE}.pass" "$PG_PASS" >/dev/null
+    fi
 }
 
 function add_influxdb_to_minion() {

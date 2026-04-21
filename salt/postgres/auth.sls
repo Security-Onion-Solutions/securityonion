@@ -49,54 +49,6 @@ postgres_auth_pillar:
                 pass: "{{ entry.pass }}"
               {% endfor %}
     - show_changes: False
-
-  {# Fan a specific minion's telegraf cred out to its own pillar file.
-     Two triggers populate the target list:
-       - grains.id (always) so the manager's own pillar is populated on every
-         postgres.auth run — otherwise the manager's telegraf has no cred on
-         a fresh install and can't write to its own postgres.
-       - pillar postgres_fanout_minion (when the reactor fires on a new
-         minion's salt-key accept).
-     The `unless` guard keeps re-runs idempotent, so this is one so-yaml.py
-     check per target, not per minion in the grid. Bulk backfill for
-     already-accepted minions lives in soup. #}
-  {% set fanout_targets = [] %}
-  {% if grains.id %}
-  {%-   do fanout_targets.append(grains.id) %}
-  {% endif %}
-  {% set fanout_mid = salt['pillar.get']('postgres_fanout_minion') %}
-  {% if fanout_mid and fanout_mid not in fanout_targets %}
-  {%-   do fanout_targets.append(fanout_mid) %}
-  {% endif %}
-
-  {% for mid in fanout_targets %}
-    {%- set safe = mid | replace('.','_') | replace('-','_') | lower %}
-    {%- set key = 'telegraf_' ~ safe %}
-    {%- set entry = telegraf_users.get(key) %}
-    {%- if entry %}
-
-postgres_telegraf_minion_pillar_{{ safe }}:
-  cmd.run:
-    - name: |
-        set -e
-        PILLAR_FILE=/opt/so/saltstack/local/pillar/minions/{{ mid }}.sls
-        if [ ! -f "$PILLAR_FILE" ]; then
-          echo '{}' > "$PILLAR_FILE"
-          chown socore:socore "$PILLAR_FILE" 2>/dev/null || true
-          chmod 640 "$PILLAR_FILE"
-        fi
-        /usr/sbin/so-yaml.py replace "$PILLAR_FILE" postgres.telegraf.user "$PG_USER"
-        /usr/sbin/so-yaml.py replace "$PILLAR_FILE" postgres.telegraf.pass "$PG_PASS"
-    - env:
-      - PG_USER: '{{ entry.user }}'
-      - PG_PASS: '{{ entry.pass }}'
-    - unless: |
-        [ "$(/usr/sbin/so-yaml.py get -r /opt/so/saltstack/local/pillar/minions/{{ mid }}.sls postgres.telegraf.user 2>/dev/null)" = '{{ entry.user }}' ]
-    - require:
-      - file: postgres_auth_pillar
-
-    {%- endif %}
-  {% endfor %}
 {% else %}
 
 {{sls}}_state_not_allowed:

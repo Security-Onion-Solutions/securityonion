@@ -62,19 +62,6 @@ engines_config:
     - name: /etc/salt/master.d/engines.conf
     - source: salt://salt/files/engines.conf
 
-reactor_config_telegraf:
-  file.managed:
-    - name: /etc/salt/master.d/reactor_telegraf.conf
-    - contents: |
-        reactor:
-          - 'salt/key':
-            - /opt/so/saltstack/default/salt/reactor/telegraf_user_sync.sls
-    - user: root
-    - group: root
-    - mode: 644
-    - watch_in:
-      - service: salt_master_service
-
 # update the bootstrap script when used for salt-cloud
 salt_bootstrap_cloud:
   file.managed:
