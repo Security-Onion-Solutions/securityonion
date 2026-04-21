@@ -85,8 +85,11 @@ postgres_telegraf_minion_pillar_{{ safe }}:
           chown socore:socore "$PILLAR_FILE" 2>/dev/null || true
           chmod 640 "$PILLAR_FILE"
         fi
-        /usr/sbin/so-yaml.py replace "$PILLAR_FILE" postgres.telegraf.user '{{ entry.user }}'
-        /usr/sbin/so-yaml.py replace "$PILLAR_FILE" postgres.telegraf.pass '{{ entry.pass }}'
+        /usr/sbin/so-yaml.py replace "$PILLAR_FILE" postgres.telegraf.user "$PG_USER"
+        /usr/sbin/so-yaml.py replace "$PILLAR_FILE" postgres.telegraf.pass "$PG_PASS"
+    - env:
+      - PG_USER: '{{ entry.user }}'
+      - PG_PASS: '{{ entry.pass }}'
     - unless: |
         [ "$(/usr/sbin/so-yaml.py get -r /opt/so/saltstack/local/pillar/minions/{{ mid }}.sls postgres.telegraf.user 2>/dev/null)" = '{{ entry.user }}' ]
     - require:
