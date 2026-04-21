@@ -21,7 +21,8 @@ postgressecretsdir:
     - user: 939
     - group: 939
     - mode: 700
-    - makedirs: True
+    - require:
+      - file: postgresconfdir
 
 postgresdatadir:
   file.directory:
@@ -42,7 +43,8 @@ postgresinitdir:
     - name: /opt/so/conf/postgres/init
     - user: 939
     - group: 939
-    - makedirs: True
+    - require:
+      - file: postgresconfdir
 
 postgresinitusers:
   file.managed:
