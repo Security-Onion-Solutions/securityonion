@@ -89,6 +89,17 @@ delete_so-postgres_so-status.disabled:
     - name: /opt/so/conf/so-status/so-status.conf
     - regex: ^so-postgres$
 
+so_postgres_backup:
+  cron.present:
+    - name: /usr/sbin/so-postgres-backup > /dev/null 2>&1
+    - identifier: so_postgres_backup
+    - user: root
+    - minute: '5'
+    - hour: '0'
+    - daymonth: '*'
+    - month: '*'
+    - dayweek: '*'
+
 {% else %}
 
 {{sls}}_state_not_allowed:

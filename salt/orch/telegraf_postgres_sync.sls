@@ -3,24 +3,26 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-{% set MINION = salt['pillar.get']('minion_id') %}
-{% set MANAGER = salt['pillar.get']('setup:manager') or salt['grains.get']('master') %}
+# Fired by salt/reactor/telegraf_user_sync.sls when salt-key accepts a new
+# minion. Only provisions the per-minion pillar entry and DB role on the
+# manager; the minion itself will pick up its telegraf config on its first
+# highstate during onboarding, so there's no need to push the telegraf state
+# from here.
+#
+# Target the manager via role grains — same pattern as orch/delete_hypervisor.sls.
+# The reactor doesn't know the manager's minion id, and grains.master on the
+# runner is a hostname, not a targetable id.
+{% set FANOUT_MINION = salt['pillar.get']('postgres_fanout_minion', '') %}
 
 manager_sync_telegraf_pg_users:
   salt.state:
-    - tgt: {{ MANAGER }}
+    - tgt: 'G@role:so-manager or G@role:so-managerhype or G@role:so-managersearch or G@role:so-standalone or G@role:so-eval'
+    - tgt_type: compound
     - sls:
       - postgres.auth
       - postgres.telegraf_users
     - queue: True
-
-{% if MINION and MINION != MANAGER %}
-{{ MINION }}_apply_telegraf:
-  salt.state:
-    - tgt: {{ MINION }}
-    - sls:
-      - telegraf
-    - queue: True
-    - require:
-      - salt: manager_sync_telegraf_pg_users
-{% endif %}
+    {% if FANOUT_MINION %}
+    - pillar:
+        postgres_fanout_minion: {{ FANOUT_MINION }}
+    {% endif %}

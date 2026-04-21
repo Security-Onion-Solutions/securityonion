@@ -6,8 +6,16 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
+{%   from 'telegraf/map.jinja' import TELEGRAFMERGED %}
 
-{% set TG_OUT = (GLOBALS.telegraf_output | default('INFLUXDB')) | upper %}
+{# postgres_wait_ready below requires `docker_container: so-postgres`, which is
+   declared in postgres.enabled. Include it here so state.apply postgres.telegraf_users
+   on its own (from the reactor orch or from soup) still has that ID in scope. Salt
+   de-duplicates the circular include. #}
+include:
+  - postgres.enabled
+
+{% set TG_OUT = TELEGRAFMERGED.output | upper %}
 {% if TG_OUT in ['POSTGRES', 'BOTH'] %}
 
 # docker_container.running returns as soon as the container starts, but on

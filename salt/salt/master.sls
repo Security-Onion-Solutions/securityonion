@@ -67,7 +67,7 @@ reactor_config_telegraf:
     - name: /etc/salt/master.d/reactor_telegraf.conf
     - contents: |
         reactor:
-          - 'salt/auth':
+          - 'salt/key':
             - /opt/so/saltstack/default/salt/reactor/telegraf_user_sync.sls
     - user: root
     - group: root
