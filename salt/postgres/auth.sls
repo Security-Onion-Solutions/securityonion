@@ -73,6 +73,13 @@ postgres_telegraf_minion_pillar_{{ safe }}:
         fi
         /usr/sbin/so-yaml.py replace "$PILLAR_FILE" postgres.telegraf.user '{{ entry.user }}'
         /usr/sbin/so-yaml.py replace "$PILLAR_FILE" postgres.telegraf.pass '{{ entry.pass }}'
+    {#- Skip if this minion's pillar file already carries a matching user.
+        Passwords are generated once per minion (see the `if key not in telegraf_users`
+        guard above) and never rotate, so once a cred is fanned out the file
+        doesn't need to be rewritten on subsequent auth runs. If we ever add
+        rotation, we'd need to delete postgres.telegraf to force a re-fan. #}
+    - unless: |
+        [ "$(/usr/sbin/so-yaml.py get -r /opt/so/saltstack/local/pillar/minions/{{ mid }}.sls postgres.telegraf.user 2>/dev/null)" = '{{ entry.user }}' ]
     - require:
       - file: postgres_auth_pillar
 
