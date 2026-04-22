@@ -281,22 +281,18 @@ function deleteMinionFiles () {
 	fi
 }
 
-# Remove this minion's postgres Telegraf credential from both the aggregate
-# pillar and the postgres database. Paired with add_telegraf_to_minion:
-# add/delete cycle both here and in the DB. Always returns 0 so a dead or
-# unreachable so-postgres doesn't block minion deletion — in that case we
+# Remove this minion's postgres Telegraf credential from the shared creds
+# pillar and drop the matching role in Postgres. Always returns 0 so a dead
+# or unreachable so-postgres doesn't block minion deletion — in that case we
 # log a warning and leave the role behind for manual cleanup.
 function remove_postgres_telegraf_from_minion() {
 	local MINION_SAFE
 	MINION_SAFE=$(echo "$MINION_ID" | tr '.-' '__' | tr '[:upper:]' '[:lower:]')
 	local PG_USER="so_telegraf_${MINION_SAFE}"
-	local AGGREGATE=/opt/so/saltstack/local/pillar/postgres/auth.sls
 
 	log "INFO" "Removing postgres telegraf cred for $MINION_ID"
 
-	if [[ -f "$AGGREGATE" ]]; then
-		so-yaml.py remove "$AGGREGATE" "postgres.auth.users.telegraf_${MINION_SAFE}" >/dev/null 2>&1 || true
-	fi
+	so-telegraf-cred remove "$MINION_ID" >/dev/null 2>&1 || true
 
 	if docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^so-postgres$'; then
 		if ! docker exec -i so-postgres psql -v ON_ERROR_STOP=1 -U postgres -d so_telegraf >/dev/null 2>&1 <<EOSQL
@@ -311,7 +307,7 @@ END
 \$\$;
 EOSQL
 		then
-			log "WARN" "Failed to drop postgres role $PG_USER; aggregate pillar entry was removed — drop manually if the role persists"
+			log "WARN" "Failed to drop postgres role $PG_USER; pillar entry was removed — drop manually if the role persists"
 		fi
 	else
 		log "WARN" "so-postgres container is not running; skipping DB role cleanup for $PG_USER"
@@ -580,35 +576,15 @@ function add_telegraf_to_minion() {
         return 1
     fi
 
-    # Provision the per-minion postgres Telegraf credential so telegraf.conf
-    # renders correctly on the minion's first highstate and postgres.telegraf_users
-    # picks up the matching aggregate entry on the next manager apply.
-    #
-    # Writes:
-    #   - postgres.telegraf.{user,pass} into the minion's own pillar file
-    #     (distributed to only this minion via pillar/top.sls).
-    #   - postgres.auth.users.telegraf_<safe>.{user,pass} into the aggregate
-    #     pillar so postgres.telegraf_users CREATE ROLE finds it.
-    #
-    # An existing password is reused if the aggregate already has one (re-add),
-    # so rerunning so-minion for the same minion keeps the cred stable.
-    local MINION_SAFE
-    MINION_SAFE=$(echo "$MINION_ID" | tr '.-' '__' | tr '[:upper:]' '[:lower:]')
-    local PG_USER="so_telegraf_${MINION_SAFE}"
-    local AGGREGATE=/opt/so/saltstack/local/pillar/postgres/auth.sls
-    local PG_PASS=""
-    if [[ -f "$AGGREGATE" ]]; then
-        PG_PASS=$(so-yaml.py get -r "$AGGREGATE" "postgres.auth.users.telegraf_${MINION_SAFE}.pass" 2>/dev/null || true)
-    fi
-    if [[ -z "$PG_PASS" ]]; then
-        PG_PASS=$(tr -dc 'A-Za-z0-9~!@#^&*()_=+[]|;:,.<>?-' < /dev/urandom | head -c 72)
-    fi
-
-    so-yaml.py replace "$PILLARFILE" postgres.telegraf.user "$PG_USER" >/dev/null
-    so-yaml.py replace "$PILLARFILE" postgres.telegraf.pass "$PG_PASS" >/dev/null
-    if [[ -f "$AGGREGATE" ]]; then
-        so-yaml.py replace "$AGGREGATE" "postgres.auth.users.telegraf_${MINION_SAFE}.user" "$PG_USER" >/dev/null
-        so-yaml.py replace "$AGGREGATE" "postgres.auth.users.telegraf_${MINION_SAFE}.pass" "$PG_PASS" >/dev/null
+    # Provision the per-minion postgres Telegraf credential in the shared
+    # telegraf/creds.sls pillar. so-telegraf-cred is the only writer; it
+    # generates a password on first add and is a no-op on re-add so the cred
+    # is stable across repeated so-minion runs. postgres.telegraf_users on the
+    # manager creates/updates the DB role from the same pillar.
+    so-telegraf-cred add "$MINION_ID"
+    if [ $? -ne 0 ]; then
+        log "ERROR" "Failed to provision postgres telegraf cred for $MINION_ID"
+        return 1
     fi
 }
 

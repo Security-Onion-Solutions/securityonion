@@ -17,6 +17,7 @@ base:
     - sensoroni.adv_sensoroni
     - telegraf.soc_telegraf
     - telegraf.adv_telegraf
+    - telegraf.creds
     - versionlock.soc_versionlock
     - versionlock.adv_versionlock
     - soc.license

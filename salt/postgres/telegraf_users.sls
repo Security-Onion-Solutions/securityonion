@@ -10,7 +10,7 @@
 
 {# postgres_wait_ready below requires `docker_container: so-postgres`, which is
    declared in postgres.enabled. Include it here so state.apply postgres.telegraf_users
-   on its own (from the reactor orch or from soup) still has that ID in scope. Salt
+   on its own (e.g. from orch.deploy_newnode) still has that ID in scope. Salt
    de-duplicates the circular include. #}
 include:
   - postgres.enabled
@@ -96,9 +96,9 @@ postgres_telegraf_group_role:
     - require:
       - cmd: postgres_create_telegraf_db
 
-{%   set users = salt['pillar.get']('postgres:auth:users', {}) %}
-{%   for key, entry in users.items() %}
-{%     if key.startswith('telegraf_') and entry.get('user') and entry.get('pass') %}
+{%   set creds = salt['pillar.get']('telegraf:postgres_creds', {}) %}
+{%   for mid, entry in creds.items() %}
+{%     if entry.get('user') and entry.get('pass') %}
 {%       set u = entry.user %}
 {%       set p = entry.pass | replace("'", "''") %}
 
