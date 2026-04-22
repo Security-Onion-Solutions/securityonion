@@ -1,159 +1,54 @@
-#!/usr/bin/env python3
+#!/bin/bash
 
 # Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
 # or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-"""
-Single writer for the Telegraf Postgres credentials pillar.
+# Single writer for the Telegraf Postgres credentials pillar. Thin wrapper
+# around so-yaml.py that generates a password on first add and no-ops on
+# re-add so the cred is stable across repeated so-minion runs.
+#
+# Note: so-yaml.py splits keys on '.' with no escape. SO minion ids are
+# dot-free by construction (setup/so-functions:1884 takes the short_name
+# before the first '.'), so using the raw minion id as the key is safe.
 
-Maintains /opt/so/saltstack/local/pillar/telegraf/creds.sls with shape:
+CREDS=/opt/so/saltstack/local/pillar/telegraf/creds.sls
 
-    telegraf:
-      postgres_creds:
-        <minion_id>:
-          user: so_telegraf_<safe>
-          pass: "<72-char random>"
-        ...
+usage() {
+    echo "Usage: $0 <add|remove> <minion_id>" >&2
+    exit 2
+}
 
-Called by so-minion on add/delete. PyYAML safe_dump preserves ambiguous
-strings as quoted scalars, so passwords never round-trip through type
-coercion (unlike so-yaml.py, which would). All mutations are serialized
-by an flock on a sibling .creds.lock file.
-"""
+seed_creds_file() {
+    mkdir -p "$(dirname "$CREDS")"
+    if [[ ! -f "$CREDS" ]]; then
+        (umask 027 && printf 'telegraf:\n  postgres_creds: {}\n' > "$CREDS")
+        chown socore:socore "$CREDS" 2>/dev/null || true
+        chmod 640 "$CREDS"
+    fi
+}
 
-import fcntl
-import os
-import pwd
-import secrets
-import string
-import sys
-import tempfile
+OP=$1
+MID=$2
+[[ -z "$OP" || -z "$MID" ]] && usage
 
-import yaml
-
-CREDS_PATH = "/opt/so/saltstack/local/pillar/telegraf/creds.sls"
-LOCK_PATH = "/opt/so/saltstack/local/pillar/telegraf/.creds.lock"
-OWNER_USER = "socore"
-OWNER_GROUP = "socore"
-FILE_MODE = 0o640
-PASSWORD_LEN = 72
-# Matches salt/postgres/auth.sls's DIGITS+LOWERCASE+UPPERCASE+SYMBOLS.
-PASSWORD_CHARS = (
-    string.digits
-    + string.ascii_lowercase
-    + string.ascii_uppercase
-    + "~!@#^&*()-_=+[]|;:,.<>?"
-)
-
-
-def safe_minion_id(minion_id):
-    return minion_id.replace(".", "_").replace("-", "_").lower()
-
-
-def generate_password():
-    return "".join(secrets.choice(PASSWORD_CHARS) for _ in range(PASSWORD_LEN))
-
-
-def load_creds():
-    if not os.path.exists(CREDS_PATH):
-        return {"telegraf": {"postgres_creds": {}}}
-    with open(CREDS_PATH, "r") as f:
-        data = yaml.safe_load(f) or {}
-    if not isinstance(data, dict):
-        data = {}
-    data.setdefault("telegraf", {})
-    if not isinstance(data["telegraf"], dict):
-        data["telegraf"] = {}
-    data["telegraf"].setdefault("postgres_creds", {})
-    if not isinstance(data["telegraf"]["postgres_creds"], dict):
-        data["telegraf"]["postgres_creds"] = {}
-    return data
-
-
-def atomic_write(data):
-    os.makedirs(os.path.dirname(CREDS_PATH), exist_ok=True)
-    fd, tmp_path = tempfile.mkstemp(
-        prefix=".creds.", suffix=".tmp", dir=os.path.dirname(CREDS_PATH)
-    )
-    try:
-        with os.fdopen(fd, "w") as f:
-            yaml.safe_dump(data, f, default_flow_style=False, sort_keys=True)
-            f.flush()
-            os.fsync(f.fileno())
-        os.chmod(tmp_path, FILE_MODE)
-        try:
-            pw = pwd.getpwnam(OWNER_USER)
-            os.chown(tmp_path, pw.pw_uid, pw.pw_gid)
-        except KeyError:
-            pass
-        os.rename(tmp_path, CREDS_PATH)
-    except Exception:
-        if os.path.exists(tmp_path):
-            os.unlink(tmp_path)
-        raise
-
-
-def with_lock(fn):
-    os.makedirs(os.path.dirname(LOCK_PATH), exist_ok=True)
-    with open(LOCK_PATH, "a+") as lf:
-        fcntl.flock(lf.fileno(), fcntl.LOCK_EX)
-        try:
-            return fn()
-        finally:
-            fcntl.flock(lf.fileno(), fcntl.LOCK_UN)
-
-
-def cmd_add(minion_id):
-    def go():
-        data = load_creds()
-        creds = data["telegraf"]["postgres_creds"]
-        if minion_id in creds:
-            return 0
-        safe = safe_minion_id(minion_id)
-        creds[minion_id] = {
-            "user": "so_telegraf_" + safe,
-            "pass": generate_password(),
-        }
-        atomic_write(data)
-        return 0
-
-    return with_lock(go)
-
-
-def cmd_remove(minion_id):
-    def go():
-        data = load_creds()
-        creds = data["telegraf"]["postgres_creds"]
-        if minion_id in creds:
-            del creds[minion_id]
-            atomic_write(data)
-        return 0
-
-    return with_lock(go)
-
-
-def usage():
-    print(
-        "Usage: so-telegraf-cred <add|remove> <minion_id>",
-        file=sys.stderr,
-    )
-    return 2
-
-
-def main(argv):
-    if len(argv) != 3:
-        return usage()
-    op, minion_id = argv[1], argv[2]
-    if not minion_id:
-        return usage()
-    if op == "add":
-        return cmd_add(minion_id)
-    if op == "remove":
-        return cmd_remove(minion_id)
-    return usage()
-
-
-if __name__ == "__main__":
-    sys.exit(main(sys.argv))
+case "$OP" in
+    add)
+        SAFE=$(echo "$MID" | tr '.-' '__' | tr '[:upper:]' '[:lower:]')
+        seed_creds_file
+        if so-yaml.py get -r "$CREDS" "telegraf.postgres_creds.${MID}.user" >/dev/null 2>&1; then
+            exit 0
+        fi
+        PASS=$(tr -dc 'A-Za-z0-9~!@#^&*()_=+[]|;:,.<>?-' < /dev/urandom | head -c 72)
+        so-yaml.py replace "$CREDS" "telegraf.postgres_creds.${MID}.user" "so_telegraf_${SAFE}" >/dev/null
+        so-yaml.py replace "$CREDS" "telegraf.postgres_creds.${MID}.pass" "$PASS" >/dev/null
+        ;;
+    remove)
+        [[ -f "$CREDS" ]] || exit 0
+        so-yaml.py remove "$CREDS" "telegraf.postgres_creds.${MID}" >/dev/null 2>&1 || true
+        ;;
+    *)
+        usage
+        ;;
+esac
