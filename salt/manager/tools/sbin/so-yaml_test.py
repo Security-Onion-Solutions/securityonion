@@ -973,3 +973,21 @@ class TestReplaceListObject(unittest.TestCase):
 
         expected = "key1:\n- id: '1'\n  status: updated\n- id: '2'\n  status: inactive\n"
         self.assertEqual(actual, expected)
+
+
+class TestLoadYaml(unittest.TestCase):
+
+    def test_load_yaml_missing_file(self):
+        with patch('sys.exit', new=MagicMock()) as sysmock:
+            with patch('sys.stderr', new=StringIO()) as mock_stderr:
+                soyaml.loadYaml("/tmp/so-yaml_test-does-not-exist.yaml")
+                sysmock.assert_called_with(1)
+                self.assertIn("File not found:", mock_stderr.getvalue())
+
+    def test_load_yaml_read_error(self):
+        with patch('sys.exit', new=MagicMock()) as sysmock:
+            with patch('sys.stderr', new=StringIO()) as mock_stderr:
+                with patch('builtins.open', side_effect=PermissionError("denied")):
+                    soyaml.loadYaml("/tmp/so-yaml_test-unreadable.yaml")
+                    sysmock.assert_called_with(1)
+                    self.assertIn("Error reading file", mock_stderr.getvalue())

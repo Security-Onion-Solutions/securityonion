@@ -21,11 +21,11 @@ usage() {
 }
 
 seed_creds_file() {
-    mkdir -p "$(dirname "$CREDS")"
+    mkdir -p "$(dirname "$CREDS")" || return 1
     if [[ ! -f "$CREDS" ]]; then
-        (umask 027 && printf 'telegraf:\n  postgres_creds: {}\n' > "$CREDS")
+        (umask 027 && printf 'telegraf:\n  postgres_creds: {}\n' > "$CREDS") || return 1
         chown socore:socore "$CREDS" 2>/dev/null || true
-        chmod 640 "$CREDS"
+        chmod 640 "$CREDS" || return 1
     fi
 }
 
@@ -36,7 +36,7 @@ MID=$2
 case "$OP" in
     add)
         SAFE=$(echo "$MID" | tr '.-' '__' | tr '[:upper:]' '[:lower:]')
-        seed_creds_file
+        seed_creds_file || exit 1
         if so-yaml.py get -r "$CREDS" "telegraf.postgres_creds.${MID}.user" >/dev/null 2>&1; then
             exit 0
         fi

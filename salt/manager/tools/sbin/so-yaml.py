@@ -39,9 +39,16 @@ def showUsage(args):
 
 
 def loadYaml(filename):
-    file = open(filename, "r")
-    content = file.read()
-    return yaml.safe_load(content)
+    try:
+        with open(filename, "r") as file:
+            content = file.read()
+            return yaml.safe_load(content)
+    except FileNotFoundError:
+        print(f"File not found: {filename}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error reading file {filename}: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 def writeYaml(filename, content):
