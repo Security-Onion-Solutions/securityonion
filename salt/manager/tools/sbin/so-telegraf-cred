@@ -1,0 +1,54 @@
+#!/bin/bash
+
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+# Single writer for the Telegraf Postgres credentials pillar. Thin wrapper
+# around so-yaml.py that generates a password on first add and no-ops on
+# re-add so the cred is stable across repeated so-minion runs.
+#
+# Note: so-yaml.py splits keys on '.' with no escape. SO minion ids are
+# dot-free by construction (setup/so-functions:1884 takes the short_name
+# before the first '.'), so using the raw minion id as the key is safe.
+
+CREDS=/opt/so/saltstack/local/pillar/telegraf/creds.sls
+
+usage() {
+    echo "Usage: $0 <add|remove> <minion_id>" >&2
+    exit 2
+}
+
+seed_creds_file() {
+    mkdir -p "$(dirname "$CREDS")"
+    if [[ ! -f "$CREDS" ]]; then
+        (umask 027 && printf 'telegraf:\n  postgres_creds: {}\n' > "$CREDS")
+        chown socore:socore "$CREDS" 2>/dev/null || true
+        chmod 640 "$CREDS"
+    fi
+}
+
+OP=$1
+MID=$2
+[[ -z "$OP" || -z "$MID" ]] && usage
+
+case "$OP" in
+    add)
+        SAFE=$(echo "$MID" | tr '.-' '__' | tr '[:upper:]' '[:lower:]')
+        seed_creds_file
+        if so-yaml.py get -r "$CREDS" "telegraf.postgres_creds.${MID}.user" >/dev/null 2>&1; then
+            exit 0
+        fi
+        PASS=$(tr -dc 'A-Za-z0-9~!@#^&*()_=+[]|;:,.<>?-' < /dev/urandom | head -c 72)
+        so-yaml.py replace "$CREDS" "telegraf.postgres_creds.${MID}.user" "so_telegraf_${SAFE}" >/dev/null
+        so-yaml.py replace "$CREDS" "telegraf.postgres_creds.${MID}.pass" "$PASS" >/dev/null
+        ;;
+    remove)
+        [[ -f "$CREDS" ]] || exit 0
+        so-yaml.py remove "$CREDS" "telegraf.postgres_creds.${MID}" >/dev/null 2>&1 || true
+        ;;
+    *)
+        usage
+        ;;
+esac

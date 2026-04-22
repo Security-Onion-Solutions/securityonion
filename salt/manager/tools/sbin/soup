@@ -490,32 +490,16 @@ up_to_3.1.0() {
 post_to_3.1.0() {
   /usr/sbin/so-kibana-space-defaults
 
-  # One-time backfill for minions that existed before the postgres Telegraf
-  # feature shipped. postgres.auth's up_minions fallback loop generates any
-  # missing aggregate pillar entries; postgres.telegraf_users CREATEs the
-  # matching DB roles; then the bash loop below copies each minion's cred
-  # into its own pillar file. Going forward, so-minion owns add/delete for
-  # every new minion, so this backfill is only needed on the upgrade boundary.
-  echo "Provisioning Telegraf Postgres users for existing minions."
-  salt-call --local state.apply postgres.auth,postgres.telegraf_users queue=True || true
-
-  AGGREGATE_PILLAR=/opt/so/saltstack/local/pillar/postgres/auth.sls
-  MINIONS_DIR=/opt/so/saltstack/local/pillar/minions
-  if [[ -f "$AGGREGATE_PILLAR" && -d "$MINIONS_DIR" ]]; then
-    for pillar_file in "$MINIONS_DIR"/*.sls; do
-      [[ -f "$pillar_file" ]] || continue
-      mid=$(basename "$pillar_file" .sls)
-      [[ "$mid" == adv_* ]] && continue
-      safe=$(echo "$mid" | tr '.-' '__' | tr '[:upper:]' '[:lower:]')
-      existing_user=$(so-yaml.py get -r "$pillar_file" postgres.telegraf.user 2>/dev/null || true)
-      [[ "$existing_user" == "so_telegraf_${safe}" ]] && continue
-      user=$(so-yaml.py get -r "$AGGREGATE_PILLAR" "postgres.auth.users.telegraf_${safe}.user" 2>/dev/null || true)
-      pass=$(so-yaml.py get -r "$AGGREGATE_PILLAR" "postgres.auth.users.telegraf_${safe}.pass" 2>/dev/null || true)
-      [[ -z "$user" || -z "$pass" ]] && continue
-      so-yaml.py replace "$pillar_file" postgres.telegraf.user "$user" >/dev/null
-      so-yaml.py replace "$pillar_file" postgres.telegraf.pass "$pass" >/dev/null
-    done
-  fi
+  # Backfill the Telegraf creds pillar for every accepted minion. so-telegraf-cred
+  # add is idempotent — it no-ops when an entry already exists — so this is safe
+  # to run on every soup. The subsequent state.apply creates/updates the matching
+  # Postgres roles from the reconciled pillar.
+  echo "Reconciling Telegraf Postgres creds for accepted minions."
+  for mid in $(salt-key --out=json --list=accepted 2>/dev/null | jq -r '.minions[]?' 2>/dev/null); do
+    [[ -n "$mid" ]] || continue
+    /usr/sbin/so-telegraf-cred add "$mid" || echo "  warning: so-telegraf-cred add $mid failed" >&2
+  done
+  salt-call --local state.apply postgres.telegraf_users queue=True || true
 
   POSTVERSION=3.1.0
 }
