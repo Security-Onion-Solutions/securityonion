@@ -24,6 +24,14 @@ BACKUPTOPFILE=/opt/so/saltstack/default/salt/top.sls.backup
 SALTUPGRADED=false
 SALT_CLOUD_INSTALLED=false
 SALT_CLOUD_CONFIGURED=false
+# Check if salt-cloud is installed
+if rpm -q salt-cloud &>/dev/null; then
+  SALT_CLOUD_INSTALLED=true
+fi
+# Check if salt-cloud is configured
+if [[ -f /etc/salt/cloud.profiles.d/socloud.conf ]]; then
+  SALT_CLOUD_CONFIGURED=true
+fi
 # used to display messages to the user at the end of soup
 declare -a FINAL_MESSAGE_QUEUE=()
 
@@ -489,6 +497,10 @@ up_to_3.1.0() {
 
 post_to_3.1.0() {
   /usr/sbin/so-kibana-space-defaults
+  # ensure manager has new version of socloud.conf
+  if [[ $SALT_CLOUD_CONFIGURED == true ]]; then
+    salt-call state.apply salt.cloud.config concurrent=True
+  fi
 
   POSTVERSION=3.1.0
 }
@@ -663,15 +675,6 @@ upgrade_check_salt() {
 upgrade_salt() {
   echo "Performing upgrade of Salt from $INSTALLEDSALTVERSION to $NEWSALTVERSION."
   echo ""
-  # Check if salt-cloud is installed
-  if rpm -q salt-cloud &>/dev/null; then
-    SALT_CLOUD_INSTALLED=true
-  fi
-  # Check if salt-cloud is configured
-  if [[ -f /etc/salt/cloud.profiles.d/socloud.conf ]]; then
-    SALT_CLOUD_CONFIGURED=true
-  fi
-
   echo "Removing yum versionlock for Salt."
   echo ""
   yum versionlock delete "salt"
