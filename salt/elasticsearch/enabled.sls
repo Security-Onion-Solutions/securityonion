@@ -17,7 +17,7 @@ include:
   - elasticsearch.ssl
   - elasticsearch.config
   - elasticsearch.sostatus
-{%- if GLOBALS.role != 'so-searchode' %}
+{%- if GLOBALS.role != "so-searchode" %}
   - elasticsearch.cluster
 {%- endif%}
 
@@ -102,11 +102,6 @@ so-elasticsearch:
       - cmd: auth_users_roles_inode
       - cmd: auth_users_inode
 
-delete_so-elasticsearch_so-status.disabled:
-  file.uncomment:
-    - name: /opt/so/conf/so-status/so-status.conf
-    - regex: ^so-elasticsearch$
-
 wait_for_so-elasticsearch:
   http.wait_for_successful_query:
     - name: "https://localhost:9200/"
@@ -117,9 +112,13 @@ wait_for_so-elasticsearch:
     - status: 200
     - wait_for: 300
     - request_interval: 15
-    - backend: requests
     - require:
       - docker_container: so-elasticsearch
+
+delete_so-elasticsearch_so-status.disabled:
+  file.uncomment:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - regex: ^so-elasticsearch$
 
 {% else %}
 
