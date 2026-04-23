@@ -103,11 +103,13 @@ load_component_templates() {
     local pattern="${ELASTICSEARCH_TEMPLATES_DIR}/component/$2"
     local append_mappings="${3:-"false"}"
 
-    # current state of nullglob shell option
-    shopt -q nullglob && nullglob_set=1 || nullglob_set=0
-
-    shopt -s nullglob
     echo -e "\nLoading $printed_name component templates...\n"
+
+    if ! compgen -G "${pattern}/*.json" > /dev/null; then
+        echo "No $printed_name component templates found in ${pattern}, skipping."
+        return
+    fi
+
     for component in "$pattern"/*.json; do
         tmpl_name=$(basename "${component%.json}")
 
@@ -121,11 +123,6 @@ load_component_templates() {
             SO_LOAD_FAILURES_NAMES+=("$component")
         fi
     done
-
-    # restore nullglob shell option if needed
-    if [[ $nullglob_set -eq 1 ]]; then
-        shopt -u nullglob
-    fi
 }
 
 check_elasticsearch_responsive() {
@@ -136,7 +133,32 @@ check_elasticsearch_responsive() {
         fail "Elasticsearch is not responding. Please review Elasticsearch logs /opt/so/log/elasticsearch/securityonion.log for more details. Additionally, consider running so-elasticsearch-troubleshoot."
 }
 
-if [[ "$FORCE" == "true" || ! -f "$SO_STATEFILE_SUCCESS" ]]; then
+index_templates_exist() {
+    local templates_dir="$1"
+
+    if [[ ! -d "$templates_dir" ]]; then
+        return 1
+    fi
+
+    compgen -G "${templates_dir}/*.json" > /dev/null
+}
+
+should_load_addon_templates() {
+    if [[ "$IS_HEAVYNODE" == "true" ]]; then
+        return 1
+    fi
+
+    # Skip statefile checks when forcing template load
+    if [[ "$FORCE" != "true" ]]; then
+        if [[ ! -f "$SO_STATEFILE_SUCCESS" || -f "$ADDON_STATEFILE_SUCCESS" ]]; then
+            return 1
+        fi
+    fi
+
+    index_templates_exist "$ADDON_TEMPLATES_DIR"
+}
+
+if [[ "$FORCE" == "true" || ! -f "$SO_STATEFILE_SUCCESS" ]] && index_templates_exist "$SO_TEMPLATES_DIR"; then
     check_elasticsearch_responsive
 
     if [[ "$IS_HEAVYNODE" == "false" ]]; then
@@ -201,13 +223,14 @@ if [[ "$FORCE" == "true" || ! -f "$SO_STATEFILE_SUCCESS" ]]; then
             fail "Failed to load all Security Onion core templates successfully."
         fi
     fi
-else
-
+elif ! index_templates_exist "$SO_TEMPLATES_DIR"; then
+    echo "No Security Onion core index templates found in ${SO_TEMPLATES_DIR}, skipping."
+elif [[ -f "$SO_STATEFILE_SUCCESS" ]]; then
     echo "Security Onion core templates already loaded"
 fi
 
 # Start loading addon templates
-if [[ (-d "$ADDON_TEMPLATES_DIR" && -f "$SO_STATEFILE_SUCCESS" && "$IS_HEAVYNODE" == "false" && ! -f "$ADDON_STATEFILE_SUCCESS") || (-d "$ADDON_TEMPLATES_DIR" && "$IS_HEAVYNODE" == "false" && "$FORCE" == "true") ]]; then
+if should_load_addon_templates; then
 
     check_elasticsearch_responsive
 
