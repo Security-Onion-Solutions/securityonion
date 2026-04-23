@@ -9,6 +9,9 @@
 {%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   from 'elasticfleet/map.jinja' import ELASTICFLEETMERGED %}
 
+include:
+  - elasticfleet.config
+
 # If enabled, automatically update Fleet Logstash Outputs
 {% if ELASTICFLEETMERGED.config.server.enable_auto_configuration and grains.role not in ['so-import', 'so-eval'] %}
 so-elastic-fleet-auto-configure-logstash-outputs:

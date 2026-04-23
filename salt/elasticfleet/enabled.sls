@@ -21,7 +21,7 @@ include:
   - elasticfleet.manager
 {%- endif %}
 
-{% if GLOBALS.role not in ['so-fleet'] %}
+{% if GLOBALS.role != "so-fleet" %}
 # Wait for Elasticsearch to be ready - no reason to try running Elastic Fleet server if ES is not ready
 wait_for_elasticsearch_elasticfleet:
   cmd.run:
