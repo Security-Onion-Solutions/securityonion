@@ -536,7 +536,10 @@ post_to_3.1.0() {
     [[ -n "$mid" ]] || continue
     /usr/sbin/so-telegraf-cred add "$mid" || echo "  warning: so-telegraf-cred add $mid failed" >&2
   done
-  salt-call --local state.apply postgres.telegraf_users queue=True || true
+  # Run through the master (not --local) so state compilation uses the
+  # master's configured file_roots; the manager's /etc/salt/minion has no
+  # file_roots of its own and --local would fail with "No matching sls found".
+  salt-call state.apply postgres.telegraf_users queue=True || true
 
   POSTVERSION=3.1.0
 }
