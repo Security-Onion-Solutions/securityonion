@@ -162,6 +162,29 @@ check_salt_master_status() {
     return 0
 }
 
+# Wait until $minion shows up in the salt master's unaccepted-keys list.
+# Used after saltify on a reinstall to replace the old `sleep 2 / state.show_top /
+# sleep 2` dance — the new minion's key takes longer to appear than 2s on
+# salt 3006.x and the subsequent salt-key -ya needs something to accept.
+# Returns 0 as soon as the key is pending, 1 after attempts*delay seconds.
+wait_for_minion_key_pending() {
+	local minion="$1"
+	local attempts="${2:-30}"
+	local delay="${3:-2}"
+	local count=0
+	while ! salt-key -l pre --out=json 2>/dev/null \
+		| python3 -c "import json,sys; d=json.load(sys.stdin); sys.exit(0 if '$minion' in d.get('minions_pre', []) else 1)" 2>/dev/null; do
+		((count+=1))
+		if [[ $count -ge $attempts ]]; then
+			echo "Gave up waiting for $minion to appear in salt-master's pending keys"
+			return 1
+		fi
+		sleep "$delay"
+	done
+	echo "Minion $minion is pending acceptance after $((count * delay))s"
+	return 0
+}
+
 # this is only intended to be used to check the status of the minion from a salt master
 check_salt_minion_status() {
 	local minion="$1"

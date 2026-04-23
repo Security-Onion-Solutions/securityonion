@@ -1550,6 +1550,19 @@ reinstall_init() {
 	local service_retry_count=20
 
 	{
+		# Snapshot pre-reinstall salt state before any destructive step so a
+		# failed reinstall leaves a usable post-mortem in the setup log.
+		echo "=== pre-reinstall salt diagnostic $(date -Iseconds) ==="
+		systemctl status salt-master --no-pager 2>&1 | head -40 || true
+		systemctl status salt-minion --no-pager 2>&1 | head -40 || true
+		journalctl -u salt-master --no-pager --since "-10 minutes" 2>&1 | tail -80 || true
+		journalctl -u salt-minion --no-pager --since "-10 minutes" 2>&1 | tail -80 || true
+		ls -laR /etc/salt 2>&1 | head -60 || true
+		ls -la /var/cache/salt 2>&1 | head -40 || true
+		[[ -f /etc/salt/master.rpmnew ]] && diff -u /etc/salt/master /etc/salt/master.rpmnew 2>&1 | head -80 || true
+		[[ -f /etc/salt/minion.rpmnew ]] && diff -u /etc/salt/minion /etc/salt/minion.rpmnew 2>&1 | head -40 || true
+		echo "=== end diagnostic ==="
+
 		# remove all of root's cronjobs
 		crontab -r -u root
 
@@ -1580,7 +1593,7 @@ reinstall_init() {
 					kill -9 $pid
 					fail_setup
 				fi
-				
+
 				sleep 5
 				((count++))
 			done

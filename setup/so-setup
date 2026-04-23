@@ -724,10 +724,18 @@ if ! [[ -f $install_opt_file ]]; then
 		# Install salt
 		saltify
 		check_sos_appliance
+		# Wait for salt-master to be actually running and have its PKI
+		# ready after a fresh saltify. Without this, salt-key operations
+		# silently race the daemon and the key accept no-ops, which is
+		# what was causing reinstalls on 3.x to hang on state.show_top.
+		retry 30 2 "test -f /etc/salt/pki/master/master.pub" \
+			|| fail "salt-master did not initialize PKI after saltify"
+		check_salt_master_status \
+			|| fail "salt-master not accepting calls after saltify"
+
 		logCmd "salt-key -yd $MINION_ID"
-		sleep 2 # Debug RSA Key format errors
-		logCmd "salt-call state.show_top"
-		sleep 2 # Debug RSA Key format errors
+		wait_for_minion_key_pending "$MINION_ID" 30 2 \
+			|| fail "salt-minion never presented its key to salt-master"
 		logCmd "salt-key -ya $MINION_ID"
 		logCmd "salt-call saltutil.sync_all"
 		# we need to sync the runner and generate the soqemussh user keys so that first highstate after license created
