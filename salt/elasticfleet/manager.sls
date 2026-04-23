@@ -4,7 +4,7 @@
 # Elastic License 2.0.
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
-{% if sls.split('.')[0] in allowed_states %}
+{% if sls in allowed_states %}
 {%   from 'elasticfleet/map.jinja' import ELASTICFLEETMERGED %}
 
 include:
