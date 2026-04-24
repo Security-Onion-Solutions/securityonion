@@ -1604,6 +1604,9 @@ reinstall_init() {
 		# Drop systemd's in-memory references to the now-removed units
 		systemctl daemon-reload
 
+		# Uninstall local Elastic Agent, if installed
+		elastic-agent uninstall -f
+
 		if command -v docker &> /dev/null; then
 			# Stop and remove all so-* containers so files can be changed with more safety
 			if [[ $(docker ps -a -q --filter "name=so-" | wc -l) -gt 0 ]]; then
@@ -1625,9 +1628,6 @@ reinstall_init() {
 		backup_dir /nsm/kratos "$date_string"
 		backup_dir /nsm/hydra "$date_string"
 		backup_dir /nsm/influxdb "$date_string"
-
-		# Uninstall local Elastic Agent, if installed
-		elastic-agent uninstall -f
 
 	} >> "$setup_log" 2>&1
 
