@@ -1561,26 +1561,38 @@ reinstall_init() {
 
 		salt-call state.apply ca.remove -linfo --local --file-root=../salt
 
-		# Stop salt services, then force-kill any lingering salt processes so dnf remove salt can run cleanly
+		# Stop salt services and force-kill any lingering salt processes (including orphans
+		# from an earlier reinstall attempt where the unit file is gone but processes survive)
+		# so dnf remove salt can run cleanly
 		for service in "${salt_services[@]}"; do
-			if ! check_service_status "$service"; then
-				continue
-			fi
-			local service_pid
-			service_pid=$(pgrep -f "/usr/bin/${service}" | head -1)
-			info "Stopping $service (pid=${service_pid:-none})"
-			systemctl stop "$service"
-			if [[ -n "$service_pid" ]] && ps -p "$service_pid" > /dev/null 2>&1; then
-				timeout 30 tail --pid="$service_pid" -f /dev/null || {
-					info "$service (pid $service_pid) still alive after 30s, force-killing"
-					pkill -9 -ef "/usr/bin/${service}"
-				}
+			if check_service_status "$service"; then
+				info "Stopping $service via systemctl"
+				systemctl stop "$service"
 			fi
 		done
 
-		# Catch any stray salt-call / salt CLI children that weren't parented to the service cgroup
-		pkill -9 -ef "/usr/bin/salt-call" 2>/dev/null
+		# Unconditionally force-kill any remaining salt binaries — these may be orphaned
+		# from a prior aborted reinstall (no unit file, so systemctl can't see them).
+		for salt_bin in salt-master salt-minion salt-call salt-api salt-syndic; do
+			if pgrep -f "/usr/bin/${salt_bin}" > /dev/null 2>&1; then
+				info "Force-killing lingering $salt_bin processes"
+				pkill -9 -ef "/usr/bin/${salt_bin}" 2>/dev/null
+			fi
+		done
+		# Catch stray `salt` CLI children from saltutil.kill_all_jobs / state.apply invocations
 		pkill -9 -ef "/usr/bin/python3 /bin/salt" 2>/dev/null
+
+		# Give the kernel a moment to reap the killed processes before dnf removes the binaries
+		local kill_wait=0
+		while pgrep -f "/usr/bin/salt-" > /dev/null 2>&1; do
+			if [[ $kill_wait -gt 10 ]]; then
+				info "Salt processes still present after SIGKILL + 10s wait; proceeding anyway"
+				pgrep -af "/usr/bin/salt-" | while read -r line; do info "  lingering: $line"; done
+				break
+			fi
+			sleep 1
+			((kill_wait++))
+		done
 
 		# Remove all salt configs
 		dnf -y remove salt
