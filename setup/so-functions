@@ -1547,8 +1547,6 @@ reinstall_init() {
 		local salt_services=( "salt-minion" )
 	fi
 
-	local service_retry_count=20
-
 	{
 		# remove all of root's cronjobs
 		crontab -r -u root
@@ -1563,31 +1561,30 @@ reinstall_init() {
 
 		salt-call state.apply ca.remove -linfo --local --file-root=../salt
 
-		# Kill any salt processes (safely)
+		# Stop salt services, then force-kill any lingering salt processes so dnf remove salt can run cleanly
 		for service in "${salt_services[@]}"; do
-			# Stop the service in the background so we can exit after a certain amount of time
-			if check_service_status "$service"; then
-				systemctl stop "$service" &
+			if ! check_service_status "$service"; then
+				continue
 			fi
-			local pid=$!
-
-			local count=0
-			while check_service_status "$service"; do
-				if [[ $count -gt $service_retry_count ]]; then
-					echo "Could not stop $service after 1 minute, exiting setup."
-
-					# Stop the systemctl process trying to kill the service, show user a message, then exit setup
-					kill -9 $pid
-					fail_setup
-				fi
-				
-				sleep 5
-				((count++))
-			done
+			local service_pid
+			service_pid=$(pgrep -f "/usr/bin/${service}" | head -1)
+			info "Stopping $service (pid=${service_pid:-none})"
+			systemctl stop "$service"
+			if [[ -n "$service_pid" ]] && ps -p "$service_pid" > /dev/null 2>&1; then
+				timeout 30 tail --pid="$service_pid" -f /dev/null || {
+					info "$service (pid $service_pid) still alive after 30s, force-killing"
+					pkill -9 -ef "/usr/bin/${service}"
+				}
+			fi
 		done
 
+		# Catch any stray salt-call / salt CLI children that weren't parented to the service cgroup
+		pkill -9 -ef "/usr/bin/salt-call" 2>/dev/null
+		pkill -9 -ef "/usr/bin/python3 /bin/salt" 2>/dev/null
+
 		# Remove all salt configs
-		rm -rf /etc/salt/engines/* /etc/salt/grains /etc/salt/master /etc/salt/master.d/* /etc/salt/minion /etc/salt/minion.d/* /etc/salt/pki/* /etc/salt/proxy /etc/salt/proxy.d/* /var/cache/salt/
+		dnf -y remove salt
+		rm -rf /etc/salt/ /var/cache/salt/
 
 		if command -v docker &> /dev/null; then
 			# Stop and remove all so-* containers so files can be changed with more safety
