@@ -17,7 +17,7 @@ include:
   - elasticsearch.ssl
   - elasticsearch.config
   - elasticsearch.sostatus
-{%- if GLOBALS.role != "so-searchode" %}
+{%- if GLOBALS.role != "so-searchnode" %}
   - elasticsearch.cluster
 {%- endif%}
 
