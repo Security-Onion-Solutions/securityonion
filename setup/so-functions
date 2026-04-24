@@ -202,10 +202,10 @@ check_service_status() {
 	systemctl status $service_name > /dev/null 2>&1
 	local status=$?
 	if [ $status -gt 0 ]; then
-		info "  $service_name is not running" 
+		info "$service_name is not running" 
 		return 1;
 	else
-		info "  $service_name is running"
+		info "$service_name is running"
 		return 0;
 	fi
 
@@ -1541,11 +1541,8 @@ clear_previous_setup_results() {
 reinstall_init() {
 	info "Putting system in state to run setup again"
 
-	if [[ $install_type =~ ^(MANAGER|EVAL|MANAGERSEARCH|MANAGERHYPE|STANDALONE|FLEET|IMPORT)$ ]]; then
-		local salt_services=( "salt-master" "salt-minion" )
-	else
-		local salt_services=( "salt-minion" )
-	fi
+	# Always include both services. check_service_status skips units that aren't present.
+	local salt_services=( "salt-master" "salt-minion" )
 
 	{
 		# remove all of root's cronjobs
@@ -1629,7 +1626,7 @@ reinstall_init() {
 		backup_dir /nsm/hydra "$date_string"
 		backup_dir /nsm/influxdb "$date_string"
 
-	} >> "$setup_log" 2>&1
+	} 2>&1 | tee -a "$setup_log"
 
 	info "System reinstall init has been completed."
 }
