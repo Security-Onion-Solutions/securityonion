@@ -1573,7 +1573,7 @@ reinstall_init() {
 
 		# Unconditionally force-kill any remaining salt binaries — these may be orphaned
 		# from a prior aborted reinstall (no unit file, so systemctl can't see them).
-		for salt_bin in salt-master salt-minion salt-call salt-api salt-syndic; do
+		for salt_bin in salt-master salt-minion salt-call salt-cloud; do
 			if pgrep -f "/usr/bin/${salt_bin}" > /dev/null 2>&1; then
 				info "Force-killing lingering $salt_bin processes"
 				pkill -9 -ef "/usr/bin/${salt_bin}" 2>/dev/null
@@ -1594,9 +1594,15 @@ reinstall_init() {
 			((kill_wait++))
 		done
 
+		# Clear the 'failed' state SIGKILL left on the units before removing the package
+		systemctl reset-failed salt-master.service salt-minion.service 2>/dev/null || true
+
 		# Remove all salt configs
 		dnf -y remove salt
 		rm -rf /etc/salt/ /var/cache/salt/
+
+		# Drop systemd's in-memory references to the now-removed units
+		systemctl daemon-reload
 
 		if command -v docker &> /dev/null; then
 			# Stop and remove all so-* containers so files can be changed with more safety
