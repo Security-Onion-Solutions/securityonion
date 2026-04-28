@@ -164,8 +164,8 @@ update_docker_containers() {
     # Pull down the trusted docker image
     run_check_net_err \
     "docker pull $CONTAINER_REGISTRY/$IMAGEREPO/$image" \
-    "Could not pull $image, please ensure connectivity to $CONTAINER_REGISTRY" >> "$LOG_FILE" 2>&1 
-    
+    "Could not pull $image, please ensure connectivity to $CONTAINER_REGISTRY" >> "$LOG_FILE" 2>&1
+
     # Get signature
     run_check_net_err \
     "curl --retry 5 --retry-delay 60 -A '$CURLTYPE/$CURRENTVERSION/$OS/$(uname -r)' $sig_url --output $SIGNPATH/$image.sig" \
@@ -189,11 +189,24 @@ update_docker_containers() {
           HOSTNAME=$(hostname)
         fi
         docker tag $CONTAINER_REGISTRY/$IMAGEREPO/$image $HOSTNAME:5000/$IMAGEREPO/$image >> "$LOG_FILE" 2>&1 || {
-          echo "Unable to tag $image" >> "$LOG_FILE" 2>&1 
+          echo "Unable to tag $image" >> "$LOG_FILE" 2>&1
           exit 1
         }
-        docker push $HOSTNAME:5000/$IMAGEREPO/$image >> "$LOG_FILE" 2>&1 || {
-          echo "Unable to push $image" >> "$LOG_FILE" 2>&1 
+        # Push to the embedded registry via a registry-to-registry copy. Avoids
+        # `docker push`, which on Docker 29.x with the containerd image store
+        # represents freshly-pulled images as an index whose layer content
+        # isn't reachable through the push path. The local `docker tag` above
+        # is preserved so so-image-pull's `:5000` existence check still works.
+        # Pin to the digest already gpg-verified above so we copy exactly the
+        # bytes we approved.
+        local VERIFIED_REF
+        VERIFIED_REF=$(echo "$DOCKERINSPECT" | jq -r ".[0].RepoDigests[] | select(. | contains(\"$CONTAINER_REGISTRY\"))" | head -n 1)
+        if [ -z "$VERIFIED_REF" ] || [ "$VERIFIED_REF" = "null" ]; then
+          echo "Unable to determine verified digest for $image" >> "$LOG_FILE" 2>&1
+          exit 1
+        fi
+        docker buildx imagetools create --tag $HOSTNAME:5000/$IMAGEREPO/$image "$VERIFIED_REF" >> "$LOG_FILE" 2>&1 || {
+          echo "Unable to copy $image to embedded registry" >> "$LOG_FILE" 2>&1
           exit 1
         }
       fi
