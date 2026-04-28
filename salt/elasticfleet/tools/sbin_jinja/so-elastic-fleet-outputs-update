@@ -235,6 +235,16 @@ function update_kafka_outputs() {
 
 {% endif %}
 
+# Compare the current Elastic Fleet certificate against what is on disk
+POLICY_CERT_SHA=$(jq -r '.item.ssl.certificate' <<< $RAW_JSON | openssl x509 -noout -sha256 -fingerprint)
+DISK_CERT_SHA=$(openssl x509 -in /etc/pki/elasticfleet-logstash.crt -noout -sha256 -fingerprint)
+
+if [[ "$POLICY_CERT_SHA" != "$DISK_CERT_SHA" ]]; then
+    printf "Certificate on disk doesn't match certificate in policy - forcing update\n"
+    UPDATE_CERTS=true
+    FORCE_UPDATE=true
+fi
+
 # Sort & hash the new list of Logstash Outputs
 NEW_LIST_JSON=$(jq --compact-output --null-input '$ARGS.positional' --args -- "${NEW_LIST[@]}")
 NEW_HASH=$(sha256sum <<< "$NEW_LIST_JSON" | awk '{print $1}')
