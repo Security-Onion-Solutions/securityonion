@@ -104,6 +104,16 @@ update_docker_containers() {
   set_version
   set_os
 
+  # Resolve the local Docker daemon's platform once. Used below to pick the
+  # matching sub-manifest from a multi-arch image index — Docker 29.x will not
+  # push a tag that points at an index unless every referenced sub-manifest's
+  # content is present locally.
+  local PLATFORM_OS PLATFORM_ARCH
+  PLATFORM_OS=$(docker version --format '{{.Server.Os}}' 2>/dev/null)
+  PLATFORM_ARCH=$(docker version --format '{{.Server.Arch}}' 2>/dev/null)
+  PLATFORM_OS=${PLATFORM_OS:-linux}
+  PLATFORM_ARCH=${PLATFORM_ARCH:-amd64}
+
   if [ -z "$TRUSTED_CONTAINERS" ]; then
     container_list
   fi
@@ -161,10 +171,36 @@ update_docker_containers() {
       local image=$i:$VERSION$IMAGE_TAG_SUFFIX
       local sig_url=https://sigs.securityonion.net/$VERSION/$image.sig
     fi
-    # Pull down the trusted docker image
-    run_check_net_err \
-    "docker pull $CONTAINER_REGISTRY/$IMAGEREPO/$image" \
-    "Could not pull $image, please ensure connectivity to $CONTAINER_REGISTRY" >> "$LOG_FILE" 2>&1 
+    # Pull down the trusted docker image. If the upstream tag is a multi-arch
+    # image index, resolve the local-platform manifest digest and pull by
+    # digest so the local tag points at a single-arch image (not an index).
+    # That keeps Docker 29.x's index-aware push from trying to push sub-manifests
+    # whose content we never fetched.
+    local FULL_IMAGE="$CONTAINER_REGISTRY/$IMAGEREPO/$image"
+    local PLATFORM_DIGEST
+    PLATFORM_DIGEST=$(docker buildx imagetools inspect --raw "$FULL_IMAGE" 2>/dev/null \
+                      | jq -r --arg os "$PLATFORM_OS" --arg arch "$PLATFORM_ARCH" '
+                          .manifests[]?
+                          | select(.platform.os == $os
+                                   and .platform.architecture == $arch
+                                   and ((.platform.variant // "") == "")
+                                   and ((.annotations["vnd.docker.reference.type"] // "") != "attestation-manifest"))
+                          | .digest' 2>/dev/null \
+                      | head -n 1)
+
+    if [ -n "$PLATFORM_DIGEST" ] && [ "$PLATFORM_DIGEST" != "null" ]; then
+      run_check_net_err \
+      "docker pull $FULL_IMAGE@$PLATFORM_DIGEST" \
+      "Could not pull $image ($PLATFORM_OS/$PLATFORM_ARCH), please ensure connectivity to $CONTAINER_REGISTRY" >> "$LOG_FILE" 2>&1
+      docker tag "$FULL_IMAGE@$PLATFORM_DIGEST" "$FULL_IMAGE" >> "$LOG_FILE" 2>&1 || {
+        echo "Unable to retag $image to canonical tag" >> "$LOG_FILE" 2>&1
+        exit 1
+      }
+    else
+      run_check_net_err \
+      "docker pull $FULL_IMAGE" \
+      "Could not pull $image, please ensure connectivity to $CONTAINER_REGISTRY" >> "$LOG_FILE" 2>&1
+    fi
     
     # Get signature
     run_check_net_err \
