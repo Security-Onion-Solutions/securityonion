@@ -225,11 +225,20 @@ update_docker_containers() {
           HOSTNAME=$(hostname)
         fi
         docker tag $CONTAINER_REGISTRY/$IMAGEREPO/$image $HOSTNAME:5000/$IMAGEREPO/$image >> "$LOG_FILE" 2>&1 || {
-          echo "Unable to tag $image" >> "$LOG_FILE" 2>&1 
+          echo "Unable to tag $image" >> "$LOG_FILE" 2>&1
           exit 1
         }
-        docker push $HOSTNAME:5000/$IMAGEREPO/$image >> "$LOG_FILE" 2>&1 || {
-          echo "Unable to push $image" >> "$LOG_FILE" 2>&1 
+        # Push to the embedded registry via a registry-to-registry copy. Avoids
+        # `docker push`, which on Docker 29.x with the containerd image store
+        # represents freshly-pulled images as an index whose layer content
+        # isn't reachable through the push path. The local `docker tag` above
+        # is preserved so so-image-pull's `:5000` existence check still works.
+        local PUSH_SRC="$CONTAINER_REGISTRY/$IMAGEREPO/$image"
+        if [ -n "$PLATFORM_DIGEST" ] && [ "$PLATFORM_DIGEST" != "null" ]; then
+          PUSH_SRC="$CONTAINER_REGISTRY/$IMAGEREPO/$image@$PLATFORM_DIGEST"
+        fi
+        docker buildx imagetools create --tag $HOSTNAME:5000/$IMAGEREPO/$image "$PUSH_SRC" >> "$LOG_FILE" 2>&1 || {
+          echo "Unable to copy $image to embedded registry" >> "$LOG_FILE" 2>&1
           exit 1
         }
       fi
