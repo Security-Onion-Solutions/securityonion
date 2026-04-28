@@ -31,6 +31,7 @@ container_list() {
       "so-hydra"
       "so-nginx"
       "so-pcaptools"
+      "so-postgres"
       "so-soc"
       "so-suricata"
       "so-telegraf"
@@ -55,6 +56,7 @@ container_list() {
       "so-logstash"
       "so-nginx"
       "so-pcaptools"
+      "so-postgres"
       "so-redis"
       "so-soc"
       "so-strelka-backend"
@@ -186,8 +188,14 @@ update_docker_containers() {
         if [ -z "$HOSTNAME" ]; then
           HOSTNAME=$(hostname)
         fi
-        docker tag $CONTAINER_REGISTRY/$IMAGEREPO/$image $HOSTNAME:5000/$IMAGEREPO/$image >> "$LOG_FILE" 2>&1 
-        docker push $HOSTNAME:5000/$IMAGEREPO/$image >> "$LOG_FILE" 2>&1 
+        docker tag $CONTAINER_REGISTRY/$IMAGEREPO/$image $HOSTNAME:5000/$IMAGEREPO/$image >> "$LOG_FILE" 2>&1 || {
+          echo "Unable to tag $image" >> "$LOG_FILE" 2>&1 
+          exit 1
+        }
+        docker push $HOSTNAME:5000/$IMAGEREPO/$image >> "$LOG_FILE" 2>&1 || {
+          echo "Unable to push $image" >> "$LOG_FILE" 2>&1 
+          exit 1
+        }
       fi
     else
       echo "There is a problem downloading the $image image. Details: " >> "$LOG_FILE" 2>&1 

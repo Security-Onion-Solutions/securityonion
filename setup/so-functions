@@ -202,10 +202,10 @@ check_service_status() {
 	systemctl status $service_name > /dev/null 2>&1
 	local status=$?
 	if [ $status -gt 0 ]; then
-		info "  $service_name is not running" 
+		info "$service_name is not running" 
 		return 1;
 	else
-		info "  $service_name is running"
+		info "$service_name is running"
 		return 0;
 	fi
 
@@ -821,6 +821,7 @@ create_manager_pillars() {
 	soc_pillar
 	idh_pillar
 	influxdb_pillar
+	postgres_pillar
 	logrotate_pillar
 	patch_pillar
 	nginx_pillar
@@ -1053,6 +1054,7 @@ generate_passwords(){
   HYDRAKEY=$(get_random_value)
   HYDRASALT=$(get_random_value)
   REDISPASS=$(get_random_value)
+  POSTGRESPASS=$(get_random_value)
   SOCSRVKEY=$(get_random_value 64)
   IMPORTPASS=$(get_random_value)
 }
@@ -1355,6 +1357,12 @@ influxdb_pillar() {
 		"  token: $INFLUXTOKEN" > $local_salt_dir/pillar/influxdb/token.sls
 }
 
+postgres_pillar() {
+	title "Create the postgres pillar file"
+	touch $adv_postgres_pillar_file
+	touch $postgres_pillar_file
+}
+
 make_some_dirs() {
 	mkdir -p /nsm
 	mkdir -p "$default_salt_dir"
@@ -1364,7 +1372,7 @@ make_some_dirs() {
 	mkdir -p $local_salt_dir/salt/firewall/portgroups
 	mkdir -p $local_salt_dir/salt/firewall/ports
 
-	for THEDIR in bpf elasticsearch ntp firewall redis backup influxdb strelka sensoroni soc docker zeek suricata nginx telegraf logstash soc manager kratos hydra idh elastalert stig global kafka versionlock hypervisor vm; do
+	for THEDIR in bpf elasticsearch ntp firewall redis backup influxdb postgres strelka sensoroni soc docker zeek suricata nginx telegraf logstash soc manager kratos hydra idh elastalert stig global kafka versionlock hypervisor vm; do
 	mkdir -p $local_salt_dir/pillar/$THEDIR
 	touch $local_salt_dir/pillar/$THEDIR/adv_$THEDIR.sls
 	touch $local_salt_dir/pillar/$THEDIR/soc_$THEDIR.sls
@@ -1541,13 +1549,8 @@ clear_previous_setup_results() {
 reinstall_init() {
 	info "Putting system in state to run setup again"
 
-	if [[ $install_type =~ ^(MANAGER|EVAL|MANAGERSEARCH|MANAGERHYPE|STANDALONE|FLEET|IMPORT)$ ]]; then
-		local salt_services=( "salt-master" "salt-minion" )
-	else
-		local salt_services=( "salt-minion" )
-	fi
-
-	local service_retry_count=20
+	# Always include both services. check_service_status skips units that aren't present.
+	local salt_services=( "salt-master" "salt-minion" )
 
 	{
 		# remove all of root's cronjobs
@@ -1563,31 +1566,51 @@ reinstall_init() {
 
 		salt-call state.apply ca.remove -linfo --local --file-root=../salt
 
-		# Kill any salt processes (safely)
+		# Stop salt services and force-kill any lingering salt processes (including orphans
+		# from an earlier reinstall attempt where the unit file is gone but processes survive)
+		# so dnf remove salt can run cleanly
 		for service in "${salt_services[@]}"; do
-			# Stop the service in the background so we can exit after a certain amount of time
 			if check_service_status "$service"; then
-				systemctl stop "$service" &
+				info "Stopping $service via systemctl"
+				systemctl stop "$service"
 			fi
-			local pid=$!
-
-			local count=0
-			while check_service_status "$service"; do
-				if [[ $count -gt $service_retry_count ]]; then
-					echo "Could not stop $service after 1 minute, exiting setup."
-
-					# Stop the systemctl process trying to kill the service, show user a message, then exit setup
-					kill -9 $pid
-					fail_setup
-				fi
-				
-				sleep 5
-				((count++))
-			done
 		done
 
+		# Unconditionally force-kill any remaining salt binaries — these may be orphaned
+		# from a prior aborted reinstall (no unit file, so systemctl can't see them).
+		for salt_bin in salt-master salt-minion salt-call salt-cloud; do
+			if pgrep -f "/usr/bin/${salt_bin}" > /dev/null 2>&1; then
+				info "Force-killing lingering $salt_bin processes"
+				pkill -9 -ef "/usr/bin/${salt_bin}" 2>/dev/null
+			fi
+		done
+		# Catch stray `salt` CLI children from saltutil.kill_all_jobs / state.apply invocations
+		pkill -9 -ef "/usr/bin/python3 /bin/salt" 2>/dev/null
+
+		# Give the kernel a moment to reap the killed processes before dnf removes the binaries
+		local kill_wait=0
+		while pgrep -f "/usr/bin/salt-" > /dev/null 2>&1; do
+			if [[ $kill_wait -gt 10 ]]; then
+				info "Salt processes still present after SIGKILL + 10s wait; proceeding anyway"
+				pgrep -af "/usr/bin/salt-" | while read -r line; do info "  lingering: $line"; done
+				break
+			fi
+			sleep 1
+			((kill_wait++))
+		done
+
+		# Clear the 'failed' state SIGKILL left on the units before removing the package
+		systemctl reset-failed salt-master.service salt-minion.service 2>/dev/null || true
+
 		# Remove all salt configs
-		rm -rf /etc/salt/engines/* /etc/salt/grains /etc/salt/master /etc/salt/master.d/* /etc/salt/minion /etc/salt/minion.d/* /etc/salt/pki/* /etc/salt/proxy /etc/salt/proxy.d/* /var/cache/salt/
+		dnf -y remove salt
+		rm -rf /etc/salt/ /var/cache/salt/
+
+		# Drop systemd's in-memory references to the now-removed units
+		systemctl daemon-reload
+
+		# Uninstall local Elastic Agent, if installed
+		elastic-agent uninstall -f
 
 		if command -v docker &> /dev/null; then
 			# Stop and remove all so-* containers so files can be changed with more safety
@@ -1611,10 +1634,7 @@ reinstall_init() {
 		backup_dir /nsm/hydra "$date_string"
 		backup_dir /nsm/influxdb "$date_string"
 
-		# Uninstall local Elastic Agent, if installed
-		elastic-agent uninstall -f
-
-	} >> "$setup_log" 2>&1
+	} 2>&1 | tee -a "$setup_log"
 
 	info "System reinstall init has been completed."
 }
@@ -1832,7 +1852,8 @@ secrets_pillar(){
 	printf '%s\n'\
 		"secrets:"\
 		"  import_pass: $IMPORTPASS"\
-		"  influx_pass: $INFLUXPASS" > $local_salt_dir/pillar/secrets.sls
+		"  influx_pass: $INFLUXPASS"\
+		"  postgres_pass: $POSTGRESPASS" > $local_salt_dir/pillar/secrets.sls
   fi
 }
 

@@ -1,0 +1,123 @@
+{# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+  or more contributor license agreements. Licensed under the Elastic License 2.0; you may not use
+  this file except in compliance with the Elastic License 2.0. #}
+
+
+{% import_json '/opt/so/state/esfleet_input_package_components.json' as ADDON_INPUT_PACKAGE_COMPONENTS %}
+{% import_json '/opt/so/state/esfleet_component_templates.json' as INSTALLED_COMPONENT_TEMPLATES %}
+{% import_yaml 'elasticfleet/defaults.yaml' as ELASTICFLEETDEFAULTS %}
+
+{% set CORE_ESFLEET_PACKAGES = ELASTICFLEETDEFAULTS.get('elasticfleet', {}).get('packages', {}) %}
+{% set ADDON_INPUT_INTEGRATION_DEFAULTS = {} %}
+{% set DEBUG_STUFF = {} %}
+
+{% for pkg in ADDON_INPUT_PACKAGE_COMPONENTS %}
+{%   if pkg.name in CORE_ESFLEET_PACKAGES %}
+{#     skip core input packages #}
+{%   elif pkg.name not in CORE_ESFLEET_PACKAGES %}
+{#     generate defaults for each input package #}
+{%     if pkg.dataStreams is defined and pkg.dataStreams is not none and pkg.dataStreams | length > 0 %}
+{%       for pattern in pkg.dataStreams %}
+{#         in ES 9.3.2 'input' type integrations no longer create default component templates and instead they wait for user input during 'integration' setup (fleet ui config)
+             title: generic is an artifact of that and is not in use #}
+{%         if pattern.title == "generic" %}
+{%           continue %}
+{%         endif %}
+{%         if "metrics-" in pattern.name %}
+{%           set integration_type = "metrics-" %}
+{%         elif "logs-" in pattern.name %}
+{%           set integration_type = "logs-" %}
+{%         else %}
+{%           set integration_type = "" %}
+{%         endif %}
+{#         on input integrations the component name is user defined at the time it is added to an agent policy #}
+{%         set component_name = pattern.title %}
+{%         set index_pattern = pattern.name %}
+{#           component_name_x maintains the functionality of merging local pillar changes with generated 'defaults' via SOC UI #}
+{%           set component_name_x = component_name.replace(".","_x_") %}
+{#           pillar overrides/merge expects the key names to follow the naming in elasticsearch/defaults.yaml eg. so-logs-1password_x_item_usages . The _x_ is replaced later on in elasticsearch/template.map.jinja #}
+{%           set integration_key = "so-" ~ integration_type ~ pkg.name + '_x_' ~ component_name_x %}
+{#           Default integration settings #}
+{%           set integration_defaults = {
+               "index_sorting": false,
+               "index_template": {
+                 "composed_of": [integration_type ~ component_name ~ "@package", integration_type ~ component_name ~ "@custom", "so-fleet_integrations.ip_mappings-1", "so-fleet_globals-1", "so-fleet_agent_id_verification-1"],
+                 "data_stream": {
+                   "allow_custom_routing": false,
+                   "hidden": false
+                 },
+                 "ignore_missing_component_templates": [integration_type ~ component_name ~ "@custom"],
+                 "index_patterns": [index_pattern],
+                 "priority": 501,
+                 "template": {
+                   "settings": {
+                     "index": {
+                       "lifecycle": {"name": "so-" ~ integration_type ~ component_name ~ "-logs"},
+                         "number_of_replicas": 0
+                     }
+                   }
+                 }
+               },
+               "policy": {
+                 "phases": {
+                   "cold": {
+                     "actions": {
+                        "allocate":{
+                          "number_of_replicas": ""
+                        },
+                       "set_priority": {"priority": 0}
+                     },
+                     "min_age": "60d"
+                   },
+                   "delete": {
+                     "actions": {
+                       "delete": {}
+                     },
+                     "min_age": "365d"
+                   },
+                   "hot": {
+                     "actions": {
+                       "rollover": {
+                         "max_age": "30d",
+                         "max_primary_shard_size": "50gb"
+                       },
+                       "forcemerge":{
+                         "max_num_segments": ""
+                       },
+                       "shrink":{
+                         "max_primary_shard_size": "",
+                         "method": "COUNT",
+                         "number_of_shards": ""
+                       },
+                       "set_priority": {"priority": 100}
+                      },
+                      "min_age": "0ms"
+                   },
+                   "warm": {
+                     "actions": {
+                        "allocate": {
+                          "number_of_replicas": ""
+                        },
+                        "forcemerge": {
+                          "max_num_segments": ""
+                        },
+                        "shrink":{
+                          "max_primary_shard_size": "",
+                          "method": "COUNT",
+                          "number_of_shards": ""
+                        },
+                       "set_priority": {"priority": 50}
+                     },
+                     "min_age": "30d"
+                   }
+                 }
+               }
+             } %}
+
+
+{%         do ADDON_INPUT_INTEGRATION_DEFAULTS.update({integration_key: integration_defaults}) %}
+{%         do DEBUG_STUFF.update({integration_key: "Generating defaults for "+ pkg.name })%}
+{%       endfor %}
+{%     endif %}
+{%   endif %}
+{% endfor %}

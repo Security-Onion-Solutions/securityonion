@@ -17,6 +17,7 @@ base:
     - sensoroni.adv_sensoroni
     - telegraf.soc_telegraf
     - telegraf.adv_telegraf
+    - telegraf.creds
     - versionlock.soc_versionlock
     - versionlock.adv_versionlock
     - soc.license
@@ -37,6 +38,9 @@ base:
     - node_data.ips
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
     - elasticsearch.auth
+    {% endif %}
+    {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/postgres/auth.sls') %}
+    - postgres.auth
     {% endif %}
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/kibana/secrets.sls') %}
     - kibana.secrets
@@ -60,6 +64,8 @@ base:
     - redis.adv_redis
     - influxdb.soc_influxdb
     - influxdb.adv_influxdb
+    - postgres.soc_postgres
+    - postgres.adv_postgres
     - elasticsearch.nodes
     - elasticsearch.soc_elasticsearch
     - elasticsearch.adv_elasticsearch
@@ -97,9 +103,11 @@ base:
     - node_data.ips
     - secrets
     - healthcheck.eval
-    - elasticsearch.index_templates
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
     - elasticsearch.auth
+    {% endif %}
+    {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/postgres/auth.sls') %}
+    - postgres.auth
     {% endif %}
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/kibana/secrets.sls') %}
     - kibana.secrets
@@ -126,6 +134,8 @@ base:
     - redis.adv_redis
     - influxdb.soc_influxdb
     - influxdb.adv_influxdb
+    - postgres.soc_postgres
+    - postgres.adv_postgres
     - backup.soc_backup
     - backup.adv_backup
     - zeek.soc_zeek
@@ -142,9 +152,11 @@ base:
     - logstash.nodes
     - logstash.soc_logstash
     - logstash.adv_logstash
-    - elasticsearch.index_templates
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
     - elasticsearch.auth
+    {% endif %}
+    {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/postgres/auth.sls') %}
+    - postgres.auth
     {% endif %}
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/kibana/secrets.sls') %}
     - kibana.secrets
@@ -160,6 +172,8 @@ base:
     - redis.adv_redis
     - influxdb.soc_influxdb
     - influxdb.adv_influxdb
+    - postgres.soc_postgres
+    - postgres.adv_postgres
     - elasticsearch.nodes
     - elasticsearch.soc_elasticsearch
     - elasticsearch.adv_elasticsearch
@@ -256,9 +270,11 @@ base:
   '*_import':
     - node_data.ips
     - secrets
-    - elasticsearch.index_templates
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/elasticsearch/auth.sls') %}
     - elasticsearch.auth
+    {% endif %}
+    {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/postgres/auth.sls') %}
+    - postgres.auth
     {% endif %}
     {% if salt['file.file_exists']('/opt/so/saltstack/local/pillar/kibana/secrets.sls') %}
     - kibana.secrets
@@ -285,6 +301,8 @@ base:
     - redis.adv_redis
     - influxdb.soc_influxdb
     - influxdb.adv_influxdb
+    - postgres.soc_postgres
+    - postgres.adv_postgres
     - zeek.soc_zeek
     - zeek.adv_zeek
     - bpf.soc_bpf

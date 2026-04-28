@@ -1,0 +1,33 @@
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+{% from 'allowed_states.map.jinja' import allowed_states %}
+{% if sls.split('.')[0] in allowed_states %}
+
+include:
+  - postgres.sostatus
+
+so-postgres:
+  docker_container.absent:
+    - force: True
+
+so-postgres_so-status.disabled:
+  file.comment:
+    - name: /opt/so/conf/so-status/so-status.conf
+    - regex: ^so-postgres$
+
+so_postgres_backup:
+  cron.absent:
+    - name: /usr/sbin/so-postgres-backup > /dev/null 2>&1
+    - identifier: so_postgres_backup
+    - user: root
+
+{% else %}
+
+{{sls}}_state_not_allowed:
+  test.fail_without_changes:
+    - name: {{sls}}_state_not_allowed
+
+{% endif %}

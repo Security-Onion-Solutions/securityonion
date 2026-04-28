@@ -1,0 +1,276 @@
+#!/bin/bash
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+. /usr/sbin/so-common
+
+SO_STATEFILE_SUCCESS=/opt/so/state/estemplates.txt
+ADDON_STATEFILE_SUCCESS=/opt/so/state/addon_estemplates.txt
+ELASTICSEARCH_TEMPLATES_DIR="/opt/so/conf/elasticsearch/templates"
+SO_TEMPLATES_DIR="${ELASTICSEARCH_TEMPLATES_DIR}/index"
+ADDON_TEMPLATES_DIR="${ELASTICSEARCH_TEMPLATES_DIR}/addon-index"
+SO_LOAD_FAILURES=0
+ADDON_LOAD_FAILURES=0
+SO_LOAD_FAILURES_NAMES=()
+ADDON_LOAD_FAILURES_NAMES=()
+IS_HEAVYNODE="false"
+FORCE="false"
+VERBOSE="false"
+SHOULD_EXIT_ON_FAILURE="true"
+
+# If soup is running, ignore errors
+pgrep soup >/dev/null && SHOULD_EXIT_ON_FAILURE="false"
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+    --heavynode)
+        IS_HEAVYNODE="true"
+        ;;
+    --force)
+        FORCE="true"
+        ;;
+    --verbose)
+        VERBOSE="true"
+        ;;
+    *)
+        echo "Usage: $0 [options]"
+        echo "Options:"
+        echo "  --heavynode     Only loads index templates specific to heavynodes"
+        echo "  --force     Force reload all templates regardless of statefiles (default: false)"
+        echo "  --verbose     Enable verbose output"
+        exit 1
+        ;;
+    esac
+    shift
+done
+
+load_template() {
+    local uri="$1"
+    local file="$2"
+
+    echo "Loading template file $file"
+    if ! output=$(retry 3 3 "so-elasticsearch-query $uri -d@$file -XPUT" "{\"acknowledged\":true}"); then
+        echo "$output"
+
+        return 1
+
+    elif [[ "$VERBOSE" == "true" ]]; then
+        echo "$output"
+    fi
+
+}
+
+check_required_component_template_exists() {
+    local required
+    local missing
+    local file=$1
+
+    required=$(jq '[((.composed_of //[]) - (.ignore_missing_component_templates // []))[]]' "$file")
+    missing=$(jq -n --argjson required "$required" --argjson component_templates "$component_templates" '(($required) - ($component_templates))')
+
+    if [[ $(jq length <<<"$missing") -gt 0 ]]; then
+
+        return 1
+    fi
+}
+
+check_heavynode_compatiable_index_template() {
+    # The only templates that are relevant to heavynodes are from datasets defined in elasticagent/files/elastic-agent.yml.jinja.
+    # Heavynodes do not have fleet server packages installed and do not support elastic agents reporting directly to them.
+    local -A heavynode_index_templates=(
+        ["so-import"]=1
+        ["so-syslog"]=1
+        ["so-logs-soc"]=1
+        ["so-suricata"]=1
+        ["so-suricata.alerts"]=1
+        ["so-zeek"]=1
+        ["so-strelka"]=1
+    )
+
+    local template_name="$1"
+
+    if [[ ! -v heavynode_index_templates["$template_name"] ]]; then
+
+        return 1
+    fi
+
+}
+
+load_component_templates() {
+    local printed_name="$1"
+    local pattern="${ELASTICSEARCH_TEMPLATES_DIR}/component/$2"
+    local append_mappings="${3:-"false"}"
+
+    echo -e "\nLoading $printed_name component templates...\n"
+
+    if ! compgen -G "${pattern}/*.json" > /dev/null; then
+        echo "No $printed_name component templates found in ${pattern}, skipping."
+        return
+    fi
+
+    for component in "$pattern"/*.json; do
+        tmpl_name=$(basename "${component%.json}")
+
+        if [[ "$append_mappings" == "true" ]]; then
+            # avoid duplicating "-mappings" if it already exists in the component template filename
+            tmpl_name="${tmpl_name%-mappings}-mappings"
+        fi
+
+        if ! load_template "_component_template/${tmpl_name}" "$component"; then
+            SO_LOAD_FAILURES=$((SO_LOAD_FAILURES + 1))
+            SO_LOAD_FAILURES_NAMES+=("$component")
+        fi
+    done
+}
+
+check_elasticsearch_responsive() {
+    # Cannot load templates if Elasticsearch is not responding.
+    #  NOTE: Slightly faster exit w/ failure than previous "retry 240 1" if there is a problem with Elasticsearch the
+    #    script should exit sooner rather than hang at the 'so-elasticsearch-templates' salt state.
+    retry 3 15 "so-elasticsearch-query / --output /dev/null --fail" ||
+        fail "Elasticsearch is not responding. Please review Elasticsearch logs /opt/so/log/elasticsearch/securityonion.log for more details. Additionally, consider running so-elasticsearch-troubleshoot."
+}
+
+index_templates_exist() {
+    local templates_dir="$1"
+
+    if [[ ! -d "$templates_dir" ]]; then
+        return 1
+    fi
+
+    compgen -G "${templates_dir}/*.json" > /dev/null
+}
+
+should_load_addon_templates() {
+    if [[ "$IS_HEAVYNODE" == "true" ]]; then
+        return 1
+    fi
+
+    # Skip statefile checks when forcing template load
+    if [[ "$FORCE" != "true" ]]; then
+        if [[ ! -f "$SO_STATEFILE_SUCCESS" || -f "$ADDON_STATEFILE_SUCCESS" ]]; then
+            return 1
+        fi
+    fi
+
+    index_templates_exist "$ADDON_TEMPLATES_DIR"
+}
+
+if [[ "$FORCE" == "true" || ! -f "$SO_STATEFILE_SUCCESS" ]] && index_templates_exist "$SO_TEMPLATES_DIR"; then
+    check_elasticsearch_responsive
+
+    if [[ "$IS_HEAVYNODE" == "false" ]]; then
+        # TODO: Better way to check if fleet server is installed vs checking for Elastic Defend component template.
+        fleet_check="logs-endpoint.alerts@package"
+        if ! so-elasticsearch-query "_component_template/$fleet_check" --output /dev/null --retry 5 --retry-delay 3 --fail; then
+            # This check prevents so-elasticsearch-templates-load from running before so-elastic-fleet-setup has run.
+            echo -e "\nPackage $fleet_check not yet installed. Fleet Server may not be fully configured yet."
+            # Fleet Server is required because some SO index templates depend on components installed via
+            #  specific integrations eg Elastic Defend. These are components that we do not manually create / manage
+            #  via /opt/so/saltstack/salt/elasticsearch/templates/component/
+
+            exit 0
+        fi
+    fi
+
+    # load_component_templates "Name" "directory" "append '-mappings'?"
+    load_component_templates "ECS" "ecs" "true"
+    load_component_templates "Elastic Agent" "elastic-agent"
+    load_component_templates "Security Onion" "so"
+
+    component_templates=$(so-elasticsearch-component-templates-list)
+    echo -e "Loading Security Onion index templates...\n"
+    for so_idx_tmpl in "${SO_TEMPLATES_DIR}"/*.json; do
+        tmpl_name=$(basename "${so_idx_tmpl%-template.json}")
+
+        if [[ "$IS_HEAVYNODE" == "true" ]]; then
+            # TODO: Better way to load only heavynode specific templates
+            if ! check_heavynode_compatiable_index_template "$tmpl_name"; then
+                if [[ "$VERBOSE" == "true" ]]; then
+                    echo "Skipping over $so_idx_tmpl, template is not a heavynode specific index template."
+                fi
+
+                continue
+            fi
+        fi
+
+        if check_required_component_template_exists "$so_idx_tmpl"; then
+            if ! load_template "_index_template/$tmpl_name" "$so_idx_tmpl"; then
+                SO_LOAD_FAILURES=$((SO_LOAD_FAILURES + 1))
+                SO_LOAD_FAILURES_NAMES+=("$so_idx_tmpl")
+            fi
+        else
+            echo "Skipping over $so_idx_tmpl due to missing required component template(s)."
+            SO_LOAD_FAILURES=$((SO_LOAD_FAILURES + 1))
+            SO_LOAD_FAILURES_NAMES+=("$so_idx_tmpl")
+
+            continue
+        fi
+    done
+
+    if [[ $SO_LOAD_FAILURES -eq 0 ]]; then
+        echo "All Security Onion core templates loaded successfully."
+
+        touch "$SO_STATEFILE_SUCCESS"
+    else
+        echo "Encountered $SO_LOAD_FAILURES failure(s) loading templates:"
+        for failed_template in "${SO_LOAD_FAILURES_NAMES[@]}"; do
+            echo "  - $failed_template"
+        done
+        if [[ "$SHOULD_EXIT_ON_FAILURE" == "true" ]]; then
+            fail "Failed to load all Security Onion core templates successfully."
+        fi
+    fi
+elif ! index_templates_exist "$SO_TEMPLATES_DIR"; then
+    echo "No Security Onion core index templates found in ${SO_TEMPLATES_DIR}, skipping."
+elif [[ -f "$SO_STATEFILE_SUCCESS" ]]; then
+    echo "Security Onion core templates already loaded"
+fi
+
+# Start loading addon templates
+if should_load_addon_templates; then
+
+    check_elasticsearch_responsive
+
+    echo -e "\nLoading addon integration index templates...\n"
+    component_templates=$(so-elasticsearch-component-templates-list)
+
+    for addon_idx_tmpl in "${ADDON_TEMPLATES_DIR}"/*.json; do
+        tmpl_name=$(basename "${addon_idx_tmpl%-template.json}")
+
+        if check_required_component_template_exists "$addon_idx_tmpl"; then
+            if ! load_template "_index_template/${tmpl_name}" "$addon_idx_tmpl"; then
+                ADDON_LOAD_FAILURES=$((ADDON_LOAD_FAILURES + 1))
+                ADDON_LOAD_FAILURES_NAMES+=("$addon_idx_tmpl")
+            fi
+        else
+            echo "Skipping over $addon_idx_tmpl due to missing required component template(s)."
+            ADDON_LOAD_FAILURES=$((ADDON_LOAD_FAILURES + 1))
+            ADDON_LOAD_FAILURES_NAMES+=("$addon_idx_tmpl")
+
+            continue
+        fi
+    done
+
+    if [[ $ADDON_LOAD_FAILURES -eq 0 ]]; then
+        echo "All addon integration templates loaded successfully."
+
+        touch "$ADDON_STATEFILE_SUCCESS"
+    else
+        echo "Encountered $ADDON_LOAD_FAILURES failure(s) loading addon integration templates:"
+        for failed_template in "${ADDON_LOAD_FAILURES_NAMES[@]}"; do
+            echo "  - $failed_template"
+        done
+        if [[ "$SHOULD_EXIT_ON_FAILURE" == "true" ]]; then
+            fail "Failed to load all addon integration templates successfully."
+        fi
+    fi
+
+elif [[ ! -f "$SO_STATEFILE_SUCCESS" && "$IS_HEAVYNODE" == "false" ]]; then
+    echo "Skipping loading addon integration templates until Security Onion core templates have been loaded."
+
+elif [[ -f "$ADDON_STATEFILE_SUCCESS" && "$IS_HEAVYNODE" == "false" && "$FORCE" == "false" ]]; then
+    echo "Addon integration templates already loaded"
+fi

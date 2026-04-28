@@ -24,6 +24,14 @@ BACKUPTOPFILE=/opt/so/saltstack/default/salt/top.sls.backup
 SALTUPGRADED=false
 SALT_CLOUD_INSTALLED=false
 SALT_CLOUD_CONFIGURED=false
+# Check if salt-cloud is installed
+if rpm -q salt-cloud &>/dev/null; then
+  SALT_CLOUD_INSTALLED=true
+fi
+# Check if salt-cloud is configured
+if [[ -f /etc/salt/cloud.profiles.d/socloud.conf ]]; then
+  SALT_CLOUD_CONFIGURED=true
+fi
 # used to display messages to the user at the end of soup
 declare -a FINAL_MESSAGE_QUEUE=()
 
@@ -363,6 +371,7 @@ preupgrade_changes() {
     echo "Checking to see if changes are needed."
 
     [[ "$INSTALLEDVERSION" =~ ^2\.4\.21[0-9]+$ ]] && up_to_3.0.0   
+    [[ "$INSTALLEDVERSION" == "3.0.0" ]] && up_to_3.1.0
     true
 }
 
@@ -371,6 +380,7 @@ postupgrade_changes() {
     echo "Running post upgrade processes."
 
     [[ "$POSTVERSION" =~ ^2\.4\.21[0-9]+$ ]] && post_to_3.0.0
+    [[ "$POSTVERSION" == "3.0.0" ]] && post_to_3.1.0
     true
 }
 
@@ -445,7 +455,6 @@ migrate_pcap_to_suricata() {
 }
 
 up_to_3.0.0() {
-  determine_elastic_agent_upgrade
   migrate_pcap_to_suricata
 
   INSTALLEDVERSION=3.0.0
@@ -468,6 +477,87 @@ post_to_3.0.0() {
 }
 
 ### 3.0.0 End ###
+
+### 3.1.0 Scripts ###
+
+elasticsearch_backup_index_templates() {
+  echo "Backing up current elasticsearch index templates in /opt/so/conf/elasticsearch/templates/index/ to /nsm/backup/3.0.0_elasticsearch_index_templates.tar.gz"
+  tar -czf /nsm/backup/3.0.0_elasticsearch_index_templates.tar.gz -C /opt/so/conf/elasticsearch/templates/index/ .
+}
+
+ensure_postgres_local_pillar() {
+  # Postgres was added as a service after 3.0.0, so the new pillar/top.sls
+  # references postgres.soc_postgres / postgres.adv_postgres unconditionally.
+  # Managers upgrading from 3.0.0 have no /opt/so/saltstack/local/pillar/postgres/
+  # (make_some_dirs only runs at install time), so the stubs must be created
+  # here before salt-master restarts against the new top.sls.
+  echo "Ensuring postgres local pillar stubs exist."
+  local dir=/opt/so/saltstack/local/pillar/postgres
+  mkdir -p "$dir"
+  [[ -f "$dir/soc_postgres.sls" ]] || touch "$dir/soc_postgres.sls"
+  [[ -f "$dir/adv_postgres.sls" ]] || touch "$dir/adv_postgres.sls"
+  chown -R socore:socore "$dir"
+}
+
+ensure_postgres_secret() {
+  # On a fresh install, generate_passwords + secrets_pillar seed
+  # secrets:postgres_pass in /opt/so/saltstack/local/pillar/secrets.sls. That
+  # code path is skipped on upgrade (secrets.sls already exists from 3.0.0
+  # with import_pass/influx_pass but no postgres_pass), so the postgres
+  # container's POSTGRES_PASSWORD_FILE and SOC's PG_ADMIN_PASS would be empty
+  # after highstate. Generate one now if missing.
+  local secrets_file=/opt/so/saltstack/local/pillar/secrets.sls
+  if [[ ! -f "$secrets_file" ]]; then
+    echo "WARNING: $secrets_file missing; skipping postgres_pass backfill."
+    return 0
+  fi
+  if so-yaml.py get -r "$secrets_file" secrets.postgres_pass >/dev/null 2>&1; then
+    echo "secrets.postgres_pass already set; leaving as-is."
+    return 0
+  fi
+  echo "Seeding secrets.postgres_pass in $secrets_file."
+  so-yaml.py add "$secrets_file" secrets.postgres_pass "$(get_random_value)"
+  chown socore:socore "$secrets_file"
+}
+
+up_to_3.1.0() {
+  ensure_postgres_local_pillar
+  ensure_postgres_secret
+  determine_elastic_agent_upgrade
+  elasticsearch_backup_index_templates
+  # Clear existing component template state file.
+  rm -f /opt/so/state/esfleet_component_templates.json
+
+
+  INSTALLEDVERSION=3.1.0
+}
+
+post_to_3.1.0() {
+  /usr/sbin/so-kibana-space-defaults
+  # ensure manager has new version of socloud.conf
+  if [[ $SALT_CLOUD_CONFIGURED == true ]]; then
+    salt-call state.apply salt.cloud.config concurrent=True
+  fi
+
+  # Backfill the Telegraf creds pillar for every accepted minion. so-telegraf-cred
+  # add is idempotent — it no-ops when an entry already exists — so this is safe
+  # to run on every soup. The subsequent state.apply creates/updates the matching
+  # Postgres roles from the reconciled pillar.
+  echo "Reconciling Telegraf Postgres creds for accepted minions."
+  for mid in $(salt-key --out=json --list=accepted 2>/dev/null | jq -r '.minions[]?' 2>/dev/null); do
+    [[ -n "$mid" ]] || continue
+    /usr/sbin/so-telegraf-cred add "$mid" || echo "  warning: so-telegraf-cred add $mid failed" >&2
+  done
+  # Run through the master (not --local) so state compilation uses the
+  # master's configured file_roots; the manager's /etc/salt/minion has no
+  # file_roots of its own and --local would fail with "No matching sls found".
+  salt-call state.apply postgres.telegraf_users queue=True || true
+
+  POSTVERSION=3.1.0
+}
+
+### 3.1.0 End ###
+
 
 repo_sync() {
   echo "Sync the local repo."
@@ -636,15 +726,6 @@ upgrade_check_salt() {
 upgrade_salt() {
   echo "Performing upgrade of Salt from $INSTALLEDSALTVERSION to $NEWSALTVERSION."
   echo ""
-  # Check if salt-cloud is installed
-  if rpm -q salt-cloud &>/dev/null; then
-    SALT_CLOUD_INSTALLED=true
-  fi
-  # Check if salt-cloud is configured
-  if [[ -f /etc/salt/cloud.profiles.d/socloud.conf ]]; then
-    SALT_CLOUD_CONFIGURED=true
-  fi
-
   echo "Removing yum versionlock for Salt."
   echo ""
   yum versionlock delete "salt"
@@ -728,12 +809,12 @@ verify_es_version_compatibility() {
     local is_active_intermediate_upgrade=1
     # supported upgrade paths for SO-ES versions
     declare -A es_upgrade_map=(
-	    ["8.18.8"]="9.0.8"
+        ["9.0.8"]="9.3.3"
     )
 
     # Elasticsearch MUST upgrade through these versions
     declare -A es_to_so_version=(
-	    ["8.18.8"]="2.4.190-20251024"
+        ["9.0.8"]="3.0.0-20260331"
     )
 
     # Get current Elasticsearch version
@@ -745,26 +826,17 @@ verify_es_version_compatibility() {
         exit 160
     fi
 
-    if ! target_es_version_raw=$(so-yaml.py get $UPDATE_DIR/salt/elasticsearch/defaults.yaml elasticsearch.version); then
-        # so-yaml.py failed to get the ES version from upgrade versions elasticsearch/defaults.yaml file. Likely they are upgrading to an SO version older than 2.4.110 prior to the ES version pinning and should be OKAY to continue with the upgrade.
+    if ! target_es_version=$(so-yaml.py get -r $UPDATE_DIR/salt/elasticsearch/defaults.yaml elasticsearch.version); then
+        echo "Couldn't determine the target Elasticsearch version (post soup version) to ensure compatibility with current Elasticsearch version. Exiting"
 
-        # if so-yaml.py failed to get the ES version AND the version we are upgrading to is newer than 2.4.110 then we should bail
-        if [[ $(cat $UPDATE_DIR/VERSION | cut -d'.' -f3) > 110 ]]; then
-            echo "Couldn't determine the target Elasticsearch version (post soup version) to ensure compatibility with current Elasticsearch version. Exiting"
-
-            exit 160
-        fi
-
-        # allow upgrade to version < 2.4.110 without checking ES version compatibility
-        return 0
-    else
-        target_es_version=$(sed -n '1p' <<< "$target_es_version_raw")
+        exit 160
     fi
 
     for statefile in "${es_required_version_statefile_base}"-*; do
         [[ -f $statefile ]] || continue
 
-        local es_required_version_statefile_value=$(cat "$statefile")
+        local es_required_version_statefile_value
+        es_required_version_statefile_value=$(cat "$statefile")
 
         if [[ "$es_required_version_statefile_value" == "$target_es_version" ]]; then
             echo "Intermediate upgrade to ES $target_es_version is in progress. Skipping Elasticsearch version compatibility check."
@@ -773,7 +845,7 @@ verify_es_version_compatibility() {
         fi
 
         # use sort to check if es_required_statefile_value is < the current es_version.
-        if [[ "$(printf '%s\n' $es_required_version_statefile_value $es_version | sort -V | head -n1)" == "$es_required_version_statefile_value" ]]; then
+        if [[ "$(printf '%s\n' "$es_required_version_statefile_value" "$es_version" | sort -V | head -n1)" == "$es_required_version_statefile_value" ]]; then
             rm -f "$statefile"
             continue
         fi
@@ -784,8 +856,7 @@ verify_es_version_compatibility() {
 
         echo -e "\n##############################################################################################################################\n"
         echo "A previously required intermediate Elasticsearch upgrade was detected. Verifying that all Searchnodes/Heavynodes have successfully upgraded Elasticsearch to $es_required_version_statefile_value before proceeding with soup to avoid potential data loss! This command can take up to an hour to complete."
-        timeout --foreground 4000 bash "$es_verification_script" "$es_required_version_statefile_value" "$statefile"
-        if [[ $? -ne 0 ]]; then
+        if ! timeout --foreground 4000 bash "$es_verification_script" "$es_required_version_statefile_value" "$statefile"; then
             echo -e "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
 
             echo "A previous required intermediate Elasticsearch upgrade to $es_required_version_statefile_value has yet to successfully complete across the grid. Please allow time for all Searchnodes/Heavynodes to have upgraded Elasticsearch to $es_required_version_statefile_value before running soup again to avoid potential data loss!"
@@ -802,6 +873,7 @@ verify_es_version_compatibility() {
         return 0
     fi
 
+    # shellcheck disable=SC2076 # Do not want a regex here eg usage " 8.18.8 9.0.8 " =~ " 9.0.8 "
     if [[ " ${es_upgrade_map[$es_version]} " =~ " $target_es_version " || "$es_version" == "$target_es_version" ]]; then
         # supported upgrade
         return 0
@@ -810,7 +882,7 @@ verify_es_version_compatibility() {
         if [[ -z "$compatible_versions" ]]; then
             # If current ES version is not explicitly defined in the upgrade map, we know they have an intermediate upgrade to do.
             # We default to the lowest ES version defined in es_to_so_version as $first_es_required_version
-            local first_es_required_version=$(printf '%s\n' "${!es_to_so_version[@]}" | sort -V | head -n1)
+            first_es_required_version=$(printf '%s\n' "${!es_to_so_version[@]}" | sort -V | head -n1)
             next_step_so_version=${es_to_so_version[$first_es_required_version]}
             required_es_upgrade_version="$first_es_required_version"
         else
@@ -829,7 +901,7 @@ verify_es_version_compatibility() {
         if [[ $is_airgap -eq 0 ]]; then
             run_airgap_intermediate_upgrade
         else
-            if [[ ! -z $ISOLOC ]]; then
+            if [[ -n $ISOLOC ]]; then
                 originally_requested_iso_location="$ISOLOC"
             fi
             # Make sure ISOLOC is not set. Network installs that used soup -f would have ISOLOC set.
@@ -861,7 +933,8 @@ wait_for_salt_minion_with_restart() {
 }
 
 run_airgap_intermediate_upgrade() {
-    local originally_requested_so_version=$(cat $UPDATE_DIR/VERSION)
+    local originally_requested_so_version
+    originally_requested_so_version=$(cat "$UPDATE_DIR/VERSION")
     # preserve ISOLOC value, so we can try to use it post intermediate upgrade
     local originally_requested_iso_location="$ISOLOC"
 
@@ -873,7 +946,8 @@ run_airgap_intermediate_upgrade() {
 
     while [[ -z "$next_iso_location" ]] || [[ ! -f "$next_iso_location" && ! -b "$next_iso_location" ]]; do
         # List removable devices if any are present
-        local removable_devices=$(lsblk -no PATH,SIZE,TYPE,MOUNTPOINTS,RM | awk '$NF==1')
+        local removable_devices
+        removable_devices=$(lsblk -no PATH,SIZE,TYPE,MOUNTPOINTS,RM | awk '$NF==1')
         if [[ -n "$removable_devices" ]]; then
             echo "PATH        SIZE    TYPE    MOUNTPOINTS    RM"
             echo "$removable_devices"
@@ -894,21 +968,21 @@ run_airgap_intermediate_upgrade() {
 
     echo "Using $next_iso_location for required intermediary upgrade."
     exec bash <<EOF
-        ISOLOC=$next_iso_location soup -y && \
-        ISOLOC=$next_iso_location soup -y && \
+        ISOLOC="$next_iso_location" soup -y && \
+        ISOLOC="$next_iso_location" soup -y && \
 
         echo -e "\n##############################################################################################################################\n" && \
         echo -e "Verifying Elasticsearch was successfully upgraded to $required_es_upgrade_version across the grid. This part can take a while as Searchnodes/Heavynodes sync up with the Manager! \n\nOnce verification completes the next soup will begin automatically. If verification takes longer than 1 hour it will stop waiting and your grid will remain at $next_step_so_version. Allowing for all Searchnodes/Heavynodes to upgrade Elasticsearch to the required version on their own time.\n" && \
 
-        timeout --foreground 4000 bash /tmp/so_intermediate_upgrade_verification.sh $required_es_upgrade_version $es_required_version_statefile && \
+        timeout --foreground 4000 bash /tmp/so_intermediate_upgrade_verification.sh "$required_es_upgrade_version" "$es_required_version_statefile" && \
 
         echo -e "\n##############################################################################################################################\n" && \
 
         # automatically start the next soup if the original ISO isn't using the same block device we just used
         if [[ -n "$originally_requested_iso_location" ]] && [[ "$originally_requested_iso_location" != "$next_iso_location" ]]; then
             umount /tmp/soagupdate
-            ISOLOC=$originally_requested_iso_location soup -y && \
-            ISOLOC=$originally_requested_iso_location soup -y
+            ISOLOC="$originally_requested_iso_location" soup -y && \
+            ISOLOC="$originally_requested_iso_location" soup -y
         else
             echo "Could not automatically start next soup to $originally_requested_so_version. Soup will now exit here at $(cat /etc/soversion)" && \
 
@@ -924,29 +998,29 @@ run_network_intermediate_upgrade() {
     if [[ -n "$BRANCH" ]]; then
         local originally_requested_so_branch="$BRANCH"
     else
-        local originally_requested_so_branch="2.4/main"
+        local originally_requested_so_branch="3/main"
     fi
 
     echo "Starting automated intermediate upgrade to $next_step_so_version."
     echo "After completion, the system will automatically attempt to upgrade to the latest version."
     echo -e "\n##############################################################################################################################\n"
     exec bash << EOF
-        BRANCH=$next_step_so_version soup -y && \
-        BRANCH=$next_step_so_version soup -y && \
+        BRANCH="$next_step_so_version" soup -y && \
+        BRANCH="$next_step_so_version" soup -y && \
 
         echo -e "\n##############################################################################################################################\n" && \
         echo -e "Verifying Elasticsearch was successfully upgraded to $required_es_upgrade_version across the grid. This part can take a while as Searchnodes/Heavynodes sync up with the Manager! \n\nOnce verification completes the next soup will begin automatically. If verification takes longer than 1 hour it will stop waiting and your grid will remain at $next_step_so_version. Allowing for all Searchnodes/Heavynodes to upgrade Elasticsearch to the required version on their own time.\n" && \
 
-        timeout --foreground 4000 bash /tmp/so_intermediate_upgrade_verification.sh $required_es_upgrade_version $es_required_version_statefile && \
+        timeout --foreground 4000 bash /tmp/so_intermediate_upgrade_verification.sh "$required_es_upgrade_version" "$es_required_version_statefile" && \
 
         echo -e "\n##############################################################################################################################\n" && \
         if [[ -n "$originally_requested_iso_location" ]]; then
             # nonairgap soup that used -f originally, runs intermediate upgrade using network + BRANCH, later coming back to the original ISO for the last soup
-            ISOLOC=$originally_requested_iso_location soup -y && \
-            ISOLOC=$originally_requested_iso_location soup -y
+            ISOLOC="$originally_requested_iso_location" soup -y && \
+            ISOLOC="$originally_requested_iso_location" soup -y
         else
-            BRANCH=$originally_requested_so_branch soup -y && \
-            BRANCH=$originally_requested_so_branch soup -y
+            BRANCH="$originally_requested_so_branch" soup -y && \
+            BRANCH="$originally_requested_so_branch" soup -y
         fi
         echo -e "\n##############################################################################################################################\n"
 EOF

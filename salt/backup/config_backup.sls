@@ -32,3 +32,4 @@ so_config_backup:
     - daymonth: '*'
     - month: '*'
     - dayweek: '*'
+
