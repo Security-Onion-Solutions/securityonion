@@ -68,6 +68,7 @@ base:
     - backup.config_backup
     - nginx
     - influxdb
+    - postgres
     - soc
     - kratos
     - hydra
@@ -95,6 +96,7 @@ base:
     - backup.config_backup
     - nginx
     - influxdb
+    - postgres
     - soc
     - kratos
     - hydra
@@ -123,6 +125,7 @@ base:
     - registry
     - nginx
     - influxdb
+    - postgres
     - strelka.manager
     - soc
     - kratos
@@ -153,6 +156,7 @@ base:
     - registry
     - nginx
     - influxdb
+    - postgres
     - strelka.manager
     - soc
     - kratos
@@ -181,6 +185,7 @@ base:
     - manager
     - nginx
     - influxdb
+    - postgres
     - strelka.manager
     - soc
     - kratos

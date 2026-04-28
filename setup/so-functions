@@ -821,6 +821,7 @@ create_manager_pillars() {
 	soc_pillar
 	idh_pillar
 	influxdb_pillar
+	postgres_pillar
 	logrotate_pillar
 	patch_pillar
 	nginx_pillar
@@ -1053,6 +1054,7 @@ generate_passwords(){
   HYDRAKEY=$(get_random_value)
   HYDRASALT=$(get_random_value)
   REDISPASS=$(get_random_value)
+  POSTGRESPASS=$(get_random_value)
   SOCSRVKEY=$(get_random_value 64)
   IMPORTPASS=$(get_random_value)
 }
@@ -1355,6 +1357,12 @@ influxdb_pillar() {
 		"  token: $INFLUXTOKEN" > $local_salt_dir/pillar/influxdb/token.sls
 }
 
+postgres_pillar() {
+	title "Create the postgres pillar file"
+	touch $adv_postgres_pillar_file
+	touch $postgres_pillar_file
+}
+
 make_some_dirs() {
 	mkdir -p /nsm
 	mkdir -p "$default_salt_dir"
@@ -1364,7 +1372,7 @@ make_some_dirs() {
 	mkdir -p $local_salt_dir/salt/firewall/portgroups
 	mkdir -p $local_salt_dir/salt/firewall/ports
 
-	for THEDIR in bpf elasticsearch ntp firewall redis backup influxdb strelka sensoroni soc docker zeek suricata nginx telegraf logstash soc manager kratos hydra idh elastalert stig global kafka versionlock hypervisor vm; do
+	for THEDIR in bpf elasticsearch ntp firewall redis backup influxdb postgres strelka sensoroni soc docker zeek suricata nginx telegraf logstash soc manager kratos hydra idh elastalert stig global kafka versionlock hypervisor vm; do
 	mkdir -p $local_salt_dir/pillar/$THEDIR
 	touch $local_salt_dir/pillar/$THEDIR/adv_$THEDIR.sls
 	touch $local_salt_dir/pillar/$THEDIR/soc_$THEDIR.sls
@@ -1844,7 +1852,8 @@ secrets_pillar(){
 	printf '%s\n'\
 		"secrets:"\
 		"  import_pass: $IMPORTPASS"\
-		"  influx_pass: $INFLUXPASS" > $local_salt_dir/pillar/secrets.sls
+		"  influx_pass: $INFLUXPASS"\
+		"  postgres_pass: $POSTGRESPASS" > $local_salt_dir/pillar/secrets.sls
   fi
 }
 

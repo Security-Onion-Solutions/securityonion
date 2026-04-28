@@ -485,7 +485,44 @@ elasticsearch_backup_index_templates() {
   tar -czf /nsm/backup/3.0.0_elasticsearch_index_templates.tar.gz -C /opt/so/conf/elasticsearch/templates/index/ .
 }
 
+ensure_postgres_local_pillar() {
+  # Postgres was added as a service after 3.0.0, so the new pillar/top.sls
+  # references postgres.soc_postgres / postgres.adv_postgres unconditionally.
+  # Managers upgrading from 3.0.0 have no /opt/so/saltstack/local/pillar/postgres/
+  # (make_some_dirs only runs at install time), so the stubs must be created
+  # here before salt-master restarts against the new top.sls.
+  echo "Ensuring postgres local pillar stubs exist."
+  local dir=/opt/so/saltstack/local/pillar/postgres
+  mkdir -p "$dir"
+  [[ -f "$dir/soc_postgres.sls" ]] || touch "$dir/soc_postgres.sls"
+  [[ -f "$dir/adv_postgres.sls" ]] || touch "$dir/adv_postgres.sls"
+  chown -R socore:socore "$dir"
+}
+
+ensure_postgres_secret() {
+  # On a fresh install, generate_passwords + secrets_pillar seed
+  # secrets:postgres_pass in /opt/so/saltstack/local/pillar/secrets.sls. That
+  # code path is skipped on upgrade (secrets.sls already exists from 3.0.0
+  # with import_pass/influx_pass but no postgres_pass), so the postgres
+  # container's POSTGRES_PASSWORD_FILE and SOC's PG_ADMIN_PASS would be empty
+  # after highstate. Generate one now if missing.
+  local secrets_file=/opt/so/saltstack/local/pillar/secrets.sls
+  if [[ ! -f "$secrets_file" ]]; then
+    echo "WARNING: $secrets_file missing; skipping postgres_pass backfill."
+    return 0
+  fi
+  if so-yaml.py get -r "$secrets_file" secrets.postgres_pass >/dev/null 2>&1; then
+    echo "secrets.postgres_pass already set; leaving as-is."
+    return 0
+  fi
+  echo "Seeding secrets.postgres_pass in $secrets_file."
+  so-yaml.py add "$secrets_file" secrets.postgres_pass "$(get_random_value)"
+  chown socore:socore "$secrets_file"
+}
+
 up_to_3.1.0() {
+  ensure_postgres_local_pillar
+  ensure_postgres_secret
   determine_elastic_agent_upgrade
   elasticsearch_backup_index_templates
   # Clear existing component template state file.
@@ -501,6 +538,20 @@ post_to_3.1.0() {
   if [[ $SALT_CLOUD_CONFIGURED == true ]]; then
     salt-call state.apply salt.cloud.config concurrent=True
   fi
+
+  # Backfill the Telegraf creds pillar for every accepted minion. so-telegraf-cred
+  # add is idempotent — it no-ops when an entry already exists — so this is safe
+  # to run on every soup. The subsequent state.apply creates/updates the matching
+  # Postgres roles from the reconciled pillar.
+  echo "Reconciling Telegraf Postgres creds for accepted minions."
+  for mid in $(salt-key --out=json --list=accepted 2>/dev/null | jq -r '.minions[]?' 2>/dev/null); do
+    [[ -n "$mid" ]] || continue
+    /usr/sbin/so-telegraf-cred add "$mid" || echo "  warning: so-telegraf-cred add $mid failed" >&2
+  done
+  # Run through the master (not --local) so state compilation uses the
+  # master's configured file_roots; the manager's /etc/salt/minion has no
+  # file_roots of its own and --local would fail with "No matching sls found".
+  salt-call state.apply postgres.telegraf_users queue=True || true
 
   POSTVERSION=3.1.0
 }
