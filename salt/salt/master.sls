@@ -15,6 +15,7 @@
 
 include:
   - salt.minion
+  - salt.master.pyinotify
 {%   if 'vrt' in salt['pillar.get']('features', []) %}
   - salt.cloud
   - salt.cloud.reactor_config_hypervisor
