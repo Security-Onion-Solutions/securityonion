@@ -1,6 +1,5 @@
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 {% from 'docker/docker.map.jinja' import DOCKERMERGED %}
-{% from 'telegraf/map.jinja' import TELEGRAFMERGED %}
 {% import_yaml 'firewall/defaults.yaml' as FIREWALL_DEFAULT %}
 
 {# add our ip to self #}
@@ -54,18 +53,6 @@
 {%     endif %}
 {%   endif %}
 
-{% endif %}
-
-{# Open Postgres (5432) to minion hostgroups when Telegraf is configured to write to Postgres #}
-{% set TG_OUT = TELEGRAFMERGED.output | upper %}
-{% if TG_OUT in ['POSTGRES', 'BOTH'] %}
-{%   if role.startswith('manager') or role == 'standalone' or role == 'eval' %}
-{%     for r in ['sensor', 'searchnode', 'heavynode', 'receiver', 'fleet', 'idh', 'desktop', 'import'] %}
-{%       if FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups[r] is defined %}
-{%         do FIREWALL_DEFAULT.firewall.role[role].chain["DOCKER-USER"].hostgroups[r].portgroups.append('postgres') %}
-{%       endif %}
-{%     endfor %}
-{%   endif %}
 {% endif %}
 
 {% set FIREWALL_MERGED = salt['pillar.get']('firewall', FIREWALL_DEFAULT.firewall, merge=True) %}
