@@ -485,6 +485,54 @@ elasticsearch_backup_index_templates() {
   tar -czf /nsm/backup/3.0.0_elasticsearch_index_templates.tar.gz -C /opt/so/conf/elasticsearch/templates/index/ .
 }
 
+elasticfleet_set_agent_logging_level_warn() {
+    . /usr/sbin/so-elastic-fleet-common
+
+    local current_agent_policies
+    if ! current_agent_policies=$(fleet_api "agent_policies?perPage=1000"); then
+        echo "Warning: unable to retrieve Fleet agent policies"
+        return 0
+    fi
+
+    # Only updating policies that are within Security Onion defaults and do not already have any user configured advanced_settings.
+    local policies_to_update
+    policies_to_update=$(jq -c '
+        .items[]
+        | select(has("advanced_settings") | not)
+        | select(
+            .id == "so-grid-nodes_general"
+            or .id == "so-grid-nodes_heavy"
+            or .id == "endpoints-initial"
+            or (.id | startswith("FleetServer_"))
+          )
+    ' <<< "$current_agent_policies")
+
+    if [[ -z "$policies_to_update" ]]; then
+        return 0
+    fi
+
+    while IFS= read -r policy; do
+        [[ -z "$policy" ]] && continue
+
+        local policy_id policy_name policy_namespace
+        policy_id=$(jq -r '.id' <<< "$policy")
+        policy_name=$(jq -r '.name' <<< "$policy")
+        policy_namespace=$(jq -r '.namespace' <<< "$policy")
+
+        local update_logging
+        update_logging=$(jq -n \
+            --arg name "$policy_name" \
+            --arg namespace "$policy_namespace" \
+            '{name: $name, namespace: $namespace, advanced_settings: {agent_logging_level: "warning"}}'
+        )
+
+        echo "Setting elastic agent_logging_level to warning on policy '$policy_name' ($policy_id)."
+        if ! fleet_api "agent_policies/$policy_id" -XPUT -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$update_logging" >/dev/null; then
+            echo "  warning: failed to update agent policy '$policy_name' ($policy_id)" >&2
+        fi
+    done <<< "$policies_to_update"
+}
+
 ensure_postgres_local_pillar() {
   # Postgres was added as a service after 3.0.0, so the new pillar/top.sls
   # references postgres.soc_postgres / postgres.adv_postgres unconditionally.
@@ -552,6 +600,9 @@ post_to_3.1.0() {
   # master's configured file_roots; the manager's /etc/salt/minion has no
   # file_roots of its own and --local would fail with "No matching sls found".
   salt-call state.apply postgres.telegraf_users queue=True || true
+
+  # Update default agent policies to use logging level warn.
+  elasticfleet_set_agent_logging_level_warn || true
 
   POSTVERSION=3.1.0
 }
