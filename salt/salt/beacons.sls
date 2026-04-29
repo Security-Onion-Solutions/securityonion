@@ -5,7 +5,7 @@
 {% set SCHEDULE = salt['pillar.get']('healthcheck:schedule', 30) %}
 
 include:
-  - salt
+  - salt.minion
 
 {% if CHECKS and ENABLED %}
 salt_beacons:
