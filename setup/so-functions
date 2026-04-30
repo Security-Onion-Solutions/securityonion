@@ -1057,6 +1057,11 @@ generate_passwords(){
   POSTGRESPASS=$(get_random_value)
   SOCSRVKEY=$(get_random_value 64)
   IMPORTPASS=$(get_random_value)
+  # postsalt: salt-master connects to so_pillar.* as so_pillar_master, and the
+  # so-postgres container needs a symmetric key for pgcrypto-encrypted secrets.
+  # Both are generated here so they survive reinstall like the other secrets.
+  PILLARMASTERPASS=$(get_random_value)
+  SO_PILLAR_KEY=$(get_random_value 64)
 }
 
 generate_interface_vars() {
@@ -1853,7 +1858,34 @@ secrets_pillar(){
 		"secrets:"\
 		"  import_pass: $IMPORTPASS"\
 		"  influx_pass: $INFLUXPASS"\
+		"  pillar_master_pass: $PILLARMASTERPASS"\
 		"  postgres_pass: $POSTGRESPASS" > $local_salt_dir/pillar/secrets.sls
+  elif ! grep -q '^[[:space:]]*pillar_master_pass:' $local_salt_dir/pillar/secrets.sls; then
+	# Existing install pre-postsalt — append the new key without disturbing
+	# the values already on disk. Keys we already wrote stay; only the new
+	# pillar_master_pass is added.
+	info "Appending pillar_master_pass to existing Secrets Pillar"
+	if [ -z "$PILLARMASTERPASS" ]; then
+	  PILLARMASTERPASS=$(get_random_value)
+	fi
+	printf '  pillar_master_pass: %s\n' "$PILLARMASTERPASS" >> $local_salt_dir/pillar/secrets.sls
+  fi
+
+  # postsalt: write the so_pillar pgcrypto master key to a 0400 file owned by
+  # root. The key itself is never read by Salt — schema_pillar.sls loads it
+  # into the so-postgres container via ALTER ROLE so_pillar_secret_owner SET
+  # so_pillar.master_key = '<key>'; the file just lets the value survive
+  # container restarts.
+  if [ ! -f /opt/so/conf/postgres/so_pillar.key ]; then
+	info "Generating so_pillar pgcrypto master key"
+	mkdir -p /opt/so/conf/postgres
+	if [ -z "$SO_PILLAR_KEY" ]; then
+	  SO_PILLAR_KEY=$(get_random_value 64)
+	fi
+	umask 077
+	printf '%s' "$SO_PILLAR_KEY" > /opt/so/conf/postgres/so_pillar.key
+	chmod 0400 /opt/so/conf/postgres/so_pillar.key
+	chown root:root /opt/so/conf/postgres/so_pillar.key
   fi
 }
 

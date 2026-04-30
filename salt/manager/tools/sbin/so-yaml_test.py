@@ -991,3 +991,118 @@ class TestLoadYaml(unittest.TestCase):
                     soyaml.loadYaml("/tmp/so-yaml_test-unreadable.yaml")
                     sysmock.assert_called_with(1)
                     self.assertIn("Error reading file", mock_stderr.getvalue())
+
+
+class TestPurge(unittest.TestCase):
+
+    def test_purge_missing_arg(self):
+        # showUsage calls sys.exit(1); patch it like the other tests do.
+        with patch('sys.exit', new=MagicMock()):
+            with patch('sys.stderr', new=StringIO()) as mock_stderr:
+                rc = soyaml.purge([])
+                self.assertEqual(rc, 1)
+                self.assertIn("Missing filename", mock_stderr.getvalue())
+
+    def test_purge_existing_file(self):
+        filename = "/tmp/so-yaml_test_purge.yaml"
+        with open(filename, "w") as f:
+            f.write("key: value\n")
+        # Disable PG mirror so the test doesn't shell out to docker.
+        with patch.object(soyaml, '_SO_YAML_PG_AVAILABLE', False):
+            rc = soyaml.purge([filename])
+        self.assertEqual(rc, 0)
+        import os as _os
+        self.assertFalse(_os.path.exists(filename))
+
+    def test_purge_missing_file_idempotent(self):
+        filename = "/tmp/so-yaml_test_purge_missing.yaml"
+        import os as _os
+        if _os.path.exists(filename):
+            _os.remove(filename)
+        with patch.object(soyaml, '_SO_YAML_PG_AVAILABLE', False):
+            rc = soyaml.purge([filename])
+        self.assertEqual(rc, 0)
+
+
+class TestSoYamlPostgres(unittest.TestCase):
+    """Tests the path-locator and write/purge contract of the dual-write
+    backend module without actually contacting Postgres."""
+
+    def setUp(self):
+        import importlib
+        self.mod = importlib.import_module("so_yaml_postgres")
+
+    def test_locate_global_soc(self):
+        scope, role, mid, path = self.mod.locate(
+            "/opt/so/saltstack/local/pillar/soc/soc_soc.sls")
+        self.assertEqual(scope, "global")
+        self.assertIsNone(role)
+        self.assertIsNone(mid)
+        self.assertEqual(path, "soc.soc_soc")
+
+    def test_locate_global_advanced(self):
+        scope, role, mid, path = self.mod.locate(
+            "/opt/so/saltstack/local/pillar/soc/adv_soc.sls")
+        self.assertEqual(scope, "global")
+        self.assertEqual(path, "soc.adv_soc")
+
+    def test_locate_minion(self):
+        scope, role, mid, path = self.mod.locate(
+            "/opt/so/saltstack/local/pillar/minions/h1_sensor.sls")
+        self.assertEqual(scope, "minion")
+        self.assertEqual(mid, "h1_sensor")
+        self.assertEqual(path, "minions.h1_sensor")
+
+    def test_locate_minion_advanced(self):
+        scope, role, mid, path = self.mod.locate(
+            "/opt/so/saltstack/local/pillar/minions/adv_h1_sensor.sls")
+        self.assertEqual(scope, "minion")
+        self.assertEqual(mid, "h1_sensor")
+        self.assertEqual(path, "minions.adv_h1_sensor")
+
+    def test_locate_skip_secrets(self):
+        with self.assertRaises(self.mod.SkipPath):
+            self.mod.locate("/opt/so/saltstack/local/pillar/secrets.sls")
+
+    def test_locate_skip_postgres_auth(self):
+        with self.assertRaises(self.mod.SkipPath):
+            self.mod.locate("/opt/so/saltstack/local/pillar/postgres/auth.sls")
+
+    def test_locate_skip_mine_driven(self):
+        with self.assertRaises(self.mod.SkipPath):
+            self.mod.locate("/opt/so/saltstack/local/pillar/elasticsearch/nodes.sls")
+
+    def test_locate_skip_top(self):
+        with self.assertRaises(self.mod.SkipPath):
+            self.mod.locate("/opt/so/saltstack/local/pillar/top.sls")
+
+    def test_locate_skip_unrelated(self):
+        with self.assertRaises(self.mod.SkipPath):
+            self.mod.locate("/etc/hostname")
+
+    def test_pg_str_escapes(self):
+        self.assertEqual(self.mod._pg_str("a'b"), "'a''b'")
+        self.assertEqual(self.mod._pg_str(None), "NULL")
+
+    def test_conflict_target(self):
+        self.assertIn("scope='global'", self.mod._conflict_target("global"))
+        self.assertIn("scope='role'", self.mod._conflict_target("role"))
+        self.assertIn("scope='minion'", self.mod._conflict_target("minion"))
+        with self.assertRaises(ValueError):
+            self.mod._conflict_target("bogus")
+
+    def test_write_yaml_skips_disk_only_path(self):
+        with patch.object(self.mod, '_is_enabled', return_value=True):
+            ok, msg = self.mod.write_yaml(
+                "/opt/so/saltstack/local/pillar/secrets.sls",
+                {"secrets": {"foo": "bar"}})
+        self.assertFalse(ok)
+        self.assertIn("disk-only", msg)
+
+    def test_write_yaml_unreachable(self):
+        with patch.object(self.mod, '_is_enabled', return_value=False):
+            ok, msg = self.mod.write_yaml(
+                "/opt/so/saltstack/local/pillar/soc/soc_soc.sls",
+                {"soc": {"foo": "bar"}})
+        self.assertFalse(ok)
+        self.assertEqual(msg, "postgres unreachable")

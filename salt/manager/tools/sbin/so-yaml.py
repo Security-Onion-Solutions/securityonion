@@ -13,6 +13,17 @@ import json
 
 lockFile = "/tmp/so-yaml.lock"
 
+# postsalt: dual-write each disk mutation into so_pillar.* in so-postgres so
+# Salt's ext_pillar and SOC's PostgresConfigstore see the same data without
+# requiring a separate writer. Failure of the PG side is logged but never
+# fails the disk write — disk is canonical during the migration transition.
+try:
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import so_yaml_postgres
+    _SO_YAML_PG_AVAILABLE = True
+except Exception as _exc:
+    _SO_YAML_PG_AVAILABLE = False
+
 
 def showUsage(args):
     print('Usage: {} <COMMAND> <YAML_FILE> [ARGS...]'.format(sys.argv[0]), file=sys.stderr)
@@ -25,6 +36,7 @@ def showUsage(args):
     print('    get [-r]         - Displays (to stdout) the value stored in the given key. Requires KEY arg. Use -r for raw output without YAML formatting.', file=sys.stderr)
     print('    remove           - Removes a yaml key, if it exists. Requires KEY arg.', file=sys.stderr)
     print('    replace          - Replaces (or adds) a new key and set its value. Requires KEY and VALUE args.', file=sys.stderr)
+    print('    purge            - Delete the YAML file from disk and remove its rows from so_pillar.* (no KEY arg).', file=sys.stderr)
     print('    help             - Prints this usage information.', file=sys.stderr)
     print('', file=sys.stderr)
     print('  Where:', file=sys.stderr)
@@ -53,7 +65,52 @@ def loadYaml(filename):
 
 def writeYaml(filename, content):
     file = open(filename, "w")
-    return yaml.safe_dump(content, file)
+    result = yaml.safe_dump(content, file)
+    file.close()
+    _mirrorToPostgres(filename, content)
+    return result
+
+
+def _mirrorToPostgres(filename, content):
+    """Best-effort dual-write of a YAML mutation into so_pillar.*. Skips
+    files outside the PG-managed pillar surface (secrets.sls,
+    elasticsearch/nodes.sls, etc.) and silently degrades when so-postgres
+    is unreachable. Disk write is canonical; this never raises.
+
+    Only real PG failures (`pg write failed: ...`) are logged so the
+    common cases (skipped path, postgres not running) don't pollute
+    stderr."""
+    if not _SO_YAML_PG_AVAILABLE:
+        return
+    try:
+        ok, msg = so_yaml_postgres.write_yaml(filename, content,
+                                              reason="so-yaml " + " ".join(sys.argv[1:2]))
+        if not ok and msg.startswith("pg write failed"):
+            print(f"so-yaml: {msg}", file=sys.stderr)
+    except Exception as e:  # pragma: no cover — defensive: never break disk write
+        print(f"so-yaml: pg mirror exception: {e}", file=sys.stderr)
+
+
+def purgeFile(filename):
+    """Delete a YAML file from disk and mirror the deletion into PG.
+    Idempotent: missing file → success. Mirrors so-yaml's other verbs
+    in tolerating a soft PG failure."""
+    if os.path.exists(filename):
+        try:
+            os.remove(filename)
+        except Exception as e:
+            print(f"Failed to remove {filename}: {e}", file=sys.stderr)
+            return 1
+
+    if _SO_YAML_PG_AVAILABLE:
+        try:
+            ok, msg = so_yaml_postgres.purge_yaml(filename,
+                                                  reason="so-yaml purge")
+            if not ok and msg.startswith("pg purge failed"):
+                print(f"so-yaml: {msg}", file=sys.stderr)
+        except Exception as e:
+            print(f"so-yaml: pg purge exception: {e}", file=sys.stderr)
+    return 0
 
 
 def appendItem(content, key, listItem):
@@ -371,6 +428,18 @@ def get(args):
     return 0
 
 
+def purge(args):
+    """purge YAML_FILE — delete the file from disk and remove the matching
+    rows from so_pillar.* in so-postgres. Used by so-minion's delete path
+    (in place of `rm -f`) so the audit log captures the deletion and
+    role_member rows get cleaned up via FK CASCADE on so_pillar.minion."""
+    if len(args) != 1:
+        print('Missing filename arg', file=sys.stderr)
+        showUsage(None)
+        return 1
+    return purgeFile(args[0])
+
+
 def main():
     args = sys.argv[1:]
 
@@ -388,6 +457,7 @@ def main():
         "get": get,
         "remove": remove,
         "replace": replace,
+        "purge": purge,
     }
 
     code = 1
