@@ -15,6 +15,7 @@ include:
   - manager.elasticsearch
   - manager.kibana
   - manager.managed_soc_annotations
+  - manager.beacons
 
 repo_log_dir:
   file.directory:
@@ -230,6 +231,7 @@ surifiltersrules:
     - source: salt://suricata/files/so_filters.rules
     - user: 939
     - group: 939
+
 
 {% else %}
 
