@@ -14,6 +14,7 @@
 
 include:
   - salt.minion
+  - salt.master.ext_pillar_postgres
 {%   if 'vrt' in salt['pillar.get']('features', []) %}
   - salt.cloud
   - salt.cloud.reactor_config_hypervisor

@@ -1,0 +1,38 @@
+# /etc/salt/master.d/ext_pillar_postgres.conf
+# Rendered by salt/salt/master/ext_pillar_postgres.sls.
+# Reads the so_pillar.* schema in so-postgres and overlays it onto SLS pillar.
+# SLS still renders first (ext_pillar_first: False) so bootstrap and mine-driven
+# pillars work before Postgres is reachable; PG values overlay/override on top.
+
+postgres:
+  host: {{ pillar.get('postgres', {}).get('host', '127.0.0.1') }}
+  port: {{ pillar.get('postgres', {}).get('port', 5432) }}
+  db: securityonion
+  user: so_pillar_master
+  pass: {{ pillar['secrets']['pillar_master_pass'] }}
+
+ext_pillar_first: False
+pillar_source_merging_strategy: smart
+pillar_merge_lists: False
+
+pillar_cache: True
+pillar_cache_backend: disk
+pillar_cache_ttl: {{ pillar.get('postgres', {}).get('so_pillar', {}).get('pillar_cache_ttl', 60) }}
+
+# List form (not mapping form) so result rows merge into the pillar root rather
+# than under a named subtree. Verified against salt/pillar/sql_base.py: list
+# entries pass root=None to enter_root() which sets self.focus = self.result.
+ext_pillar:
+  - postgres:
+      - query: "SELECT data FROM so_pillar.v_pillar_global WHERE %s IS NOT NULL ORDER BY sort_key, pillar_path"
+        as_json: True
+        ignore_null: True
+      - query: "SELECT data FROM so_pillar.v_pillar_role WHERE minion_id = %s ORDER BY sort_key, pillar_path"
+        as_json: True
+        ignore_null: True
+      - query: "SELECT data FROM so_pillar.v_pillar_minion WHERE minion_id = %s ORDER BY sort_key, pillar_path"
+        as_json: True
+        ignore_null: True
+      - query: "SELECT data FROM so_pillar.fn_pillar_secrets(%s)"
+        as_json: True
+        ignore_null: True
