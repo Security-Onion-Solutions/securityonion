@@ -19,7 +19,7 @@ import logging
 import os
 import time
 
-import salt.client
+from salt.client import Caller
 import yaml
 
 LOG = logging.getLogger(__name__)
@@ -57,7 +57,7 @@ def _load_push_map():
 
 def _push_enabled():
     try:
-        caller = salt.client.Caller()
+        caller = Caller()
         return bool(caller.cmd('pillar.get', 'global:push:enabled', True))
     except Exception:
         LOG.exception('push_pillar: pillar.get global:push:enabled failed, assuming enabled')
@@ -132,7 +132,7 @@ def run():
         LOG.info('push_pillar: push disabled, skipping')
         return {}
 
-    path = data.get('data', {}).get('path', '')  # noqa: F821 -- data provided by reactor
+    path = data.get('path', '')  # noqa: F821 -- data provided by reactor
     if not path or not path.startswith(PILLAR_ROOT):
         LOG.debug('push_pillar: ignoring path outside pillar root: %s', path)
         return {}

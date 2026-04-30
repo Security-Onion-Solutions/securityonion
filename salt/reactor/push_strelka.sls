@@ -14,7 +14,7 @@ import logging
 import os
 import time
 
-import salt.client
+from salt.client import Caller
 
 LOG = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ def _sensor_compound():
 
 def _push_enabled():
     try:
-        caller = salt.client.Caller()
+        caller = Caller()
         return bool(caller.cmd('pillar.get', 'global:push:enabled', True))
     except Exception:
         LOG.exception('push_strelka: pillar.get global:push:enabled failed, assuming enabled')
@@ -89,7 +89,7 @@ def run():
         LOG.info('push_strelka: push disabled, skipping')
         return {}
 
-    path = data.get('data', {}).get('path', '')  # noqa: F821 -- data provided by reactor
+    path = data.get('path', '')  # noqa: F821 -- data provided by reactor
     actions = [{'state': 'strelka', 'tgt': _sensor_compound()}]
     _write_intent('rules_strelka', actions, path)
     LOG.info('push_strelka: intent updated for path=%s', path)
