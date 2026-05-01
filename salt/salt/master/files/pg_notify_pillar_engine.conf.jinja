@@ -1,0 +1,20 @@
+# /etc/salt/master.d/pg_notify_pillar_engine.conf
+# Rendered by salt/salt/master/pg_notify_pillar_engine.sls.
+#
+# Subscribes the salt-master to so_pillar.change_queue via LISTEN
+# so_pillar_change. The engine drains queued changes and re-publishes
+# them on the event bus as 'so/pillar/changed'. Reactor wiring is in
+# so_pillar_reactor.conf.
+
+engines:
+  - pg_notify_pillar:
+      host: {{ pillar.get('postgres', {}).get('host', '127.0.0.1') }}
+      port: {{ pillar.get('postgres', {}).get('port', 5432) }}
+      dbname: securityonion
+      user: so_pillar_master
+      password: {{ pillar['secrets']['pillar_master_pass'] }}
+      channel: so_pillar_change
+      debounce_ms: {{ pillar.get('postgres', {}).get('so_pillar', {}).get('engine_debounce_ms', 500) }}
+      reconnect_backoff: {{ pillar.get('postgres', {}).get('so_pillar', {}).get('engine_reconnect_backoff', 5) }}
+      backlog_interval: {{ pillar.get('postgres', {}).get('so_pillar', {}).get('engine_backlog_interval', 30) }}
+      batch_limit: {{ pillar.get('postgres', {}).get('so_pillar', {}).get('engine_batch_limit', 500) }}

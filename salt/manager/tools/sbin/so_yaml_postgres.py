@@ -69,6 +69,12 @@ class SkipPath(Exception):
     """Raised when a file path is intentionally not mirrored to PG."""
 
 
+def is_enabled():
+    """Public alias for callers that want to probe PG reachability without
+    relying on a leading-underscore private name."""
+    return _is_enabled()
+
+
 def _is_enabled():
     """PG dual-write only fires if so-postgres is reachable. Cheap probe.
     Returns True when docker exec succeeds, False otherwise. We never
@@ -147,6 +153,55 @@ def _conflict_target(scope):
     if scope == "minion":
         return "(minion_id, pillar_path) WHERE scope='minion'"
     raise ValueError(f"unknown scope {scope!r}")
+
+
+def is_pg_managed(path):
+    """True if this path maps to a so_pillar.* row (locate() succeeds).
+    Bootstrap and mine-driven files return False — they always live on
+    disk regardless of so-yaml's backend mode."""
+    try:
+        locate(path)
+        return True
+    except SkipPath:
+        return False
+
+
+def read_yaml(path):
+    """Return the content dict stored in so_pillar.pillar_entry for `path`,
+    or None when no row exists. Raises SkipPath when `path` is not part of
+    the PG-managed surface (caller should read disk in that case).
+
+    Used by so-yaml.py PG-canonical mode so `replace`, `get`, etc. resolve
+    against the database rather than a stale (or absent) disk file."""
+    if not _is_enabled():
+        return None
+    scope, role, minion_id, pillar_path = locate(path)
+
+    if scope == "minion":
+        sql = ("SELECT data FROM so_pillar.pillar_entry "
+               "WHERE scope='minion' "
+               f"AND minion_id={_pg_str(minion_id)} "
+               f"AND pillar_path={_pg_str(pillar_path)}")
+    elif scope == "role":
+        sql = ("SELECT data FROM so_pillar.pillar_entry "
+               "WHERE scope='role' "
+               f"AND role_name={_pg_str(role)} "
+               f"AND pillar_path={_pg_str(pillar_path)}")
+    else:
+        sql = ("SELECT data FROM so_pillar.pillar_entry "
+               "WHERE scope='global' "
+               f"AND pillar_path={_pg_str(pillar_path)}")
+
+    try:
+        out = _docker_psql(sql).strip()
+    except Exception:
+        return None
+    if not out:
+        return None
+    try:
+        return json.loads(out)
+    except (ValueError, TypeError):
+        return None
 
 
 def write_yaml(path, content_dict, *, reason="so-yaml dual-write"):

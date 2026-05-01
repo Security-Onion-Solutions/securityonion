@@ -54,6 +54,10 @@ so_pillar_postgres_wait_ready:
 {%   do sql_files.append('007_drift_pgcron.sql') %}
 {% endif %}
 
+# 008 always applies — pg_notify-driven change fan-out is what the salt-master
+# pg_notify_pillar engine consumes. Without it reactor wiring sees no events.
+{% do sql_files.append('008_change_notify.sql') %}
+
 {% for sql_file in sql_files %}
 so_pillar_apply_{{ sql_file | replace('.', '_') }}:
   cmd.run:
@@ -87,7 +91,7 @@ so_pillar_master_key_configure:
           exit 1
         fi
     - require:
-      - cmd: so_pillar_apply_006_rls_sql
+      - cmd: so_pillar_apply_{{ sql_files[-1] | replace('.', '_') }}
 
 # Run the importer once after the schema is in place. Idempotent — re-runs
 # with no SLS edits produce zero row changes.
@@ -96,6 +100,29 @@ so_pillar_initial_import:
     - name: /usr/sbin/so-pillar-import --yes --reason 'schema_pillar.sls initial import'
     - require:
       - cmd: so_pillar_master_key_configure
+
+# Flip so-yaml from dual-write to PG-canonical for managed paths now that
+# the schema and importer are both in place. Bootstrap files (secrets.sls,
+# postgres/auth.sls, ca/init.sls, *.nodes.sls, top.sls, ...) remain on disk
+# regardless because so_yaml_postgres.locate() raises SkipPath for them.
+so_pillar_so_yaml_mode_dir:
+  file.directory:
+    - name: /opt/so/conf/so-yaml
+    - user: socore
+    - group: socore
+    - mode: '0755'
+    - makedirs: True
+
+so_pillar_so_yaml_mode_postgres:
+  file.managed:
+    - name: /opt/so/conf/so-yaml/mode
+    - contents: postgres
+    - user: socore
+    - group: socore
+    - mode: '0644'
+    - require:
+      - file: so_pillar_so_yaml_mode_dir
+      - cmd: so_pillar_initial_import
 
 {% else %}
 

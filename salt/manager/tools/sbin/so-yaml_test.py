@@ -1106,3 +1106,214 @@ class TestSoYamlPostgres(unittest.TestCase):
                 {"soc": {"foo": "bar"}})
         self.assertFalse(ok)
         self.assertEqual(msg, "postgres unreachable")
+
+    def test_is_pg_managed_true(self):
+        self.assertTrue(self.mod.is_pg_managed(
+            "/opt/so/saltstack/local/pillar/minions/h1_sensor.sls"))
+        self.assertTrue(self.mod.is_pg_managed(
+            "/opt/so/saltstack/local/pillar/soc/soc_soc.sls"))
+
+    def test_is_pg_managed_false_for_bootstrap(self):
+        self.assertFalse(self.mod.is_pg_managed(
+            "/opt/so/saltstack/local/pillar/secrets.sls"))
+        self.assertFalse(self.mod.is_pg_managed(
+            "/opt/so/saltstack/local/pillar/postgres/auth.sls"))
+        self.assertFalse(self.mod.is_pg_managed(
+            "/opt/so/saltstack/local/pillar/elasticsearch/nodes.sls"))
+
+    def test_read_yaml_unreachable(self):
+        with patch.object(self.mod, '_is_enabled', return_value=False):
+            self.assertIsNone(self.mod.read_yaml(
+                "/opt/so/saltstack/local/pillar/soc/soc_soc.sls"))
+
+    def test_read_yaml_skips_disk_only(self):
+        with patch.object(self.mod, '_is_enabled', return_value=True):
+            with self.assertRaises(self.mod.SkipPath):
+                self.mod.read_yaml(
+                    "/opt/so/saltstack/local/pillar/secrets.sls")
+
+    def test_read_yaml_returns_data(self):
+        with patch.object(self.mod, '_is_enabled', return_value=True):
+            with patch.object(self.mod, '_docker_psql',
+                              return_value='{"soc": {"foo": "bar"}}\n'):
+                data = self.mod.read_yaml(
+                    "/opt/so/saltstack/local/pillar/soc/soc_soc.sls")
+        self.assertEqual(data, {"soc": {"foo": "bar"}})
+
+    def test_read_yaml_returns_none_when_no_row(self):
+        with patch.object(self.mod, '_is_enabled', return_value=True):
+            with patch.object(self.mod, '_docker_psql', return_value=''):
+                data = self.mod.read_yaml(
+                    "/opt/so/saltstack/local/pillar/soc/soc_soc.sls")
+        self.assertIsNone(data)
+
+    def test_read_yaml_minion_query_shape(self):
+        captured = {}
+
+        def fake_psql(sql):
+            captured['sql'] = sql
+            return '{"host": {"mainip": "10.0.0.1"}}'
+
+        with patch.object(self.mod, '_is_enabled', return_value=True):
+            with patch.object(self.mod, '_docker_psql', side_effect=fake_psql):
+                data = self.mod.read_yaml(
+                    "/opt/so/saltstack/local/pillar/minions/h1_sensor.sls")
+        self.assertEqual(data, {"host": {"mainip": "10.0.0.1"}})
+        self.assertIn("scope='minion'", captured['sql'])
+        self.assertIn("'h1_sensor'", captured['sql'])
+        self.assertIn("'minions.h1_sensor'", captured['sql'])
+
+    def test_is_enabled_public_alias(self):
+        with patch.object(self.mod, '_is_enabled', return_value=True):
+            self.assertTrue(self.mod.is_enabled())
+        with patch.object(self.mod, '_is_enabled', return_value=False):
+            self.assertFalse(self.mod.is_enabled())
+
+
+class TestSoYamlBackendMode(unittest.TestCase):
+    """Tests so-yaml's backend-mode resolution and PG-canonical routing
+    for read/write/purge. The PG calls themselves are stubbed; what we're
+    asserting is that the right backend is chosen for each (mode, path)
+    combination."""
+
+    def test_resolve_mode_env_overrides_file(self):
+        with patch.dict('os.environ', {'SO_YAML_BACKEND': 'postgres'}):
+            self.assertEqual(soyaml._resolveBackendMode(), 'postgres')
+        with patch.dict('os.environ', {'SO_YAML_BACKEND': 'disk'}):
+            self.assertEqual(soyaml._resolveBackendMode(), 'disk')
+
+    def test_resolve_mode_invalid_env_falls_back(self):
+        with patch.dict('os.environ', {'SO_YAML_BACKEND': 'garbage'}, clear=False):
+            with patch('builtins.open', side_effect=IOError):
+                self.assertEqual(soyaml._resolveBackendMode(), 'dual')
+
+    def test_resolve_mode_default_dual(self):
+        env = {k: v for k, v in __import__('os').environ.items()
+               if k != 'SO_YAML_BACKEND'}
+        with patch.dict('os.environ', env, clear=True):
+            with patch('builtins.open', side_effect=IOError):
+                self.assertEqual(soyaml._resolveBackendMode(), 'dual')
+
+    def test_is_pg_managed_proxies(self):
+        with patch.object(soyaml, '_SO_YAML_PG_AVAILABLE', True):
+            self.assertTrue(soyaml._isPgManaged(
+                "/opt/so/saltstack/local/pillar/minions/h1_sensor.sls"))
+            self.assertFalse(soyaml._isPgManaged(
+                "/opt/so/saltstack/local/pillar/secrets.sls"))
+
+    def test_is_pg_managed_false_when_module_unavailable(self):
+        with patch.object(soyaml, '_SO_YAML_PG_AVAILABLE', False):
+            self.assertFalse(soyaml._isPgManaged(
+                "/opt/so/saltstack/local/pillar/minions/h1_sensor.sls"))
+
+    def test_load_yaml_postgres_mode_reads_pg(self):
+        with patch.object(soyaml, '_BACKEND_MODE', 'postgres'):
+            with patch.object(soyaml, '_SO_YAML_PG_AVAILABLE', True):
+                with patch.object(soyaml.so_yaml_postgres, 'is_pg_managed',
+                                  return_value=True):
+                    with patch.object(soyaml.so_yaml_postgres, 'read_yaml',
+                                      return_value={"a": 1}):
+                        result = soyaml.loadYaml(
+                            "/opt/so/saltstack/local/pillar/soc/soc_soc.sls")
+        self.assertEqual(result, {"a": 1})
+
+    def test_load_yaml_postgres_mode_returns_empty_when_no_row(self):
+        with patch.object(soyaml, '_BACKEND_MODE', 'postgres'):
+            with patch.object(soyaml, '_SO_YAML_PG_AVAILABLE', True):
+                with patch.object(soyaml.so_yaml_postgres, 'is_pg_managed',
+                                  return_value=True):
+                    with patch.object(soyaml.so_yaml_postgres, 'read_yaml',
+                                      return_value=None):
+                        result = soyaml.loadYaml(
+                            "/opt/so/saltstack/local/pillar/soc/soc_soc.sls")
+        self.assertEqual(result, {})
+
+    def test_load_yaml_postgres_mode_reads_disk_for_bootstrap(self):
+        import tempfile, os as _os
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+            f.write("foo: bar\n")
+            tmp = f.name
+        try:
+            with patch.object(soyaml, '_BACKEND_MODE', 'postgres'):
+                with patch.object(soyaml, '_SO_YAML_PG_AVAILABLE', True):
+                    with patch.object(soyaml.so_yaml_postgres,
+                                      'is_pg_managed', return_value=False):
+                        result = soyaml.loadYaml(tmp)
+            self.assertEqual(result, {"foo": "bar"})
+        finally:
+            _os.unlink(tmp)
+
+    def test_write_yaml_postgres_mode_skips_disk(self):
+        import tempfile, os as _os
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+            tmp = f.name
+        _os.unlink(tmp)
+        try:
+            with patch.object(soyaml, '_BACKEND_MODE', 'postgres'):
+                with patch.object(soyaml, '_SO_YAML_PG_AVAILABLE', True):
+                    with patch.object(soyaml.so_yaml_postgres, 'is_pg_managed',
+                                      return_value=True):
+                        with patch.object(soyaml.so_yaml_postgres, 'write_yaml',
+                                          return_value=(True, 'ok')) as mock_w:
+                            soyaml.writeYaml(tmp, {"x": 1})
+            self.assertFalse(_os.path.exists(tmp))
+            mock_w.assert_called_once()
+        finally:
+            if _os.path.exists(tmp):
+                _os.unlink(tmp)
+
+    def test_write_yaml_postgres_mode_failure_is_fatal(self):
+        with patch.object(soyaml, '_BACKEND_MODE', 'postgres'):
+            with patch.object(soyaml, '_SO_YAML_PG_AVAILABLE', True):
+                with patch.object(soyaml.so_yaml_postgres, 'is_pg_managed',
+                                  return_value=True):
+                    with patch.object(soyaml.so_yaml_postgres, 'write_yaml',
+                                      return_value=(False, 'pg write failed: connection refused')):
+                        with patch('sys.exit', new=MagicMock()) as sysmock:
+                            with patch('sys.stderr', new=StringIO()) as mock_err:
+                                soyaml.writeYaml(
+                                    "/opt/so/saltstack/local/pillar/soc/soc_soc.sls",
+                                    {"x": 1})
+        sysmock.assert_called_with(1)
+
+    def test_write_yaml_disk_mode_skips_pg(self):
+        import tempfile, os as _os
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+            tmp = f.name
+        try:
+            with patch.object(soyaml, '_BACKEND_MODE', 'disk'):
+                with patch.object(soyaml, '_SO_YAML_PG_AVAILABLE', True):
+                    with patch.object(soyaml.so_yaml_postgres, 'write_yaml') as mock_w:
+                        soyaml.writeYaml(tmp, {"x": 1})
+            mock_w.assert_not_called()
+            with open(tmp) as f:
+                self.assertIn('x: 1', f.read())
+        finally:
+            _os.unlink(tmp)
+
+    def test_purge_postgres_mode_calls_pg_only(self):
+        import tempfile, os as _os
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+            tmp = f.name
+        _os.unlink(tmp)
+        with patch.object(soyaml, '_BACKEND_MODE', 'postgres'):
+            with patch.object(soyaml, '_SO_YAML_PG_AVAILABLE', True):
+                with patch.object(soyaml.so_yaml_postgres, 'is_pg_managed',
+                                  return_value=True):
+                    with patch.object(soyaml.so_yaml_postgres, 'purge_yaml',
+                                      return_value=(True, 'ok')) as mock_p:
+                        rc = soyaml.purgeFile(tmp)
+        self.assertEqual(rc, 0)
+        mock_p.assert_called_once()
+
+    def test_purge_postgres_mode_failure_returns_nonzero(self):
+        with patch.object(soyaml, '_BACKEND_MODE', 'postgres'):
+            with patch.object(soyaml, '_SO_YAML_PG_AVAILABLE', True):
+                with patch.object(soyaml.so_yaml_postgres, 'is_pg_managed',
+                                  return_value=True):
+                    with patch.object(soyaml.so_yaml_postgres, 'purge_yaml',
+                                      return_value=(False, 'pg purge failed: x')):
+                        with patch('sys.stderr', new=StringIO()):
+                            rc = soyaml.purgeFile(
+                                "/opt/so/saltstack/local/pillar/minions/h1_sensor.sls")
+        self.assertEqual(rc, 1)
