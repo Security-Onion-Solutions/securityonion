@@ -1900,8 +1900,17 @@ secrets_pillar(){
 	if [ -z "$SO_PILLAR_KEY" ]; then
 	  SO_PILLAR_KEY=$(get_random_value 64)
 	fi
-	umask 077
-	printf '%s' "$SO_PILLAR_KEY" > /opt/so/conf/postgres/so_pillar.key
+	# Subshell-scope the umask so it doesn't leak into subsequent so-setup
+	# (and salt-call) file writes. Without the (...) wrapper the umask 077
+	# persists for the rest of the install and every state-rendered config
+	# file under /opt/so/conf lands at 0600 — which breaks containers that
+	# bind-mount their config and run as a non-root user (the influxdb
+	# container, in particular, exits with "permission denied" on
+	# /conf/config.yaml after the gosu drop).
+	(
+	  umask 077
+	  printf '%s' "$SO_PILLAR_KEY" > /opt/so/conf/postgres/so_pillar.key
+	)
 	chmod 0400 /opt/so/conf/postgres/so_pillar.key
 	chown root:root /opt/so/conf/postgres/so_pillar.key
   fi
