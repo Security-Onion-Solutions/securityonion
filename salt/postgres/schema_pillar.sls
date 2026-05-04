@@ -4,7 +4,7 @@
 # Elastic License 2.0.
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
-{% if sls.split('.')[0] in allowed_states %}
+{% if 'postgres' in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 
 # Deploys the so_pillar schema (tables, views, audit triggers, secrets,
