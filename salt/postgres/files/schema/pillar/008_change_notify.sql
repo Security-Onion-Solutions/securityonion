@@ -75,3 +75,15 @@ CREATE TRIGGER tg_pillar_entry_notify
     ON so_pillar.pillar_entry
     FOR EACH ROW
     EXECUTE FUNCTION so_pillar.fn_pillar_entry_notify();
+
+-- Role grants on the change_queue table. Lived in 006_rls.sql historically but
+-- moved here so the GRANT references resolve — 006 runs before this file does.
+-- Engine reads + drains the change queue from the salt-master process. It
+-- needs SELECT to find unprocessed rows and UPDATE to mark them processed.
+-- The queue contains only locator metadata (no pillar data), so the master
+-- role's existing privilege footprint is unchanged in practice.
+GRANT SELECT, UPDATE ON so_pillar.change_queue TO so_pillar_master;
+GRANT USAGE ON SEQUENCE so_pillar.change_queue_id_seq TO so_pillar_master;
+-- Writer needs INSERT (the trigger runs as table owner, so this is just for
+-- direct testing / manual replays from psql).
+GRANT INSERT ON so_pillar.change_queue TO so_pillar_writer;

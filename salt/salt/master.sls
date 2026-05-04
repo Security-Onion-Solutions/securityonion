@@ -63,6 +63,7 @@ engines_config:
   file.managed:
     - name: /etc/salt/master.d/engines.conf
     - source: salt://salt/files/engines.conf
+    - template: jinja
 
 # update the bootstrap script when used for salt-cloud
 salt_bootstrap_cloud:

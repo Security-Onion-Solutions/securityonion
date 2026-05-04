@@ -3,10 +3,16 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-# Deploys the pg_notify_pillar engine module + its master.d config so the
+# Deploys the pg_notify_pillar engine module + its reactor config so the
 # salt-master subscribes to so_pillar.change_queue and republishes changes
 # on the salt event bus as so/pillar/changed. Reactor (so_pillar_changed.sls)
 # matches that tag and dispatches the appropriate orch.
+#
+# The actual `engines:` declaration lives in salt/salt/files/engines.conf
+# (jinja-rendered, also gated on postgres:so_pillar:enabled). It has to live
+# in a single file because salt's master.d/*.conf merge replaces top-level
+# lists rather than concatenating them — splitting `engines:` across multiple
+# .conf files leaves only one loaded.
 #
 # Gated on the same postgres:so_pillar:enabled flag as the schema and
 # ext_pillar config so the three components flip together.
@@ -24,17 +30,6 @@ pg_notify_pillar_engine_module:
     - user: root
     - group: root
     - makedirs: True
-    - watch_in:
-      - service: salt_master_service
-
-pg_notify_pillar_engine_config:
-  file.managed:
-    - name: /etc/salt/master.d/pg_notify_pillar_engine.conf
-    - source: salt://salt/master/files/pg_notify_pillar_engine.conf.jinja
-    - template: jinja
-    - mode: '0640'
-    - user: root
-    - group: salt
     - watch_in:
       - service: salt_master_service
 
@@ -59,6 +54,10 @@ pg_notify_pillar_engine_module_absent:
       - service: salt_master_service
 
 pg_notify_pillar_engine_config_absent:
+  # No-op now: the engine config used to live in master.d/pg_notify_pillar_engine.conf
+  # but was folded into engines.conf to work around salt's master.d list-replace
+  # merge. Keep this state alive (no-op test.nop) so any old installs that
+  # still have the file get it cleaned up.
   file.absent:
     - name: /etc/salt/master.d/pg_notify_pillar_engine.conf
     - watch_in:

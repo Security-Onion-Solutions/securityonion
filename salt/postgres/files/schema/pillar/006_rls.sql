@@ -28,6 +28,14 @@ BEGIN
 END
 $$;
 
+-- USAGE on the schema is the bare minimum needed to reference its tables.
+-- CONNECT on the database is needed before the role can establish a session
+-- at all (default privileges on a new DB grant CONNECT to PUBLIC, but if the
+-- securityonion database is restricted that grant has to be explicit).
+-- Password + LOGIN privileges are set later in schema_pillar.sls because
+-- the password lives in pillar (secrets:pillar_master_pass) and plain SQL
+-- can't substitute pillar values.
+GRANT CONNECT ON DATABASE securityonion TO so_pillar_master, so_pillar_writer, so_pillar_secret_owner;
 GRANT USAGE ON SCHEMA so_pillar TO so_pillar_master, so_pillar_writer, so_pillar_secret_owner;
 
 -- Read access for ext_pillar through the views only.
@@ -37,15 +45,8 @@ GRANT SELECT ON so_pillar.v_pillar_global,
     TO so_pillar_master;
 GRANT EXECUTE ON FUNCTION so_pillar.fn_pillar_secrets(text) TO so_pillar_master;
 
--- Engine reads + drains the change queue from the salt-master process. It
--- needs SELECT to find unprocessed rows and UPDATE to mark them processed.
--- The queue contains only locator metadata (no pillar data), so the master
--- role's existing privilege footprint is unchanged in practice.
-GRANT SELECT, UPDATE ON so_pillar.change_queue TO so_pillar_master;
-GRANT USAGE ON SEQUENCE so_pillar.change_queue_id_seq TO so_pillar_master;
--- Writer needs INSERT (the trigger runs as table owner, so this is just for
--- direct testing / manual replays from psql).
-GRANT INSERT ON so_pillar.change_queue TO so_pillar_writer;
+-- (change_queue grants live in 008_change_notify.sql alongside the table itself,
+-- since the table doesn't exist until 008 runs.)
 
 -- Writer needs CRUD on pillar_entry/minion/role_member plus access to seed tables.
 GRANT SELECT, INSERT, UPDATE, DELETE
