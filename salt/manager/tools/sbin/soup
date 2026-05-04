@@ -485,6 +485,130 @@ elasticsearch_backup_index_templates() {
   tar -czf /nsm/backup/3.0.0_elasticsearch_index_templates.tar.gz -C /opt/so/conf/elasticsearch/templates/index/ .
 }
 
+elasticfleet_set_agent_logging_level_warn() {
+    . /usr/sbin/so-elastic-fleet-common
+
+    local current_agent_policies
+    if ! current_agent_policies=$(fleet_api "agent_policies?perPage=1000"); then
+        echo "Warning: unable to retrieve Fleet agent policies"
+        return 0
+    fi
+
+    # Only updating policies that are within Security Onion defaults and do not already have any user configured advanced_settings.
+    local policies_to_update
+    policies_to_update=$(jq -c '
+        .items[]
+        | select(has("advanced_settings") | not)
+        | select(
+            .id == "so-grid-nodes_general"
+            or .id == "so-grid-nodes_heavy"
+            or .id == "endpoints-initial"
+            or (.id | startswith("FleetServer_"))
+          )
+    ' <<< "$current_agent_policies")
+
+    if [[ -z "$policies_to_update" ]]; then
+        return 0
+    fi
+
+    while IFS= read -r policy; do
+        [[ -z "$policy" ]] && continue
+
+        local policy_id policy_name policy_namespace
+        policy_id=$(jq -r '.id' <<< "$policy")
+        policy_name=$(jq -r '.name' <<< "$policy")
+        policy_namespace=$(jq -r '.namespace' <<< "$policy")
+
+        local update_logging
+        update_logging=$(jq -n \
+            --arg name "$policy_name" \
+            --arg namespace "$policy_namespace" \
+            '{name: $name, namespace: $namespace, advanced_settings: {agent_logging_level: "warning"}}'
+        )
+
+        echo "Setting elastic agent_logging_level to warning on policy '$policy_name' ($policy_id)."
+        if ! fleet_api "agent_policies/$policy_id" -XPUT -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$update_logging" >/dev/null; then
+            echo "  warning: failed to update agent policy '$policy_name' ($policy_id)" >&2
+        fi
+    done <<< "$policies_to_update"
+}
+
+check_transform_health_and_reauthorize() {
+    . /usr/sbin/so-elastic-fleet-common
+
+    echo "Checking integration transform jobs for unhealthy / unauthorized status..."
+
+    local transforms_doc stats_doc installed_doc
+    if ! transforms_doc=$(so-elasticsearch-query "_transform/_all?size=1000" --fail --retry 3 --retry-delay 5 2>/dev/null); then
+        echo "Unable to query for transform jobs, skipping reauthorization."
+        return 0
+    fi
+    if ! stats_doc=$(so-elasticsearch-query "_transform/_all/_stats?size=1000" --fail --retry 3 --retry-delay 5 2>/dev/null); then
+        echo "Unable to query for transform job stats, skipping reauthorization."
+        return 0
+    fi
+    if ! installed_doc=$(fleet_api "epm/packages/installed?perPage=500"); then
+        echo "Unable to list installed Fleet packages, skipping reauthorization."
+        return 0
+    fi
+
+    # Get all transforms that meet the following
+    # - unhealthy (any non-green health status)
+    # - metadata has run_as_kibana_system: false (this fix is specific to transforms started prior to Kibana 9.3.3)
+    # - are not orphaned (integration is not somehow missing/corrupt/uninstalled)
+    local unhealthy_transforms
+    unhealthy_transforms=$(jq -c -n \
+        --argjson t "$transforms_doc" \
+        --argjson s "$stats_doc" \
+        --argjson i "$installed_doc" '
+        ($i.items | map({key: .name, value: .version}) | from_entries) as $pkg_ver
+        | ($s.transforms | map({key: .id, value: .health.status}) | from_entries) as $health
+        | [ $t.transforms[]
+            | select(._meta.run_as_kibana_system == false)
+            | select(($health[.id] // "unknown") != "green")
+            | {id, pkg: ._meta.package.name, ver: ($pkg_ver[._meta.package.name])}
+          ]
+        | if length == 0 then empty else . end
+        | (map(select(.ver == null)) | map({orphan: .id})[]),
+          (map(select(.ver != null))
+           | group_by(.pkg)
+           | map({pkg: .[0].pkg, ver: .[0].ver, transformIds: map(.id)})[])
+    ')
+
+    if [[ -z "$unhealthy_transforms" ]]; then
+        return 0
+    fi
+
+    local unhealthy_count
+    unhealthy_count=$(jq -s '[.[].transformIds? // empty | .[]] | length' <<< "$unhealthy_transforms")
+    echo "Found $unhealthy_count transform(s) needing reauthorization."
+
+    local total_failures=0
+    while IFS= read -r transform; do
+        [[ -z "$transform" ]] && continue
+        if jq -e 'has("orphan")' <<< "$transform" >/dev/null 2>&1; then
+            echo "Skipping transform not owned by any installed Fleet package: $(jq -r '.orphan' <<< "$transform")"
+            continue
+        fi
+
+        local pkg ver body resp
+        pkg=$(jq -r '.pkg' <<< "$transform")
+        ver=$(jq -r '.ver' <<< "$transform")
+        body=$(jq -c '{transforms: (.transformIds | map({transformId: .}))}' <<< "$transform")
+
+        echo "Reauthorizing transform(s) for ${pkg}-${ver}..."
+        resp=$(fleet_api "epm/packages/${pkg}/${ver}/transforms/authorize" \
+                        -XPOST -H 'kbn-xsrf: true' -H 'Content-Type: application/json' \
+                        -d "$body") || { echo "Could not reauthorize transform(s) for ${pkg}-${ver}"; continue; }
+
+        (( total_failures += $(jq 'map(select(.success != true)) | length' <<< "$resp" 2>/dev/null) ))
+    done <<< "$unhealthy_transforms"
+
+    if [[ "$total_failures" -gt 0 ]]; then
+        echo "Some transform(s) failed to reauthorize."
+    fi
+}
+
 ensure_postgres_local_pillar() {
   # Postgres was added as a service after 3.0.0, so the new pillar/top.sls
   # references postgres.soc_postgres / postgres.adv_postgres unconditionally.
@@ -552,6 +676,12 @@ post_to_3.1.0() {
   # master's configured file_roots; the manager's /etc/salt/minion has no
   # file_roots of its own and --local would fail with "No matching sls found".
   salt-call state.apply postgres.telegraf_users queue=True || true
+
+  # Update default agent policies to use logging level warn.
+  elasticfleet_set_agent_logging_level_warn || true
+
+  # Check for unhealthy / unauthorized integration transform jobs and attempt reauthorizations
+  check_transform_health_and_reauthorize || true
 
   POSTVERSION=3.1.0
 }
