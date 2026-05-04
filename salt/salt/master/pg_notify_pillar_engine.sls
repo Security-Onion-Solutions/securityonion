@@ -12,7 +12,7 @@
 # ext_pillar config so the three components flip together.
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
-{% if sls.split('.')[0] in allowed_states %}
+{% if 'salt.master' in allowed_states %}
 
 {% if salt['pillar.get']('postgres:so_pillar:enabled', False) %}
 
