@@ -51,6 +51,16 @@ so-elastic-fleet-package-registry:
       - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
     {%   endfor %}
     {% endif %}
+
+wait_for_so-elastic-fleet-package-registry:
+  http.wait_for_successful_query:
+    - name: "http://localhost:8080/health"
+    - status: 200
+    - wait_for: 300
+    - request_interval: 15
+    - require:
+      - docker_container: so-elastic-fleet-package-registry
+
 delete_so-elastic-fleet-package-registry_so-status.disabled:
   file.uncomment:
     - name: /opt/so/conf/so-status/so-status.conf
