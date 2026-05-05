@@ -1701,6 +1701,24 @@ remove_package() {
 	fi
 }
 
+ensure_pyyaml() {
+	title "Ensuring python3-pyyaml is installed"
+	if rpm -q python3-pyyaml >/dev/null 2>&1; then
+		info "python3-pyyaml already installed"
+		return 0
+	fi
+	info "python3-pyyaml not found, attempting to install"
+	set -o pipefail
+	dnf -y install python3-pyyaml 2>&1 | tee -a "$setup_log"
+	local result=$?
+	set +o pipefail
+	if [[ $result -ne 0 ]] || ! rpm -q python3-pyyaml >/dev/null 2>&1; then
+		error "Failed to install python3-pyyaml (exit=$result)"
+		fail_setup
+	fi
+	info "python3-pyyaml installed successfully"
+}
+
 # When updating the salt version, also update the version in securityonion-builds/images/iso-task/Dockerfile and salt/salt/master.defaults.yaml and salt/salt/minion.defaults.yaml
 # CAUTION! SALT VERSION UDDATES - READ BELOW
 # When updating the salt version, also update the version in:
