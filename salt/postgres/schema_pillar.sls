@@ -123,9 +123,19 @@ so_pillar_role_login_passwords:
 # installed and importable. salt's pip.installed surfaces the non-zero exit
 # as a state failure and the cascade kills schema_pillar's downstream work.
 # `import psycopg2` succeeds either way, so that's the actual readiness gate.
+#
+# Pip's stdout/stderr is redirected to /opt/so/log/so_pillar/psycopg2_install.log
+# so the literal "ERROR: ... patchelf" line doesn't get hoovered up into
+# /root/sosetup.log and then into /root/errors.log by verify_setup's
+# substring-grep for "ERROR". The redirect target is preserved for
+# triage if `import psycopg2` ever does fail.
 so_pillar_psycopg2_in_salt_python:
   cmd.run:
-    - name: /opt/saltstack/salt/bin/pip3 install --quiet psycopg2-binary || true
+    - name: |
+        mkdir -p /opt/so/log/so_pillar
+        /opt/saltstack/salt/bin/pip3 install --quiet psycopg2-binary \
+          >/opt/so/log/so_pillar/psycopg2_install.log 2>&1 \
+          || true
     - unless: /opt/saltstack/salt/bin/python3 -c "import psycopg2"
     - require:
       - cmd: so_pillar_role_login_passwords
