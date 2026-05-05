@@ -676,10 +676,6 @@ if ! [[ -f $install_opt_file ]]; then
 		info "Populating the secrets pillar"
 		# Create the secrets pillar
 		secrets_pillar
-		info "Enabling postsalt PG-canonical pillar mode"
-		# Flip postgres:so_pillar:enabled so schema_pillar / ext_pillar_postgres /
-		# pg_notify_pillar engine states deploy as part of the install highstate.
-		enable_so_pillar_postgres
 		info "Add socore user"
 		# Add the socore user
 		add_socore_user_manager
@@ -799,10 +795,31 @@ if ! [[ -f $install_opt_file ]]; then
 		checkin_at_boot
 		set_initial_firewall_access
         initialize_elasticsearch_indices "so-case so-casehistory so-assistant-session so-assistant-chat"
-		# run a final highstate before enabling scheduled highstates. 
+		# run a final highstate before enabling scheduled highstates.
 		# this will ensure so-elasticsearch-ilm-policy-load and so-elasticsearch-templates-load have a chance to run after elasticfleet is setup
 		info "Running final highstate for setup"
 		logCmd "salt-call state.highstate -l info"
+
+		# postsalt: enable PG-canonical pillar mode now that the install is
+		# fully on disk. We can't flip the flag earlier — ext_pillar overlay
+		# would replace the elasticsearch subtree (and others) with what's
+		# in PG before the importer has run, dropping secrets-allowlisted
+		# subkeys like elasticsearch.auth.users.so_elastic_user.pass that
+		# elasticsearch.enabled.sls needs to render. Order:
+		#   1. drop adv_postgres.sls flipping the flag
+		#   2. refresh_pillar so the next state sees enabled=True
+		#   3. apply postgres.schema_pillar — deploys schema, ALTERs role
+		#      passwords, installs psycopg2 into salt's bundled python,
+		#      runs so-pillar-import, writes /opt/so/conf/so-yaml/mode=postgres
+		#   4. apply salt.master — re-renders engines.conf with the
+		#      pg_notify_pillar engine block, drops master.d ext_pillar
+		#      config, watch_in restarts salt-master, ext_pillar takes over
+		info "Enabling postsalt PG-canonical pillar mode"
+		enable_so_pillar_postgres
+		logCmd "salt-call saltutil.refresh_pillar"
+		logCmd "salt-call state.apply postgres.schema_pillar -l info"
+		logCmd "salt-call state.apply salt.master -l info"
+
 		logCmd "salt-call schedule.enable -linfo --local"
 		verify_setup
 	else
