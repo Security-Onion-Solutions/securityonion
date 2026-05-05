@@ -14,7 +14,7 @@
 {%   do salt.log.debug('vm_pillar_clean_orch: Running') %}
 {%   set vm_name = pillar.get('vm_name', '') %}
 
-{%   if not vm_name|regex_match('^[A-Za-z0-9._-]{1,253}$') %}
+{%   if not vm_name|regex_match('^([A-Za-z0-9._-]{1,253})$') %}
 {%     do salt.log.error('vm_pillar_clean_orch: refusing unsafe vm_name=' ~ vm_name) %}
 vm_pillar_clean_invalid_name:
   test.fail_without_changes:

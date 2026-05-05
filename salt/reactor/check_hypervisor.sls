@@ -4,7 +4,7 @@
 # Elastic License 2.0.
 
 {% set hid = data['id'] %}
-{% if hid|regex_match('^[A-Za-z0-9._-]{1,253}$')
+{% if hid|regex_match('^([A-Za-z0-9._-]{1,253})$')
    and hid.endswith('_hypervisor')
    and data['result'] == True %}
 

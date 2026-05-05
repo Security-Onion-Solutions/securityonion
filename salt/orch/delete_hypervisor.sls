@@ -5,7 +5,7 @@
 
 {% set hypervisor = pillar.get('minion_id', '') %}
 
-{% if not hypervisor|regex_match('^[A-Za-z0-9._-]{1,253}$') %}
+{% if not hypervisor|regex_match('^([A-Za-z0-9._-]{1,253})$') %}
 {%   do salt.log.error('delete_hypervisor_orch: refusing unsafe minion_id=' ~ hypervisor) %}
 delete_hypervisor_invalid_minion_id:
   test.fail_without_changes:
