@@ -845,18 +845,99 @@ whiptail_management_nic() {
 	[ -n "$TESTING" ] && return
 
 	filter_unused_nics
+	local management_nic_options=( "${nic_list_management[@]}" )
+	if [[ $is_iso || $is_desktop_iso ]]; then
+		management_nic_options+=( "BOND" "Configure a bonded management interface" )
+	fi
 
-	MNIC=$(whiptail --title "$whiptail_title" --menu "Please select the NIC you would like to use for management.\n\nUse the arrow keys to move around and the Enter key to select." 20 75 12 "${nic_list_management[@]}" 3>&1 1>&2 2>&3 )	
+	MNIC=$(whiptail --title "$whiptail_title" --menu "Please select the NIC you would like to use for management.\n\nUse the arrow keys to move around and the Enter key to select." 20 75 12 "${management_nic_options[@]}" 3>&1 1>&2 2>&3 )
 	local exitstatus=$?
 	whiptail_check_exitstatus $exitstatus
 
 	while [ -z "$MNIC" ]
 	do
-		MNIC=$(whiptail --title "$whiptail_title" --menu "Please select the NIC you would like to use for management.\n\nUse the arrow keys to move around and the Enter key to select." 22 75 12 "${nic_list_management[@]}" 3>&1 1>&2 2>&3 )	
+		MNIC=$(whiptail --title "$whiptail_title" --menu "Please select the NIC you would like to use for management.\n\nUse the arrow keys to move around and the Enter key to select." 22 75 12 "${management_nic_options[@]}" 3>&1 1>&2 2>&3 )
 		local exitstatus=$?
 		whiptail_check_exitstatus $exitstatus
 	done
 
+	if [[ $MNIC == "BOND" ]]; then
+		whiptail_management_bond
+	fi
+}
+
+whiptail_management_bond() {
+
+	[ -n "$TESTING" ] && return
+
+	MBOND_MODE=$(whiptail --title "$whiptail_title" --menu \
+	"Choose the bond mode for the management interface.\n\nThe management bond will be created as bond1." 20 75 7 \
+	"active-backup" "One active NIC with failover (recommended)" \
+	"balance-rr" "Round-robin transmit policy" \
+	"balance-xor" "Transmit based on selected hash policy" \
+	"broadcast" "Transmit everything on all slave interfaces" \
+	"802.3ad" "Dynamic link aggregation (requires switch support)" \
+	"balance-tlb" "Adaptive transmit load balancing" \
+	"balance-alb" "Adaptive load balancing" 3>&1 1>&2 2>&3)
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+
+	while [ -z "$MBOND_MODE" ]
+	do
+		MBOND_MODE=$(whiptail --title "$whiptail_title" --menu \
+		"Choose the bond mode for the management interface.\n\nThe management bond will be created as bond1." 20 75 7 \
+		"active-backup" "One active NIC with failover (recommended)" \
+		"balance-rr" "Round-robin transmit policy" \
+		"balance-xor" "Transmit based on selected hash policy" \
+		"broadcast" "Transmit everything on all slave interfaces" \
+		"802.3ad" "Dynamic link aggregation (requires switch support)" \
+		"balance-tlb" "Adaptive transmit load balancing" \
+		"balance-alb" "Adaptive load balancing" 3>&1 1>&2 2>&3)
+		local exitstatus=$?
+		whiptail_check_exitstatus $exitstatus
+	done
+
+	whiptail_management_bond_nics
+	MNIC="bond1"
+
+	export MBOND_MODE MNIC
+}
+
+whiptail_management_bond_nics() {
+
+	[ -n "$TESTING" ] && return
+
+	MBNICS=()
+	filter_unused_nics
+
+	MBNICS=$(whiptail --title "$whiptail_title" --checklist "Please add NICs to the Management Interface:" 20 75 12 "${nic_list[@]}" 3>&1 1>&2 2>&3)
+	local exitstatus=$?
+	whiptail_check_exitstatus $exitstatus
+
+	while [ -z "$MBNICS" ]
+	do
+		MBNICS=$(whiptail --title "$whiptail_title" --checklist "Please add NICs to the Management Interface:" 20 75 12 "${nic_list[@]}" 3>&1 1>&2 2>&3)
+		local exitstatus=$?
+		whiptail_check_exitstatus $exitstatus
+	done
+
+	MBNICS=$(echo "$MBNICS" | tr -d '"')
+
+	IFS=' ' read -ra MBNICS <<< "$MBNICS"
+
+	for bond_nic in "${MBNICS[@]}"; do
+		for dev_status in "${nmcli_dev_status_list[@]}"; do
+			if [[ $dev_status == "${bond_nic}:unmanaged" ]]; then
+				whiptail \
+					--title "$whiptail_title" \
+					--msgbox "$bond_nic is unmanaged by Network Manager. Please remove it from other network management tools then re-run setup." \
+					8 75
+				exit
+			fi
+		done
+	done
+
+	export MBNICS
 }
 
 whiptail_net_method() {

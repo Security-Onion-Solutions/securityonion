@@ -745,6 +745,56 @@ configure_network_sensor() {
 	return $err
 }
 
+configure_management_bond() {
+	local bond_name="bond1"
+	local bond_mode=${MBOND_MODE:-active-backup}
+
+	info "Setting up $bond_name management interface with mode $bond_mode"
+
+	if [[ ${#MBNICS[@]} -eq 0 ]]; then
+		error "[ERROR] No management bond NICs were selected."
+		fail_setup
+	fi
+
+	nmcli -t -f NAME con show | grep -Fxq "$bond_name"
+	local found_int=$?
+
+	if [[ $found_int != 0 ]]; then
+		nmcli con add type bond ifname "$bond_name" con-name "$bond_name" mode "$bond_mode" -- \
+			ipv6.method ignore \
+			connection.autoconnect yes >> "$setup_log" 2>&1
+	else
+		nmcli con mod "$bond_name" \
+			bond.options "mode=$bond_mode" \
+			ipv6.method ignore \
+			connection.autoconnect yes >> "$setup_log" 2>&1
+	fi
+
+	local err=0
+	for MBNIC in "${MBNICS[@]}"; do
+		local slave_name="$bond_name-slave-$MBNIC"
+
+		nmcli -t -f NAME con show | grep -Fxq "$slave_name"
+		found_int=$?
+
+		if [[ $found_int != 0 ]]; then
+			nmcli con add type ethernet ifname "$MBNIC" con-name "$slave_name" master "$bond_name" -- \
+				connection.autoconnect yes >> "$setup_log" 2>&1
+		else
+			nmcli con mod "$slave_name" \
+				connection.master "$bond_name" \
+				connection.slave-type bond \
+				connection.autoconnect yes >> "$setup_log" 2>&1
+		fi
+
+		nmcli con up "$slave_name" >> "$setup_log" 2>&1
+		local ret=$?
+		[[ $ret -eq 0 ]] || err=$ret
+	done
+
+	return $err
+}
+
 configure_hyper_bridge() {
 	info "Setting up hypervisor bridge"
 	info "Checking $MNIC ipv4.method is auto or manual"
@@ -996,6 +1046,11 @@ filter_unused_nics() {
 	if [[ $BNICS ]]; then
 		grep_string="$grep_string"
 		for BONDNIC in "${BNICS[@]}"; do
+			grep_string="$grep_string\|$BONDNIC"
+		done
+	fi
+	if [[ $MBNICS ]]; then
+		for BONDNIC in "${MBNICS[@]}"; do
 			grep_string="$grep_string\|$BONDNIC"
 		done
 	fi
@@ -1388,7 +1443,7 @@ network_init() {
 	title "Initializing Network"
 	disable_ipv6
 	set_hostname
-	if [[ ( $is_iso || $is_desktop_iso ) ]]; then
+	if [[ $is_iso || $is_desktop_iso ]]; then
 		set_management_interface
 	fi
 }
@@ -2102,8 +2157,12 @@ set_initial_firewall_access() {
 # Set up the management interface on the ISO
 set_management_interface() {
 	title "Setting up the main interface"
+	if [[ $MNIC == "bond1" ]]; then
+		configure_management_bond || fail_setup
+	fi
+
 	if [ "$address_type" = 'DHCP' ]; then
-		logCmd "nmcli con mod $MNIC connection.autoconnect yes"
+		logCmd "nmcli con mod $MNIC connection.autoconnect yes ipv4.method auto"
 		logCmd "nmcli con up $MNIC"
 		logCmd "nmcli -p connection show $MNIC"
 	else
