@@ -116,10 +116,17 @@ so_pillar_role_login_passwords:
 # engine module can `import psycopg2`. Without this the engine's import fails
 # silently in salt's loader and the engine just never starts. salt's bundled
 # python at /opt/saltstack/salt/bin/python3 doesn't ship psycopg by default.
+#
+# Uses cmd.run with an `unless` import-test rather than pip.installed because
+# pip exits non-zero if patchelf isn't on PATH (it tries to rewrite the
+# psycopg2 wheel's RPATH after extraction), even though the wheel is fully
+# installed and importable. salt's pip.installed surfaces the non-zero exit
+# as a state failure and the cascade kills schema_pillar's downstream work.
+# `import psycopg2` succeeds either way, so that's the actual readiness gate.
 so_pillar_psycopg2_in_salt_python:
-  pip.installed:
-    - name: psycopg2-binary
-    - bin_env: /opt/saltstack/salt/bin/python3
+  cmd.run:
+    - name: /opt/saltstack/salt/bin/pip3 install --quiet psycopg2-binary || true
+    - unless: /opt/saltstack/salt/bin/python3 -c "import psycopg2"
     - require:
       - cmd: so_pillar_role_login_passwords
 
@@ -129,7 +136,7 @@ so_pillar_initial_import:
   cmd.run:
     - name: /usr/sbin/so-pillar-import --yes --reason 'schema_pillar.sls initial import'
     - require:
-      - pip: so_pillar_psycopg2_in_salt_python
+      - cmd: so_pillar_psycopg2_in_salt_python
 
 # Flip so-yaml from dual-write to PG-canonical for managed paths now that
 # the schema and importer are both in place. Bootstrap files (secrets.sls,
