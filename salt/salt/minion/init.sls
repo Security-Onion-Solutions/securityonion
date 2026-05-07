@@ -88,13 +88,17 @@ enable_startup_states:
 
 {% endif %}
 
-# this has to be outside the if statement above since there are <requisite>_in calls to this state
+# this has to be outside the if statement above since there are <requisite>_in calls to this state.
+# uses watch (not listen) so the restart fires in-state and its result lands on this state's
+# running entry; that is what lets wait_for_salt_minion_ready below detect any restart
+# uniformly via onchanges, regardless of whether the trigger came from these files or from
+# external watch_in's (e.g. beacons, master/pyinotify).
 salt_minion_service:
   service.running:
     - name: salt-minion
     - enable: True
     - onlyif: test "{{INSTALLEDSALTVERSION}}" == "{{SALTVERSION}}"
-    - listen:
+    - watch:
       - file: mine_functions
 {% if INSTALLEDSALTVERSION|string == SALTVERSION|string %}
       - file: set_log_levels
@@ -102,4 +106,33 @@ salt_minion_service:
 {% if GLOBALS.is_manager %}
       - file: signing_policy
 {% endif %}
+    - order: last
+
+# block until the just-restarted salt-minion is back and can execute modules locally, so
+# follow-on jobs and the next highstate iteration do not race the restart. onchanges +
+# require on salt_minion_service catches every restart trigger uniformly because watch
+# mod_watch results replace the service state's running entry. initial sleep gives the
+# systemctl restart (--no-block by default for salt-minion on >=3006.15) time to begin
+# tearing down the old process before we probe for readiness.
+wait_for_salt_minion_ready:
+  cmd.run:
+    - name: |
+        sleep 3
+        timeout=120
+        elapsed=3
+        while [ $elapsed -lt $timeout ]; do
+          if systemctl is-active --quiet salt-minion \
+             && salt-call --local --timeout=5 --out=quiet test.ping >/dev/null 2>&1; then
+            echo "salt-minion ready after ${elapsed}s"
+            exit 0
+          fi
+          sleep 1
+          elapsed=$((elapsed+1))
+        done
+        echo "salt-minion did not become ready within ${timeout}s" >&2
+        exit 1
+    - onchanges:
+      - service: salt_minion_service
+    - require:
+      - service: salt_minion_service
     - order: last

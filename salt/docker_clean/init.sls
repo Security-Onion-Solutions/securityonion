@@ -9,7 +9,7 @@
 prune_images:
   cmd.run:
     - name: so-docker-prune
-    - order: last
+    - order: 9000
 
 {% else %}
 

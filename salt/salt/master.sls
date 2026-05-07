@@ -71,7 +71,6 @@ reactor_pushstate_config:
     - source: salt://salt/files/reactor_pushstate.conf
     - watch_in:
       - service: salt_master_service
-    - order: last
 {% else %}
 reactor_pushstate_config:
   file.absent:
@@ -95,7 +94,7 @@ salt_master_service:
       - file: checkmine_engine
       - file: pillarWatch_engine
       - file: engines_config
-    - order: last
+    - order: 9002
 
 {% else %}
 
