@@ -1,6 +1,8 @@
 # One pillar directory can map to multiple (state, tgt) actions.
 # tgt is a raw salt compound expression. tgt_type is always "compound".
 # Per-action `batch` / `batch_wait` override the orch defaults (25% / 15s).
+# An action with `highstate: True` triggers state.highstate instead of
+# state.apply -- see salt/orch/push_batch.sls.
 #
 # Notes:
 #   - `bpf` is a pillar-only dir (no state of its own) consumed by both
@@ -8,9 +10,19 @@
 #   - suricata/strelka/zeek/elasticsearch/redis/kafka/logstash etc. have
 #     their own pillar dirs AND their own state, so they map 1:1 (or 1:2
 #     in strelka's case, because of the split init.sls / manager.sls).
-#   - `data` and `node_data` pillar dirs are intentionally omitted --
-#     they're pillar-only data consumed by many states; trying to handle
-#     them generically would amount to a highstate.
+#
+# Intentional omissions (these will log a "not in pillar_push_map.yaml"
+# warning in push_pillar.sls and wait for the next scheduled highstate):
+#   - `data` and `node_data`: pillar-only data consumed by many states;
+#     handling them generically would amount to a fleetwide highstate.
+#   - `host`: soc_host describes mainint/mainip; a change is a re-IP and
+#     needs a coordinated procedure, not an immediate state push.
+#   - `hypervisor`: state changes touch libvirt and are disruptive; leave
+#     to the next scheduled highstate.
+#   - `sensor`: every field in soc_sensor.yaml is `readonly: True` or
+#     per-minion (`node: True`). Per-minion edits are persisted under
+#     pillar/minions/<id>.sls and are handled by Branch A of push_pillar.sls
+#     (per-minion highstate intent), not by this app-pillar map.
 #
 # The role sets here were verified line-by-line against salt/top.sls. If
 # salt/top.sls changes how an app is targeted, update the corresponding
@@ -28,6 +40,13 @@ firewall:
   - state: firewall
     tgt: '*'
 
+# backup: backup.config_backup runs on eval, standalone, manager, managerhype,
+# managersearch (NOT import -- the backup pillar is included on import per
+# pillar/top.sls but the backup state is not run there per salt/top.sls).
+backup:
+  - state: backup.config_backup
+    tgt: 'G@role:so-eval or G@role:so-manager or G@role:so-managerhype or G@role:so-managersearch or G@role:so-standalone'
+
 # bpf is pillar-only (no state); consumed by both zeek and suricata as macros.
 # Both states run on sensor_roles + so-import per salt/top.sls.
 bpf:
@@ -41,10 +60,21 @@ ca:
   - state: ca
     tgt: '*'
 
+# docker: universal. The docker state is in both the all-non-managers and
+# all-managers branches of salt/top.sls.
+docker:
+  - state: docker
+    tgt: '*'
+
 # elastalert: eval, standalone, manager, managerhype, managersearch (NOT import).
 elastalert:
   - state: elastalert
     tgt: 'G@role:so-eval or G@role:so-manager or G@role:so-managerhype or G@role:so-managersearch or G@role:so-standalone'
+
+# elastic-fleet-package-registry: manager_roles exactly.
+elastic-fleet-package-registry:
+  - state: elastic-fleet-package-registry
+    tgt: 'G@role:so-eval or G@role:so-import or G@role:so-manager or G@role:so-managerhype or G@role:so-managersearch or G@role:so-standalone'
 
 # elasticsearch: 8 roles.
 elasticsearch:
@@ -62,10 +92,28 @@ elasticfleet:
   - state: elasticfleet
     tgt: 'G@role:so-eval or G@role:so-fleet or G@role:so-import or G@role:so-manager or G@role:so-managerhype or G@role:so-managersearch or G@role:so-standalone'
 
+# global: fanout to a fleetwide highstate. The global pillar (soc_global.sls)
+# carries cross-cutting settings (pipeline, url_base, imagerepo, mdengine, ...)
+# that are consumed by virtually every state, so a targeted re-apply isn't
+# meaningful. The drainer's batch/batch_wait throttling controls blast radius.
+global:
+  - highstate: True
+    tgt: '*'
+
 # healthcheck: eval, sensor, standalone only.
 healthcheck:
   - state: healthcheck
     tgt: 'G@role:so-eval or G@role:so-sensor or G@role:so-standalone'
+
+# hydra: manager_roles exactly.
+hydra:
+  - state: hydra
+    tgt: 'G@role:so-eval or G@role:so-import or G@role:so-manager or G@role:so-managerhype or G@role:so-managersearch or G@role:so-standalone'
+
+# idh: so-idh only.
+idh:
+  - state: idh
+    tgt: 'G@role:so-idh'
 
 # influxdb: manager_roles exactly.
 influxdb:
@@ -82,21 +130,60 @@ kibana:
   - state: kibana
     tgt: 'G@role:so-eval or G@role:so-import or G@role:so-manager or G@role:so-managerhype or G@role:so-managersearch or G@role:so-standalone'
 
+# kratos: manager_roles exactly.
+kratos:
+  - state: kratos
+    tgt: 'G@role:so-eval or G@role:so-import or G@role:so-manager or G@role:so-managerhype or G@role:so-managersearch or G@role:so-standalone'
+
+# logrotate: universal (top-of-file '*' branch in salt/top.sls).
+logrotate:
+  - state: logrotate
+    tgt: '*'
+
 # logstash: 8 roles, no eval/import.
 logstash:
   - state: logstash
     tgt: 'G@role:so-fleet or G@role:so-heavynode or G@role:so-manager or G@role:so-managerhype or G@role:so-managersearch or G@role:so-receiver or G@role:so-searchnode or G@role:so-standalone'
+
+# manager: manager_roles exactly. The manager state is also referenced under
+# *_sensor / *_heavynode top.sls blocks via `sensor`, but the standalone
+# `manager` state itself runs only on manager_roles.
+manager:
+  - state: manager
+    tgt: 'G@role:so-eval or G@role:so-import or G@role:so-manager or G@role:so-managerhype or G@role:so-managersearch or G@role:so-standalone'
 
 # nginx: 10 specific roles. NOT receiver, idh, hypervisor, desktop.
 nginx:
   - state: nginx
     tgt: 'G@role:so-eval or G@role:so-fleet or G@role:so-heavynode or G@role:so-import or G@role:so-manager or G@role:so-managerhype or G@role:so-managersearch or G@role:so-searchnode or G@role:so-sensor or G@role:so-standalone'
 
+# ntp: universal (top-of-file '*' branch in salt/top.sls).
+ntp:
+  - state: ntp
+    tgt: '*'
+
+# patch: universal. soc_patch carries the OS update schedule, applied via
+# patch.os.schedule on every node (it's in both the all-non-managers and
+# all-managers branches of salt/top.sls).
+patch:
+  - state: patch.os.schedule
+    tgt: '*'
+
+# postgres: manager_roles exactly.
+postgres:
+  - state: postgres
+    tgt: 'G@role:so-eval or G@role:so-import or G@role:so-manager or G@role:so-managerhype or G@role:so-managersearch or G@role:so-standalone'
+
 # redis: 6 roles. standalone, manager, managerhype, managersearch, heavynode, receiver.
 # (NOT eval, NOT import, NOT searchnode.)
 redis:
   - state: redis
     tgt: 'G@role:so-heavynode or G@role:so-manager or G@role:so-managerhype or G@role:so-managersearch or G@role:so-receiver or G@role:so-standalone'
+
+# registry: manager_roles exactly.
+registry:
+  - state: registry
+    tgt: 'G@role:so-eval or G@role:so-import or G@role:so-manager or G@role:so-managerhype or G@role:so-managersearch or G@role:so-standalone'
 
 # sensoroni: universal.
 sensoroni:
@@ -107,6 +194,14 @@ sensoroni:
 soc:
   - state: soc
     tgt: 'G@role:so-eval or G@role:so-import or G@role:so-manager or G@role:so-managerhype or G@role:so-managersearch or G@role:so-standalone'
+
+# stig: broad. Runs on standalone, manager, managerhype, managersearch,
+# searchnode, sensor, receiver, fleet, hypervisor, desktop.
+# NOT eval, NOT import, NOT heavynode, NOT idh (the *_idh block in
+# salt/top.sls intentionally omits stig).
+stig:
+  - state: stig
+    tgt: 'G@role:so-desktop or G@role:so-fleet or G@role:so-hypervisor or G@role:so-manager or G@role:so-managerhype or G@role:so-managersearch or G@role:so-receiver or G@role:so-searchnode or G@role:so-sensor or G@role:so-standalone'
 
 # strelka: sensor-side only on pillar change (sensor_roles). strelka.manager is
 # intentionally NOT fired on pillar changes -- YARA rule and strelka config
@@ -126,6 +221,18 @@ suricata:
 telegraf:
   - state: telegraf
     tgt: '*'
+
+# versionlock: universal (top-of-file '*' branch in salt/top.sls).
+versionlock:
+  - state: versionlock
+    tgt: '*'
+
+# vm: libvirt-driver hypervisors only. Matched by the salt-cloud:driver:libvirt
+# grain (compound supports nested grain matching via G@<key>:<subkey>:<value>).
+# pillar/vm/soc_vm.sls write path is referenced at salt/_runners/setup_hypervisor.py:856.
+vm:
+  - state: vm
+    tgt: 'G@salt-cloud:driver:libvirt'
 
 # zeek: sensor_roles + so-import (5 roles).
 zeek:
