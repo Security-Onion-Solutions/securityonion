@@ -1,0 +1,35 @@
+#!/bin/bash
+#
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+# Block until the local salt-minion service is back up and can execute modules locally.
+# Invoked from the wait_for_salt_minion_ready state in salt/minion/init.sls after
+# salt_minion_service fires its watch-driven mod_watch (a non-blocking systemctl restart),
+# so follow-on jobs and the next highstate iteration do not race the in-flight restart.
+
+. /usr/sbin/so-common
+
+# Initial sleep gives the systemctl restart (--no-block by default for salt-minion on
+# >=3006.15) time to begin tearing down the old process before we probe for readiness.
+INITIAL_SLEEP=3
+TIMEOUT=120
+PING_TIMEOUT=5
+
+sleep "$INITIAL_SLEEP"
+
+elapsed="$INITIAL_SLEEP"
+while [ "$elapsed" -lt "$TIMEOUT" ]; do
+  if systemctl is-active --quiet salt-minion \
+     && salt-call --local --timeout="$PING_TIMEOUT" --out=quiet test.ping >/dev/null 2>&1; then
+    echo "salt-minion ready after ${elapsed}s"
+    exit 0
+  fi
+  sleep 1
+  elapsed=$((elapsed + 1))
+done
+
+echo "salt-minion did not become ready within ${TIMEOUT}s" >&2
+exit 1

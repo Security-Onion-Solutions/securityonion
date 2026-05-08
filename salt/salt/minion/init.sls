@@ -111,26 +111,11 @@ salt_minion_service:
 # block until the just-restarted salt-minion is back and can execute modules locally, so
 # follow-on jobs and the next highstate iteration do not race the restart. onchanges +
 # require on salt_minion_service catches every restart trigger uniformly because watch
-# mod_watch results replace the service state's running entry. initial sleep gives the
-# systemctl restart (--no-block by default for salt-minion on >=3006.15) time to begin
-# tearing down the old process before we probe for readiness.
+# mod_watch results replace the service state's running entry. wait logic lives in
+# /usr/sbin/so-salt-minion-wait (deployed by common_sbin from common/tools/sbin/).
 wait_for_salt_minion_ready:
   cmd.run:
-    - name: |
-        sleep 3
-        timeout=120
-        elapsed=3
-        while [ $elapsed -lt $timeout ]; do
-          if systemctl is-active --quiet salt-minion \
-             && salt-call --local --timeout=5 --out=quiet test.ping >/dev/null 2>&1; then
-            echo "salt-minion ready after ${elapsed}s"
-            exit 0
-          fi
-          sleep 1
-          elapsed=$((elapsed+1))
-        done
-        echo "salt-minion did not become ready within ${timeout}s" >&2
-        exit 1
+    - name: /usr/sbin/so-salt-minion-wait
     - onchanges:
       - service: salt_minion_service
     - require:
