@@ -32,7 +32,6 @@ ES_URL = "https://localhost:9200"
 # Engines we know how to handle and the file extension the backup script writes.
 ENGINES = {
     "suricata": "txt",
-    "sigma": "yaml",
 }
 
 # Standard Suricata variables that ship with Security Onion. Anything else
@@ -119,7 +118,6 @@ def dedupe_key(override):
                 override.get("count"), override.get("seconds"))
     if t == "modify":
         return (t, override.get("regex"), override.get("value"))
-    return (t,)
 
 
 def _validate_suricata_ip(ip):
@@ -150,9 +148,6 @@ def _validate_single_ip(ip):
 def validate_override(override, engine):
     """Mirror Override.Validate() from securityonion-soc/model/detection.go.
     Returns None on success, an error string otherwise."""
-    if engine != "suricata":
-        return None  # sigma not yet supported; gated earlier in main()
-
     t = override.get("type")
     if not t:
         return "override type is required"
@@ -222,7 +217,6 @@ def describe(override):
                 f"count={override.get('count')} seconds={override.get('seconds')}")
     if t == "modify":
         return f"type=modify regex={override.get('regex')!r}"
-    return f"type={t}"
 
 
 def collect_custom_vars(override):
@@ -242,7 +236,7 @@ def parse_args():
     p.add_argument("--source", "-s", required=True,
                    help="Source directory containing <publicId>.<ext> override files.")
     p.add_argument("--engine", "-e", default="suricata", choices=list(ENGINES.keys()),
-                   help="Detection engine (default: suricata). Sigma not yet supported.")
+                   help="Detection engine (default: suricata).")
     p.add_argument("--dry-run", "-n", action="store_true",
                    help="Print what would happen without writing to Elasticsearch.")
     p.add_argument("--no-import-note", action="store_true",
@@ -266,10 +260,6 @@ def confirm_proceed(args):
 
 def main():
     args = parse_args()
-
-    if args.engine == "sigma":
-        print("ERROR: sigma overrides are not yet supported.", file=sys.stderr)
-        sys.exit(2)
 
     if not os.path.isdir(args.source):
         print(f"ERROR: source directory not found: {args.source}", file=sys.stderr)
@@ -376,7 +366,7 @@ def main():
     print(f"  Invalid (failed checks):   {counts['invalid']}")
     print(f"  Errors:                    {counts['error']}")
 
-    if custom_vars and args.engine == "suricata":
+    if custom_vars:
         print()
         print("WARNING: detected custom Suricata variables in imported overrides:")
         for v in sorted(custom_vars):
