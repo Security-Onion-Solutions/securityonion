@@ -1,0 +1,26 @@
+{%- from 'logstash/map.jinja' import LOGSTASH_MERGED %}
+input {
+  elastic_agent {
+    port => 5056
+    tags => [ "elastic-agent", "fleet-lumberjack-input" ]
+    ssl_enabled => true
+    ssl_certificate => "/usr/share/logstash/elasticfleet-lumberjack.crt"
+    ssl_key => "/usr/share/logstash/elasticfleet-lumberjack.key"
+    ecs_compatibility => v8
+    id => "fleet-lumberjack-in"
+    codec => "json"
+  }
+}
+
+filter {
+  {% if LOGSTASH_MERGED.get('latency_metrics', False) %}
+  ruby {
+    code => "event.set('[_tmp][logstash_from_fleet]', Time.now().utc.iso8601(3));"
+  }
+  {% endif %}
+  if ![metadata] {
+    mutate {
+      rename => {"@metadata" => "metadata"}
+    }
+  }
+}

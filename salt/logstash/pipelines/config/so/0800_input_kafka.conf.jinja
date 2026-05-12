@@ -1,3 +1,4 @@
+{%- from 'logstash/map.jinja' import LOGSTASH_MERGED %}
 {%- set kafka_password = salt['pillar.get']('kafka:config:password') %}
 {%- set kafka_trustpass = salt['pillar.get']('kafka:config:trustpass') %}
 {%- set kafka_brokers = salt['pillar.get']('kafka:nodes', {}) %}
@@ -30,6 +31,11 @@ input {
     }
 }
 filter {
+  {% if LOGSTASH_MERGED.get('latency_metrics', False) %}
+  ruby {
+    code => "event.set('[_tmp][logstash_from_kafka]', Time.now().utc.iso8601(3));"
+  }
+  {% endif %}
   if ![metadata] {
     mutate {
       rename => { "@metadata" => "metadata" }
