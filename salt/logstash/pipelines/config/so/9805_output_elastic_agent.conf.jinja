@@ -1,3 +1,11 @@
+{%- from 'logstash/map.jinja' import LOGSTASH_MERGED %}
+{% if LOGSTASH_MERGED.get('latency_metrics', False) %}
+filter {
+  ruby {
+    code => "event.set('[_tmp][logstash_to_elasticsearch]', Time.now().utc.iso8601(3));"
+  }
+}
+{% endif %}
 output {
   if "elastic-agent" in [tags] and "so-ip-mappings" in [tags] {
     elasticsearch {
