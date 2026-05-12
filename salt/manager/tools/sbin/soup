@@ -556,14 +556,23 @@ check_transform_health_and_reauthorize() {
     # - unhealthy (any non-green health status)
     # - metadata has run_as_kibana_system: false (this fix is specific to transforms started prior to Kibana 9.3.3)
     # - are not orphaned (integration is not somehow missing/corrupt/uninstalled)
+    local tmp_transforms tmp_stats tmp_installed
+    tmp_transforms=$(mktemp)
+    tmp_stats=$(mktemp)
+    tmp_installed=$(mktemp)
+
+    echo "$transforms_doc" > "$tmp_transforms"
+    echo "$stats_doc"      > "$tmp_stats"
+    echo "$installed_doc"  > "$tmp_installed"
+
     local unhealthy_transforms
     unhealthy_transforms=$(jq -c -n \
-        --argjson t "$transforms_doc" \
-        --argjson s "$stats_doc" \
-        --argjson i "$installed_doc" '
-        ($i.items | map({key: .name, value: .version}) | from_entries) as $pkg_ver
-        | ($s.transforms | map({key: .id, value: .health.status}) | from_entries) as $health
-        | [ $t.transforms[]
+        --slurpfile t "$tmp_transforms" \
+        --slurpfile s "$tmp_stats" \
+        --slurpfile i "$tmp_installed" '
+        ($i[0].items | map({key: .name, value: .version}) | from_entries) as $pkg_ver
+        | ($s[0].transforms | map({key: .id, value: .health.status}) | from_entries) as $health
+        | [ $t[0].transforms[]
             | select(._meta.run_as_kibana_system == false)
             | select(($health[.id] // "unknown") != "green")
             | {id, pkg: ._meta.package.name, ver: ($pkg_ver[._meta.package.name])}
@@ -603,6 +612,8 @@ check_transform_health_and_reauthorize() {
 
         (( total_failures += $(jq 'map(select(.success != true)) | length' <<< "$resp" 2>/dev/null) ))
     done <<< "$unhealthy_transforms"
+
+    rm -f "$tmp_transforms" "$tmp_stats" "$tmp_installed"
 
     if [[ "$total_failures" -gt 0 ]]; then
         echo "Some transform(s) failed to reauthorize."
