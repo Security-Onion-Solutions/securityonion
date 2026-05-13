@@ -31,7 +31,7 @@ so-postgres:
       - POSTGRES_DB=securityonion
       # Passwords are delivered via mounted 0600 secret files, not plaintext env vars.
       # The upstream postgres image resolves POSTGRES_PASSWORD_FILE; entrypoint.sh and
-      # init-users.sh resolve SO_POSTGRES_PASS_FILE the same way.
+      # init-db.sh resolve SO_POSTGRES_PASS_FILE the same way.
       - POSTGRES_PASSWORD_FILE=/run/secrets/postgres_password
       - SO_POSTGRES_USER={{ SO_POSTGRES_USER }}
       - SO_POSTGRES_PASS_FILE=/run/secrets/so_postgres_pass
@@ -46,7 +46,7 @@ so-postgres:
       - /opt/so/conf/postgres/postgresql.conf:/conf/postgresql.conf:ro
       - /opt/so/conf/postgres/pg_hba.conf:/conf/pg_hba.conf:ro
       - /opt/so/conf/postgres/secrets:/run/secrets:ro
-      - /opt/so/conf/postgres/init/init-users.sh:/docker-entrypoint-initdb.d/init-users.sh:ro
+      - /opt/so/conf/postgres/init/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
       - /etc/pki/postgres.crt:/conf/postgres.crt:ro
       - /etc/pki/postgres.key:/conf/postgres.key:ro
       - /etc/pki/tls/certs/intca.crt:/conf/ca.crt:ro
