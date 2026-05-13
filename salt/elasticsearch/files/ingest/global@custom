@@ -178,9 +178,81 @@
             }
         },
         {
+            "script": {
+                "description": "Snapshot event.ingested into _tmp.event_ingested_pre_fleet before .fleet_final_pipeline-1 overwrites it with ES ingest time",
+                "lang": "painless",
+                "if": "ctx.event?.ingested != null && ctx.event?.created == null",
+                "ignore_failure": true,
+                "source": "ctx.putIfAbsent('_tmp', [:]); ctx._tmp.event_ingested_pre_fleet = ctx.event.ingested;"
+            }
+        },
+        {
             "pipeline": {
                 "name": ".fleet_final_pipeline-1",
                 "ignore_missing_pipeline": true
+            }
+        },
+        {
+            "script": {
+                "description": "Calculate time from Elastic Agent to Logstash.",
+                "lang": "painless",
+                "if": "ctx._tmp?.logstash_from_agent != null",
+                "ignore_failure": true,
+                "source": "ZonedDateTime start = ctx._tmp.event_ingested_pre_fleet != null ? ZonedDateTime.parse(ctx._tmp.event_ingested_pre_fleet) : ZonedDateTime.parse(ctx['@timestamp']); ctx.event.putIfAbsent('ingestion', [:]); ctx.event.ingestion.latency_elasticagent_to_logstash = ChronoUnit.SECONDS.between(start, ZonedDateTime.parse(ctx._tmp.logstash_from_agent));"
+            }
+        },
+        {
+            "script": {
+                "description": "Calculate time from Logstash to Redis",
+                "lang": "painless",
+                "if": "ctx._tmp?.logstash_from_agent != null && ctx._tmp?.logstash_to_redis != null",
+                "ignore_failure": true,
+                "source": "ctx.event.putIfAbsent('ingestion', [:]); ctx.event.ingestion.latency_logstash_to_redis = ChronoUnit.SECONDS.between(ZonedDateTime.parse(ctx._tmp.logstash_from_agent), ZonedDateTime.parse(ctx._tmp.logstash_to_redis));"
+            }
+        },
+        {
+            "script": {
+                "description": "Calculate time message spends in redis queue (logstash delay in pulling event).",
+                "lang": "painless",
+                "if": "ctx._tmp?.logstash_to_redis != null && ctx._tmp?.logstash_from_redis != null",
+                "ignore_failure": true,
+                "source": "ctx.event.putIfAbsent('ingestion', [:]); ctx.event.ingestion.latency_redis_to_logstash = ChronoUnit.SECONDS.between(ZonedDateTime.parse(ctx._tmp.logstash_to_redis), ZonedDateTime.parse(ctx._tmp.logstash_from_redis));"
+            }
+        },
+        {
+            "script": {
+                "description": "Calculate time from Logstash to Elasticsearch (after read from Redis).",
+                "lang": "painless",
+                "if": "ctx._tmp?.logstash_from_redis != null",
+                "ignore_failure": true,
+                "source": "ctx.event.putIfAbsent('ingestion', [:]); ctx.event.ingestion.latency_logstash_to_elasticsearch = ChronoUnit.SECONDS.between(ZonedDateTime.parse(ctx._tmp.logstash_from_redis), metadata().now);"
+            }
+        },
+        {
+            "script": {
+                "description": "Calculate time from Elastic Agent to Kafka.",
+                "lang": "painless",
+                "if": "ctx._tmp?.logstash_from_kafka != null && ctx._tmp?.logstash_from_agent == null",
+                "ignore_failure": true,
+                "source": "ZonedDateTime start = ctx._tmp.event_ingested_pre_fleet != null ? ZonedDateTime.parse(ctx._tmp.event_ingested_pre_fleet) : ZonedDateTime.parse(ctx['@timestamp']); ctx.event.putIfAbsent('ingestion', [:]); ctx.event.ingestion.latency_elasticagent_to_kafka = ChronoUnit.SECONDS.between(start, ZonedDateTime.parse(ctx._tmp.logstash_from_kafka));"
+            }
+        },
+        {
+            "script": {
+                "description": "Calculate time message spends in Kafka queue (logstash delay in pulling event).",
+                "lang": "painless",
+                "if": "ctx._tmp?.logstash_from_kafka != null && ctx.metadata?.kafka?.timestamp != null && ctx._tmp?.logstash_from_agent == null",
+                "ignore_failure": true,
+                "source": "ctx.event.putIfAbsent('ingestion', [:]); ctx.event.ingestion.latency_kafka_queue = ChronoUnit.SECONDS.between(ZonedDateTime.ofInstant(Instant.ofEpochMilli(Long.parseLong(ctx.metadata.kafka.timestamp.toString())), ZoneId.of('UTC')), ZonedDateTime.parse(ctx._tmp.logstash_from_kafka));"
+            }
+        },
+        {
+            "script": {
+                "description": "Calculate time from Logstash to Elasticsearch (after read from Kafka).",
+                "lang": "painless",
+                "if": "ctx._tmp?.logstash_from_kafka != null && ctx._tmp?.logstash_from_agent == null",
+                "ignore_failure": true,
+                "source": "ctx.event.putIfAbsent('ingestion', [:]); ctx.event.ingestion.latency_kafka_to_elasticsearch = ChronoUnit.SECONDS.between(ZonedDateTime.parse(ctx._tmp.logstash_from_kafka), metadata().now);"
             }
         },
         {
@@ -202,7 +274,8 @@
                     "event.dataset_temp",
                     "dataset_tag_temp",
                     "module_temp",
-                    "datastream_dataset_temp"
+                    "datastream_dataset_temp",
+                    "_tmp"
                 ],
                 "ignore_missing": true,
                 "ignore_failure": true
