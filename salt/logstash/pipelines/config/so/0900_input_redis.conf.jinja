@@ -1,4 +1,4 @@
-{%- from 'logstash/map.jinja' import LOGSTASH_REDIS_NODES with context %}
+{%- from 'logstash/map.jinja' import LOGSTASH_REDIS_NODES, LOGSTASH_MERGED %}
 {%- set REDIS_PASS = salt['pillar.get']('redis:config:requirepass') %}
 
 {%- for index in range(LOGSTASH_REDIS_NODES|length) %}
@@ -18,3 +18,10 @@ input {
 }
 {%   endfor %}
 {% endfor -%}
+filter {
+  {% if LOGSTASH_MERGED.get('latency_metrics', False) %}
+  ruby {
+    code => "event.set('[_tmp][logstash_from_redis]', Time.now().utc.iso8601(3));"
+  }
+  {% endif %}
+}

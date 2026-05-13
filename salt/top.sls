@@ -119,7 +119,7 @@ base:
     - kafka
     - pcap.cleanup
 
-  '*_manager or *_managerhype and G@saltversion:{{saltversion}} and not I@node_data:False':
+  '*_manager and G@saltversion:{{saltversion}} and not I@node_data:False':
     - match: compound
     - salt.master
     - registry
@@ -144,6 +144,32 @@ base:
     - utility
     - elasticfleet
     - stig
+    - kafka
+
+  '*_managerhype and G@saltversion:{{saltversion}} and not I@node_data:False':
+    - match: compound
+    - salt.master
+    - registry
+    - nginx
+    - influxdb
+    - postgres
+    - strelka.manager
+    - soc
+    - kratos
+    - hydra
+    - firewall
+    - manager
+    - sensoroni
+    - telegraf
+    - backup.config_backup
+    - elasticsearch
+    - logstash
+    - redis
+    - elastic-fleet-package-registry
+    - kibana
+    - elastalert
+    - utility
+    - elasticfleet
     - kafka
 
   '*_managerhype and I@features:vrt and G@saltversion:{{saltversion}}':
@@ -286,7 +312,6 @@ base:
     - libvirt
     - libvirt.images
     - elasticfleet.install_agent_grid
-    - stig
   
   '*_desktop and G@saltversion:{{saltversion}}':
     - sensoroni

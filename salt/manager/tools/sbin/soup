@@ -556,14 +556,23 @@ check_transform_health_and_reauthorize() {
     # - unhealthy (any non-green health status)
     # - metadata has run_as_kibana_system: false (this fix is specific to transforms started prior to Kibana 9.3.3)
     # - are not orphaned (integration is not somehow missing/corrupt/uninstalled)
+    local tmp_transforms tmp_stats tmp_installed
+    tmp_transforms=$(mktemp)
+    tmp_stats=$(mktemp)
+    tmp_installed=$(mktemp)
+
+    echo "$transforms_doc" > "$tmp_transforms"
+    echo "$stats_doc"      > "$tmp_stats"
+    echo "$installed_doc"  > "$tmp_installed"
+
     local unhealthy_transforms
     unhealthy_transforms=$(jq -c -n \
-        --argjson t "$transforms_doc" \
-        --argjson s "$stats_doc" \
-        --argjson i "$installed_doc" '
-        ($i.items | map({key: .name, value: .version}) | from_entries) as $pkg_ver
-        | ($s.transforms | map({key: .id, value: .health.status}) | from_entries) as $health
-        | [ $t.transforms[]
+        --slurpfile t "$tmp_transforms" \
+        --slurpfile s "$tmp_stats" \
+        --slurpfile i "$tmp_installed" '
+        ($i[0].items | map({key: .name, value: .version}) | from_entries) as $pkg_ver
+        | ($s[0].transforms | map({key: .id, value: .health.status}) | from_entries) as $health
+        | [ $t[0].transforms[]
             | select(._meta.run_as_kibana_system == false)
             | select(($health[.id] // "unknown") != "green")
             | {id, pkg: ._meta.package.name, ver: ($pkg_ver[._meta.package.name])}
@@ -603,6 +612,8 @@ check_transform_health_and_reauthorize() {
 
         (( total_failures += $(jq 'map(select(.success != true)) | length' <<< "$resp" 2>/dev/null) ))
     done <<< "$unhealthy_transforms"
+
+    rm -f "$tmp_transforms" "$tmp_stats" "$tmp_installed"
 
     if [[ "$total_failures" -gt 0 ]]; then
         echo "Some transform(s) failed to reauthorize."
@@ -644,6 +655,27 @@ ensure_postgres_secret() {
   chown socore:socore "$secrets_file"
 }
 
+rename_strelka_scan_lnk() {
+  echo "Renaming strelka pillar ScanLNK to ScanLnk."
+  local STRELKA_FILE=/opt/so/saltstack/local/pillar/strelka/soc_strelka.sls
+  local MINIONDIR=/opt/so/saltstack/local/pillar/minions
+  local OLD_KEY=strelka.backend.config.backend.scanners.ScanLNK
+  local NEW_KEY=strelka.backend.config.backend.scanners.ScanLnk
+  local TMP_VALUE_FILE
+  TMP_VALUE_FILE=$(mktemp)
+
+  for pillar_file in "$STRELKA_FILE" "$MINIONDIR"/*.sls; do
+    [[ -f "$pillar_file" ]] || continue
+    # Skip if ScanLNK doesn't exist
+    so-yaml.py get "$pillar_file" "$OLD_KEY" > "$TMP_VALUE_FILE" 2>/dev/null || continue
+    echo "Found 'ScanLNK' key in $pillar_file. Renaming to 'ScanLnk'."
+    so-yaml.py add "$pillar_file" "$NEW_KEY" "file:$TMP_VALUE_FILE"
+    so-yaml.py remove "$pillar_file" "$OLD_KEY"
+  done
+
+  rm -f "$TMP_VALUE_FILE"
+}
+
 up_to_3.1.0() {
   ensure_postgres_local_pillar
   ensure_postgres_secret
@@ -651,7 +683,7 @@ up_to_3.1.0() {
   elasticsearch_backup_index_templates
   # Clear existing component template state file.
   rm -f /opt/so/state/esfleet_component_templates.json
-
+  rename_strelka_scan_lnk
 
   INSTALLEDVERSION=3.1.0
 }

@@ -3,12 +3,15 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-{% if data['id'].endswith('_hypervisor') and data['result'] == True %}
+{% set hid = data['id'] %}
+{% if hid|regex_match('^([A-Za-z0-9._-]{1,253})$')
+   and hid.endswith('_hypervisor')
+   and data['result'] == True %}
 
 {%   if data['act'] == 'accept' %}
 check_and_trigger:
   runner.setup_hypervisor.setup_environment:
-    - minion_id: {{ data['id'] }}
+    - minion_id: {{ hid }}
 {%   endif %}
 
 {%   if data['act'] == 'delete' %}
@@ -17,8 +20,7 @@ delete_hypervisor:
     - args:
       - mods: orch.delete_hypervisor
       - pillar:
-          minion_id: {{ data['id'] }}
+          minion_id: {{ hid }}
 {%   endif %}
 
 {% endif %}
-

@@ -1,0 +1,71 @@
+{
+    "description": "zeek.ja4d",
+    "processors": [
+        {
+            "set": {
+                "field": "event.dataset",
+                "value": "ja4d"
+            }
+        },
+        {
+            "remove": {
+                "field": [
+                    "host"
+                ],
+                "ignore_failure": true
+            }
+        },
+        {
+            "json": {
+                "field": "message",
+                "target_field": "message2",
+                "ignore_failure": true
+            }
+        },
+        {
+            "rename": {
+                "field": "message2.ja4d",
+                "target_field": "hash.ja4d",
+                "ignore_missing": true,
+                "if": "ctx?.message2?.ja4d != null && ctx.message2.ja4d.length() > 0"
+            }
+        },
+        {
+            "rename": {
+                "field": "message2.client_mac",
+                "target_field": "host.mac",
+                "ignore_missing": true,
+                "if": "ctx?.message2?.client_mac != null && ctx.message2.client_mac.length() > 0"
+            }
+        },
+        {
+            "rename": {
+                "field": "message2.hostname",
+                "target_field": "host.hostname",
+                "ignore_missing": true,
+                "if": "ctx?.message2?.hostname != null && ctx.message2.hostname.length() > 0"
+            }
+        },
+        {
+            "rename": {
+                "field": "message2.requested_ip",
+                "target_field": "dhcp.requested_address",
+                "ignore_missing": true,
+                "if": "ctx?.message2?.requested_ip != null && ctx.message2.requested_ip.length() > 0"
+            }
+        },
+        {
+            "rename": {
+                "field": "message2.vendor_class_id",
+                "target_field": "zeek.ja4d.vendor_class_id",
+                "ignore_missing": true,
+                "if": "ctx?.message2?.vendor_class_id != null && ctx.message2.vendor_class_id.length() > 0"
+            }
+        },
+        {
+            "pipeline": {
+                "name": "zeek.common"
+            }
+        }
+    ]
+}
