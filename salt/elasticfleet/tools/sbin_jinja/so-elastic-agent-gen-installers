@@ -72,7 +72,7 @@ do
     --mount type=bind,source=/etc/pki/tls/certs/,target=/workspace/files/cert/ \
     --mount type=bind,source=/nsm/elastic-agent-workspace/,target=/workspace/files/elastic-agent/ \
     --mount type=bind,source=/opt/so/saltstack/local/salt/elasticfleet/files/so_agent-installers/,target=/output/ \
-    {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elastic-agent-builder:{{ GLOBALS.so_version }} go build -ldflags "-X main.fleetHostURLsList=$FLEETHOST -X main.enrollmentToken=$ENROLLMENTOKEN"  -o /output/so-elastic-agent_${GOOS}_${GOARCH}
+    {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elastic-agent-builder:{{ GLOBALS.so_version }} go build -ldflags "-X main.fleetHostURLsList=$FLEETHOST -X main.enrollmentToken=$ENROLLMENTOKEN -X main.elasticAgentVersion=$ELASTIC_AGENT_TARBALL_VERSION"  -o /output/so-elastic-agent_${GOOS}_${GOARCH}
     printf "\n### $GOOS/$GOARCH Installer Generated...\n"
 done
 
@@ -80,7 +80,7 @@ printf "\n\n### Generating MSI...\n"
 cp /opt/so/saltstack/local/salt/elasticfleet/files/so_agent-installers/so-elastic-agent_windows_amd64 /opt/so/saltstack/local/salt/elasticfleet/files/so_agent-installers/so-elastic-agent_windows_amd64.exe
 docker run \
 --mount type=bind,source=/opt/so/saltstack/local/salt/elasticfleet/files/so_agent-installers/,target=/output/ -w /output \
-{{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elastic-agent-builder:{{ GLOBALS.so_version }} wixl -o so-elastic-agent_windows_amd64_msi --arch x64 /workspace/so-elastic-agent.wxs
+{{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elastic-agent-builder:{{ GLOBALS.so_version }} wixl -D ProductVersion="$ELASTIC_AGENT_TARBALL_VERSION" -o so-elastic-agent_windows_amd64_msi --arch x64 /workspace/so-elastic-agent.wxs
 printf "\n### MSI Generated...\n"
 
 printf "\n### Cleaning up temp files \n"
