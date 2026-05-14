@@ -100,26 +100,17 @@ postgres_telegraf_group_role:
 {%   for mid, entry in creds.items() %}
 {%     if entry.get('user') and entry.get('pass') %}
 {%       set u = entry.user %}
-{%       set p = entry.pass | replace("'", "''") %}
+{%       set p = entry.pass %}
 
 postgres_telegraf_role_{{ u }}:
   cmd.run:
-    - name: |
-        docker exec -i so-postgres psql -v ON_ERROR_STOP=1 -U postgres -d so_telegraf <<'EOSQL'
-        DO $$
-        BEGIN
-            IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '{{ u }}') THEN
-                EXECUTE format('CREATE ROLE %I WITH LOGIN PASSWORD %L', '{{ u }}', '{{ p }}');
-            ELSE
-                EXECUTE format('ALTER ROLE %I WITH PASSWORD %L', '{{ u }}', '{{ p }}');
-            END IF;
-        END
-        $$;
-        GRANT CONNECT ON DATABASE so_telegraf TO "{{ u }}";
-        GRANT so_telegraf TO "{{ u }}";
-        EOSQL
+    - name: /usr/local/bin/telegraf_role.sh
+    - env:
+      - ROLE_USER: {{ u }}
+      - ROLE_PASS: {{ p }}
     - hide_output: True
     - require:
+      - file: postgrestelegrafrole
       - cmd: postgres_telegraf_group_role
 
 {%     endif %}

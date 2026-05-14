@@ -94,6 +94,14 @@ postgres_app_secret:
     - require:
       - file: postgressecretsdir
 
+postgrestelegrafrole:
+  file.managed:
+    - name: /usr/local/bin/telegraf_role.sh
+    - source: salt://postgres/files/telegraf_role.sh
+    - user: root
+    - group: root
+    - mode: 755
+
 postgres_sbin:
   file.recurse:
     - name: /usr/sbin
