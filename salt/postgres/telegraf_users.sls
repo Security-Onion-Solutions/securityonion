@@ -39,17 +39,15 @@ postgres_wait_ready:
     - require:
       - docker_container: so-postgres
 
-# Ensure the shared Telegraf database exists. init-users.sh only runs on a
+# Ensure the shared Telegraf database exists. init-db.sh only runs on a
 # fresh data dir, so hosts upgraded onto an existing /nsm/postgres volume
 # would otherwise never get so_telegraf.
 postgres_create_telegraf_db:
   cmd.run:
-    - name: |
-        if ! docker exec so-postgres psql -U postgres -tAc "SELECT 1 FROM pg_database WHERE datname='so_telegraf'" | grep -q 1; then
-          docker exec so-postgres psql -v ON_ERROR_STOP=1 -U postgres -c "CREATE DATABASE so_telegraf"
-        fi
+    - name: /usr/sbin/so-telegraf-postgres create_db
     - require:
       - cmd: postgres_wait_ready
+      - file: postgres_sbin
 
 # Provision the shared group role and schema once. Every per-minion role is a
 # member of so_telegraf, and each Telegraf connection does SET ROLE so_telegraf
@@ -57,68 +55,26 @@ postgres_create_telegraf_db:
 # on first write are owned by the group role and every member can INSERT/SELECT.
 postgres_telegraf_group_role:
   cmd.run:
-    - name: |
-        docker exec -i so-postgres psql -v ON_ERROR_STOP=1 -U postgres -d so_telegraf <<'EOSQL'
-        DO $$
-        BEGIN
-            IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'so_telegraf') THEN
-                CREATE ROLE so_telegraf NOLOGIN;
-            END IF;
-        END
-        $$;
-        GRANT CONNECT ON DATABASE so_telegraf TO so_telegraf;
-        CREATE SCHEMA IF NOT EXISTS telegraf AUTHORIZATION so_telegraf;
-        GRANT USAGE, CREATE ON SCHEMA telegraf TO so_telegraf;
-        CREATE SCHEMA IF NOT EXISTS partman;
-        CREATE EXTENSION IF NOT EXISTS pg_partman SCHEMA partman;
-        CREATE EXTENSION IF NOT EXISTS pg_cron;
-        -- Telegraf (running as so_telegraf) calls partman.create_parent()
-        -- on first write of each metric, which needs USAGE on the partman
-        -- schema, EXECUTE on its functions/procedures, and write access to
-        -- partman.part_config so it can register new partitioned parents.
-        GRANT USAGE, CREATE ON SCHEMA partman TO so_telegraf;
-        GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA partman TO so_telegraf;
-        GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA partman TO so_telegraf;
-        GRANT EXECUTE ON ALL PROCEDURES IN SCHEMA partman TO so_telegraf;
-        -- partman creates per-parent template tables (partman.template_*) at
-        -- runtime; default privileges extend DML/sequence access to them.
-        ALTER DEFAULT PRIVILEGES IN SCHEMA partman
-            GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO so_telegraf;
-        ALTER DEFAULT PRIVILEGES IN SCHEMA partman
-            GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO so_telegraf;
-        -- Hourly partman maintenance. cron.schedule is idempotent by jobname.
-        SELECT cron.schedule(
-          'telegraf-partman-maintenance',
-          '17 * * * *',
-          'CALL partman.run_maintenance_proc()'
-        );
-        EOSQL
+    - name: /usr/sbin/so-telegraf-postgres group_role
     - require:
       - cmd: postgres_create_telegraf_db
+      - file: postgres_sbin
 
 {%   set creds = salt['pillar.get']('telegraf:postgres_creds', {}) %}
 {%   for mid, entry in creds.items() %}
 {%     if entry.get('user') and entry.get('pass') %}
 {%       set u = entry.user %}
-{%       set p = entry.pass | replace("'", "''") %}
+{%       set p = entry.pass %}
 
 postgres_telegraf_role_{{ u }}:
   cmd.run:
-    - name: |
-        docker exec -i so-postgres psql -v ON_ERROR_STOP=1 -U postgres -d so_telegraf <<'EOSQL'
-        DO $$
-        BEGIN
-            IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '{{ u }}') THEN
-                EXECUTE format('CREATE ROLE %I WITH LOGIN PASSWORD %L', '{{ u }}', '{{ p }}');
-            ELSE
-                EXECUTE format('ALTER ROLE %I WITH PASSWORD %L', '{{ u }}', '{{ p }}');
-            END IF;
-        END
-        $$;
-        GRANT CONNECT ON DATABASE so_telegraf TO "{{ u }}";
-        GRANT so_telegraf TO "{{ u }}";
-        EOSQL
+    - name: /usr/sbin/so-telegraf-postgres user
+    - env:
+      - ROLE_USER: {{ u | tojson }}
+      - ROLE_PASS: {{ p | tojson }}
+    - hide_output: True
     - require:
+      - file: postgres_sbin
       - cmd: postgres_telegraf_group_role
 
 {%     endif %}
@@ -130,21 +86,12 @@ postgres_telegraf_role_{{ u }}:
 {%   set retention = salt['pillar.get']('postgres:telegraf:retention_days', 14) | int %}
 postgres_telegraf_retention_reconcile:
   cmd.run:
-    - name: |
-        docker exec -i so-postgres psql -v ON_ERROR_STOP=1 -U postgres -d so_telegraf <<'EOSQL'
-        DO $$
-        BEGIN
-            IF EXISTS (SELECT 1 FROM pg_catalog.pg_extension WHERE extname = 'pg_partman') THEN
-                UPDATE partman.part_config
-                SET retention = '{{ retention }} days',
-                    retention_keep_table = false
-                WHERE parent_table LIKE 'telegraf.%';
-            END IF;
-        END
-        $$;
-        EOSQL
+    - name: /usr/sbin/so-telegraf-postgres retention
+    - env:
+      - RETENTION_DAYS: {{ retention }}
     - require:
       - cmd: postgres_telegraf_group_role
+      - file: postgres_sbin
 
 {% endif %}
 

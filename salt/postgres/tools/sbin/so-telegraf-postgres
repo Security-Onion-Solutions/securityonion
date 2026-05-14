@@ -1,0 +1,110 @@
+#!/bin/bash
+set -e
+
+# Provision Telegraf state inside the so-postgres container.
+# Usage: so-telegraf-postgres <subcommand>
+#   create_db    Ensure the so_telegraf database exists.
+#   group_role   Provision the so_telegraf group role, telegraf/partman schemas,
+#                pg_partman, pg_cron, and the hourly partman maintenance job.
+#   user         Create or update a per-minion login role granted to so_telegraf.
+#                Env: ROLE_USER, ROLE_PASS.
+#   retention    Reconcile partman retention on telegraf parents.
+#                Env: RETENTION_DAYS.
+
+cmd="${1:?subcommand required}"
+
+case "$cmd" in
+  create_db)
+    if ! docker exec so-postgres psql -U postgres -tAc \
+        "SELECT 1 FROM pg_database WHERE datname='so_telegraf'" | grep -q 1; then
+      docker exec so-postgres psql -v ON_ERROR_STOP=1 -U postgres \
+        -c "CREATE DATABASE so_telegraf"
+    fi
+    ;;
+
+  group_role)
+    docker exec -i so-postgres psql -v ON_ERROR_STOP=1 -U postgres -d so_telegraf <<'EOSQL'
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'so_telegraf') THEN
+        CREATE ROLE so_telegraf NOLOGIN;
+    END IF;
+END
+$$;
+GRANT CONNECT ON DATABASE so_telegraf TO so_telegraf;
+CREATE SCHEMA IF NOT EXISTS telegraf AUTHORIZATION so_telegraf;
+GRANT USAGE, CREATE ON SCHEMA telegraf TO so_telegraf;
+CREATE SCHEMA IF NOT EXISTS partman;
+CREATE EXTENSION IF NOT EXISTS pg_partman SCHEMA partman;
+CREATE EXTENSION IF NOT EXISTS pg_cron;
+-- Telegraf (running as so_telegraf) calls partman.create_parent()
+-- on first write of each metric, which needs USAGE on the partman
+-- schema, EXECUTE on its functions/procedures, and write access to
+-- partman.part_config so it can register new partitioned parents.
+GRANT USAGE, CREATE ON SCHEMA partman TO so_telegraf;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA partman TO so_telegraf;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA partman TO so_telegraf;
+GRANT EXECUTE ON ALL PROCEDURES IN SCHEMA partman TO so_telegraf;
+-- partman creates per-parent template tables (partman.template_*) at
+-- runtime; default privileges extend DML/sequence access to them.
+ALTER DEFAULT PRIVILEGES IN SCHEMA partman
+    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO so_telegraf;
+ALTER DEFAULT PRIVILEGES IN SCHEMA partman
+    GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO so_telegraf;
+-- Hourly partman maintenance. cron.schedule is idempotent by jobname.
+SELECT cron.schedule(
+  'telegraf-partman-maintenance',
+  '17 * * * *',
+  'CALL partman.run_maintenance_proc()'
+);
+EOSQL
+    ;;
+
+  user)
+    : "${ROLE_USER:?ROLE_USER is required}"
+    : "${ROLE_PASS:?ROLE_PASS is required}"
+    # psql does not substitute :vars inside dollar-quoted strings, so the
+    # conditional CREATE/ALTER is built outside any DO block and dispatched
+    # with \gexec. format() handles identifier/literal quoting.
+    docker exec -i so-postgres psql \
+      -v ON_ERROR_STOP=1 \
+      -v role_user="$ROLE_USER" \
+      -v role_pass="$ROLE_PASS" \
+      -U postgres -d so_telegraf <<'EOSQL'
+SELECT format(
+  CASE WHEN EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = :'role_user')
+       THEN 'ALTER ROLE %I WITH LOGIN PASSWORD %L'
+       ELSE 'CREATE ROLE %I WITH LOGIN PASSWORD %L'
+  END,
+  :'role_user',
+  :'role_pass'
+) \gexec
+GRANT CONNECT ON DATABASE so_telegraf TO :"role_user";
+GRANT so_telegraf TO :"role_user";
+EOSQL
+    ;;
+
+  retention)
+    : "${RETENTION_DAYS:?RETENTION_DAYS is required}"
+    # \gset + \if guards against a missing pg_partman without using a DO
+    # block (psql :var substitution doesn't reach into dollar-quoted code).
+    docker exec -i so-postgres psql \
+      -v ON_ERROR_STOP=1 \
+      -v retention_days="$RETENTION_DAYS" \
+      -U postgres -d so_telegraf <<'EOSQL'
+SELECT CASE WHEN EXISTS (SELECT 1 FROM pg_catalog.pg_extension WHERE extname = 'pg_partman')
+            THEN 'true' ELSE 'false' END AS has_partman \gset
+\if :has_partman
+UPDATE partman.part_config
+SET retention = :'retention_days' || ' days',
+    retention_keep_table = false
+WHERE parent_table LIKE 'telegraf.%';
+\endif
+EOSQL
+    ;;
+
+  *)
+    echo "Unknown subcommand: $cmd" >&2
+    exit 1
+    ;;
+esac
