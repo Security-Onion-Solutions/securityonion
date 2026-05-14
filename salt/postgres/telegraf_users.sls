@@ -118,6 +118,7 @@ postgres_telegraf_role_{{ u }}:
         GRANT CONNECT ON DATABASE so_telegraf TO "{{ u }}";
         GRANT so_telegraf TO "{{ u }}";
         EOSQL
+    - hide_output: True
     - require:
       - cmd: postgres_telegraf_group_role
 
