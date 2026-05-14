@@ -31,11 +31,13 @@ sync_es_users:
       - http: wait_for_kratos
       - file: so-user.lock # require so-user.lock file to be missing
 
-# we dont want this added too early in setup, so we add the onlyif to verify 'startup_states: highstate'
-# is in the minion config. That line is added before the final highstate during setup
+# we dont want this added too early in setup, so the onlyif gates on the
+# /opt/so/conf/setup-complete marker. The marker is written by
+# mark_setup_complete in setup/so-functions just before the final setup
+# highstate (and by an upgrade-path state for systems set up under the old gate).
 so-user_sync:
   cron.present:
     - user: root
     - name: 'PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/root/bin /usr/sbin/so-user sync &>> /opt/so/log/soc/sync.log'
     - identifier: so-user_sync
-    - onlyif: "grep -x 'startup_states: highstate' /etc/salt/minion"
+    - onlyif: "test -e /opt/so/conf/setup-complete"

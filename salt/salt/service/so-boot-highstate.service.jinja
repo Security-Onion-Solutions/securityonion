@@ -1,0 +1,14 @@
+[Unit]
+Description=Security Onion boot-time highstate (runs once per boot)
+After=salt-minion.service network-online.target
+Wants=network-online.target
+Requires=salt-minion.service
+ConditionPathExists=/opt/so/conf/setup-complete
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/salt-call state.highstate -l info queue=True
+
+[Install]
+WantedBy=multi-user.target

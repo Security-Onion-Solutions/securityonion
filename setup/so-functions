@@ -539,16 +539,19 @@ configure_minion() {
 		"  x509_v2: true"\
 		"log_level: info"\
 		"log_level_logfile: info"\
-		"log_file: /opt/so/log/salt/minion"\
-		"#startup_states: highstate" >> "$minion_config"
+		"log_file: /opt/so/log/salt/minion" >> "$minion_config"
 
 }
 
-checkin_at_boot() {
-	local minion_config=/etc/salt/minion
+mark_setup_complete() {
+	# Writes the setup-complete marker. Salt's so-boot-highstate.service
+	# (boot-time oneshot) and the so-user_sync cron gate in
+	# salt/manager/sync_es_users.sls both key off this file.
+	local marker=/opt/so/conf/setup-complete
 
-	info "Enabling checkin at boot"
-	sed -i 's/#startup_states: highstate/startup_states: highstate/' "$minion_config"
+	info "Marking setup as complete"
+	mkdir -p "$(dirname "$marker")"
+	touch "$marker"
 }
 
 check_requirements() {
