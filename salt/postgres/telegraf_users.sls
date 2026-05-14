@@ -104,13 +104,13 @@ postgres_telegraf_group_role:
 
 postgres_telegraf_role_{{ u }}:
   cmd.run:
-    - name: /usr/local/bin/telegraf_role.sh
+    - name: /usr/sbin/telegraf_role.sh
     - env:
       - ROLE_USER: {{ u }}
       - ROLE_PASS: {{ p }}
     - hide_output: True
     - require:
-      - file: postgrestelegrafrole
+      - file: postgres_sbin
       - cmd: postgres_telegraf_group_role
 
 {%     endif %}
