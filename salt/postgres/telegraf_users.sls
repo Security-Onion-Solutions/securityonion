@@ -44,7 +44,7 @@ postgres_wait_ready:
 # would otherwise never get so_telegraf.
 postgres_create_telegraf_db:
   cmd.run:
-    - name: /usr/sbin/telegraf_postgres.sh create_db
+    - name: /usr/sbin/so-telegraf-postgres create_db
     - require:
       - cmd: postgres_wait_ready
       - file: postgres_sbin
@@ -55,7 +55,7 @@ postgres_create_telegraf_db:
 # on first write are owned by the group role and every member can INSERT/SELECT.
 postgres_telegraf_group_role:
   cmd.run:
-    - name: /usr/sbin/telegraf_postgres.sh group_role
+    - name: /usr/sbin/so-telegraf-postgres group_role
     - require:
       - cmd: postgres_create_telegraf_db
       - file: postgres_sbin
@@ -68,7 +68,7 @@ postgres_telegraf_group_role:
 
 postgres_telegraf_role_{{ u }}:
   cmd.run:
-    - name: /usr/sbin/telegraf_postgres.sh user
+    - name: /usr/sbin/so-telegraf-postgres user
     - env:
       - ROLE_USER: {{ u }}
       - ROLE_PASS: {{ p }}
@@ -86,7 +86,7 @@ postgres_telegraf_role_{{ u }}:
 {%   set retention = salt['pillar.get']('postgres:telegraf:retention_days', 14) | int %}
 postgres_telegraf_retention_reconcile:
   cmd.run:
-    - name: /usr/sbin/telegraf_postgres.sh retention
+    - name: /usr/sbin/so-telegraf-postgres retention
     - env:
       - RETENTION_DAYS: {{ retention }}
     - require:
