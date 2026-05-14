@@ -63,20 +63,22 @@ EOSQL
   user)
     : "${ROLE_USER:?ROLE_USER is required}"
     : "${ROLE_PASS:?ROLE_PASS is required}"
+    # psql does not substitute :vars inside dollar-quoted strings, so the
+    # conditional CREATE/ALTER is built outside any DO block and dispatched
+    # with \gexec. format() handles identifier/literal quoting.
     docker exec -i so-postgres psql \
       -v ON_ERROR_STOP=1 \
       -v role_user="$ROLE_USER" \
       -v role_pass="$ROLE_PASS" \
       -U postgres -d so_telegraf <<'EOSQL'
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = :role_user) THEN
-        EXECUTE format('CREATE ROLE %I WITH LOGIN PASSWORD %L', :role_user, :role_pass);
-    ELSE
-        EXECUTE format('ALTER ROLE %I WITH LOGIN PASSWORD %L', :role_user, :role_pass);
-    END IF;
-END
-$$;
+SELECT format(
+  CASE WHEN EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = :'role_user')
+       THEN 'ALTER ROLE %I WITH LOGIN PASSWORD %L'
+       ELSE 'CREATE ROLE %I WITH LOGIN PASSWORD %L'
+  END,
+  :'role_user',
+  :'role_pass'
+) \gexec
 GRANT CONNECT ON DATABASE so_telegraf TO :"role_user";
 GRANT so_telegraf TO :"role_user";
 EOSQL
@@ -84,20 +86,20 @@ EOSQL
 
   retention)
     : "${RETENTION_DAYS:?RETENTION_DAYS is required}"
+    # \gset + \if guards against a missing pg_partman without using a DO
+    # block (psql :var substitution doesn't reach into dollar-quoted code).
     docker exec -i so-postgres psql \
       -v ON_ERROR_STOP=1 \
       -v retention_days="$RETENTION_DAYS" \
       -U postgres -d so_telegraf <<'EOSQL'
-DO $$
-BEGIN
-    IF EXISTS (SELECT 1 FROM pg_catalog.pg_extension WHERE extname = 'pg_partman') THEN
-        UPDATE partman.part_config
-        SET retention = :'retention_days' || ' days',
-            retention_keep_table = false
-        WHERE parent_table LIKE 'telegraf.%';
-    END IF;
-END
-$$;
+SELECT CASE WHEN EXISTS (SELECT 1 FROM pg_catalog.pg_extension WHERE extname = 'pg_partman')
+            THEN 'true' ELSE 'false' END AS has_partman \gset
+\if :has_partman
+UPDATE partman.part_config
+SET retention = :'retention_days' || ' days',
+    retention_keep_table = false
+WHERE parent_table LIKE 'telegraf.%';
+\endif
 EOSQL
     ;;
 
