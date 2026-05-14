@@ -70,7 +70,7 @@ so-postgres:
     - watch:
       - file: postgresconf
       - file: postgreshba
-      - file: postgresinitusers
+      - file: postgresinitdb
       - file: postgres_super_secret
       - file: postgres_app_secret
       - x509: postgres_crt
@@ -78,7 +78,7 @@ so-postgres:
     - require:
       - file: postgresconf
       - file: postgreshba
-      - file: postgresinitusers
+      - file: postgresinitdb
       - file: postgres_super_secret
       - file: postgres_app_secret
       - x509: postgres_crt
