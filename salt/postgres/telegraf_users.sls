@@ -70,8 +70,8 @@ postgres_telegraf_role_{{ u }}:
   cmd.run:
     - name: /usr/sbin/so-telegraf-postgres user
     - env:
-      - ROLE_USER: {{ u }}
-      - ROLE_PASS: {{ p }}
+      - ROLE_USER: {{ u | tojson }}
+      - ROLE_PASS: {{ p | tojson }}
     - hide_output: True
     - require:
       - file: postgres_sbin
