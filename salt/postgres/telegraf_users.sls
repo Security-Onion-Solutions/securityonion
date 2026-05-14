@@ -39,7 +39,7 @@ postgres_wait_ready:
     - require:
       - docker_container: so-postgres
 
-# Ensure the shared Telegraf database exists. init-users.sh only runs on a
+# Ensure the shared Telegraf database exists. init-db.sh only runs on a
 # fresh data dir, so hosts upgraded onto an existing /nsm/postgres volume
 # would otherwise never get so_telegraf.
 postgres_create_telegraf_db:
