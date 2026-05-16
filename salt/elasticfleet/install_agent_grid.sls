@@ -14,23 +14,20 @@
 
 pull_agent_installer:
   file.managed:
-    - name: /opt/so/log/agents/so-elastic-agent_linux_amd64
+    - name: /opt/so/so-elastic-agent_linux_amd64
     - source: salt://elasticfleet/files/so_agent-installers/so-elastic-agent_linux_amd64
     - mode: 755
     - makedirs: True
 
 run_installer:
   cmd.run:
-    {# Run agent installer and wait for it to report healthy status #}
-    - name: ./so-elastic-agent_linux_amd64 -token={{ GRIDNODETOKEN }} -force -verify
-    - cwd: /opt/so/log/agents
+    - name: ./so-elastic-agent_linux_amd64 -token={{ GRIDNODETOKEN }} -force
+    - cwd: /opt/so
     - retry:
         attempts: 3
         interval: 20
-    - require:
-      - file: pull_agent_installer
 
 cleanup_agent_installer:
   file.absent:
-    - name: /opt/so/log/agents/so-elastic-agent_linux_amd64
+    - name: /opt/so/so-elastic-agent_linux_amd64
 {% endif %}
