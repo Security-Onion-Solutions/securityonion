@@ -46,10 +46,10 @@ postgresinitdir:
     - require:
       - file: postgresconfdir
 
-postgresinitusers:
+postgresinitdb:
   file.managed:
-    - name: /opt/so/conf/postgres/init/init-users.sh
-    - source: salt://postgres/files/init-users.sh
+    - name: /opt/so/conf/postgres/init/init-db.sh
+    - source: salt://postgres/files/init-db.sh
     - user: 939
     - group: 939
     - mode: 755
