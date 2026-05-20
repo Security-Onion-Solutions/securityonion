@@ -1071,7 +1071,7 @@ verify_es_version_compatibility() {
         HEAVYNODE_ES_VERSIONS=""
 
         while [[ $retry_count -lt $retries ]]; do
-            HEAVYNODE_ES_VERSIONS=$(salt -C 'G@role:so-heavynode' cmd.run 'so-elasticsearch-query / --retry 5 --retry-delay 10 | jq -r ".version.number"' shell=/bin/bash --out=json 2> /dev/null)
+            HEAVYNODE_ES_VERSIONS=$(salt -C 'G@role:so-heavynode' cmd.run 'set -o pipefail; so-elasticsearch-query / --retry 5 --retry-delay 10 | jq -er ".version.number"' shell=/bin/bash --out=json 2> /dev/null)
             local exit_status=$?
 
             if [[ $exit_status -ne 0 ]]; then
