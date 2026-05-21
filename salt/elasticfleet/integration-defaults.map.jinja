@@ -59,8 +59,8 @@
 {#     skip core integrations #}
 {%   elif pkg.name not in CORE_ESFLEET_PACKAGES %}
 {#     generate defaults for each integration #}
-{%     if pkg.es_index_patterns is defined and pkg.es_index_patterns is not none %}
-{%       for pattern in pkg.es_index_patterns %}
+{%     if pkg.dataStreams is defined and pkg.dataStreams is not none and pkg.dataStreams | length > 0 %}
+{%       for pattern in pkg.dataStreams %}
 {%         if "metrics-" in pattern.name %}
 {%           set integration_type = "metrics-" %}
 {%         elif "logs-" in pattern.name %}
@@ -75,44 +75,27 @@
 {%         if component_name in WEIRD_INTEGRATIONS %}
 {%           set component_name = WEIRD_INTEGRATIONS[component_name] %}
 {%         endif %}
-
-{#         create duplicate of component_name, so we can split generics from @custom component templates in the index template below and overwrite the default @package when needed
-           eg. having to replace unifiedlogs.generic@package with filestream.generic@package, but keep the ability to customize unifiedlogs.generic@custom and its ILM policy #}
-{%         set custom_component_name = component_name %}
-
-{#         duplicate integration_type to assist with sometimes needing to overwrite component templates with 'logs-filestream.generic@package' (there is no metrics-filestream.generic@package) #}
-{%         set generic_integration_type = integration_type %}
-
 {#           component_name_x maintains the functionality of merging local pillar changes with generated 'defaults' via SOC UI #}
 {%           set component_name_x = component_name.replace(".","_x_") %}
 {#           pillar overrides/merge expects the key names to follow the naming in elasticsearch/defaults.yaml eg. so-logs-1password_x_item_usages . The _x_ is replaced later on in elasticsearch/template.map.jinja #}
 {%           set integration_key = "so-" ~ integration_type ~ component_name_x %}
 
-{#         if its a .generic template make sure that a .generic@package for the integration exists. Else default to logs-filestream.generic@package #}
-{%         if ".generic" in component_name and integration_type ~ component_name ~ "@package" not in INSTALLED_COMPONENT_TEMPLATES %}
-{#           these generic templates by default are directed to index_pattern of 'logs-generic-*', overwrite that here to point to eg gcp_pubsub.generic-* #}
-{%           set index_pattern = integration_type ~ component_name ~ "-*" %}
-{#           includes use of .generic component template, but it doesn't exist in installed component templates. Redirect it to filestream.generic@package #}
-{%           set component_name = "filestream.generic" %}
-{%           set generic_integration_type = "logs-" %}
-{%         endif %}
-
 {#           Default integration settings #}
 {%           set integration_defaults = {
                "index_sorting": false,
                "index_template": {
-                 "composed_of": [generic_integration_type ~ component_name ~ "@package", integration_type ~ custom_component_name ~ "@custom", "so-fleet_integrations.ip_mappings-1", "so-fleet_globals-1", "so-fleet_agent_id_verification-1"],
+                 "composed_of": [integration_type ~ component_name ~ "@package", integration_type ~ component_name ~ "@custom", "so-fleet_integrations.ip_mappings-1", "so-fleet_globals-1", "so-fleet_agent_id_verification-1"],
                  "data_stream": {
                    "allow_custom_routing": false,
                    "hidden": false
                  },
-                 "ignore_missing_component_templates": [integration_type ~ custom_component_name ~ "@custom"],
+                 "ignore_missing_component_templates": [integration_type ~ component_name ~ "@custom"],
                  "index_patterns": [index_pattern],
                  "priority": 501,
                  "template": {
                    "settings": {
                      "index": {
-                       "lifecycle": {"name": "so-" ~ integration_type ~ custom_component_name ~ "-logs"},
+                       "lifecycle": {"name": "so-" ~ integration_type ~ component_name ~ "-logs"},
                          "number_of_replicas": 0
                      }
                    }

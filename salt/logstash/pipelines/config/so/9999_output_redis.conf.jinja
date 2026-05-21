@@ -1,10 +1,17 @@
+{%- from 'logstash/map.jinja' import LOGSTASH_MERGED %}
 {%- if grains.role in ['so-heavynode', 'so-receiver'] %}
   {%- set HOST = GLOBALS.hostname %}
 {%- else %}
   {%- set HOST = GLOBALS.manager %}
 {%- endif %}
 {%- set REDIS_PASS = salt['pillar.get']('redis:config:requirepass') %}
-
+{% if LOGSTASH_MERGED.get('latency_metrics', False) %}
+filter {
+  ruby {
+    code => "event.set('[_tmp][logstash_to_redis]', Time.now().utc.iso8601(3));"
+  }
+}
+{% endif %}
 output {
 	redis {
 		host => '{{ HOST }}'

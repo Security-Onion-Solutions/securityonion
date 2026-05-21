@@ -24,6 +24,14 @@ BACKUPTOPFILE=/opt/so/saltstack/default/salt/top.sls.backup
 SALTUPGRADED=false
 SALT_CLOUD_INSTALLED=false
 SALT_CLOUD_CONFIGURED=false
+# Check if salt-cloud is installed
+if rpm -q salt-cloud &>/dev/null; then
+  SALT_CLOUD_INSTALLED=true
+fi
+# Check if salt-cloud is configured
+if [[ -f /etc/salt/cloud.profiles.d/socloud.conf ]]; then
+  SALT_CLOUD_CONFIGURED=true
+fi
 # used to display messages to the user at the end of soup
 declare -a FINAL_MESSAGE_QUEUE=()
 
@@ -363,6 +371,7 @@ preupgrade_changes() {
     echo "Checking to see if changes are needed."
 
     [[ "$INSTALLEDVERSION" =~ ^2\.4\.21[0-9]+$ ]] && up_to_3.0.0   
+    [[ "$INSTALLEDVERSION" == "3.0.0" ]] && up_to_3.1.0
     true
 }
 
@@ -371,6 +380,7 @@ postupgrade_changes() {
     echo "Running post upgrade processes."
 
     [[ "$POSTVERSION" =~ ^2\.4\.21[0-9]+$ ]] && post_to_3.0.0
+    [[ "$POSTVERSION" == "3.0.0" ]] && post_to_3.1.0
     true
 }
 
@@ -445,7 +455,6 @@ migrate_pcap_to_suricata() {
 }
 
 up_to_3.0.0() {
-  determine_elastic_agent_upgrade
   migrate_pcap_to_suricata
 
   INSTALLEDVERSION=3.0.0
@@ -468,6 +477,249 @@ post_to_3.0.0() {
 }
 
 ### 3.0.0 End ###
+
+### 3.1.0 Scripts ###
+
+elasticsearch_backup_index_templates() {
+  echo "Backing up current elasticsearch index templates in /opt/so/conf/elasticsearch/templates/index/ to /nsm/backup/3.0.0_elasticsearch_index_templates.tar.gz"
+  tar -czf /nsm/backup/3.0.0_elasticsearch_index_templates.tar.gz -C /opt/so/conf/elasticsearch/templates/index/ .
+}
+
+elasticfleet_set_agent_logging_level_warn() {
+    . /usr/sbin/so-elastic-fleet-common
+
+    local current_agent_policies
+    if ! current_agent_policies=$(fleet_api "agent_policies?perPage=1000"); then
+        echo "Warning: unable to retrieve Fleet agent policies"
+        return 0
+    fi
+
+    # Only updating policies that are within Security Onion defaults and do not already have any user configured advanced_settings.
+    local policies_to_update
+    policies_to_update=$(jq -c '
+        .items[]
+        | select(has("advanced_settings") | not)
+        | select(
+            .id == "so-grid-nodes_general"
+            or .id == "so-grid-nodes_heavy"
+            or .id == "endpoints-initial"
+            or (.id | startswith("FleetServer_"))
+          )
+    ' <<< "$current_agent_policies")
+
+    if [[ -z "$policies_to_update" ]]; then
+        return 0
+    fi
+
+    while IFS= read -r policy; do
+        [[ -z "$policy" ]] && continue
+
+        local policy_id policy_name policy_namespace
+        policy_id=$(jq -r '.id' <<< "$policy")
+        policy_name=$(jq -r '.name' <<< "$policy")
+        policy_namespace=$(jq -r '.namespace' <<< "$policy")
+
+        local update_logging
+        update_logging=$(jq -n \
+            --arg name "$policy_name" \
+            --arg namespace "$policy_namespace" \
+            '{name: $name, namespace: $namespace, advanced_settings: {agent_logging_level: "warning"}}'
+        )
+
+        echo "Setting elastic agent_logging_level to warning on policy '$policy_name' ($policy_id)."
+        if ! fleet_api "agent_policies/$policy_id" -XPUT -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$update_logging" >/dev/null; then
+            echo "  warning: failed to update agent policy '$policy_name' ($policy_id)" >&2
+        fi
+    done <<< "$policies_to_update"
+}
+
+check_transform_health_and_reauthorize() {
+    . /usr/sbin/so-elastic-fleet-common
+
+    echo "Checking integration transform jobs for unhealthy / unauthorized status..."
+
+    local transforms_doc stats_doc installed_doc
+    if ! transforms_doc=$(so-elasticsearch-query "_transform/_all?size=1000" --fail --retry 3 --retry-delay 5 2>/dev/null); then
+        echo "Unable to query for transform jobs, skipping reauthorization."
+        return 0
+    fi
+    if ! stats_doc=$(so-elasticsearch-query "_transform/_all/_stats?size=1000" --fail --retry 3 --retry-delay 5 2>/dev/null); then
+        echo "Unable to query for transform job stats, skipping reauthorization."
+        return 0
+    fi
+    if ! installed_doc=$(fleet_api "epm/packages/installed?perPage=500"); then
+        echo "Unable to list installed Fleet packages, skipping reauthorization."
+        return 0
+    fi
+
+    # Get all transforms that meet the following
+    # - unhealthy (any non-green health status)
+    # - metadata has run_as_kibana_system: false (this fix is specific to transforms started prior to Kibana 9.3.3)
+    # - are not orphaned (integration is not somehow missing/corrupt/uninstalled)
+    local tmp_transforms tmp_stats tmp_installed
+    tmp_transforms=$(mktemp)
+    tmp_stats=$(mktemp)
+    tmp_installed=$(mktemp)
+
+    echo "$transforms_doc" > "$tmp_transforms"
+    echo "$stats_doc"      > "$tmp_stats"
+    echo "$installed_doc"  > "$tmp_installed"
+
+    local unhealthy_transforms
+    unhealthy_transforms=$(jq -c -n \
+        --slurpfile t "$tmp_transforms" \
+        --slurpfile s "$tmp_stats" \
+        --slurpfile i "$tmp_installed" '
+        ($i[0].items | map({key: .name, value: .version}) | from_entries) as $pkg_ver
+        | ($s[0].transforms | map({key: .id, value: .health.status}) | from_entries) as $health
+        | [ $t[0].transforms[]
+            | select(._meta.run_as_kibana_system == false)
+            | select(($health[.id] // "unknown") != "green")
+            | {id, pkg: ._meta.package.name, ver: ($pkg_ver[._meta.package.name])}
+          ]
+        | if length == 0 then empty else . end
+        | (map(select(.ver == null)) | map({orphan: .id})[]),
+          (map(select(.ver != null))
+           | group_by(.pkg)
+           | map({pkg: .[0].pkg, ver: .[0].ver, transformIds: map(.id)})[])
+    ')
+
+    if [[ -z "$unhealthy_transforms" ]]; then
+        return 0
+    fi
+
+    local unhealthy_count
+    unhealthy_count=$(jq -s '[.[].transformIds? // empty | .[]] | length' <<< "$unhealthy_transforms")
+    echo "Found $unhealthy_count transform(s) needing reauthorization."
+
+    local total_failures=0
+    while IFS= read -r transform; do
+        [[ -z "$transform" ]] && continue
+        if jq -e 'has("orphan")' <<< "$transform" >/dev/null 2>&1; then
+            echo "Skipping transform not owned by any installed Fleet package: $(jq -r '.orphan' <<< "$transform")"
+            continue
+        fi
+
+        local pkg ver body resp
+        pkg=$(jq -r '.pkg' <<< "$transform")
+        ver=$(jq -r '.ver' <<< "$transform")
+        body=$(jq -c '{transforms: (.transformIds | map({transformId: .}))}' <<< "$transform")
+
+        echo "Reauthorizing transform(s) for ${pkg}-${ver}..."
+        resp=$(fleet_api "epm/packages/${pkg}/${ver}/transforms/authorize" \
+                        -XPOST -H 'kbn-xsrf: true' -H 'Content-Type: application/json' \
+                        -d "$body") || { echo "Could not reauthorize transform(s) for ${pkg}-${ver}"; continue; }
+
+        (( total_failures += $(jq 'map(select(.success != true)) | length' <<< "$resp" 2>/dev/null) ))
+    done <<< "$unhealthy_transforms"
+
+    rm -f "$tmp_transforms" "$tmp_stats" "$tmp_installed"
+
+    if [[ "$total_failures" -gt 0 ]]; then
+        echo "Some transform(s) failed to reauthorize."
+    fi
+}
+
+ensure_postgres_local_pillar() {
+  # Postgres was added as a service after 3.0.0, so the new pillar/top.sls
+  # references postgres.soc_postgres / postgres.adv_postgres unconditionally.
+  # Managers upgrading from 3.0.0 have no /opt/so/saltstack/local/pillar/postgres/
+  # (make_some_dirs only runs at install time), so the stubs must be created
+  # here before salt-master restarts against the new top.sls.
+  echo "Ensuring postgres local pillar stubs exist."
+  local dir=/opt/so/saltstack/local/pillar/postgres
+  mkdir -p "$dir"
+  [[ -f "$dir/soc_postgres.sls" ]] || touch "$dir/soc_postgres.sls"
+  [[ -f "$dir/adv_postgres.sls" ]] || touch "$dir/adv_postgres.sls"
+  chown -R socore:socore "$dir"
+}
+
+ensure_postgres_secret() {
+  # On a fresh install, generate_passwords + secrets_pillar seed
+  # secrets:postgres_pass in /opt/so/saltstack/local/pillar/secrets.sls. That
+  # code path is skipped on upgrade (secrets.sls already exists from 3.0.0
+  # with import_pass/influx_pass but no postgres_pass), so the postgres
+  # container's POSTGRES_PASSWORD_FILE and SOC's PG_ADMIN_PASS would be empty
+  # after highstate. Generate one now if missing.
+  local secrets_file=/opt/so/saltstack/local/pillar/secrets.sls
+  if [[ ! -f "$secrets_file" ]]; then
+    echo "WARNING: $secrets_file missing; skipping postgres_pass backfill."
+    return 0
+  fi
+  if so-yaml.py get -r "$secrets_file" secrets.postgres_pass >/dev/null 2>&1; then
+    echo "secrets.postgres_pass already set; leaving as-is."
+    return 0
+  fi
+  echo "Seeding secrets.postgres_pass in $secrets_file."
+  so-yaml.py add "$secrets_file" secrets.postgres_pass "$(get_random_value)"
+  chown socore:socore "$secrets_file"
+}
+
+rename_strelka_scan_lnk() {
+  echo "Renaming strelka pillar ScanLNK to ScanLnk."
+  local STRELKA_FILE=/opt/so/saltstack/local/pillar/strelka/soc_strelka.sls
+  local MINIONDIR=/opt/so/saltstack/local/pillar/minions
+  local OLD_KEY=strelka.backend.config.backend.scanners.ScanLNK
+  local NEW_KEY=strelka.backend.config.backend.scanners.ScanLnk
+  local TMP_VALUE_FILE
+  TMP_VALUE_FILE=$(mktemp)
+
+  for pillar_file in "$STRELKA_FILE" "$MINIONDIR"/*.sls; do
+    [[ -f "$pillar_file" ]] || continue
+    # Skip if ScanLNK doesn't exist
+    so-yaml.py get "$pillar_file" "$OLD_KEY" > "$TMP_VALUE_FILE" 2>/dev/null || continue
+    echo "Found 'ScanLNK' key in $pillar_file. Renaming to 'ScanLnk'."
+    so-yaml.py add "$pillar_file" "$NEW_KEY" "file:$TMP_VALUE_FILE"
+    so-yaml.py remove "$pillar_file" "$OLD_KEY"
+  done
+
+  rm -f "$TMP_VALUE_FILE"
+}
+
+up_to_3.1.0() {
+  ensure_postgres_local_pillar
+  ensure_postgres_secret
+  determine_elastic_agent_upgrade
+  elasticsearch_backup_index_templates
+  # Clear existing component template state file.
+  rm -f /opt/so/state/esfleet_component_templates.json
+  rename_strelka_scan_lnk
+
+  INSTALLEDVERSION=3.1.0
+}
+
+post_to_3.1.0() {
+  /usr/sbin/so-kibana-space-defaults
+  # ensure manager has new version of socloud.conf
+  if [[ $SALT_CLOUD_CONFIGURED == true ]]; then
+    salt-call state.apply salt.cloud.config concurrent=True
+  fi
+
+  # Backfill the Telegraf creds pillar for every accepted minion. so-telegraf-cred
+  # add is idempotent — it no-ops when an entry already exists — so this is safe
+  # to run on every soup. The subsequent state.apply creates/updates the matching
+  # Postgres roles from the reconciled pillar.
+  echo "Reconciling Telegraf Postgres creds for accepted minions."
+  for mid in $(salt-key --out=json --list=accepted 2>/dev/null | jq -r '.minions[]?' 2>/dev/null); do
+    [[ -n "$mid" ]] || continue
+    /usr/sbin/so-telegraf-cred add "$mid" || echo "  warning: so-telegraf-cred add $mid failed" >&2
+  done
+  # Run through the master (not --local) so state compilation uses the
+  # master's configured file_roots; the manager's /etc/salt/minion has no
+  # file_roots of its own and --local would fail with "No matching sls found".
+  salt-call state.apply postgres.telegraf_users queue=True || true
+
+  # Update default agent policies to use logging level warn.
+  elasticfleet_set_agent_logging_level_warn || true
+
+  # Check for unhealthy / unauthorized integration transform jobs and attempt reauthorizations
+  check_transform_health_and_reauthorize || true
+
+  POSTVERSION=3.1.0
+}
+
+### 3.1.0 End ###
+
 
 repo_sync() {
   echo "Sync the local repo."
@@ -636,15 +888,6 @@ upgrade_check_salt() {
 upgrade_salt() {
   echo "Performing upgrade of Salt from $INSTALLEDSALTVERSION to $NEWSALTVERSION."
   echo ""
-  # Check if salt-cloud is installed
-  if rpm -q salt-cloud &>/dev/null; then
-    SALT_CLOUD_INSTALLED=true
-  fi
-  # Check if salt-cloud is configured
-  if [[ -f /etc/salt/cloud.profiles.d/socloud.conf ]]; then
-    SALT_CLOUD_CONFIGURED=true
-  fi
-
   echo "Removing yum versionlock for Salt."
   echo ""
   yum versionlock delete "salt"
@@ -728,12 +971,15 @@ verify_es_version_compatibility() {
     local is_active_intermediate_upgrade=1
     # supported upgrade paths for SO-ES versions
     declare -A es_upgrade_map=(
+        ["8.18.4"]="8.18.6 8.18.8 9.0.8"
+	    ["8.18.6"]="8.18.8 9.0.8"
 	    ["8.18.8"]="9.0.8"
+        ["9.0.8"]="9.3.3"
     )
 
     # Elasticsearch MUST upgrade through these versions
     declare -A es_to_so_version=(
-	    ["8.18.8"]="2.4.190-20251024"
+        ["9.0.8"]="3.0.0-20260331"
     )
 
     # Get current Elasticsearch version
@@ -745,26 +991,182 @@ verify_es_version_compatibility() {
         exit 160
     fi
 
-    if ! target_es_version_raw=$(so-yaml.py get $UPDATE_DIR/salt/elasticsearch/defaults.yaml elasticsearch.version); then
-        # so-yaml.py failed to get the ES version from upgrade versions elasticsearch/defaults.yaml file. Likely they are upgrading to an SO version older than 2.4.110 prior to the ES version pinning and should be OKAY to continue with the upgrade.
+    if ! target_es_version=$(so-yaml.py get -r $UPDATE_DIR/salt/elasticsearch/defaults.yaml elasticsearch.version); then
+        echo "Couldn't determine the target Elasticsearch version (post soup version) to ensure compatibility with current Elasticsearch version. Exiting"
 
-        # if so-yaml.py failed to get the ES version AND the version we are upgrading to is newer than 2.4.110 then we should bail
-        if [[ $(cat $UPDATE_DIR/VERSION | cut -d'.' -f3) > 110 ]]; then
-            echo "Couldn't determine the target Elasticsearch version (post soup version) to ensure compatibility with current Elasticsearch version. Exiting"
+        exit 160
+    fi
 
-            exit 160
+    compatible_es_versions="$target_es_version"
+    for current_version in "${!es_upgrade_map[@]}"; do
+        # shellcheck disable=SC2076
+        if [[ " ${es_upgrade_map[$current_version]} " =~ " $target_es_version " ]]; then
+            compatible_es_versions+=" $current_version"
+        fi
+    done
+
+    # Check if the given ES version can directly upgrade to the target ES version. Used to assist with catching lagging nodes during the upgrade process
+    es_version_can_upgrade_to_target() {
+        local current_version="$1"
+        # shellcheck disable=SC2076
+        if [[ -n "$current_version" && " $compatible_es_versions " =~ " $current_version " ]]; then
+            return 0
         fi
 
-        # allow upgrade to version < 2.4.110 without checking ES version compatibility
-        return 0
-    else
-        target_es_version=$(sed -n '1p' <<< "$target_es_version_raw")
+        return 1
+    }
+
+    # Gather Elasticsearch cluster version info and verify that each node in the cluster is running a version compatible with the target ES version.
+    verify_searchnodes_es_target_compatibility() {
+        local retries=20
+        local retry_count=0
+        local delay=180
+        local expected_es_nodes searchnode_minions attempt
+        local searchnode_discovery_success=false
+        SEARCHNODE_ES_VERSIONS=""
+
+        for attempt in {1..3}; do
+            if searchnode_minions=$(set -o pipefail; salt-key --out=json --list=accepted 2> /dev/null | jq -r '.minions[]? | select(endswith("searchnode"))'); then
+                searchnode_discovery_success=true
+                break
+            fi
+
+            echo "Failed to retrieve grid searchnodes via salt-key... Retrying in 30 seconds. Attempt $attempt of 3."
+            sleep 30
+        done
+
+        if [[ "$searchnode_discovery_success" != "true" ]]; then
+            echo "Failed to retrieve grid searchnodes via salt-key."
+            return 1
+        fi
+
+        # Always add node running soup to expected es nodes
+        expected_es_nodes="${MINIONID%_*}"
+        while IFS= read -r searchnode_minion; do
+            [[ -z "$searchnode_minion" ]] && continue
+            expected_es_nodes+=$'\n'"${searchnode_minion%_searchnode}"
+        done <<< "$searchnode_minions"
+
+        while [[ $retry_count -lt $retries ]]; do
+            SEARCHNODE_ES_VERSIONS=$(so-elasticsearch-query _nodes/_all/version --retry 5 --retry-delay 10 --fail 2>&1)
+            local exit_status=$?
+
+            if [[ $exit_status -ne 0 ]]; then
+                echo "Failed to retrieve Elasticsearch versions from searchnodes... Retrying in $delay seconds. Attempt $((retry_count + 1)) of $retries."
+                ((retry_count++))
+                sleep $delay
+                continue
+            fi
+
+            local all_searchnodes_compatible=true
+            while IFS=$'\t' read -r node current_version; do
+                [[ -z "$node" ]] && continue
+                if ! es_version_can_upgrade_to_target "$current_version"; then
+                    echo "Searchnode $node is running Elasticsearch $current_version, which is not directly upgradable to Elasticsearch $target_es_version."
+                    all_searchnodes_compatible=false
+                fi
+            done < <(echo "$SEARCHNODE_ES_VERSIONS" | jq -r '.nodes | to_entries[] | [.value.name, .value.version] | @tsv')
+
+            while IFS= read -r expected_es_node; do
+                [[ -z "$expected_es_node" ]] && continue
+                if ! echo "$SEARCHNODE_ES_VERSIONS" | jq -e --arg node "$expected_es_node" '.nodes | to_entries | any(.value.name == $node)' > /dev/null; then
+                    echo "Searchnode $expected_es_node did not report an Elasticsearch version. It may be offline or still upgrading."
+                    all_searchnodes_compatible=false
+                fi
+            done <<< "$expected_es_nodes"
+
+            if [[ "$all_searchnodes_compatible" == true ]]; then
+                echo "All Searchnodes are upgradable to Elasticsearch $target_es_version."
+                return 0
+            fi
+
+            echo "One or more Searchnodes cannot upgrade directly to Elasticsearch $target_es_version. Rechecking in $delay seconds. Attempt $((retry_count + 1)) of $retries."
+            ((retry_count++))
+            sleep $delay
+        done
+
+        return 1
+    }
+
+    # Gather heavynode version info and verify that each node is running a version compatible with the target ES version.
+    verify_heavynodes_es_target_compatibility() {
+        local heavynode_minions attempt
+        local retries=20
+        local retry_count=0
+        local delay=180
+        local heavynode_discovery_success=false
+        HEAVYNODE_ES_VERSIONS=""
+
+        for attempt in {1..3}; do
+            if heavynode_minions=$(set -o pipefail; salt-key --out=json --list=accepted 2> /dev/null | jq -r '.minions[]? | select(endswith("heavynode"))'); then
+                heavynode_discovery_success=true
+                break
+            fi
+
+            echo "Failed to retrieve grid heavynodes via salt-key... Retrying in 30 seconds. Attempt $attempt of 3."
+            sleep 30
+        done
+
+        if [[ "$heavynode_discovery_success" != "true" ]]; then
+            echo "Failed to retrieve grid heavynodes via salt-key."
+            return 1
+        fi
+
+        if [[ -z "$heavynode_minions" ]]; then
+            echo "No heavynodes detected. Skipping heavynode Elasticsearch version compatibility check."
+            return 0
+        fi
+
+        while [[ $retry_count -lt $retries ]]; do
+            HEAVYNODE_ES_VERSIONS=$(salt -C 'G@role:so-heavynode' cmd.run 'set -o pipefail; so-elasticsearch-query / --retry 5 --retry-delay 10 | jq -er ".version.number"' shell=/bin/bash --out=json 2> /dev/null)
+            local exit_status=$?
+
+            if [[ $exit_status -ne 0 ]]; then
+                echo "Failed to retrieve Elasticsearch version from one or more heavynodes... Retrying in $delay seconds. Attempt $((retry_count + 1)) of $retries."
+                ((retry_count++))
+                sleep $delay
+                continue
+            fi
+
+            local all_heavynodes_compatible=true
+            while IFS=$'\t' read -r node current_version; do
+                [[ -z "$node" ]] && continue
+                if ! es_version_can_upgrade_to_target "$current_version"; then
+                    echo "Heavynode $node is running Elasticsearch $current_version, which is not directly upgradable to Elasticsearch $target_es_version."
+                    all_heavynodes_compatible=false
+                fi
+            done < <(echo "$HEAVYNODE_ES_VERSIONS" | jq -r 'to_entries[] | [.key, .value] | @tsv')
+
+            while IFS= read -r heavynode_minion; do
+                [[ -z "$heavynode_minion" ]] && continue
+                if ! echo "$HEAVYNODE_ES_VERSIONS" | jq -e --arg minion "$heavynode_minion" 'has($minion)' > /dev/null; then
+                    echo "Heavynode $heavynode_minion did not report an Elasticsearch version. It may be offline or still upgrading."
+                    all_heavynodes_compatible=false
+                fi
+            done <<< "$heavynode_minions"
+
+            if [[ "$all_heavynodes_compatible" == true ]]; then
+                echo -e "\nAll heavynodes can upgrade to Elasticsearch $target_es_version."
+                return 0
+            fi
+
+            echo "One or more heavynodes cannot upgrade directly to Elasticsearch $target_es_version. Rechecking in $delay seconds. Attempt $((retry_count + 1)) of $retries."
+            ((retry_count++))
+            sleep $delay
+        done
+
+        return 1
+    }
+
+    if [[ ! -f "$es_verification_script" ]]; then
+        create_intermediate_upgrade_verification_script "$es_verification_script"
     fi
 
     for statefile in "${es_required_version_statefile_base}"-*; do
         [[ -f $statefile ]] || continue
 
-        local es_required_version_statefile_value=$(cat "$statefile")
+        local es_required_version_statefile_value
+        es_required_version_statefile_value=$(cat "$statefile")
 
         if [[ "$es_required_version_statefile_value" == "$target_es_version" ]]; then
             echo "Intermediate upgrade to ES $target_es_version is in progress. Skipping Elasticsearch version compatibility check."
@@ -773,19 +1175,14 @@ verify_es_version_compatibility() {
         fi
 
         # use sort to check if es_required_statefile_value is < the current es_version.
-        if [[ "$(printf '%s\n' $es_required_version_statefile_value $es_version | sort -V | head -n1)" == "$es_required_version_statefile_value" ]]; then
+        if [[ "$(printf '%s\n' "$es_required_version_statefile_value" "$es_version" | sort -V | head -n1)" == "$es_required_version_statefile_value" ]]; then
             rm -f "$statefile"
             continue
         fi
 
-        if [[ ! -f "$es_verification_script" ]]; then
-            create_intermediate_upgrade_verification_script "$es_verification_script"
-        fi
-
         echo -e "\n##############################################################################################################################\n"
         echo "A previously required intermediate Elasticsearch upgrade was detected. Verifying that all Searchnodes/Heavynodes have successfully upgraded Elasticsearch to $es_required_version_statefile_value before proceeding with soup to avoid potential data loss! This command can take up to an hour to complete."
-        timeout --foreground 4000 bash "$es_verification_script" "$es_required_version_statefile_value" "$statefile"
-        if [[ $? -ne 0 ]]; then
+        if ! timeout --foreground 4000 bash "$es_verification_script" "$es_required_version_statefile_value" "$statefile"; then
             echo -e "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
 
             echo "A previous required intermediate Elasticsearch upgrade to $es_required_version_statefile_value has yet to successfully complete across the grid. Please allow time for all Searchnodes/Heavynodes to have upgraded Elasticsearch to $es_required_version_statefile_value before running soup again to avoid potential data loss!"
@@ -802,7 +1199,28 @@ verify_es_version_compatibility() {
         return 0
     fi
 
+    # shellcheck disable=SC2076 # Do not want a regex here eg usage " 8.18.8 9.0.8 " =~ " 9.0.8 "
     if [[ " ${es_upgrade_map[$es_version]} " =~ " $target_es_version " || "$es_version" == "$target_es_version" ]]; then
+        if ! verify_searchnodes_es_target_compatibility || ! verify_heavynodes_es_target_compatibility; then
+            echo -e "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
+
+            echo "One or more Searchnode(s)/Heavynode(s) cannot upgrade directly to Elasticsearch $target_es_version. This can happen with soups that include Elasticsearch upgrades being run in quick succession. Typically, this will resolve itself as the grid synchronizes. Please allow time for all Searchnodes/Heavynodes to have upgraded Elasticsearch to a compatible version with $target_es_version before running soup again to avoid potential data loss!"
+
+            if [[ -n "$HEAVYNODE_ES_VERSIONS" ]]; then
+                echo "Current heavynode Elasticsearch versions:"
+                echo "$HEAVYNODE_ES_VERSIONS" | jq '.'
+            fi
+
+            if [[ -n "$SEARCHNODE_ES_VERSIONS" ]]; then
+                echo "Current searchnode Elasticsearch versions:"
+                echo "$SEARCHNODE_ES_VERSIONS" | jq '.nodes | to_entries | map({(.value.name): .value.version}) | sort | add'
+            fi
+
+            echo -e "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
+
+            exit 161
+        fi
+
         # supported upgrade
         return 0
     else
@@ -810,7 +1228,7 @@ verify_es_version_compatibility() {
         if [[ -z "$compatible_versions" ]]; then
             # If current ES version is not explicitly defined in the upgrade map, we know they have an intermediate upgrade to do.
             # We default to the lowest ES version defined in es_to_so_version as $first_es_required_version
-            local first_es_required_version=$(printf '%s\n' "${!es_to_so_version[@]}" | sort -V | head -n1)
+            first_es_required_version=$(printf '%s\n' "${!es_to_so_version[@]}" | sort -V | head -n1)
             next_step_so_version=${es_to_so_version[$first_es_required_version]}
             required_es_upgrade_version="$first_es_required_version"
         else
@@ -829,7 +1247,7 @@ verify_es_version_compatibility() {
         if [[ $is_airgap -eq 0 ]]; then
             run_airgap_intermediate_upgrade
         else
-            if [[ ! -z $ISOLOC ]]; then
+            if [[ -n $ISOLOC ]]; then
                 originally_requested_iso_location="$ISOLOC"
             fi
             # Make sure ISOLOC is not set. Network installs that used soup -f would have ISOLOC set.
@@ -861,7 +1279,8 @@ wait_for_salt_minion_with_restart() {
 }
 
 run_airgap_intermediate_upgrade() {
-    local originally_requested_so_version=$(cat $UPDATE_DIR/VERSION)
+    local originally_requested_so_version
+    originally_requested_so_version=$(cat "$UPDATE_DIR/VERSION")
     # preserve ISOLOC value, so we can try to use it post intermediate upgrade
     local originally_requested_iso_location="$ISOLOC"
 
@@ -873,7 +1292,8 @@ run_airgap_intermediate_upgrade() {
 
     while [[ -z "$next_iso_location" ]] || [[ ! -f "$next_iso_location" && ! -b "$next_iso_location" ]]; do
         # List removable devices if any are present
-        local removable_devices=$(lsblk -no PATH,SIZE,TYPE,MOUNTPOINTS,RM | awk '$NF==1')
+        local removable_devices
+        removable_devices=$(lsblk -no PATH,SIZE,TYPE,MOUNTPOINTS,RM | awk '$NF==1')
         if [[ -n "$removable_devices" ]]; then
             echo "PATH        SIZE    TYPE    MOUNTPOINTS    RM"
             echo "$removable_devices"
@@ -894,21 +1314,21 @@ run_airgap_intermediate_upgrade() {
 
     echo "Using $next_iso_location for required intermediary upgrade."
     exec bash <<EOF
-        ISOLOC=$next_iso_location soup -y && \
-        ISOLOC=$next_iso_location soup -y && \
+        ISOLOC="$next_iso_location" soup -y && \
+        ISOLOC="$next_iso_location" soup -y && \
 
         echo -e "\n##############################################################################################################################\n" && \
         echo -e "Verifying Elasticsearch was successfully upgraded to $required_es_upgrade_version across the grid. This part can take a while as Searchnodes/Heavynodes sync up with the Manager! \n\nOnce verification completes the next soup will begin automatically. If verification takes longer than 1 hour it will stop waiting and your grid will remain at $next_step_so_version. Allowing for all Searchnodes/Heavynodes to upgrade Elasticsearch to the required version on their own time.\n" && \
 
-        timeout --foreground 4000 bash /tmp/so_intermediate_upgrade_verification.sh $required_es_upgrade_version $es_required_version_statefile && \
+        timeout --foreground 4000 bash /tmp/so_intermediate_upgrade_verification.sh "$required_es_upgrade_version" "$es_required_version_statefile" && \
 
         echo -e "\n##############################################################################################################################\n" && \
 
         # automatically start the next soup if the original ISO isn't using the same block device we just used
         if [[ -n "$originally_requested_iso_location" ]] && [[ "$originally_requested_iso_location" != "$next_iso_location" ]]; then
             umount /tmp/soagupdate
-            ISOLOC=$originally_requested_iso_location soup -y && \
-            ISOLOC=$originally_requested_iso_location soup -y
+            ISOLOC="$originally_requested_iso_location" soup -y && \
+            ISOLOC="$originally_requested_iso_location" soup -y
         else
             echo "Could not automatically start next soup to $originally_requested_so_version. Soup will now exit here at $(cat /etc/soversion)" && \
 
@@ -924,29 +1344,29 @@ run_network_intermediate_upgrade() {
     if [[ -n "$BRANCH" ]]; then
         local originally_requested_so_branch="$BRANCH"
     else
-        local originally_requested_so_branch="2.4/main"
+        local originally_requested_so_branch="3/main"
     fi
 
     echo "Starting automated intermediate upgrade to $next_step_so_version."
     echo "After completion, the system will automatically attempt to upgrade to the latest version."
     echo -e "\n##############################################################################################################################\n"
     exec bash << EOF
-        BRANCH=$next_step_so_version soup -y && \
-        BRANCH=$next_step_so_version soup -y && \
+        BRANCH="$next_step_so_version" soup -y && \
+        BRANCH="$next_step_so_version" soup -y && \
 
         echo -e "\n##############################################################################################################################\n" && \
         echo -e "Verifying Elasticsearch was successfully upgraded to $required_es_upgrade_version across the grid. This part can take a while as Searchnodes/Heavynodes sync up with the Manager! \n\nOnce verification completes the next soup will begin automatically. If verification takes longer than 1 hour it will stop waiting and your grid will remain at $next_step_so_version. Allowing for all Searchnodes/Heavynodes to upgrade Elasticsearch to the required version on their own time.\n" && \
 
-        timeout --foreground 4000 bash /tmp/so_intermediate_upgrade_verification.sh $required_es_upgrade_version $es_required_version_statefile && \
+        timeout --foreground 4000 bash /tmp/so_intermediate_upgrade_verification.sh "$required_es_upgrade_version" "$es_required_version_statefile" && \
 
         echo -e "\n##############################################################################################################################\n" && \
         if [[ -n "$originally_requested_iso_location" ]]; then
             # nonairgap soup that used -f originally, runs intermediate upgrade using network + BRANCH, later coming back to the original ISO for the last soup
-            ISOLOC=$originally_requested_iso_location soup -y && \
-            ISOLOC=$originally_requested_iso_location soup -y
+            ISOLOC="$originally_requested_iso_location" soup -y && \
+            ISOLOC="$originally_requested_iso_location" soup -y
         else
-            BRANCH=$originally_requested_so_branch soup -y && \
-            BRANCH=$originally_requested_so_branch soup -y
+            BRANCH="$originally_requested_so_branch" soup -y && \
+            BRANCH="$originally_requested_so_branch" soup -y
         fi
         echo -e "\n##############################################################################################################################\n"
 EOF
@@ -1158,7 +1578,7 @@ main() {
   echo "Verifying we have the latest soup script."
   verify_latest_update_script
 
-  echo "Verifying Elasticsearch version compatibility before upgrading."
+  echo "Verifying Elasticsearch version compatibility across the grid before upgrading."
   verify_es_version_compatibility
 
   echo "Let's see if we need to update Security Onion."

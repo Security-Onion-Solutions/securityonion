@@ -25,8 +25,33 @@ manager_run_es_soc:
         - salt: {{NEWNODE}}_update_mine
 {% endif %}
 
+# so-minion has already added the new minion's entry to telegraf/creds.sls
+# via so-telegraf-cred before this orch fires. Reconcile the Postgres role
+# on the manager so the new minion can authenticate on its first highstate,
+# then refresh the minion's pillar so its telegraf.conf renders with the
+# freshly-written cred.
+manager_create_postgres_telegraf_role:
+  salt.state:
+    - tgt: {{ MANAGER }}
+    - sls:
+      - postgres.telegraf_users
+    - queue: True
+    - require:
+      - salt: {{NEWNODE}}_update_mine
+
+{{NEWNODE}}_refresh_pillar:
+  salt.function:
+    - name: saltutil.refresh_pillar
+    - tgt: {{ NEWNODE }}
+    - kwarg:
+        wait: True
+    - require:
+      - salt: manager_create_postgres_telegraf_role
+
 {{NEWNODE}}_run_highstate:
   salt.state:
     - tgt: {{ NEWNODE }}
     - highstate: True
     - queue: True
+    - require:
+      - salt: {{NEWNODE}}_refresh_pillar

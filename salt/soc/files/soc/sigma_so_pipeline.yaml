@@ -117,6 +117,121 @@ transformations:
       - type: logsource
         product: linux
         service: auth
+    # Maps M365 audit rules to Elastic Agent O365 integration logs
+    - id: m365_audit_field_mappings
+      type: field_name_mapping
+      mapping:
+        Operation: event.action
+        ResultStatus: event.outcome
+        ApplicationId: o365.audit.ApplicationId
+        ObjectId: o365.audit.ObjectId
+        RequestType: o365.audit.RequestType
+      rule_conditions:
+      - type: logsource
+        product: m365
+        service: audit
+    - id: m365_audit_add-fields
+      type: add_condition
+      conditions:
+        event.dataset: 'o365.audit'
+        event.module: 'o365'
+      rule_conditions:
+      - type: logsource
+        product: m365
+        service: audit
+    # Maps M365 exchange rules to Elastic Agent O365 integration logs
+    - id: m365_exchange_field_mappings
+      type: field_name_mapping
+      mapping:
+        eventSource: event.provider
+        eventName: event.action
+        status: event.outcome
+      rule_conditions:
+      - type: logsource
+        product: m365
+        service: exchange
+    - id: m365_exchange_add-fields
+      type: add_condition
+      conditions:
+        event.dataset: 'o365.audit'
+        event.module: 'o365'
+      rule_conditions:
+      - type: logsource
+        product: m365
+        service: exchange
+    # Maps M365 threat_management rules to Elastic Agent O365 integration logs
+    - id: m365_threat_management_field_mappings
+      type: field_name_mapping
+      mapping:
+        eventSource: event.provider
+        eventName: event.action
+        status: event.outcome
+      rule_conditions:
+      - type: logsource
+        product: m365
+        service: threat_management
+    - id: m365_threat_management_add-fields
+      type: add_condition
+      conditions:
+        event.dataset: 'o365.audit'
+        event.module: 'o365'
+      rule_conditions:
+      - type: logsource
+        product: m365
+        service: threat_management
+    # Maps M365 threat_detection rules to Elastic Agent O365 integration logs
+    - id: m365_threat_detection_field_mappings
+      type: field_name_mapping
+      mapping:
+        eventSource: event.provider
+        eventName: event.action
+        status: event.outcome
+      rule_conditions:
+      - type: logsource
+        product: m365
+        service: threat_detection
+    - id: m365_threat_detection_add-fields
+      type: add_condition
+      conditions:
+        event.dataset: 'o365.audit'
+        event.module: 'o365'
+      rule_conditions:
+      - type: logsource
+        product: m365
+        service: threat_detection
+    # Maps FortiGate event rules to Elastic Agent Fortinet integration logs
+    - id: fortigate_event_field_mappings
+      type: field_name_mapping
+      mapping:
+        action: fortinet.firewall.action
+        cfgpath: fortinet.firewall.cfgpath
+        cfgobj: fortinet.firewall.cfgobj
+        cfgattr: fortinet.firewall.cfgattr
+        devname: observer.name
+        devid: observer.serial_number
+        logid: event.code
+        type: fortinet.firewall.type
+        subtype: fortinet.firewall.subtype
+        level: log.level
+        vd: fortinet.firewall.vd
+        logdesc: fortinet.firewall.desc
+        user: user.name
+        ui: fortinet.firewall.ui
+        cfgtid: fortinet.firewall.cfgtid
+        msg: message
+      rule_conditions:
+      - type: logsource
+        product: fortigate
+        service: event
+    - id: fortigate_event_add-fields
+      type: add_condition
+      conditions:
+        event.dataset: 'fortinet_fortigate.log'
+        event.module: 'fortinet_fortigate'
+      rule_conditions:
+      - type: logsource
+        product: fortigate
+        service: event
     # event.code should always be a string
     - id: convert_event_code_to_string
       type: convert_type
@@ -126,15 +241,36 @@ transformations:
           fields:
           - event.code
     # Maps process_creation rules to endpoint process creation logs
-    # This is an OS-agnostic mapping, to account for logs that don't specify source OS
     - id: endpoint_process_create_windows_add-fields
       type: add_condition
       conditions:
         event.category: 'process'
         event.type: 'start'
+        host.os.type: 'windows'
       rule_conditions:
       - type: logsource
         category: process_creation
+        product: windows
+    - id: endpoint_process_create_macos_add-fields
+      type: add_condition
+      conditions:
+        event.category: 'process'
+        event.type: 'start'
+        host.os.type: 'macos'
+      rule_conditions:
+      - type: logsource
+        category: process_creation
+        product: macos
+    - id: endpoint_process_create_linux_add-fields
+      type: add_condition
+      conditions:
+        event.category: 'process'
+        event.type: 'start'
+        host.os.type: 'linux'
+      rule_conditions:
+      - type: logsource
+        category: process_creation
+        product: linux
     # Maps file_event rules to endpoint file creation logs
     # This is an OS-agnostic mapping, to account for logs that don't specify source OS
     - id: endpoint_file_create_add-fields

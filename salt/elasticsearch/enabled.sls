@@ -10,8 +10,6 @@
 {%   from 'elasticsearch/config.map.jinja' import ELASTICSEARCH_NODES %}
 {%   from 'elasticsearch/config.map.jinja' import ELASTICSEARCH_SEED_HOSTS %}
 {%   from 'elasticsearch/config.map.jinja' import ELASTICSEARCHMERGED %}
-{%   set TEMPLATES = salt['pillar.get']('elasticsearch:templates', {}) %}
-{%   from 'elasticsearch/template.map.jinja' import ES_INDEX_SETTINGS %}
 
 include:
   - ca
@@ -19,6 +17,9 @@ include:
   - elasticsearch.ssl
   - elasticsearch.config
   - elasticsearch.sostatus
+{%- if GLOBALS.role != "so-searchnode" %}
+  - elasticsearch.cluster
+{%- endif%}
 
 so-elasticsearch:
   docker_container.running:
@@ -101,133 +102,23 @@ so-elasticsearch:
       - cmd: auth_users_roles_inode
       - cmd: auth_users_inode
 
+wait_for_so-elasticsearch:
+  http.wait_for_successful_query:
+    - name: "https://localhost:9200/"
+    - username: 'so_elastic'
+    - password: '{{ ELASTICSEARCHMERGED.auth.users.so_elastic_user.pass }}'
+    - ssl: True
+    - verify_ssl: False
+    - status: 200
+    - wait_for: 300
+    - request_interval: 15
+    - require:
+      - docker_container: so-elasticsearch
+
 delete_so-elasticsearch_so-status.disabled:
   file.uncomment:
     - name: /opt/so/conf/so-status/so-status.conf
     - regex: ^so-elasticsearch$
-
-{%   if GLOBALS.role != "so-searchnode" %}
-escomponenttemplates:
-  file.recurse:
-    - name: /opt/so/conf/elasticsearch/templates/component
-    - source: salt://elasticsearch/templates/component
-    - user: 930
-    - group: 939
-    - clean: True
-    - onchanges_in:
-      - file: so-elasticsearch-templates-reload
-    - show_changes: False
-      
-# Auto-generate templates from defaults file
-{%     for index, settings in ES_INDEX_SETTINGS.items() %}
- {%      if settings.index_template is defined %}
-es_index_template_{{index}}:
-  file.managed:
-    - name: /opt/so/conf/elasticsearch/templates/index/{{ index }}-template.json
-    - source: salt://elasticsearch/base-template.json.jinja
-    - defaults:
-      TEMPLATE_CONFIG: {{ settings.index_template }}
-    - template: jinja
-    - show_changes: False
-    - onchanges_in:
-      - file: so-elasticsearch-templates-reload
-{%       endif %}
-{%     endfor %}
-
-{%     if TEMPLATES %}
-# Sync custom templates to /opt/so/conf/elasticsearch/templates
-{%       for TEMPLATE in TEMPLATES %}
-es_template_{{TEMPLATE.split('.')[0] | replace("/","_") }}:
-  file.managed:
-    - source: salt://elasticsearch/templates/index/{{TEMPLATE}}
-{%         if 'jinja' in TEMPLATE.split('.')[-1] %}
-    - name: /opt/so/conf/elasticsearch/templates/index/{{TEMPLATE.split('/')[1] | replace(".jinja", "")}}
-    - template: jinja
-{%         else %}
-    - name: /opt/so/conf/elasticsearch/templates/index/{{TEMPLATE.split('/')[1]}}
-{%         endif %}
-    - user: 930
-    - group: 939
-    - show_changes: False
-    - onchanges_in:
-      - file: so-elasticsearch-templates-reload
-{%       endfor %}
-{%     endif %}
-
-{%     if GLOBALS.role in GLOBALS.manager_roles %}
-so-es-cluster-settings:
-  cmd.run:
-    - name: /usr/sbin/so-elasticsearch-cluster-settings
-    - cwd: /opt/so
-    - template: jinja
-    - require:
-      - docker_container: so-elasticsearch
-      - file: elasticsearch_sbin_jinja
-{%     endif %}
-
-so-elasticsearch-ilm-policy-load:
-  cmd.run:
-    - name: /usr/sbin/so-elasticsearch-ilm-policy-load
-    - cwd: /opt/so
-    - require:
-      - docker_container: so-elasticsearch
-      - file: so-elasticsearch-ilm-policy-load-script
-    - onchanges:
-      - file: so-elasticsearch-ilm-policy-load-script
-
-so-elasticsearch-templates-reload:
-  file.absent:
-    - name: /opt/so/state/estemplates.txt
-
-so-elasticsearch-templates:
-  cmd.run:
-    - name: /usr/sbin/so-elasticsearch-templates-load
-    - cwd: /opt/so
-    - template: jinja
-    - require:
-      - docker_container: so-elasticsearch
-      - file: elasticsearch_sbin_jinja
-
-so-elasticsearch-pipelines:
-  cmd.run:
-    - name: /usr/sbin/so-elasticsearch-pipelines {{ GLOBALS.hostname }}
-    - require:
-      - docker_container: so-elasticsearch
-      - file: so-elasticsearch-pipelines-script
-
-so-elasticsearch-roles-load:
-  cmd.run:
-    - name: /usr/sbin/so-elasticsearch-roles-load
-    - cwd: /opt/so
-    - template: jinja
-    - require:
-      - docker_container: so-elasticsearch
-      - file: elasticsearch_sbin_jinja
-
-{%     if grains.role in ['so-managersearch', 'so-manager', 'so-managerhype'] %}
-{%       set ap = "absent" %}
-{%     endif %}
-{%     if grains.role in ['so-eval', 'so-standalone', 'so-heavynode'] %}
-{%       if ELASTICSEARCHMERGED.index_clean %}
-{%         set ap = "present" %}
-{%       else %}
-{%         set ap = "absent" %}
-{%       endif %}
-{%     endif %}  
-{%     if grains.role in ['so-eval', 'so-standalone', 'so-managersearch', 'so-heavynode', 'so-manager'] %}
-so-elasticsearch-indices-delete:
-  cron.{{ap}}:
-    - name: /usr/sbin/so-elasticsearch-indices-delete > /opt/so/log/elasticsearch/cron-elasticsearch-indices-delete.log 2>&1
-    - identifier: so-elasticsearch-indices-delete
-    - user: root
-    - minute: '*/5'
-    - hour: '*'
-    - daymonth: '*'
-    - month: '*'
-    - dayweek: '*'
-{%     endif %}
-
-{%   endif %}
 
 {% else %}
 

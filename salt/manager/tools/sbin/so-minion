@@ -132,8 +132,8 @@ function getinstallinfo() {
 		log "ERROR" "Failed to get install info from $MINION_ID"
 		return 1
 	fi
-	
-	export $(echo "$INSTALLVARS" | xargs)
+
+	while read -r var; do export "$var"; done <<< "$INSTALLVARS"
 	if [ $? -ne 0 ]; then
 		log "ERROR" "Failed to source install variables"
 		return 1
@@ -273,11 +273,44 @@ function deleteMinionFiles () {
 		log "ERROR" "Failed to delete $PILLARFILE"
 		return 1
 	fi
-	
+
 	rm -f $ADVPILLARFILE
 	if [ $? -ne 0 ]; then
 		log "ERROR" "Failed to delete $ADVPILLARFILE"
 		return 1
+	fi
+}
+
+# Remove this minion's postgres Telegraf credential from the shared creds
+# pillar and drop the matching role in Postgres. Always returns 0 so a dead
+# or unreachable so-postgres doesn't block minion deletion — in that case we
+# log a warning and leave the role behind for manual cleanup.
+function remove_postgres_telegraf_from_minion() {
+	local MINION_SAFE
+	MINION_SAFE=$(echo "$MINION_ID" | tr '.-' '__' | tr '[:upper:]' '[:lower:]')
+	local PG_USER="so_telegraf_${MINION_SAFE}"
+
+	log "INFO" "Removing postgres telegraf cred for $MINION_ID"
+
+	so-telegraf-cred remove "$MINION_ID" >/dev/null 2>&1 || true
+
+	if docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^so-postgres$'; then
+		if ! docker exec -i so-postgres psql -v ON_ERROR_STOP=1 -U postgres -d so_telegraf >/dev/null 2>&1 <<EOSQL
+DO \$\$
+BEGIN
+    IF EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '$PG_USER') THEN
+        EXECUTE format('REASSIGN OWNED BY %I TO so_telegraf', '$PG_USER');
+        EXECUTE format('DROP OWNED BY %I', '$PG_USER');
+        EXECUTE format('DROP ROLE %I', '$PG_USER');
+    END IF;
+END
+\$\$;
+EOSQL
+		then
+			log "WARN" "Failed to drop postgres role $PG_USER; pillar entry was removed — drop manually if the role persists"
+		fi
+	else
+		log "WARN" "so-postgres container is not running; skipping DB role cleanup for $PG_USER"
 	fi
 }
 
@@ -540,6 +573,17 @@ function add_telegraf_to_minion() {
 	"  " >> $PILLARFILE
     if [ $? -ne 0 ]; then
         log "ERROR" "Failed to add telegraf configuration to $PILLARFILE"
+        return 1
+    fi
+
+    # Provision the per-minion postgres Telegraf credential in the shared
+    # telegraf/creds.sls pillar. so-telegraf-cred is the only writer; it
+    # generates a password on first add and is a no-op on re-add so the cred
+    # is stable across repeated so-minion runs. postgres.telegraf_users on the
+    # manager creates/updates the DB role from the same pillar.
+    so-telegraf-cred add "$MINION_ID"
+    if [ $? -ne 0 ]; then
+        log "ERROR" "Failed to provision postgres telegraf cred for $MINION_ID"
         return 1
     fi
 }
@@ -1069,6 +1113,7 @@ case "$OPERATION" in
 
 	"delete")
 		log "INFO" "Removing minion $MINION_ID"
+		remove_postgres_telegraf_from_minion
 		deleteMinionFiles || {
 			log "ERROR" "Failed to delete minion files for $MINION_ID"
 			exit 1

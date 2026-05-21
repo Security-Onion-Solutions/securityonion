@@ -18,7 +18,9 @@ INSTALLED_PACKAGE_LIST=/tmp/esfleet_installed_packages.json
 BULK_INSTALL_PACKAGE_LIST=/tmp/esfleet_bulk_install.json
 BULK_INSTALL_PACKAGE_TMP=/tmp/esfleet_bulk_install_tmp.json
 BULK_INSTALL_OUTPUT=/opt/so/state/esfleet_bulk_install_results.json
-PACKAGE_COMPONENTS=/opt/so/state/esfleet_package_components.json
+INTEGRATION_PACKAGE_COMPONENTS=/opt/so/state/esfleet_package_components.json
+INPUT_PACKAGE_COMPONENTS=/opt/so/state/esfleet_input_package_components.json
+CONTENT_PACKAGE_COMPONENTS=/opt/so/state/esfleet_content_package_components.json
 COMPONENT_TEMPLATES=/opt/so/state/esfleet_component_templates.json
 
 PENDING_UPDATE=false
@@ -179,10 +181,13 @@ if [[ -f $STATE_FILE_SUCCESS  ]]; then
         else
             echo "Elastic integrations don't appear to need installation/updating..."
         fi
-        # Write out file for generating index/component/ilm templates
-        if latest_installed_package_list=$(elastic_fleet_installed_packages); then
-            echo $latest_installed_package_list | jq '[.items[] | {name: .name, es_index_patterns: .dataStreams}]' > $PACKAGE_COMPONENTS
-        fi
+        # Write out file for generating index/component/ilm templates, keeping each package type separate
+        for package_type in "INTEGRATION" "INPUT" "CONTENT"; do
+            if latest_installed_package_list=$(elastic_fleet_installed_packages_components "$package_type"); then
+                outfile="${package_type}_PACKAGE_COMPONENTS"
+                echo $latest_installed_package_list > "${!outfile}"
+            fi
+        done
         if retry 3 1 "so-elasticsearch-query / --fail --output /dev/null"; then
             # Refresh installed component template list
             latest_component_templates_list=$(so-elasticsearch-query _component_template | jq '.component_templates[] | .name' | jq -s '.')

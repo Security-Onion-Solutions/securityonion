@@ -1,3 +1,4 @@
+{%- from 'logstash/map.jinja' import LOGSTASH_MERGED %}
 input {
   elastic_agent {
     port => 5055
@@ -11,10 +12,15 @@ input {
   }
 }
 filter {
-if ![metadata] {
-  mutate {
-    rename => {"@metadata" => "metadata"}
+  {% if LOGSTASH_MERGED.get('latency_metrics', False) %}
+  ruby {
+    code => "event.set('[_tmp][logstash_from_agent]', Time.now().utc.iso8601(3));"
   }
-}
+  {% endif %}
+  if ![metadata] {
+    mutate {
+      rename => {"@metadata" => "metadata"}
+    }
+  }
 }
 

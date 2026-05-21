@@ -1,0 +1,157 @@
+#!/bin/bash
+
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+# Point-in-time host metrics from the Telegraf Postgres backend.
+# Sanity-check tool for verifying metrics are landing before the grid
+# dashboards consume them.
+#
+# Assumes Telegraf's postgresql output is configured with
+# tags_as_foreign_keys = true, tags_as_jsonb = true, fields_as_jsonb = true,
+# so metric tables are (time, tag_id, fields jsonb) and tag tables are
+# (tag_id, tags jsonb).
+
+. /usr/sbin/so-common
+
+usage() {
+  cat <<EOF
+Usage: $0 [host]
+
+Shows the most recent CPU, memory, disk, and load metrics for each host
+from the so_telegraf Postgres database. Without an argument, reports on
+every host that has data. With a host, limits output to that one.
+
+Requires: sudo, so-postgres running, telegraf.output set to
+POSTGRES or BOTH.
+EOF
+  exit 1
+}
+
+if [ "$(id -u)" -ne 0 ]; then
+  echo "This script must be run using sudo!"
+  exit 1
+fi
+
+case "${1:-}" in
+  -h|--help) usage ;;
+esac
+
+FILTER_HOST="${1:-}"
+SCHEMA="telegraf"
+
+# Host values are interpolated into SQL below. Hostnames are [A-Za-z0-9._-];
+# any other character in a tag value or CLI arg is rejected to prevent a
+# stored-tag (or CLI) → SQL injection via a compromised Telegraf writer.
+HOST_RE='^[A-Za-z0-9._-]+$'
+if [ -n "$FILTER_HOST" ] && ! [[ "$FILTER_HOST" =~ $HOST_RE ]]; then
+  echo "Invalid host filter: $FILTER_HOST" >&2
+  exit 1
+fi
+
+so_psql() {
+  docker exec so-postgres psql -U postgres -d so_telegraf -At -F $'\t' "$@"
+}
+
+if ! docker exec so-postgres psql -U postgres -lqt 2>/dev/null | cut -d\| -f1 | grep -qw so_telegraf; then
+  echo "Database so_telegraf not found. Is telegraf.output set to POSTGRES or BOTH?"
+  exit 2
+fi
+
+table_exists() {
+  local table="$1"
+  [ -n "$(so_psql -c "SELECT 1 FROM information_schema.tables WHERE table_schema='${SCHEMA}' AND table_name='${table}' LIMIT 1;")" ]
+}
+
+# Discover hosts from cpu_tag (every minion reports cpu).
+if ! table_exists "cpu_tag"; then
+  echo "${SCHEMA}.cpu_tag not found. Has Telegraf written any rows yet?"
+  exit 0
+fi
+
+HOSTS=$(so_psql -c "
+  SELECT DISTINCT tags->>'host'
+  FROM \"${SCHEMA}\".cpu_tag
+  WHERE tags ? 'host'
+  ORDER BY 1;")
+
+if [ -z "$HOSTS" ]; then
+  echo "No hosts found in ${SCHEMA}. Is Telegraf configured to write to Postgres?"
+  exit 0
+fi
+
+print_metric() {
+  so_psql -c "$1"
+}
+
+for host in $HOSTS; do
+  if ! [[ "$host" =~ $HOST_RE ]]; then
+    echo "Skipping host with invalid characters in tag value: $host" >&2
+    continue
+  fi
+  if [ -n "$FILTER_HOST" ] && [ "$host" != "$FILTER_HOST" ]; then
+    continue
+  fi
+
+  echo "===================================================================="
+  echo " Host: $host"
+  echo "===================================================================="
+
+  if table_exists "cpu"; then
+    print_metric "
+      SELECT 'cpu          ' AS metric,
+             to_char(c.time, 'YYYY-MM-DD HH24:MI:SS') AS ts,
+             round((100 - (c.fields->>'usage_idle')::numeric), 1) || '% used'
+      FROM \"${SCHEMA}\".cpu c
+      JOIN \"${SCHEMA}\".cpu_tag t USING (tag_id)
+      WHERE t.tags->>'host' = '${host}' AND t.tags->>'cpu' = 'cpu-total'
+      ORDER BY c.time DESC LIMIT 1;"
+  fi
+
+  if table_exists "mem"; then
+    print_metric "
+      SELECT 'memory       ' AS metric,
+             to_char(m.time, 'YYYY-MM-DD HH24:MI:SS') AS ts,
+             round((m.fields->>'used_percent')::numeric, 1) || '% used (' ||
+             pg_size_pretty((m.fields->>'used')::bigint) || ' of ' ||
+             pg_size_pretty((m.fields->>'total')::bigint) || ')'
+      FROM \"${SCHEMA}\".mem m
+      JOIN \"${SCHEMA}\".mem_tag t USING (tag_id)
+      WHERE t.tags->>'host' = '${host}'
+      ORDER BY m.time DESC LIMIT 1;"
+  fi
+
+  if table_exists "disk"; then
+    print_metric "
+      SELECT 'disk ' || rpad(t.tags->>'path', 12) AS metric,
+             to_char(d.time, 'YYYY-MM-DD HH24:MI:SS') AS ts,
+             round((d.fields->>'used_percent')::numeric, 1) || '% used (' ||
+             pg_size_pretty((d.fields->>'used')::bigint) || ' of ' ||
+             pg_size_pretty((d.fields->>'total')::bigint) || ')'
+      FROM \"${SCHEMA}\".disk d
+      JOIN \"${SCHEMA}\".disk_tag t USING (tag_id)
+      WHERE t.tags->>'host' = '${host}'
+        AND d.time = (SELECT max(d2.time)
+                      FROM \"${SCHEMA}\".disk d2
+                      JOIN \"${SCHEMA}\".disk_tag t2 USING (tag_id)
+                      WHERE t2.tags->>'host' = '${host}')
+      ORDER BY t.tags->>'path';"
+  fi
+
+  if table_exists "system"; then
+    print_metric "
+      SELECT 'load         ' AS metric,
+             to_char(s.time, 'YYYY-MM-DD HH24:MI:SS') AS ts,
+             (s.fields->>'load1') || ' / ' ||
+             (s.fields->>'load5') || ' / ' ||
+             (s.fields->>'load15') || ' (1/5/15m)'
+      FROM \"${SCHEMA}\".system s
+      JOIN \"${SCHEMA}\".system_tag t USING (tag_id)
+      WHERE t.tags->>'host' = '${host}'
+      ORDER BY s.time DESC LIMIT 1;"
+  fi
+
+  echo ""
+done

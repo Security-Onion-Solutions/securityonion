@@ -9,7 +9,7 @@
 
 . /usr/sbin/so-common
 
-software_raid=("SOSMN" "SOSMN-DE02" "SOSSNNV" "SOSSNNV-DE02" "SOS10k-DE02" "SOS10KNV" "SOS10KNV-DE02" "SOS10KNV-DE02" "SOS2000-DE02" "SOS-GOFAST-LT-DE02" "SOS-GOFAST-MD-DE02" "SOS-GOFAST-HV-DE02")
+software_raid=("SOSMN" "SOSMN-DE02" "SOSSNNV" "SOSSNNV-DE02" "SOS10k-DE02" "SOS10KNV" "SOS10KNV-DE02" "SOS10KNV-DE02" "SOS2000-DE02" "SOS-GOFAST-LT-DE02" "SOS-GOFAST-MD-DE02" "SOS-GOFAST-HV-DE02" "HVGUEST")
 hardware_raid=("SOS1000" "SOS1000F" "SOSSN7200" "SOS5000" "SOS4000")
 
 {%- if salt['grains.get']('sosmodel', '') %}
@@ -87,6 +87,11 @@ check_boss_raid() {
 }
 
 check_software_raid() {
+  if [[ ! -f /proc/mdstat ]]; then
+    SWRAID=0
+    return
+  fi
+
   SWRC=$(grep "_" /proc/mdstat)
   if [[ -n $SWRC ]]; then
       # RAID is failed in some way
@@ -107,7 +112,9 @@ if [[ "$is_hwraid" == "true" ]]; then
 fi
 if [[ "$is_softwareraid" == "true" ]]; then
 	check_software_raid
-  check_boss_raid
+  if [ "$model" != "HVGUEST" ]; then
+    check_boss_raid
+  fi
 fi
 
 sum=$(($SWRAID + $BOSSRAID + $HWRAID))
