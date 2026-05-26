@@ -1139,7 +1139,7 @@ verify_es_version_compatibility() {
 
             while IFS= read -r heavynode_minion; do
                 [[ -z "$heavynode_minion" ]] && continue
-                if ! echo "$HEAVYNODE_ES_VERSIONS" | jq -e --arg minion "$heavynode_minion" 'has($minion)' > /dev/null; then
+                if ! echo "$HEAVYNODE_ES_VERSIONS" | jq -se --arg minion "$heavynode_minion" 'add | has($minion)' > /dev/null; then
                     echo "Heavynode $heavynode_minion did not report an Elasticsearch version. It may be offline or still upgrading."
                     all_heavynodes_compatible=false
                 fi
