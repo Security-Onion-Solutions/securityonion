@@ -533,6 +533,23 @@ elasticfleet_set_agent_logging_level_warn() {
     done <<< "$policies_to_update"
 }
 
+update_logstash_pipeline_name() {
+    local original_pipeline_name="$1"
+    local new_pipeline_name="$2"
+
+    echo "Checking for conflicting logstash defined_pipelines pillar value."
+    local LOGSTASH_FILE=/opt/so/saltstack/local/pillar/logstash/soc_logstash.sls
+    local MINIONDIR=/opt/so/saltstack/local/pillar/minions
+    for pillar_file in "$LOGSTASH_FILE" "$MINIONDIR"/*.sls; do
+        [[ -f "$pillar_file" ]] || continue
+        if grep -q "$original_pipeline_name$" "$pillar_file"; then
+            echo "Found conflicting defined_pipeline pillar value in $pillar_file. Updating to use the new logstash pipeline name."
+            sed -i "s#$original_pipeline_name\$#$new_pipeline_name#g" "$pillar_file"
+            chown socore:socore "$pillar_file"
+        fi
+    done
+}
+
 check_transform_health_and_reauthorize() {
     . /usr/sbin/so-elastic-fleet-common
 
@@ -1506,7 +1523,11 @@ EOF
 
 # Keeping this block in case we need to do a hotfix that requires salt update
 apply_hotfix() {
-   echo "No actions required. ($INSTALLEDVERSION/$HOTFIXVERSION)"
+    if [[ "$INSTALLEDVERSION" == "3.1.0" ]] ; then
+       update_logstash_pipeline_name "so/0013_input_lumberjack_fleet.conf" "so/0013_input_lumberjack_fleet.conf.jinja"
+    else
+        echo "No actions required. ($INSTALLEDVERSION/$HOTFIXVERSION)"
+    fi
 }
 
 failed_soup_restore_items() {
