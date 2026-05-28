@@ -535,6 +535,23 @@ elasticfleet_set_agent_logging_level_warn() {
     done <<< "$policies_to_update"
 }
 
+update_logstash_pipeline_name() {
+    local original_pipeline_name="$1"
+    local new_pipeline_name="$2"
+
+    echo "Checking for conflicting logstash defined_pipelines pillar value."
+    local LOGSTASH_FILE=/opt/so/saltstack/local/pillar/logstash/soc_logstash.sls
+    local MINIONDIR=/opt/so/saltstack/local/pillar/minions
+    for pillar_file in "$LOGSTASH_FILE" "$MINIONDIR"/*.sls; do
+        [[ -f "$pillar_file" ]] || continue
+        if grep -q "$original_pipeline_name$" "$pillar_file"; then
+            echo "Found conflicting defined_pipeline pillar value in $pillar_file. Updating to use the new logstash pipeline name."
+            sed -i "s#$original_pipeline_name\$#$new_pipeline_name#g" "$pillar_file"
+            chown socore:socore "$pillar_file"
+        fi
+    done
+}
+
 check_transform_health_and_reauthorize() {
     . /usr/sbin/so-elastic-fleet-common
 
@@ -678,6 +695,10 @@ rename_strelka_scan_lnk() {
   rm -f "$TMP_VALUE_FILE"
 }
 
+fix_logstash_0013_lumberjack_pipeline_name() {
+    update_logstash_pipeline_name "so/0013_input_lumberjack_fleet.conf" "so/0013_input_lumberjack_fleet.conf.jinja"
+}
+
 up_to_3.1.0() {
   ensure_postgres_local_pillar
   ensure_postgres_secret
@@ -686,6 +707,7 @@ up_to_3.1.0() {
   # Clear existing component template state file.
   rm -f /opt/so/state/esfleet_component_templates.json
   rename_strelka_scan_lnk
+  fix_logstash_0013_lumberjack_pipeline_name
 
   INSTALLEDVERSION=3.1.0
 }
@@ -1177,7 +1199,7 @@ verify_es_version_compatibility() {
 
             while IFS= read -r heavynode_minion; do
                 [[ -z "$heavynode_minion" ]] && continue
-                if ! echo "$HEAVYNODE_ES_VERSIONS" | jq -e --arg minion "$heavynode_minion" 'has($minion)' > /dev/null; then
+                if ! echo "$HEAVYNODE_ES_VERSIONS" | jq -se --arg minion "$heavynode_minion" 'add | has($minion)' > /dev/null; then
                     echo "Heavynode $heavynode_minion did not report an Elasticsearch version. It may be offline or still upgrading."
                     all_heavynodes_compatible=false
                 fi
@@ -1544,7 +1566,13 @@ EOF
 
 # Keeping this block in case we need to do a hotfix that requires salt update
 apply_hotfix() {
-   echo "No actions required. ($INSTALLEDVERSION/$HOTFIXVERSION)"
+    if [[ "$INSTALLEDVERSION" == "3.1.0" ]] ; then
+       # Do not remove this fix_logstash_0013_lumberjack_pipeline_name in future hotfixes without first validating older
+       #  installs referencing "so/0013_input_lumberjack_fleet.conf" via pillar are upgradable
+       fix_logstash_0013_lumberjack_pipeline_name
+    else
+        echo "No actions required. ($INSTALLEDVERSION/$HOTFIXVERSION)"
+    fi
 }
 
 failed_soup_restore_items() {
