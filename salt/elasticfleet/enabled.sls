@@ -26,7 +26,9 @@ include:
 wait_for_elasticsearch_elasticfleet:
   cmd.run:
     - name: so-elasticsearch-wait
+{% endif %}
 
+{% if GLOBALS.role == "so-fleet" %}
 # Sync Elastic Agent artifacts to Fleet Node
 elasticagent_syncartifacts:
   file.recurse:
