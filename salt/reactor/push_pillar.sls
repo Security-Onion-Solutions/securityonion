@@ -1,17 +1,21 @@
 #!py
 
-# Reactor invoked by the inotify beacon on pillar file changes under
-# /opt/so/saltstack/local/pillar/.
+# Reactor invoked by the pillar_db beacon when SOC records settings changes in
+# the so_soc.audit_settings table (see salt/_beacons/pillar_db.py). The beacon
+# emits one event per new row carrying setting_id and node_id.
 #
-# Two branches:
-#   A) per-minion override under pillar/minions/<id>.sls or adv_<id>.sls
-#      -> write an intent that runs state.highstate on just that minion.
-#   B) shared app pillar (pillar/<app>/...) -> look up <app> in
-#      pillar_push_map.yaml and write an intent with the entry's actions.
+# Two branches, keyed on node_id:
+#   A) node_id populated -> the change is scoped to that one minion. Look up the
+#      app in pillar_push_map.yaml and write an intent that runs the app's mapped
+#      state(s) targeted to just that node.
+#   B) node_id empty -> grid-wide app change. Look up the app in
+#      pillar_push_map.yaml and write an intent with the entry's actions as-is.
+#
+# The app name is the first dotted segment of setting_id (e.g. "telegraf.output"
+# -> "telegraf"), which matches the pillar_push_map.yaml keys 1:1.
 #
 # Reactors never dispatch directly. The so-push-drainer schedule picks up
 # ready intents, dedupes across pending files, and dispatches orch.push_batch.
-# See plan /home/mreeves/.claude/plans/goofy-marinating-hummingbird.md.
 
 import fcntl
 import json
@@ -27,9 +31,6 @@ LOG = logging.getLogger(__name__)
 PENDING_DIR = '/opt/so/state/push_pending'
 LOCK_FILE = os.path.join(PENDING_DIR, '.lock')
 MAX_PATHS = 20
-
-PILLAR_ROOT = '/opt/so/saltstack/local/pillar/'
-MINIONS_PREFIX = PILLAR_ROOT + 'minions/'
 
 # The pillar_push_map.yaml is shipped via salt:// but the reactor runs on the
 # master, which mounts the default saltstack tree at this path.
@@ -107,24 +108,25 @@ def _write_intent(key, actions, path):
             os.close(lock_fd)
 
 
-def _minion_id_from_path(path):
-    # path is e.g. /opt/so/saltstack/local/pillar/minions/sensor1.sls
-    #          or /opt/so/saltstack/local/pillar/minions/adv_sensor1.sls
-    filename = os.path.basename(path)
-    if not filename.endswith('.sls'):
+def _app_from_setting(setting_id):
+    # setting_id is e.g. 'telegraf.output' -> 'telegraf', 'ntp.config.servers' -> 'ntp'
+    if not setting_id:
         return None
-    stem = filename[:-4]
-    if stem.startswith('adv_'):
-        stem = stem[4:]
-    return stem or None
+    return setting_id.split('.', 1)[0] or None
 
 
-def _app_from_path(path):
-    # path is e.g. /opt/so/saltstack/local/pillar/zeek/soc_zeek.sls -> 'zeek'
-    remainder = path[len(PILLAR_ROOT):]
-    if '/' not in remainder:
-        return None
-    return remainder.split('/', 1)[0] or None
+def _node_actions(entry, node_id):
+    # Copy the app's mapped actions but retarget each one to the single node.
+    # Preserves the state/highstate selection and any batch/batch_wait overrides.
+    actions = []
+    for action in entry:
+        if not isinstance(action, dict):
+            continue
+        node_action = dict(action)
+        node_action['tgt'] = node_id
+        node_action['tgt_type'] = 'glob'
+        actions.append(node_action)
+    return actions
 
 
 def run():
@@ -132,39 +134,43 @@ def run():
         LOG.info('push_pillar: push disabled, skipping')
         return {}
 
-    path = data.get('path', '')  # noqa: F821 -- data provided by reactor
-    if not path or not path.startswith(PILLAR_ROOT):
-        LOG.debug('push_pillar: ignoring path outside pillar root: %s', path)
-        return {}
+    # The pillar_db beacon nests its payload under data['data']; fall back to the
+    # top level so the reactor is robust to either shape.
+    event = data.get('data', data)  # noqa: F821 -- data provided by reactor
+    setting_id = event.get('setting_id', '')
+    node_id = (event.get('node_id') or '').strip()
 
-    # Branch A: per-minion override
-    if path.startswith(MINIONS_PREFIX):
-        minion_id = _minion_id_from_path(path)
-        if not minion_id:
-            LOG.debug('push_pillar: ignoring non-sls path under minions/: %s', path)
-            return {}
-        actions = [{'highstate': True, 'tgt': minion_id, 'tgt_type': 'glob'}]
-        _write_intent('minion_{}'.format(minion_id), actions, path)
-        LOG.info('push_pillar: per-minion intent updated for %s (path=%s)', minion_id, path)
-        return {}
-
-    # Branch B: shared app pillar -> allowlist lookup
-    app = _app_from_path(path)
+    app = _app_from_setting(setting_id)
     if not app:
-        LOG.debug('push_pillar: ignoring path with no app segment: %s', path)
+        LOG.debug('push_pillar: ignoring event with no app segment: setting_id=%s', setting_id)
         return {}
 
     push_map = _load_push_map()
     entry = push_map.get(app)
     if not entry:
         LOG.warning(
-            'push_pillar: pillar dir "%s" is not in pillar_push_map.yaml; '
-            'change will be picked up at the next scheduled highstate (path=%s)',
-            app, path,
+            'push_pillar: app "%s" is not in pillar_push_map.yaml; change will be '
+            'picked up at the next scheduled highstate (setting_id=%s)',
+            app, setting_id,
         )
         return {}
 
+    # Branch A: per-node change -> retarget the app's states to just that node.
+    if node_id:
+        actions = _node_actions(entry, node_id)
+        if not actions:
+            LOG.warning('push_pillar: no usable actions for app "%s" (setting_id=%s)', app, setting_id)
+            return {}
+        _write_intent(
+            'node_{}_{}'.format(node_id, app), actions,
+            'audit:{}@{}'.format(setting_id, node_id),
+        )
+        LOG.info('push_pillar: per-node intent updated for %s on %s (setting_id=%s)',
+                 app, node_id, setting_id)
+        return {}
+
+    # Branch B: grid-wide app change -> use the map entry's actions as-is.
     actions = list(entry)  # copy to avoid mutating the cache
-    _write_intent('pillar_{}'.format(app), actions, path)
-    LOG.info('push_pillar: app intent updated for %s (path=%s)', app, path)
+    _write_intent('pillar_{}'.format(app), actions, 'audit:{}'.format(setting_id))
+    LOG.info('push_pillar: app intent updated for %s (setting_id=%s)', app, setting_id)
     return {}
