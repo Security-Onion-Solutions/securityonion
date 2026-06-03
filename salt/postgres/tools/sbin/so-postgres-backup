@@ -7,15 +7,29 @@
 
 . /usr/sbin/so-common
 
+# Without pipefail, a pipeline's exit status is gzip's. A failed pg_dumpall would
+# otherwise be masked by a successful gzip, silently producing a valid .gz that
+# holds a truncated dump.
+set -o pipefail
+
 # Backups contain role password hashes and full chat data; keep them 0600.
 umask 0077
 
 TODAY=$(date '+%Y_%m_%d')
 BACKUPDIR=/nsm/backup
 BACKUPFILE="$BACKUPDIR/so-postgres-backup-$TODAY.sql.gz"
+TMPFILE="$BACKUPFILE.tmp"
 MAXBACKUPS=7
+LOGFILE=/opt/so/log/postgres/backup.log
 
-mkdir -p $BACKUPDIR
+log() {
+  echo "$(date '+%Y-%m-%d %H:%M:%S') $*" >> "$LOGFILE"
+}
+
+mkdir -p "$BACKUPDIR"
+
+# Remove any temp files left behind by a previously crashed run
+rm -f "$BACKUPDIR"/so-postgres-backup-*.sql.gz.tmp
 
 # Skip if already backed up today
 if [ -f "$BACKUPFILE" ]; then
@@ -27,13 +41,33 @@ if ! docker ps --format '{{.Names}}' | grep -q '^so-postgres$'; then
   exit 0
 fi
 
-# Dump all databases and roles, compress
-docker exec so-postgres pg_dumpall -U postgres | gzip > "$BACKUPFILE"
+# Always clean up the temp file on exit; the success path clears this trap
+# after the atomic rename so the finished backup is not deleted.
+trap 'rm -f "$TMPFILE"' EXIT
 
-# Retention cleanup
-NUMBACKUPS=$(find $BACKUPDIR -type f -name "so-postgres-backup*" | wc -l)
+# Dump all databases and roles, compress. Write to a temp file so the final
+# filename only ever appears for a complete, verified backup.
+if ! docker exec so-postgres pg_dumpall -U postgres | gzip > "$TMPFILE"; then
+  log "ERROR: pg_dumpall/gzip failed; backup aborted"
+  exit 1
+fi
+
+# Verify the compressed stream is intact before publishing it
+if ! gzip -t "$TMPFILE"; then
+  log "ERROR: backup failed gzip integrity check; backup aborted"
+  exit 1
+fi
+
+# Atomically publish the verified backup
+mv "$TMPFILE" "$BACKUPFILE"
+trap - EXIT
+log "OK: wrote $BACKUPFILE"
+
+# Retention cleanup (only reached after a successful backup). The glob is
+# restricted to finished backups so an in-progress .tmp can never be counted.
+NUMBACKUPS=$(find "$BACKUPDIR" -type f -name "so-postgres-backup-*.sql.gz" | wc -l)
 while [ "$NUMBACKUPS" -gt "$MAXBACKUPS" ]; do
-  OLDEST=$(find $BACKUPDIR -type f -name "so-postgres-backup*" -printf '%T+ %p\n' | sort | head -n 1 | awk -F" " '{print $2}')
+  OLDEST=$(find "$BACKUPDIR" -type f -name "so-postgres-backup-*.sql.gz" -printf '%T+ %p\n' | sort | head -n 1 | awk -F" " '{print $2}')
   rm -f "$OLDEST"
-  NUMBACKUPS=$(find $BACKUPDIR -type f -name "so-postgres-backup*" | wc -l)
+  NUMBACKUPS=$(find "$BACKUPDIR" -type f -name "so-postgres-backup-*.sql.gz" | wc -l)
 done

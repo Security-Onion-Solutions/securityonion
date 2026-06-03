@@ -188,13 +188,6 @@ airgap_update_dockers() {
   fi
 }
 
-backup_old_states_pillars() {
-
-	tar czf /nsm/backup/$(echo $INSTALLEDVERSION)_$(date +%Y%m%d-%H%M%S)_soup_default_states_pillars.tar.gz /opt/so/saltstack/default/
-	tar czf /nsm/backup/$(echo $INSTALLEDVERSION)_$(date +%Y%m%d-%H%M%S)_soup_local_states_pillars.tar.gz /opt/so/saltstack/local/
-
-}
-
 update_registry() {
   docker stop so-dockerregistry
   docker rm so-dockerregistry
@@ -370,8 +363,9 @@ preupgrade_changes() {
     # This function is to add any new pillar items if needed.
     echo "Checking to see if changes are needed."
 
-    [[ "$INSTALLEDVERSION" =~ ^2\.4\.21[0-9]+$ ]] && up_to_3.0.0   
+    [[ "$INSTALLEDVERSION" =~ ^2\.4\.21[0-9]+$ ]] && up_to_3.0.0
     [[ "$INSTALLEDVERSION" == "3.0.0" ]] && up_to_3.1.0
+    [[ "$INSTALLEDVERSION" == "3.1.0" ]] && up_to_3.2.0
     true
 }
 
@@ -381,6 +375,7 @@ postupgrade_changes() {
 
     [[ "$POSTVERSION" =~ ^2\.4\.21[0-9]+$ ]] && post_to_3.0.0
     [[ "$POSTVERSION" == "3.0.0" ]] && post_to_3.1.0
+    [[ "$POSTVERSION" == "3.1.0" ]] && post_to_3.2.0
     true
 }
 
@@ -533,6 +528,23 @@ elasticfleet_set_agent_logging_level_warn() {
     done <<< "$policies_to_update"
 }
 
+update_logstash_pipeline_name() {
+    local original_pipeline_name="$1"
+    local new_pipeline_name="$2"
+
+    echo "Checking for conflicting logstash defined_pipelines pillar value."
+    local LOGSTASH_FILE=/opt/so/saltstack/local/pillar/logstash/soc_logstash.sls
+    local MINIONDIR=/opt/so/saltstack/local/pillar/minions
+    for pillar_file in "$LOGSTASH_FILE" "$MINIONDIR"/*.sls; do
+        [[ -f "$pillar_file" ]] || continue
+        if grep -q "$original_pipeline_name$" "$pillar_file"; then
+            echo "Found conflicting defined_pipeline pillar value in $pillar_file. Updating to use the new logstash pipeline name."
+            sed -i "s#$original_pipeline_name\$#$new_pipeline_name#g" "$pillar_file"
+            chown socore:socore "$pillar_file"
+        fi
+    done
+}
+
 check_transform_health_and_reauthorize() {
     . /usr/sbin/so-elastic-fleet-common
 
@@ -676,6 +688,10 @@ rename_strelka_scan_lnk() {
   rm -f "$TMP_VALUE_FILE"
 }
 
+fix_logstash_0013_lumberjack_pipeline_name() {
+    update_logstash_pipeline_name "so/0013_input_lumberjack_fleet.conf" "so/0013_input_lumberjack_fleet.conf.jinja"
+}
+
 up_to_3.1.0() {
   ensure_postgres_local_pillar
   ensure_postgres_secret
@@ -684,6 +700,7 @@ up_to_3.1.0() {
   # Clear existing component template state file.
   rm -f /opt/so/state/esfleet_component_templates.json
   rename_strelka_scan_lnk
+  fix_logstash_0013_lumberjack_pipeline_name
 
   INSTALLEDVERSION=3.1.0
 }
@@ -719,6 +736,48 @@ post_to_3.1.0() {
 }
 
 ### 3.1.0 End ###
+
+### 3.2.0 Scripts ###
+
+bootstrap_so_soc_database() {
+  # init-db.sh is mounted into so-postgres at /docker-entrypoint-initdb.d/init-db.sh
+  # and runs automatically only on a fresh data directory. Hosts upgrading from
+  # 3.1.0 already have /nsm/postgres populated, so the so_soc bootstrap block
+  # added in 3.2 never fires. Re-run the script explicitly; it's idempotent.
+  echo "Bootstrapping so_soc database via init-db.sh."
+  # The postgres image has no USER directive, so `docker exec` defaults to
+  # root, and the container env intentionally omits POSTGRES_USER (the upstream
+  # entrypoint defaults it transiently during first-init only). Recreate both
+  # so psql inside init-db.sh resolves the connect user correctly.
+  local exec_cmd="docker exec -u postgres -e POSTGRES_USER=postgres so-postgres bash /docker-entrypoint-initdb.d/init-db.sh"
+  if ! /usr/sbin/so-postgres-wait; then
+    FINAL_MESSAGE_QUEUE+=("WARNING: so-postgres was not ready during the 3.2.0 upgrade; the so_soc database may not have been bootstrapped. Re-run manually: $exec_cmd")
+    return 0
+  fi
+  if ! $exec_cmd; then
+    FINAL_MESSAGE_QUEUE+=("WARNING: init-db.sh failed inside so-postgres during the 3.2.0 upgrade; the so_soc database may not have been bootstrapped. Re-run manually: $exec_cmd")
+    return 0
+  fi
+  echo "so_soc bootstrap complete."
+}
+
+up_to_3.2.0() {
+  fix_logstash_0013_lumberjack_pipeline_name
+
+  INSTALLEDVERSION=3.2.0
+}
+
+post_to_3.2.0() {
+  bootstrap_so_soc_database
+
+  # Including agent regen script here since it was missed in post_to_3.1.0
+  echo "Regenerating Elastic Agent Installers"
+  /sbin/so-elastic-agent-gen-installers
+
+  POSTVERSION=3.2.0
+}
+
+### 3.2.0 End ###
 
 
 repo_sync() {
@@ -971,6 +1030,9 @@ verify_es_version_compatibility() {
     local is_active_intermediate_upgrade=1
     # supported upgrade paths for SO-ES versions
     declare -A es_upgrade_map=(
+        ["8.18.4"]="8.18.6 8.18.8 9.0.8"
+	    ["8.18.6"]="8.18.8 9.0.8"
+	    ["8.18.8"]="9.0.8"
         ["9.0.8"]="9.3.3"
     )
 
@@ -994,6 +1056,171 @@ verify_es_version_compatibility() {
         exit 160
     fi
 
+    compatible_es_versions="$target_es_version"
+    for current_version in "${!es_upgrade_map[@]}"; do
+        # shellcheck disable=SC2076
+        if [[ " ${es_upgrade_map[$current_version]} " =~ " $target_es_version " ]]; then
+            compatible_es_versions+=" $current_version"
+        fi
+    done
+
+    # Check if the given ES version can directly upgrade to the target ES version. Used to assist with catching lagging nodes during the upgrade process
+    es_version_can_upgrade_to_target() {
+        local current_version="$1"
+        # shellcheck disable=SC2076
+        if [[ -n "$current_version" && " $compatible_es_versions " =~ " $current_version " ]]; then
+            return 0
+        fi
+
+        return 1
+    }
+
+    # Gather Elasticsearch cluster version info and verify that each node in the cluster is running a version compatible with the target ES version.
+    verify_searchnodes_es_target_compatibility() {
+        local retries=20
+        local retry_count=0
+        local delay=180
+        local expected_es_nodes searchnode_minions attempt
+        local searchnode_discovery_success=false
+        SEARCHNODE_ES_VERSIONS=""
+
+        for attempt in {1..3}; do
+            if searchnode_minions=$(set -o pipefail; salt-key --out=json --list=accepted 2> /dev/null | jq -r '.minions[]? | select(endswith("searchnode"))'); then
+                searchnode_discovery_success=true
+                break
+            fi
+
+            echo "Failed to retrieve grid searchnodes via salt-key... Retrying in 30 seconds. Attempt $attempt of 3."
+            sleep 30
+        done
+
+        if [[ "$searchnode_discovery_success" != "true" ]]; then
+            echo "Failed to retrieve grid searchnodes via salt-key."
+            return 1
+        fi
+
+        # Always add node running soup to expected es nodes
+        expected_es_nodes="${MINIONID%_*}"
+        while IFS= read -r searchnode_minion; do
+            [[ -z "$searchnode_minion" ]] && continue
+            expected_es_nodes+=$'\n'"${searchnode_minion%_searchnode}"
+        done <<< "$searchnode_minions"
+
+        while [[ $retry_count -lt $retries ]]; do
+            SEARCHNODE_ES_VERSIONS=$(so-elasticsearch-query _nodes/_all/version --retry 5 --retry-delay 10 --fail 2>&1)
+            local exit_status=$?
+
+            if [[ $exit_status -ne 0 ]]; then
+                echo "Failed to retrieve Elasticsearch versions from searchnodes... Retrying in $delay seconds. Attempt $((retry_count + 1)) of $retries."
+                ((retry_count++))
+                sleep $delay
+                continue
+            fi
+
+            local all_searchnodes_compatible=true
+            while IFS=$'\t' read -r node current_version; do
+                [[ -z "$node" ]] && continue
+                if ! es_version_can_upgrade_to_target "$current_version"; then
+                    echo "Searchnode $node is running Elasticsearch $current_version, which is not directly upgradable to Elasticsearch $target_es_version."
+                    all_searchnodes_compatible=false
+                fi
+            done < <(echo "$SEARCHNODE_ES_VERSIONS" | jq -r '.nodes | to_entries[] | [.value.name, .value.version] | @tsv')
+
+            while IFS= read -r expected_es_node; do
+                [[ -z "$expected_es_node" ]] && continue
+                if ! echo "$SEARCHNODE_ES_VERSIONS" | jq -e --arg node "$expected_es_node" '.nodes | to_entries | any(.value.name == $node)' > /dev/null; then
+                    echo "Searchnode $expected_es_node did not report an Elasticsearch version. It may be offline or still upgrading."
+                    all_searchnodes_compatible=false
+                fi
+            done <<< "$expected_es_nodes"
+
+            if [[ "$all_searchnodes_compatible" == true ]]; then
+                echo "All Searchnodes are upgradable to Elasticsearch $target_es_version."
+                return 0
+            fi
+
+            echo "One or more Searchnodes cannot upgrade directly to Elasticsearch $target_es_version. Rechecking in $delay seconds. Attempt $((retry_count + 1)) of $retries."
+            ((retry_count++))
+            sleep $delay
+        done
+
+        return 1
+    }
+
+    # Gather heavynode version info and verify that each node is running a version compatible with the target ES version.
+    verify_heavynodes_es_target_compatibility() {
+        local heavynode_minions attempt
+        local retries=20
+        local retry_count=0
+        local delay=180
+        local heavynode_discovery_success=false
+        HEAVYNODE_ES_VERSIONS=""
+
+        for attempt in {1..3}; do
+            if heavynode_minions=$(set -o pipefail; salt-key --out=json --list=accepted 2> /dev/null | jq -r '.minions[]? | select(endswith("heavynode"))'); then
+                heavynode_discovery_success=true
+                break
+            fi
+
+            echo "Failed to retrieve grid heavynodes via salt-key... Retrying in 30 seconds. Attempt $attempt of 3."
+            sleep 30
+        done
+
+        if [[ "$heavynode_discovery_success" != "true" ]]; then
+            echo "Failed to retrieve grid heavynodes via salt-key."
+            return 1
+        fi
+
+        if [[ -z "$heavynode_minions" ]]; then
+            echo "No heavynodes detected. Skipping heavynode Elasticsearch version compatibility check."
+            return 0
+        fi
+
+        while [[ $retry_count -lt $retries ]]; do
+            HEAVYNODE_ES_VERSIONS=$(salt -C 'G@role:so-heavynode' cmd.run 'set -o pipefail; so-elasticsearch-query / --retry 5 --retry-delay 10 | jq -er ".version.number"' shell=/bin/bash --out=json 2> /dev/null)
+            local exit_status=$?
+
+            if [[ $exit_status -ne 0 ]]; then
+                echo "Failed to retrieve Elasticsearch version from one or more heavynodes... Retrying in $delay seconds. Attempt $((retry_count + 1)) of $retries."
+                ((retry_count++))
+                sleep $delay
+                continue
+            fi
+
+            local all_heavynodes_compatible=true
+            while IFS=$'\t' read -r node current_version; do
+                [[ -z "$node" ]] && continue
+                if ! es_version_can_upgrade_to_target "$current_version"; then
+                    echo "Heavynode $node is running Elasticsearch $current_version, which is not directly upgradable to Elasticsearch $target_es_version."
+                    all_heavynodes_compatible=false
+                fi
+            done < <(echo "$HEAVYNODE_ES_VERSIONS" | jq -r 'to_entries[] | [.key, .value] | @tsv')
+
+            while IFS= read -r heavynode_minion; do
+                [[ -z "$heavynode_minion" ]] && continue
+                if ! echo "$HEAVYNODE_ES_VERSIONS" | jq -se --arg minion "$heavynode_minion" 'add | has($minion)' > /dev/null; then
+                    echo "Heavynode $heavynode_minion did not report an Elasticsearch version. It may be offline or still upgrading."
+                    all_heavynodes_compatible=false
+                fi
+            done <<< "$heavynode_minions"
+
+            if [[ "$all_heavynodes_compatible" == true ]]; then
+                echo -e "\nAll heavynodes can upgrade to Elasticsearch $target_es_version."
+                return 0
+            fi
+
+            echo "One or more heavynodes cannot upgrade directly to Elasticsearch $target_es_version. Rechecking in $delay seconds. Attempt $((retry_count + 1)) of $retries."
+            ((retry_count++))
+            sleep $delay
+        done
+
+        return 1
+    }
+
+    if [[ ! -f "$es_verification_script" ]]; then
+        create_intermediate_upgrade_verification_script "$es_verification_script"
+    fi
+
     for statefile in "${es_required_version_statefile_base}"-*; do
         [[ -f $statefile ]] || continue
 
@@ -1010,10 +1237,6 @@ verify_es_version_compatibility() {
         if [[ "$(printf '%s\n' "$es_required_version_statefile_value" "$es_version" | sort -V | head -n1)" == "$es_required_version_statefile_value" ]]; then
             rm -f "$statefile"
             continue
-        fi
-
-        if [[ ! -f "$es_verification_script" ]]; then
-            create_intermediate_upgrade_verification_script "$es_verification_script"
         fi
 
         echo -e "\n##############################################################################################################################\n"
@@ -1037,6 +1260,26 @@ verify_es_version_compatibility() {
 
     # shellcheck disable=SC2076 # Do not want a regex here eg usage " 8.18.8 9.0.8 " =~ " 9.0.8 "
     if [[ " ${es_upgrade_map[$es_version]} " =~ " $target_es_version " || "$es_version" == "$target_es_version" ]]; then
+        if ! verify_searchnodes_es_target_compatibility || ! verify_heavynodes_es_target_compatibility; then
+            echo -e "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
+
+            echo "One or more Searchnode(s)/Heavynode(s) cannot upgrade directly to Elasticsearch $target_es_version. This can happen with soups that include Elasticsearch upgrades being run in quick succession. Typically, this will resolve itself as the grid synchronizes. Please allow time for all Searchnodes/Heavynodes to have upgraded Elasticsearch to a compatible version with $target_es_version before running soup again to avoid potential data loss!"
+
+            if [[ -n "$HEAVYNODE_ES_VERSIONS" ]]; then
+                echo "Current heavynode Elasticsearch versions:"
+                echo "$HEAVYNODE_ES_VERSIONS" | jq '.'
+            fi
+
+            if [[ -n "$SEARCHNODE_ES_VERSIONS" ]]; then
+                echo "Current searchnode Elasticsearch versions:"
+                echo "$SEARCHNODE_ES_VERSIONS" | jq '.nodes | to_entries | map({(.value.name): .value.version}) | sort | add'
+            fi
+
+            echo -e "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
+
+            exit 161
+        fi
+
         # supported upgrade
         return 0
     else
@@ -1322,7 +1565,7 @@ EOF
 
 # Keeping this block in case we need to do a hotfix that requires salt update
 apply_hotfix() {
-   echo "No actions required. ($INSTALLEDVERSION/$HOTFIXVERSION)"
+    echo "No actions required. ($INSTALLEDVERSION/$HOTFIXVERSION)"
 }
 
 failed_soup_restore_items() {
@@ -1394,12 +1637,12 @@ main() {
   echo "Verifying we have the latest soup script."
   verify_latest_update_script
 
-  echo "Verifying Elasticsearch version compatibility before upgrading."
-  verify_es_version_compatibility
-
   echo "Let's see if we need to update Security Onion."
   upgrade_check
   upgrade_space
+
+  echo "Verifying Elasticsearch version compatibility across the grid before upgrading."
+  verify_es_version_compatibility
 
   echo "Checking for Salt Master and Minion updates."
   upgrade_check_salt
@@ -1420,7 +1663,8 @@ main() {
     echo "Applying $HOTFIXVERSION hotfix"
     # since we don't run the backup.config_backup state on import we wont snapshot previous version states and pillars
     if [[ ! "$MINION_ROLE" == "import" ]]; then
-      backup_old_states_pillars
+        echo "Running so-config-backup script."
+        /sbin/so-config-backup
     fi
     copy_new_files
     create_local_directories "/opt/so/saltstack/default"
@@ -1476,8 +1720,8 @@ main() {
     # since we don't run the backup.config_backup state on import we wont snapshot previous version states and pillars
     if [[ ! "$MINION_ROLE" == "import" ]]; then
       echo ""
-      echo "Creating snapshots of default and local Salt states and pillars and saving to /nsm/backup/"
-      backup_old_states_pillars
+      echo "Running so-config-backup script."
+      /sbin/so-config-backup
     fi
 
     echo ""

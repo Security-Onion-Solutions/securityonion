@@ -16,6 +16,13 @@
 {% do SOCMERGED.config.server.update({'additionalCA': MANAGERMERGED.additionalCA}) %}
 {% do SOCMERGED.config.server.update({'insecureSkipVerify': MANAGERMERGED.insecureSkipVerify}) %}
 
+{% if not SOCMERGED.config.server.modules.postgres.host %}
+{%   do SOCMERGED.config.server.modules.postgres.update({'host': GLOBALS.manager}) %}
+{% endif %}
+{% if not SOCMERGED.config.server.modules.postgres.password %}
+{%   do SOCMERGED.config.server.modules.postgres.update({'password': salt['pillar.get']('secrets:postgres_pass', '')}) %}
+{% endif %}
+
 {# if SOCMERGED.config.server.modules.cases == httpcase details come from the soc pillar #}
 {% if SOCMERGED.config.server.modules.cases != 'soc' %}
 {%   do SOCMERGED.config.server.modules.elastic.update({'casesEnabled': false}) %}
