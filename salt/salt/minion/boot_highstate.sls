@@ -15,8 +15,7 @@ include:
 so_boot_highstate_unit_file:
   file.managed:
     - name: /etc/systemd/system/so-boot-highstate.service
-    - source: salt://salt/service/so-boot-highstate.service.jinja
-    - template: jinja
+    - source: salt://salt/service/so-boot-highstate.service
     - onchanges_in:
       - module: systemd_reload
 
