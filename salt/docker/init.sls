@@ -18,10 +18,18 @@ dockergroup:
 dockerheldpackages:
   pkg.installed:
     - pkgs:
+{% if GLOBALS.os_version|int >= 10 %}
+      # OL10 test path: install latest Docker CE from the public repo (no .el9 builds available)
+      - containerd.io
+      - docker-ce
+      - docker-ce-cli
+      - docker-ce-rootless-extras
+{% else %}
       - containerd.io: 2.2.1-1.el9
       - docker-ce: 3:29.2.1-1.el9
       - docker-ce-cli: 1:29.2.1-1.el9
       - docker-ce-rootless-extras: 29.2.1-1.el9
+{% endif %}
     - hold: True
     - update_holds: True
 

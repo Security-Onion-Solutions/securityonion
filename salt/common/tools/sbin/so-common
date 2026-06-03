@@ -354,7 +354,12 @@ gpg_rpm_import() {
 	else
 		local RPMKEYSLOC="$UPDATE_DIR/salt/repo/client/files/$OS/keys"
 	fi
-	RPMKEYS=('RPM-GPG-KEY-oracle' 'RPM-GPG-KEY-EPEL-9' 'SALT-PROJECT-GPG-PUBKEY-2023.pub' 'docker.pub' 'securityonion.pub')
+	if [[ "$OSVER" == "10" ]]; then
+		# OL10 test path uses public repos; the public oracle-epel-release and docker repos provide their own keys
+		RPMKEYS=('RPM-GPG-KEY-oracle' 'SALT-PROJECT-GPG-PUBKEY-2023.pub')
+	else
+		RPMKEYS=('RPM-GPG-KEY-oracle' 'RPM-GPG-KEY-EPEL-9' 'SALT-PROJECT-GPG-PUBKEY-2023.pub' 'docker.pub' 'securityonion.pub')
+	fi
 	for RPMKEY in "${RPMKEYS[@]}"; do
 		rpm --import $RPMKEYSLOC/$RPMKEY
 		echo "Imported $RPMKEY"
@@ -626,9 +631,9 @@ salt_minion_count() {
 }
 
 set_os() {
-	if [ -f /etc/redhat-release ] && grep -q "Red Hat Enterprise Linux release 9" /etc/redhat-release && [ -f /etc/oracle-release ]; then
+	if [ -f /etc/oracle-release ] && grep -qE "release (9|10)\b" /etc/oracle-release; then
 		OS=oracle
-		OSVER=9
+		OSVER=$(grep -oE "release [0-9]+" /etc/oracle-release | grep -oE "[0-9]+")
 		is_oracle=true
 		is_rpm=true
 	fi

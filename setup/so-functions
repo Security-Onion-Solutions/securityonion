@@ -903,14 +903,14 @@ detect_cloud() {
 
 detect_os() {
 	title "Detecting Base OS"
-	if [ -f /etc/redhat-release ] && grep -q "Red Hat Enterprise Linux release 9" /etc/redhat-release && [ -f /etc/oracle-release ]; then
+	if [ -f /etc/oracle-release ] && grep -qE "release (9|10)\b" /etc/oracle-release; then
 		OS=oracle
-		OSVER=9
+		OSVER=$(grep -oE "release [0-9]+" /etc/oracle-release | grep -oE "[0-9]+")
 		is_oracle=true
 		is_rpm=true
 		is_supported=true
 	else
-		info "This OS is not supported. Security Onion requires Oracle Linux 9."
+		info "This OS is not supported. Security Onion requires Oracle Linux 9 or 10."
 		fail_setup
 	fi
 
@@ -1783,6 +1783,15 @@ ensure_pyyaml() {
 # - securityonion/salt/salt/minion.defaults.yaml
 
 securityonion_repo() {
+	if [[ "$OSVER" == "10" ]]; then
+		# TEST PATH: Oracle Linux 10 uses the public OL10 + EPEL + Docker CE repos.
+		# Keep the stock /etc/yum.repos.d/* in place, skip the SO mirror and local reposync.
+		gpg_rpm_import
+		logCmd "dnf -y install oracle-epel-release-el10"
+		logCmd "dnf -y config-manager --add-repo https://download.docker.com/linux/rhel/docker-ce.repo"
+		logCmd "dnf repolist"
+		return
+	fi
 	# Remove all the current repos
 	logCmd "dnf -v clean all"
 	logCmd "mkdir -vp /root/oldrepos"
@@ -1877,12 +1886,19 @@ saltify() {
 	info "Installing Salt $SALTVERSION"
 	chmod u+x ../salt/salt/scripts/bootstrap-salt.sh
 
+	# Normally Salt packages come from the SO mirror, so -r disables the bootstrap's own repo setup.
+	# On the OL10 test path there is no SO mirror, so let bootstrap configure the public Salt repo.
+	local saltrepoflag="-r"
+	if [[ "$OSVER" == "10" ]]; then
+		saltrepoflag=""
+	fi
+
 	if [[ $waitforstate ]]; then
 		# install all for a manager
-		retry 30 10 "bash ../salt/salt/scripts/bootstrap-salt.sh -r -M -X stable $SALTVERSION" || fail_setup
+		retry 30 10 "bash ../salt/salt/scripts/bootstrap-salt.sh $saltrepoflag -M -X stable $SALTVERSION" || fail_setup
 	else
 		# just a minion
-		retry 30 10 "bash ../salt/salt/scripts/bootstrap-salt.sh -r -X stable $SALTVERSION" || fail_setup
+		retry 30 10 "bash ../salt/salt/scripts/bootstrap-salt.sh $saltrepoflag -X stable $SALTVERSION" || fail_setup
 	fi
 
 	salt_install_module_deps

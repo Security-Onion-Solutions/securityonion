@@ -112,8 +112,23 @@ update_docker_containers() {
   # does not include so-elastic-fleet since that container uses so-elastic-agent image
   local IMAGES_USING_ES_VERSION=("so-elasticsearch")
 
-  rm -rf $SIGNPATH >> "$LOG_FILE" 2>&1 
-  mkdir -p $SIGNPATH >> "$LOG_FILE" 2>&1 
+  rm -rf $SIGNPATH >> "$LOG_FILE" 2>&1
+  mkdir -p $SIGNPATH >> "$LOG_FILE" 2>&1
+
+  # OL10 test path: GnuPG 2.4 enables the keybox daemon (keyboxd) by default, which deadlocks
+  # under the rapid sequential gpg --verify calls below ("waiting for lock ... keydb_search
+  # failed: Connection timed out ... No public key"). Editing the default homedir's common.conf
+  # is unreliable (gpg re-adds use-keyboxd when it re-initializes the homedir), so run all the
+  # image-signature gpg ops in a dedicated homedir whose pre-written common.conf leaves keyboxd
+  # off, forcing the classic keybox. Isolated from the system keyring and deterministic.
+  if [ "$OSVER" = "10" ]; then
+    export GNUPGHOME="$SIGNPATH/gnupg"
+    rm -rf "$GNUPGHOME" >> "$LOG_FILE" 2>&1
+    mkdir -p "$GNUPGHOME" >> "$LOG_FILE" 2>&1
+    chmod 700 "$GNUPGHOME"
+    echo "# keyboxd disabled for SO image signature verification on EL10" > "$GNUPGHOME/common.conf"
+    gpgconf --kill keyboxd gpg-agent >> "$LOG_FILE" 2>&1 || true
+  fi
 
   # Let's make sure we have the public key
   run_check_net_err \
