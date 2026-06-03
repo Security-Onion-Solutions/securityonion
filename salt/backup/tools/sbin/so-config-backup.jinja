@@ -25,9 +25,11 @@ if [ ! -f $BACKUPFILE ]; then
   # Create empty backup file
   tar -cf $BACKUPFILE -T /dev/null
 
-  # Loop through all paths defined in global.sls, and append them to backup file
+  # Loop through all paths defined in global.sls, and append them to backup file if they exist
   {%- for LOCATION in BACKUPLOCATIONS %}
-  tar -rf $BACKUPFILE "${EXCLUSIONS[@]}" {{ LOCATION }}
+  if [[ -d {{ LOCATION }} || -f {{ LOCATION }} ]]; then
+    tar -rf $BACKUPFILE "${EXCLUSIONS[@]}" {{ LOCATION }}
+  fi
   {%- endfor %}
 
 fi

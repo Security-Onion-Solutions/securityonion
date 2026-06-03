@@ -188,13 +188,6 @@ airgap_update_dockers() {
   fi
 }
 
-backup_old_states_pillars() {
-
-	tar czf /nsm/backup/$(echo $INSTALLEDVERSION)_$(date +%Y%m%d-%H%M%S)_soup_default_states_pillars.tar.gz /opt/so/saltstack/default/
-	tar czf /nsm/backup/$(echo $INSTALLEDVERSION)_$(date +%Y%m%d-%H%M%S)_soup_local_states_pillars.tar.gz /opt/so/saltstack/local/
-
-}
-
 update_registry() {
   docker stop so-dockerregistry
   docker rm so-dockerregistry
@@ -747,10 +740,16 @@ post_to_3.1.0() {
 ### 3.2.0 Scripts ###
 
 up_to_3.2.0() {
+  fix_logstash_0013_lumberjack_pipeline_name
+
   INSTALLEDVERSION=3.2.0
 }
 
 post_to_3.2.0() {
+  # Including agent regen script here since it was missed in post_to_3.1.0
+  echo "Regenerating Elastic Agent Installers"
+  /sbin/so-elastic-agent-gen-installers
+
   POSTVERSION=3.2.0
 }
 
@@ -1542,13 +1541,7 @@ EOF
 
 # Keeping this block in case we need to do a hotfix that requires salt update
 apply_hotfix() {
-    if [[ "$INSTALLEDVERSION" == "3.1.0" ]] ; then
-       # Do not remove this fix_logstash_0013_lumberjack_pipeline_name in future hotfixes without first validating older
-       #  installs referencing "so/0013_input_lumberjack_fleet.conf" via pillar are upgradable
-       fix_logstash_0013_lumberjack_pipeline_name
-    else
-        echo "No actions required. ($INSTALLEDVERSION/$HOTFIXVERSION)"
-    fi
+    echo "No actions required. ($INSTALLEDVERSION/$HOTFIXVERSION)"
 }
 
 failed_soup_restore_items() {
@@ -1620,12 +1613,12 @@ main() {
   echo "Verifying we have the latest soup script."
   verify_latest_update_script
 
-  echo "Verifying Elasticsearch version compatibility across the grid before upgrading."
-  verify_es_version_compatibility
-
   echo "Let's see if we need to update Security Onion."
   upgrade_check
   upgrade_space
+
+  echo "Verifying Elasticsearch version compatibility across the grid before upgrading."
+  verify_es_version_compatibility
 
   echo "Checking for Salt Master and Minion updates."
   upgrade_check_salt
@@ -1646,7 +1639,8 @@ main() {
     echo "Applying $HOTFIXVERSION hotfix"
     # since we don't run the backup.config_backup state on import we wont snapshot previous version states and pillars
     if [[ ! "$MINION_ROLE" == "import" ]]; then
-      backup_old_states_pillars
+        echo "Running so-config-backup script."
+        /sbin/so-config-backup
     fi
     copy_new_files
     create_local_directories "/opt/so/saltstack/default"
@@ -1702,8 +1696,8 @@ main() {
     # since we don't run the backup.config_backup state on import we wont snapshot previous version states and pillars
     if [[ ! "$MINION_ROLE" == "import" ]]; then
       echo ""
-      echo "Creating snapshots of default and local Salt states and pillars and saving to /nsm/backup/"
-      backup_old_states_pillars
+      echo "Running so-config-backup script."
+      /sbin/so-config-backup
     fi
 
     echo ""
