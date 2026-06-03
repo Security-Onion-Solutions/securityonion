@@ -17,6 +17,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
         END IF;
     END
     \$\$;
+    GRANT ALL ON SCHEMA public TO "$SO_POSTGRES_USER";
     GRANT ALL PRIVILEGES ON DATABASE "$POSTGRES_DB" TO "$SO_POSTGRES_USER";
     -- Lock the SOC database down at the connect layer; PUBLIC gets CONNECT
     -- by default, which would let per-minion telegraf roles open sessions
