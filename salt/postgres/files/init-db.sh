@@ -32,8 +32,3 @@ EOSQL
 if ! psql -U "$POSTGRES_USER" -tAc "SELECT 1 FROM pg_database WHERE datname='so_telegraf'" | grep -q 1; then
     psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -c "CREATE DATABASE so_telegraf"
 fi
-
-# Bootstrap the SOC database.
-if ! psql -U "$POSTGRES_USER" -tAc "SELECT 1 FROM pg_database WHERE datname='so_soc'" | grep -q 1; then
-    psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -c "CREATE DATABASE so_soc"
-fi

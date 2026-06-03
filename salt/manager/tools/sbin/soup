@@ -746,35 +746,11 @@ post_to_3.1.0() {
 
 ### 3.2.0 Scripts ###
 
-bootstrap_so_soc_database() {
-  # init-db.sh is mounted into so-postgres at /docker-entrypoint-initdb.d/init-db.sh
-  # and runs automatically only on a fresh data directory. Hosts upgrading from
-  # 3.1.0 already have /nsm/postgres populated, so the so_soc bootstrap block
-  # added in 3.2 never fires. Re-run the script explicitly; it's idempotent.
-  echo "Bootstrapping so_soc database via init-db.sh."
-  # The postgres image has no USER directive, so `docker exec` defaults to
-  # root, and the container env intentionally omits POSTGRES_USER (the upstream
-  # entrypoint defaults it transiently during first-init only). Recreate both
-  # so psql inside init-db.sh resolves the connect user correctly.
-  local exec_cmd="docker exec -u postgres -e POSTGRES_USER=postgres so-postgres bash /docker-entrypoint-initdb.d/init-db.sh"
-  if ! /usr/sbin/so-postgres-wait; then
-    FINAL_MESSAGE_QUEUE+=("WARNING: so-postgres was not ready during the 3.2.0 upgrade; the so_soc database may not have been bootstrapped. Re-run manually: $exec_cmd")
-    return 0
-  fi
-  if ! $exec_cmd; then
-    FINAL_MESSAGE_QUEUE+=("WARNING: init-db.sh failed inside so-postgres during the 3.2.0 upgrade; the so_soc database may not have been bootstrapped. Re-run manually: $exec_cmd")
-    return 0
-  fi
-  echo "so_soc bootstrap complete."
-}
-
 up_to_3.2.0() {
   INSTALLEDVERSION=3.2.0
 }
 
 post_to_3.2.0() {
-  bootstrap_so_soc_database
-
   POSTVERSION=3.2.0
 }
 
