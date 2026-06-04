@@ -17,6 +17,7 @@ include:
   - repo.client
   - salt.mine_functions
   - salt.minion.service_file
+  - salt.minion.boot_highstate
 {% if GLOBALS.is_manager %}
   - ca.signing_policy
 {% endif %}
@@ -80,11 +81,33 @@ set_log_levels:
       - "log_level: info"
       - "log_level_logfile: info"
 
-enable_startup_states:
-  file.uncomment:
+# startup_states: highstate caused a full highstate to run on every
+# salt-minion service start, including the restart triggered when a highstate
+# itself modified the minion config (beacons, mine, unit file). Replaced by
+# so-boot-highstate.service (managed in salt.minion.boot_highstate), which
+# runs once per system boot only. Strip the line from /etc/salt/minion on
+# upgrade; both the commented and uncommented forms historically existed.
+remove_startup_states:
+  file.line:
     - name: /etc/salt/minion
-    - regex: '^startup_states: highstate$'
-    - unless: pgrep so-setup
+    - match: 'startup_states: highstate'
+    - mode: delete
+
+# Upgrade-path bridge: systems that already passed setup under the old gate
+# (`grep -x 'startup_states: highstate' /etc/salt/minion`) get a /opt/so/state/setup-complete
+# marker so so-boot-highstate.service can be enabled and the so-user_sync cron
+# in sync_es_users.sls keeps installing. Setup-in-progress systems instead get
+# the marker from `mark_setup_complete` in setup/so-functions at the right
+# moment. `replace: false` means we never overwrite a marker once written.
+mark_setup_complete_for_upgrades:
+  file.managed:
+    - name: /opt/so/state/setup-complete
+    - replace: false
+    - makedirs: True
+    - onlyif: "grep -qx 'startup_states: highstate' /etc/salt/minion"
+    - require_in:
+      - file: remove_startup_states
+      - service: so_boot_highstate_service
 
 {% endif %}
 

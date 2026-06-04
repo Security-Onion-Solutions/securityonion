@@ -8,11 +8,6 @@ set_role_grain:
     - name: role
     - value: so-{{ grains.id.split("_") | last }}
 
-set_highstate:
-  file.append:
-    - name: /etc/salt/minion
-    - text: 'startup_states: highstate'
-
 enable_salt_minion:
   service.enabled:
     - name: salt-minion
