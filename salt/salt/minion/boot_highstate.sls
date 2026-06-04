@@ -25,7 +25,7 @@ so_boot_highstate_unit_file:
 so_boot_highstate_service:
   service.enabled:
     - name: so-boot-highstate.service
-    - onlyif: test -e /opt/so/conf/setup-complete
+    - onlyif: test -e /opt/so/state/setup-complete
     - require:
       - file: so_boot_highstate_unit_file
       - module: systemd_reload

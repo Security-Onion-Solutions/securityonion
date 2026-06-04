@@ -94,14 +94,14 @@ remove_startup_states:
     - mode: delete
 
 # Upgrade-path bridge: systems that already passed setup under the old gate
-# (`grep -x 'startup_states: highstate' /etc/salt/minion`) get a setup-complete
+# (`grep -x 'startup_states: highstate' /etc/salt/minion`) get a /opt/so/state/setup-complete
 # marker so so-boot-highstate.service can be enabled and the so-user_sync cron
 # in sync_es_users.sls keeps installing. Setup-in-progress systems instead get
 # the marker from `mark_setup_complete` in setup/so-functions at the right
 # moment. `replace: false` means we never overwrite a marker once written.
 mark_setup_complete_for_upgrades:
   file.managed:
-    - name: /opt/so/conf/setup-complete
+    - name: /opt/so/state/setup-complete
     - replace: false
     - makedirs: True
     - onlyif: "grep -qx 'startup_states: highstate' /etc/salt/minion"

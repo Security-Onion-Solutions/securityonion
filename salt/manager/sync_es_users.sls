@@ -32,7 +32,7 @@ sync_es_users:
       - file: so-user.lock # require so-user.lock file to be missing
 
 # we dont want this added too early in setup, so the onlyif gates on the
-# /opt/so/conf/setup-complete marker. The marker is written by
+# /opt/so/state/setup-complete marker. The marker is written by
 # mark_setup_complete in setup/so-functions just before the final setup
 # highstate (and by an upgrade-path state for systems set up under the old gate).
 so-user_sync:
@@ -40,4 +40,4 @@ so-user_sync:
     - user: root
     - name: 'PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/root/bin /usr/sbin/so-user sync &>> /opt/so/log/soc/sync.log'
     - identifier: so-user_sync
-    - onlyif: "test -e /opt/so/conf/setup-complete"
+    - onlyif: "test -e /opt/so/state/setup-complete"
