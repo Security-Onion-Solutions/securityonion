@@ -17,6 +17,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
         END IF;
     END
     \$\$;
+    GRANT ALL ON SCHEMA public TO "$SO_POSTGRES_USER";
     GRANT ALL PRIVILEGES ON DATABASE "$POSTGRES_DB" TO "$SO_POSTGRES_USER";
     -- Lock the SOC database down at the connect layer; PUBLIC gets CONNECT
     -- by default, which would let per-minion telegraf roles open sessions
@@ -31,9 +32,4 @@ EOSQL
 # only ensures the shared database exists on first initialization.
 if ! psql -U "$POSTGRES_USER" -tAc "SELECT 1 FROM pg_database WHERE datname='so_telegraf'" | grep -q 1; then
     psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -c "CREATE DATABASE so_telegraf"
-fi
-
-# Bootstrap the SOC database.
-if ! psql -U "$POSTGRES_USER" -tAc "SELECT 1 FROM pg_database WHERE datname='so_soc'" | grep -q 1; then
-    psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -c "CREATE DATABASE so_soc"
 fi
