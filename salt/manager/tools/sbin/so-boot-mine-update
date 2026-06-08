@@ -1,0 +1,42 @@
+#!/bin/bash
+#
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+# Runs once per boot on managers (via so-boot-mine-update.service), before
+# so-boot-highstate.service. Waits for the responsive minion set to settle, then
+# pushes mine.update to all minions so mine-backed pillars (node IPs, ES/Redis/
+# Logstash discovery) are fresh before the boot highstate renders them.
+
+MAX_WAIT=${MINE_UPDATE_MAX_WAIT:-180}   # hard backstop only
+INTERVAL=10
+STABLE_CHECKS=3                          # up-count must hold steady this many polls
+elapsed=0
+prev=-1
+stable=0
+up=0
+
+# Wait for the *reachable* minion set to settle rather than for every accepted
+# key to report up: an operator may accept a minion's key and then intentionally
+# power off that host, so requiring up >= accepted would never be satisfied and
+# we'd always burn the full MAX_WAIT. Once the responsive count stops growing we
+# stop waiting and run mine.update against whoever is up.
+while [ "$elapsed" -lt "$MAX_WAIT" ]; do
+  up=$(/usr/bin/salt-run manage.up --out=json 2>/dev/null \
+    | python3 -c 'import sys,json; print(len(json.load(sys.stdin)))' 2>/dev/null)
+  up=${up:-0}
+  if [ "$up" -gt 0 ] && [ "$up" -eq "$prev" ]; then
+    stable=$((stable + 1))
+    [ "$stable" -ge "$STABLE_CHECKS" ] && break
+  else
+    stable=0
+  fi
+  prev=$up
+  sleep "$INTERVAL"
+  elapsed=$((elapsed + INTERVAL))
+done
+
+echo "so-boot-mine-update: ${up} minions up (settled after ${elapsed}s); running mine.update"
+/usr/bin/salt '*' mine.update --out=txt
