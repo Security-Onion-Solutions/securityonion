@@ -4,6 +4,13 @@ elasticsearch:
     forcedType: bool
     advanced: True
     helpLink: elasticsearch
+  data_retention_method:
+    description: Method for data retention. Options are ILM or DLM. For single node deployments and most distributed grid users, DLM will be the recommended option for simplified management. Those with more complex use cases may prefer ILM. The latter allows for more granular control, but requires more management overhead.
+    options:
+    - ILM
+    - DLM
+    forcedType: string
+    global: True
   version:
     description: "This specifies the version of the following containers: so-elastic-fleet-package-registry, so-elastic-agent, so-elastic-fleet, so-kibana, so-logstash and so-elasticsearch. Modifying this value in the Elasticsearch defaults.yaml will result in catastrophic grid failure."
     readonly: True
@@ -13,7 +20,7 @@ elasticsearch:
     description: Specify the memory heap size in (m)egabytes for Elasticsearch.
     helpLink: elasticsearch
   index_clean:
-    description: Determines if indices should be considered for deletion by available disk space in the cluster. Otherwise, indices will only be deleted by the age defined in the ILM settings. This setting only applies to EVAL, STANDALONE, and HEAVY NODE installations. Other installations can only use ILM settings.
+    description: Determines if indices should be considered for deletion by available disk space in the cluster. Otherwise, data is retained by the configured lifecycle settings. This setting only applies to EVAL, STANDALONE, and HEAVY NODE installations. Other installations use lifecycle settings only.
     forcedType: bool
     helpLink: elasticsearch
   vm:
@@ -139,6 +146,22 @@ elasticsearch:
     custom010: *pipelines
   index_settings:
     global_overrides:
+      data_stream_lifecycle:
+        data_retention:
+          description: |
+            The retention period for all data streams. Retention does not define the period that the data will be removed, but the minimum time period they will be kept.
+
+            Use a number followed by a time unit, such as 7d. Leave blank for indefinite retention where supported.
+
+            Configured retention period also affects the frequency of rolling over data streams.
+              - If retention is less than or equal to 1 day, max_age will be 1 hour
+              - If retention is less than or equal to 14 days, max_age will be 1 day
+              - If retention is less than or equal to 90 days, max_age will be 7 days
+              - If retention is greater than 90 days, max_age will be 30 days
+          global: True
+          forcedType: string
+          regex: ^$|^[0-9]{1,5}(?:d|h|m|s)$
+          regexFailureMessage: Must be blank or a number followed by d, h, m, or s, such as 7d.
       index_template:
         template:
           settings:
@@ -311,13 +334,29 @@ elasticsearch:
               forcedType: string
               global: True
               helpLink: elasticsearch
-    so-logs: &indexSettings
+    so-logs: &dataStreamSettings
       index_sorting:
         description: Sorts the index by event time, at the cost of additional processing resource consumption.
         forcedType: bool
         global: True
         advanced: True
         helpLink: elasticsearch
+      data_stream_lifecycle:
+        data_retention:
+          description: |
+            The retention period for this data stream. Retention does not define the period that the data will be removed, but the minimum time period it will be kept.
+
+            Use a number followed by a time unit, such as 7d. Leave blank for indefinite retention where supported.
+
+            Configured retention period also affects the frequency of rolling over this data stream.
+              - If retention is less than or equal to 1 day, max_age will be 1 hour
+              - If retention is less than or equal to 14 days, max_age will be 1 day
+              - If retention is less than or equal to 90 days, max_age will be 7 days
+              - If retention is greater than 90 days, max_age will be 30 days
+          global: True
+          forcedType: string
+          regex: ^$|^[0-9]{1,5}(?:d|h|m|s)$
+          regexFailureMessage: Must be blank or a number followed by d, h, m, or s, such as 7d.
       index_template:
         index_patterns:
           description: Patterns for matching multiple indices or tables.
@@ -332,6 +371,14 @@ elasticsearch:
               number_of_replicas: 
                 description: Number of replicas required for this index. Multiple replicas protects against data loss, but also increases storage costs.
                 forcedType: int
+                global: True
+                advanced: True
+                helpLink: elasticsearch
+              auto_expand_replicas:
+                description: Automatically expand the number of replicas based on the number of data nodes in the cluster. This can help ensure high availability as the cluster scales up or down.
+                forcedType: string
+                regex: "^(0-[1-9]|1-[2-9]|2-[3-9]|3-[4-9]|4-[5-9]|5-[6-9]|6-[7-9]|7-[89]|8-9|[0-9]-all|false)$"
+                regexFailureMessage: Must be in the format of "x-y" where x is minimum number of replicas and y is maximum number of replicas, or "0-all" to specify a minimum of 0 and no maximum, or "false" to disable automatic replica expansion.
                 global: True
                 advanced: True
                 helpLink: elasticsearch
@@ -596,65 +643,349 @@ elasticsearch:
             global: True
             advanced: True
             helpLink: elasticsearch
-    so-logs-system_x_auth: *indexSettings
-    so-logs-system_x_syslog: *indexSettings
-    so-logs-system_x_system: *indexSettings
-    so-logs-system_x_application: *indexSettings
-    so-logs-system_x_security: *indexSettings
-    so-logs-windows_x_forwarded: *indexSettings
-    so-logs-windows_x_powershell: *indexSettings
-    so-logs-windows_x_powershell_operational: *indexSettings
-    so-logs-windows_x_sysmon_operational: *indexSettings
-    so-logs-winlog_x_winlog: *indexSettings
-    so-logs-detections_x_alerts: *indexSettings
-    so-logs-http_endpoint_x_generic: *indexSettings
-    so-logs-httpjson_x_generic: *indexSettings
-    so-logs-osquery-manager-actions: *indexSettings
-    so-logs-osquery-manager-action_x_responses: *indexSettings
-    so-logs-osquery-manager_x_action_x_responses: *indexSettings
-    so-logs-osquery-manager_x_result: *indexSettings
-    so-logs-elastic_agent_x_apm_server: *indexSettings
-    so-logs-elastic_agent_x_auditbeat: *indexSettings
-    so-logs-elastic_agent_x_cloudbeat: *indexSettings
-    so-logs-elastic_agent_x_endpoint_security: *indexSettings
-    so-logs-endpoint_x_alerts: *indexSettings
-    so-logs-endpoint_x_events_x_api: *indexSettings
-    so-logs-endpoint_x_events_x_file: *indexSettings
-    so-logs-endpoint_x_events_x_library: *indexSettings
-    so-logs-endpoint_x_events_x_network: *indexSettings
-    so-logs-endpoint_x_events_x_process: *indexSettings
-    so-logs-endpoint_x_events_x_registry: *indexSettings
-    so-logs-endpoint_x_events_x_security: *indexSettings
-    so-logs-elastic_agent_x_filebeat: *indexSettings
-    so-logs-elastic_agent_x_fleet_server: *indexSettings
-    so-logs-elastic_agent_x_heartbeat: *indexSettings
-    so-logs-elastic_agent: *indexSettings
-    so-logs-elastic_agent_x_metricbeat: *indexSettings
-    so-logs-elastic_agent_x_osquerybeat: *indexSettings
-    so-logs-elastic_agent_x_packetbeat: *indexSettings
-    so-logs-elasticsearch_x_server: *indexSettings
-    so-metrics-endpoint_x_metadata: *indexSettings
-    so-metrics-endpoint_x_metrics: *indexSettings
-    so-metrics-endpoint_x_policy: *indexSettings
-    so-metrics-nginx_x_stubstatus: *indexSettings
-    so-metrics-vsphere_x_datastore: *indexSettings
-    so-metrics-vsphere_x_host: *indexSettings
-    so-metrics-vsphere_x_virtualmachine: *indexSettings
-    so-case: *indexSettings
-    so-common: *indexSettings
-    so-endgame: *indexSettings
-    so-idh: *indexSettings
-    so-suricata: *indexSettings
-    so-suricata_x_alerts: *indexSettings
-    so-import: *indexSettings
-    so-kratos: *indexSettings
-    so-hydra: *indexSettings
-    so-kismet: *indexSettings
-    so-logstash: *indexSettings
-    so-redis: *indexSettings
-    so-strelka: *indexSettings
-    so-syslog: *indexSettings
-    so-zeek: *indexSettings
+    so-logs-system_x_auth: *dataStreamSettings
+    so-logs-system_x_syslog: *dataStreamSettings
+    so-logs-system_x_system: *dataStreamSettings
+    so-logs-system_x_application: *dataStreamSettings
+    so-logs-system_x_security: *dataStreamSettings
+    so-logs-windows_x_forwarded: *dataStreamSettings
+    so-logs-windows_x_powershell: *dataStreamSettings
+    so-logs-windows_x_powershell_operational: *dataStreamSettings
+    so-logs-windows_x_sysmon_operational: *dataStreamSettings
+    so-logs-winlog_x_winlog: *dataStreamSettings
+    so-logs-detections_x_alerts: *dataStreamSettings
+    so-logs-http_endpoint_x_generic: *dataStreamSettings
+    so-logs-httpjson_x_generic: *dataStreamSettings
+    so-logs-osquery-manager-actions: *dataStreamSettings
+    so-logs-osquery-manager-action_x_responses: *dataStreamSettings
+    so-logs-osquery-manager_x_action_x_responses: *dataStreamSettings
+    so-logs-osquery-manager_x_result: *dataStreamSettings
+    so-logs-elastic_agent_x_apm_server: *dataStreamSettings
+    so-logs-elastic_agent_x_auditbeat: *dataStreamSettings
+    so-logs-elastic_agent_x_cloudbeat: *dataStreamSettings
+    so-logs-elastic_agent_x_endpoint_security: *dataStreamSettings
+    so-logs-endpoint_x_alerts: *dataStreamSettings
+    so-logs-endpoint_x_events_x_api: *dataStreamSettings
+    so-logs-endpoint_x_events_x_file: *dataStreamSettings
+    so-logs-endpoint_x_events_x_library: *dataStreamSettings
+    so-logs-endpoint_x_events_x_network: *dataStreamSettings
+    so-logs-endpoint_x_events_x_process: *dataStreamSettings
+    so-logs-endpoint_x_events_x_registry: *dataStreamSettings
+    so-logs-endpoint_x_events_x_security: *dataStreamSettings
+    so-logs-elastic_agent_x_filebeat: *dataStreamSettings
+    so-logs-elastic_agent_x_fleet_server: *dataStreamSettings
+    so-logs-elastic_agent_x_heartbeat: *dataStreamSettings
+    so-logs-elastic_agent: *dataStreamSettings
+    so-logs-elastic_agent_x_metricbeat: *dataStreamSettings
+    so-logs-elastic_agent_x_osquerybeat: *dataStreamSettings
+    so-logs-elastic_agent_x_packetbeat: *dataStreamSettings
+    so-logs-elasticsearch_x_server: *dataStreamSettings
+    so-metrics-endpoint_x_metadata: *dataStreamSettings
+    so-metrics-endpoint_x_metrics: *dataStreamSettings
+    so-metrics-endpoint_x_policy: *dataStreamSettings
+    so-metrics-nginx_x_stubstatus: *dataStreamSettings
+    so-metrics-vsphere_x_datastore: *dataStreamSettings
+    so-metrics-vsphere_x_host: *dataStreamSettings
+    so-metrics-vsphere_x_virtualmachine: *dataStreamSettings
+    so-common: *dataStreamSettings
+    so-endgame: *dataStreamSettings
+    so-idh: *dataStreamSettings
+    so-suricata: *dataStreamSettings
+    so-suricata_x_alerts: *dataStreamSettings
+    so-import: *dataStreamSettings
+    so-kratos: *dataStreamSettings
+    so-hydra: *dataStreamSettings
+    so-kismet: *dataStreamSettings
+    so-logstash: *dataStreamSettings
+    so-redis: *dataStreamSettings
+    so-strelka: *dataStreamSettings
+    so-syslog: *dataStreamSettings
+    so-zeek: *dataStreamSettings
+    # Managed SOC integration annotations are inserted below this line. Referencing '*dataStreamSettings'
+    so-case: &indexSettings
+      index_sorting:
+        description: Sorts the index by event time, at the cost of additional processing resource consumption.
+        forcedType: bool
+        global: True
+        advanced: True
+        helpLink: elasticsearch
+      index_template:
+        index_patterns:
+          description: Patterns for matching multiple indices or tables.
+          forcedType: "[]string"
+          multiline: True
+          global: True
+          advanced: True
+          helpLink: elasticsearch
+        template:
+          settings:
+            index:
+              number_of_replicas:
+                description: Number of replicas required for this index. Multiple replicas protects against data loss, but also increases storage costs.
+                forcedType: int
+                global: True
+                advanced: True
+                helpLink: elasticsearch
+              auto_expand_replicas:
+                description: Automatically expand the number of replicas based on the number of data nodes in the cluster. This can help ensure high availability as the cluster scales up or down.
+                forcedType: string
+                regex: "^(0-[1-9]|1-[2-9]|2-[3-9]|3-[4-9]|4-[5-9]|5-[6-9]|6-[7-9]|7-[89]|8-9|[0-9]-all|false)$"
+                regexFailureMessage: Must be in the format of "x-y" where x is minimum number of replicas and y is maximum number of replicas, or "0-all" to specify a minimum of 0 and no maximum, or "false" to disable automatic replica expansion.
+                global: True
+                advanced: True
+                helpLink: elasticsearch
+              mapping:
+                total_fields:
+                  limit:
+                    description: Max number of fields that can exist on a single index. Larger values will consume more resources.
+                    global: True
+                    advanced: True
+                    helpLink: elasticsearch
+              refresh_interval:
+                description: Seconds between index refreshes. Shorter intervals can cause query performance to suffer since this is a synchronous and resource-intensive operation.
+                global: True
+                advanced: True
+                helpLink: elasticsearch
+              number_of_shards:
+                description: Number of shards required for this index. Using multiple shards increases fault tolerance, but also increases storage and network costs.
+                global: True
+                advanced: True
+                helpLink: elasticsearch
+              sort:
+                field:
+                  description: The field to sort by. Must set index_sorting to True.
+                  global: True
+                  advanced: True
+                  helpLink: elasticsearch
+                order:
+                  description: The order to sort by. Must set index_sorting to True.
+                  global: True
+                  advanced: True
+                  helpLink: elasticsearch
+          mappings:
+            _meta:
+              package:
+                name:
+                  description: Meta settings for the mapping.
+                  global: True
+                  advanced: True
+                  helpLink: elasticsearch
+              managed_by:
+                  description: Meta settings for the mapping.
+                  global: True
+                  advanced: True
+                  helpLink: elasticsearch
+              managed:
+                  description: Meta settings for the mapping.
+                  forcedType: bool
+                  global: True
+                  advanced: True
+                  helpLink: elasticsearch
+        composed_of:
+          description: The index template is composed of these component templates.
+          forcedType: "[]string"
+          global: True
+          advanced: True
+          helpLink: elasticsearch
+        priority:
+          description: The priority of the index template.
+          forcedType: int
+          global: True
+          advanced: True
+          helpLink: elasticsearch
+      policy:
+        phases:
+          hot:
+            min_age:
+              description: Minimum age of index. This determines when the index should be moved to the hot tier.
+              global: True
+              advanced: True
+              helpLink: elasticsearch
+            actions:
+              set_priority:
+                priority:
+                  description: Priority of index. This is used for recovery after a node restart. Indices with higher priorities are recovered before indices with lower priorities.
+                  forcedType: int
+                  global: True
+                  advanced: True
+                  helpLink: elasticsearch
+              rollover:
+                max_age:
+                  description: Maximum age of index.  Once an index reaches this limit, it will be rolled over into a new index.
+                  global: True
+                  advanced: True
+                  helpLink: elasticsearch
+                max_primary_shard_size:
+                  description: Maximum primary shard size. Once an index reaches this limit, it will be rolled over into a new index.
+                  global: True
+                  advanced: True
+                  helpLink: elasticsearch
+              shrink:
+                method:
+                  description: Shrink the index to a new index with fewer primary shards. Shrink operation is by count or size.
+                  options:
+                  - COUNT
+                  - SIZE
+                  global: True
+                  advanced: True
+                  forcedType: string
+                number_of_shards:
+                  title: shard count
+                  description: Desired shard count. Note that this value is only used when the shrink method selected is 'COUNT'.
+                  global: True
+                  forcedType: int
+                  advanced: True
+                max_primary_shard_size:
+                  title: max shard size
+                  description: Desired shard size in gb/tb/pb eg. 100gb. Note that this value is only used when the shrink method selected is 'SIZE'.
+                  regex: ^[0-9]+(?:gb|tb|pb)$
+                  global: True
+                  forcedType: string
+                  advanced: True
+                allow_write_after_shrink:
+                  description: Allow writes after shrink.
+                  global: True
+                  forcedType: bool
+                  default: False
+                  advanced: True
+              forcemerge:
+                max_num_segments:
+                  description: Reduce the number of segments in each index shard and clean up deleted documents.
+                  global: True
+                  forcedType: int
+                  advanced: True
+                index_codec:
+                  title: compression
+                  description: Use higher compression for stored fields at the cost of slower performance.
+                  forcedType: bool
+                  global: True
+                  default: False
+                  advanced: True
+          warm:
+            min_age:
+              description: Minimum age of index. ex. 30d - This determines when the index should be moved to the warm tier. Nodes in the warm tier generally don’t need to be as fast as those in the hot tier. It’s important to note that this is calculated relative to the rollover date (NOT the original creation date of the index). For example, if you have an index that is set to rollover after 30 days and warm min_age set to 30 then there will be 30 days from index creation to rollover and then an additional 30 days before moving to warm tier.
+              regex: ^[0-9]{1,5}d$
+              forcedType: string
+              global: True
+              advanced: True
+              helpLink: elasticsearch
+            actions:
+              set_priority:
+                priority:
+                  description: Priority of index. This is used for recovery after a node restart. Indices with higher priorities are recovered before indices with lower priorities.
+                  forcedType: int
+                  global: True
+                  advanced: True
+                  helpLink: elasticsearch
+              rollover:
+                max_age:
+                  description: Maximum age of index.  Once an index reaches this limit, it will be rolled over into a new index.
+                  global: True
+                  advanced: True
+                  helpLink: elasticsearch
+                max_primary_shard_size:
+                  description: Maximum primary shard size. Once an index reaches this limit, it will be rolled over into a new index.
+                  global: True
+                  advanced: True
+                  helpLink: elasticsearch
+              shrink:
+                method:
+                  description: Shrink the index to a new index with fewer primary shards. Shrink operation is by count or size.
+                  options:
+                  - COUNT
+                  - SIZE
+                  global: True
+                  advanced: True
+                number_of_shards:
+                  title: shard count
+                  description: Desired shard count. Note that this value is only used when the shrink method selected is 'COUNT'.
+                  global: True
+                  forcedType: int
+                  advanced: True
+                max_primary_shard_size:
+                  title: max shard size
+                  description: Desired shard size in gb/tb/pb eg. 100gb. Note that this value is only used when the shrink method selected is 'SIZE'.
+                  regex: ^[0-9]+(?:gb|tb|pb)$
+                  global: True
+                  forcedType: string
+                  advanced: True
+                allow_write_after_shrink:
+                  description: Allow writes after shrink.
+                  global: True
+                  forcedType: bool
+                  default: False
+                  advanced: True
+              forcemerge:
+                max_num_segments:
+                  description: Reduce the number of segments in each index shard and clean up deleted documents.
+                  global: True
+                  forcedType: int
+                  advanced: True
+                index_codec:
+                  title: compression
+                  description: Use higher compression for stored fields at the cost of slower performance.
+                  forcedType: bool
+                  global: True
+                  default: False
+                  advanced: True
+              allocate:
+                number_of_replicas:
+                  description: Set the number of replicas. Remains the same as the previous phase by default.
+                  forcedType: int
+                  global: True
+                  advanced: True
+          cold:
+            min_age:
+              description: Minimum age of index. ex. 60d - This determines when the index should be moved to the cold tier.  While still searchable, this tier is typically optimized for lower storage costs rather than search speed. It’s important to note that this is calculated relative to the rollover date (NOT the original creation date of the index). For example, if you have an index that is set to rollover after 30 days and cold min_age set to 60 then there will be 30 days from index creation to rollover and then an additional 60 days before moving to cold tier.
+              regex: ^[0-9]{1,5}d$
+              forcedType: string
+              global: True
+              advanced: True
+              helpLink: elasticsearch
+            actions:
+              set_priority:
+                priority:
+                  description: Used for index recovery after a node restart. Indices with higher priorities are recovered before indices with lower priorities.
+                  forcedType: int
+                  global: True
+                  advanced: True
+                  helpLink: elasticsearch
+              allocate:
+                number_of_replicas:
+                  description: Set the number of replicas. Remains the same as the previous phase by default.
+                  forcedType: int
+                  global: True
+                  advanced: True
+          delete:
+            min_age:
+              description: Minimum age of index. ex. 90d - This determines when the index should be deleted. It’s important to note that this is calculated relative to the rollover date (NOT the original creation date of the index). For example, if you have an index that is set to rollover after 30 days and delete min_age set to 90 then there will be 30 days from index creation to rollover and then an additional 90 days before deletion.
+              regex: ^[0-9]{1,5}d$
+              forcedType: string
+              global: True
+              advanced: True
+              helpLink: elasticsearch
+        _meta:
+          package:
+            name:
+              description: Meta settings for the mapping.
+              global: True
+              advanced: True
+              helpLink: elasticsearch
+          managed_by:
+            description: Meta settings for the mapping.
+            global: True
+            advanced: True
+            helpLink: elasticsearch
+          managed:
+            description: Meta settings for the mapping.
+            forcedType: bool
+            global: True
+            advanced: True
+            helpLink: elasticsearch
+    sos-backup: *indexSettings
+    so-detection: *indexSettings
+    so-assistant-chat: *indexSettings
+    so-assistant-session: *indexSettings
     so-metrics-fleet_server_x_agent_status: &fleetMetricsSettings
       index_sorting:
         description: Sorts the index by event time, at the cost of additional processing resource consumption.

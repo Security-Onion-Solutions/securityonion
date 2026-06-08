@@ -1,0 +1,135 @@
+#!/bin/bash
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+. /usr/sbin/so-common
+
+{%- import_yaml 'elasticsearch/defaults.yaml' as ELASTICSEARCHDEFAULTS %}
+
+{%- set DATA_RETENTION_METHOD = salt['pillar.get']('elasticsearch:data_retention_method', ELASTICSEARCHDEFAULTS.elasticsearch.get('data_retention_method', 'ILM')) %}
+{%- from 'elasticsearch/template.map.jinja' import ES_INDEX_SETTINGS %}
+{%- if GLOBALS.role != "so-heavynode" %}
+{%-   from 'elasticsearch/template.map.jinja' import ALL_ADDON_SETTINGS %}
+{%- endif %}
+{%- set DLM_STREAMS = [] %}
+{%- for index, settings in ES_INDEX_SETTINGS.items() %}
+{%-   if settings.index_template is defined and settings.index_template.data_stream is defined and settings.data_stream_lifecycle is defined %}
+{%-     do DLM_STREAMS.append({'template': index, 'data_retention': settings.data_stream_lifecycle.get('data_retention', '')}) %}
+{%-   endif %}
+{%- endfor %}
+{%- if GLOBALS.role != "so-heavynode" %}
+{%-   for index, settings in ALL_ADDON_SETTINGS.items() %}
+{%-     if settings.index_template is defined and settings.index_template.data_stream is defined and settings.data_stream_lifecycle is defined %}
+{%-       do DLM_STREAMS.append({'template': index, 'data_retention': settings.data_stream_lifecycle.get('data_retention', '')}) %}
+{%-     endif %}
+{%-   endfor %}
+{%- endif %}
+
+STREAM_CONFIG='{{ DLM_STREAMS | tojson }}'
+DATA_RETENTION_METHOD="{{ DATA_RETENTION_METHOD }}"
+DLM_FAILURES=0
+DLM_FAILURE_NAMES=()
+
+if [[ "$DATA_RETENTION_METHOD" != "DLM" && "$DATA_RETENTION_METHOD" != "ILM" ]]; then
+    echo "Unsupported data retention method $DATA_RETENTION_METHOD. Expected DLM or ILM."
+    exit 1
+fi
+
+set_data_stream_lifecycle() {
+    local data_stream="$1"
+    local data_retention="$2"
+    local body
+    local output
+
+    if [[ -n "$data_retention" ]]; then
+        if jq -e --arg data_stream "$data_stream" --arg data_retention "$data_retention" '.data_streams[]? | select(.name == $data_stream and .lifecycle.enabled == true and .lifecycle.data_retention == $data_retention)' >/dev/null 2>&1 <<< "$data_streams"; then
+            echo "DLM lifecycle already set for $data_stream with data_retention $data_retention, skipping."
+            return 0
+        fi
+    elif jq -e --arg data_stream "$data_stream" '.data_streams[]? | select(.name == $data_stream and .lifecycle.enabled == true and (.lifecycle.data_retention == null))' >/dev/null 2>&1 <<< "$data_streams"; then
+        echo "DLM lifecycle already set for $data_stream with indefinite retention, skipping."
+        return 0
+    fi
+
+    if [[ -n "$data_retention" ]]; then
+        body=$(jq -cn --arg data_retention "$data_retention" '{data_retention: $data_retention}')
+    else
+        # Setting indefinite retention
+        body='{}'
+    fi
+
+    if ! output=$(so-elasticsearch-query "_data_stream/${data_stream}/_lifecycle" -XPUT -d "$body" --retry 3 --retry-delay 5 --fail); then
+        echo "Failed to set data stream lifecycle for $data_stream."
+        echo "$output"
+        return 1
+    fi
+
+    if [[ -n "$data_retention" ]]; then
+        echo "Set DLM lifecycle for $data_stream with data_retention $data_retention."
+    else
+        echo "Set DLM lifecycle for $data_stream with indefinite retention."
+    fi
+}
+
+disable_data_stream_lifecycle() {
+    local data_stream="$1"
+    local body='{"enabled":false}'
+    local output
+
+    if ! jq -e --arg data_stream "$data_stream" '.data_streams[]? | select(.name == $data_stream and .lifecycle != null and .lifecycle.enabled != false)' >/dev/null 2>&1 <<< "$data_streams"; then
+        # No action needed
+        return 0
+    fi
+
+    if ! output=$(so-elasticsearch-query "_data_stream/${data_stream}/_lifecycle" -XPUT -d "$body" --retry 3 --retry-delay 5 --fail); then
+        echo "Failed to disable data stream lifecycle for $data_stream."
+        echo "$output"
+        return 1
+    fi
+
+    echo "Disabled DLM lifecycle for $data_stream."
+}
+
+process_data_stream() {
+    local data_stream="$1"
+    local data_retention="$2"
+
+    if [[ "$DATA_RETENTION_METHOD" == "DLM" ]]; then
+        set_data_stream_lifecycle "$data_stream" "$data_retention"
+    else
+        disable_data_stream_lifecycle "$data_stream"
+    fi
+}
+
+check_elasticsearch_responsive
+
+if ! data_streams=$(so-elasticsearch-query "_data_stream?format=json" --retry 3 --retry-delay 5 --fail); then
+    echo "Failed to retrieve data streams."
+    exit 1
+fi
+
+while read -r config; do
+    template=$(jq -r '.template' <<< "$config")
+    data_retention=$(jq -r '.data_retention // ""' <<< "$config")
+
+    while read -r data_stream; do
+        [[ -z "$data_stream" ]] && continue
+
+        if ! process_data_stream "$data_stream" "$data_retention"; then
+            DLM_FAILURES=$((DLM_FAILURES + 1))
+            DLM_FAILURE_NAMES+=("$data_stream")
+        fi
+    done <<< "$(jq -r --arg template "$template" '.data_streams[]? | select(.template == $template) | .name' <<< "$data_streams")"
+done <<< "$(jq -c '.[]' <<< "$STREAM_CONFIG")"
+
+if [[ $DLM_FAILURES -eq 0 ]]; then
+    echo "Data stream lifecycle updates completed successfully."
+else
+    echo "Encountered $DLM_FAILURES failure(s) updating data stream lifecycle:"
+    for failed_data_stream in "${DLM_FAILURE_NAMES[@]}"; do
+        echo "  - $failed_data_stream"
+    done
+    exit 1
+fi

@@ -133,6 +133,18 @@ so-elasticsearch-templates:
       - docker_container: so-elasticsearch
       - file: elasticsearch_sbin_jinja
 
+so-elasticsearch-dlm-apply:
+  cmd.run:
+    - name: /usr/sbin/so-elasticsearch-dlm-apply
+    - cwd: /opt/so
+    - require:
+      - docker_container: so-elasticsearch
+      - file: elasticsearch_sbin_jinja
+      - cmd: so-elasticsearch-templates
+    - retry:
+        attempts: 3
+        interval: 10
+
 so-elasticsearch-pipelines:
   cmd.run:
     - name: /usr/sbin/so-elasticsearch-pipelines {{ GLOBALS.hostname }}

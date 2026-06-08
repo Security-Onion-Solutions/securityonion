@@ -761,8 +761,56 @@ bootstrap_so_soc_database() {
   echo "so_soc bootstrap complete."
 }
 
+# Existing grids should keep ILM unless an admin explicitly opts in to DLM.
+pin_elasticsearch_data_retention_method() {
+  local elasticsearch_file=/opt/so/saltstack/local/pillar/elasticsearch/soc_elasticsearch.sls
+  mkdir -p "$(dirname "$elasticsearch_file")"
+  [[ -f "$elasticsearch_file" ]] || touch "$elasticsearch_file"
+
+  if so-yaml.py get -r "$elasticsearch_file" elasticsearch.data_retention_method >/dev/null 2>&1; then
+    echo "elasticsearch.data_retention_method already set; leaving as-is."
+    return 0
+  fi
+
+  echo "Pinning existing grid to ILM data retention."
+  so-yaml.py add "$elasticsearch_file" elasticsearch.data_retention_method ILM
+  chown socore:socore "$elasticsearch_file"
+}
+
+# Addes auto_expand_replicas setting to .kibana_streams index template
+#
+# In Kibana 9.3.3 the auto_expand_replicas setting was not added to the .kibana_streams index template. Causing single node deployments to be stuck in yellow state (unable to assign replica). Here we update the template in place using the so_kibana system user (system managed index template) to include the auto_expand_replicas setting
+#
+# Reference: https://github.com/elastic/kibana/issues/263048
+kibana_backport_streams_index_template() {
+    local current_template updated_template
+    current_template=$(so-elasticsearch-query "_index_template/.kibana_streams" --retry 3 --retry-delay 5 --fail)
+
+    if [[ -z "$current_template" ]]; then
+        echo "Unable to retrieve current .kibana_streams index template, skipping backport."
+        return 0
+    fi
+
+    updated_template=$(jq '.index_templates[0].index_template | .template.settings += {"index.auto_expand_replicas": "0-1"} | del(.created_date_millis, .modified_date_millis)' <<< "$current_template")
+
+    if ! kibana_user_pass=$(/usr/sbin/so-yaml.py get -r /opt/so/saltstack/local/pillar/elasticsearch/auth.sls elasticsearch.auth.users.so_kibana_user.pass); then
+        echo "Unable to retrieve so_kibana_user password, skipping .kibana_streams index template backport."
+        return 0
+    fi
+
+    if ! so-elasticsearch-query "_index_template/.kibana_streams" -XPUT -d "$updated_template" -u "so_kibana:$kibana_user_pass" --retry 3 --retry-delay 5 --fail; then
+        echo "Unable to automatically update .kibana_streams index template"
+        return 0
+    fi
+
+    ## NOTE: Should really add a check here for existing .kibana_streams index and then update its config in place
+
+}
+
 up_to_3.2.0() {
   fix_logstash_0013_lumberjack_pipeline_name
+
+  pin_elasticsearch_data_retention_method
 
   INSTALLEDVERSION=3.2.0
 }
@@ -773,6 +821,8 @@ post_to_3.2.0() {
   # Including agent regen script here since it was missed in post_to_3.1.0
   echo "Regenerating Elastic Agent Installers"
   /sbin/so-elastic-agent-gen-installers
+
+  kibana_backport_streams_index_template
 
   POSTVERSION=3.2.0
 }
