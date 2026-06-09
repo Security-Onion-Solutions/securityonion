@@ -767,7 +767,10 @@ if ! [[ -f $install_opt_file ]]; then
 		title "Applying the registry state"
 		logCmd "salt-call state.apply -l info registry"
 		title "Seeding the docker registry"
-		docker_seed_registry
+		if ! docker_seed_registry; then
+			error "Failed to seed the docker registry"
+			fail_setup
+		fi
 		title "Applying the manager state"
 		logCmd "salt-call state.apply -l info manager"
 		logCmd "salt-call state.apply influxdb -l info"
