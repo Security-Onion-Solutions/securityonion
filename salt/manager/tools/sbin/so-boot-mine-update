@@ -6,9 +6,11 @@
 # Elastic License 2.0.
 
 # Runs once per boot on managers (via so-boot-mine-update.service), before
-# so-boot-highstate.service. Waits for the responsive minion set to settle, then
-# pushes mine.update to all minions so mine-backed pillars (node IPs, ES/Redis/
-# Logstash discovery) are fresh before the boot highstate renders them.
+# so-boot-highstate.service. Waits for the responsive minion set to settle, pushes
+# mine.update, then waits until every up minion has actually reported to the mine
+# so mine-backed pillars (node IPs, ES/Redis/Logstash discovery) are complete
+# before the boot highstate renders them -- otherwise a not-yet-reported node gets
+# dropped from those pillars and torn out of the configs they build.
 
 MAX_WAIT=${MINE_UPDATE_MAX_WAIT:-180}   # hard backstop only
 INTERVAL=10
@@ -41,20 +43,39 @@ done
 echo "so-boot-mine-update: ${up} minions up (settled after ${elapsed}s); running mine.update"
 /usr/bin/salt '*' mine.update --out=txt
 
-# Best-effort: confirm the manager can render node_data (non-False) now that the
-# mine is updated. node_data: False makes salt/top.sls fall back to the bootstrap
-# recovery branch instead of the manager's real config, so we surface that in the
-# journal here. We never block highstate -- if still empty, the recovery branch
-# and later highstates self-heal.
+# A node that is up but has not yet re-reported network.ip_addrs to the mine is
+# silently dropped from mine-backed pillars (elasticsearch:nodes, node_data, ...)
+# when highstate recompiles them -- which e.g. removes it from so-elasticsearch
+# ExtraHosts and forces a container recreate. After the broad mine.update above,
+# wait until every up minion actually has network.ip_addrs in the mine, re-pushing
+# mine.update to stragglers, before releasing the boot highstate. Bounded by the
+# same MAX_WAIT backstop so a slow/down node never blocks boot indefinitely.
+missing=""
+while [ "$elapsed" -lt "$MAX_WAIT" ]; do
+  up_json=$(/usr/bin/salt-run manage.up --out=json 2>/dev/null)
+  mine_json=$(/usr/bin/salt-run mine.get '*' network.ip_addrs tgt_type=glob --out=json 2>/dev/null)
+  missing=$(printf '%s' "$up_json" | python3 -c '
+import sys, json
+up = set(json.load(sys.stdin) or [])
+mine = {k for k, v in (json.loads(sys.argv[1]) or {}).items() if v}
+print("\n".join(sorted(up - mine)))
+' "$mine_json" 2>/dev/null)
+  if [ -z "$missing" ]; then
+    echo "so-boot-mine-update: mine complete for all up minions after ${elapsed}s"
+    break
+  fi
+  echo "so-boot-mine-update: mine missing up minion(s): $(echo $missing); re-running mine.update"
+  for m in $missing; do /usr/bin/salt "$m" mine.update --out=txt; done
+  sleep "$INTERVAL"
+  elapsed=$((elapsed + INTERVAL))
+done
+[ -n "$missing" ] && echo "so-boot-mine-update: WARNING ${MAX_WAIT}s backstop hit; up minion(s) still absent from mine: $(echo $missing); highstate may drop them from configs"
+
+# Log what node_data renders so the boot-time pillar state is inspectable.
 /usr/bin/salt-call saltutil.refresh_pillar >/dev/null 2>&1
 sleep 2
 rendered=$(/usr/bin/salt-call --out=json pillar.get node_data 2>/dev/null \
-  | python3 -c 'import sys,json; d=json.load(sys.stdin).get("local"); print(json.dumps(d, indent=2, sort_keys=True))' 2>/dev/null)
+  | python3 -c 'import sys,json; print(json.dumps(json.load(sys.stdin).get("local"), indent=2, sort_keys=True))' 2>/dev/null)
 echo "so-boot-mine-update: node_data rendered as:"
 echo "${rendered:-null}"
-if [ -n "$rendered" ] && [ "$rendered" != "null" ] && [ "$rendered" != "false" ]; then
-  echo "so-boot-mine-update: node_data renders; highstate will apply manager config"
-else
-  echo "so-boot-mine-update: WARNING node_data still empty after mine.update; highstate may hit the bootstrap recovery branch"
-fi
 exit 0
