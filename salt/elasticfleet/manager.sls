@@ -11,14 +11,15 @@ include:
   - elasticfleet.config
 
 # If enabled, automatically update Fleet Logstash Outputs
-{% if ELASTICFLEETMERGED.config.server.enable_auto_configuration and grains.role not in ['so-import', 'so-eval'] %}
+{% if ELASTICFLEETMERGED.config.server.enable_auto_configuration %}
+{%   if grains.role not in ['so-import', 'so-eval']%}
 so-elastic-fleet-auto-configure-logstash-outputs:
   cmd.run:
     - name: /usr/sbin/so-elastic-fleet-outputs-update
     - retry:
         attempts: 4
         interval: 30
-{% endif %}
+{%   endif %}
 
 # If enabled, automatically update Fleet Server URLs & ES Connection
 so-elastic-fleet-auto-configure-server-urls:
@@ -27,6 +28,7 @@ so-elastic-fleet-auto-configure-server-urls:
     - retry:
         attempts: 4
         interval: 30
+{% endif %}
 
 # Automatically update Fleet Server Elasticsearch URLs & Agent Artifact URLs
 so-elastic-fleet-auto-configure-elasticsearch-urls:

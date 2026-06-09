@@ -9,8 +9,11 @@
 {%   from 'elasticsearch/config.map.jinja' import ELASTICSEARCHMERGED %}
 {%   from 'elasticsearch/template.map.jinja' import ES_INDEX_SETTINGS, SO_MANAGED_INDICES %}
 {%   if GLOBALS.role != 'so-heavynode' %}
-{%     from 'elasticsearch/template.map.jinja' import ALL_ADDON_SETTINGS %}
+{%     from 'elasticsearch/template.map.jinja' import ALL_ADDON_SETTINGS, ADDON_INDICES %}
 {%   endif %}
+
+include:
+  - elasticsearch.enabled
 
 escomponenttemplates:
   file.recurse:
@@ -34,6 +37,20 @@ so_index_template_dir:
       - file: so_index_template_{{index}}
       {%- endfor %}
     {%- endif %}
+
+{%  if GLOBALS.role != "so-heavynode" %}
+# Clean up legacy and non-SO managed templates from the elasticsearch/templates/addon-index/ directory
+addon_index_template_dir:
+  file.directory:
+    - name: /opt/so/conf/elasticsearch/templates/addon-index
+    - clean: True
+    {%- if ADDON_INDICES %}
+    - require:
+      {%- for index in ADDON_INDICES %}
+      - file: addon_index_template_{{index}}
+      {%- endfor %}
+    {%- endif %}
+{%  endif %}
 
 # Auto-generate index templates for SO managed indices (directly defined in elasticsearch/defaults.yaml)
 #   These index templates are for the core SO datasets and are always required
