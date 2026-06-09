@@ -7,10 +7,12 @@
 
 # Runs once per boot on managers (via so-boot-mine-update.service), before
 # so-boot-highstate.service. Waits for the responsive minion set to settle, pushes
-# mine.update, then waits until every up minion has actually reported to the mine
-# so mine-backed pillars (node IPs, ES/Redis/Logstash discovery) are complete
-# before the boot highstate renders them -- otherwise a not-yet-reported node gets
-# dropped from those pillars and torn out of the configs they build.
+# mine.update, waits until every up minion has actually reported to the mine, then
+# warms the master's per-minion pillar cache so the mine-backed node pillars (node
+# IPs, ES/Redis/Logstash/hypervisor discovery -- some glob- and some pillar/grain-
+# targeted) are complete before the boot highstate renders them. Otherwise a node
+# that is up but not yet fully reported gets dropped from those pillars and torn
+# out of the configs they build (e.g. so-elasticsearch ExtraHosts -> container recreate).
 
 MAX_WAIT=${MINE_UPDATE_MAX_WAIT:-180}   # hard backstop only
 INTERVAL=10
@@ -71,11 +73,45 @@ print("\n".join(sorted(up - mine)))
 done
 [ -n "$missing" ] && echo "so-boot-mine-update: WARNING ${MAX_WAIT}s backstop hit; up minion(s) still absent from mine: $(echo $missing); highstate may drop them from configs"
 
-# Log what node_data renders so the boot-time pillar state is inspectable.
+# The pillar/compound-targeted node pillars (elasticsearch:nodes, redis:nodes,
+# logstash:nodes, hypervisor:nodes) resolve their target against the master's
+# per-minion data cache (grains+pillar in .../minions/<id>/data.p), populated only
+# when a minion's pillar is (re)compiled -- separately from the mine. A freshly
+# booted node can be in the mine (glob/node_data sees it) yet absent from that
+# cache, so it is dropped from those pillars and from the configs they build (e.g.
+# so-elasticsearch ExtraHosts). Force a synchronous pillar refresh so the master
+# caches every up node's pillar; refresh_pillar wait=True returns only once the
+# pillar is recompiled (and thus cached for matching). Retry stragglers <= MAX_WAIT.
+echo "so-boot-mine-update: warming master pillar cache for pillar/grain-targeted node pillars"
+/usr/bin/salt '*' saltutil.refresh_pillar wait=True --out=txt
+missing=""
+while [ "$elapsed" -lt "$MAX_WAIT" ]; do
+  up_json=$(/usr/bin/salt-run manage.up --out=json 2>/dev/null)
+  cached_json=$(/usr/bin/salt-run cache.pillar tgt='*' --out=json 2>/dev/null)
+  missing=$(printf '%s' "$up_json" | python3 -c '
+import sys, json
+up = set(json.load(sys.stdin) or [])
+cached = {k for k, v in (json.loads(sys.argv[1]) or {}).items() if v}
+print("\n".join(sorted(up - cached)))
+' "$cached_json" 2>/dev/null)
+  if [ -z "$missing" ]; then
+    echo "so-boot-mine-update: pillar cache warm for all up minions after ${elapsed}s"
+    break
+  fi
+  echo "so-boot-mine-update: pillar not yet cached for: $(echo $missing); refreshing"
+  for m in $missing; do /usr/bin/salt "$m" saltutil.refresh_pillar wait=True --out=txt; done
+  sleep "$INTERVAL"
+  elapsed=$((elapsed + INTERVAL))
+done
+[ -n "$missing" ] && echo "so-boot-mine-update: WARNING ${MAX_WAIT}s backstop hit; pillar not cached for: $(echo $missing); pillar-targeted pillars may drop them"
+
+# Log what the mine-backed pillars render so the boot-time state is inspectable.
 /usr/bin/salt-call saltutil.refresh_pillar >/dev/null 2>&1
 sleep 2
-rendered=$(/usr/bin/salt-call --out=json pillar.get node_data 2>/dev/null \
-  | python3 -c 'import sys,json; print(json.dumps(json.load(sys.stdin).get("local"), indent=2, sort_keys=True))' 2>/dev/null)
-echo "so-boot-mine-update: node_data rendered as:"
-echo "${rendered:-null}"
+for key in node_data elasticsearch:nodes; do
+  rendered=$(/usr/bin/salt-call --out=json pillar.get "$key" 2>/dev/null \
+    | python3 -c 'import sys,json; print(json.dumps(json.load(sys.stdin).get("local"), indent=2, sort_keys=True))' 2>/dev/null)
+  echo "so-boot-mine-update: ${key} rendered as:"
+  echo "${rendered:-null}"
+done
 exit 0
