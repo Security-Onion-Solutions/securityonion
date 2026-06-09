@@ -40,3 +40,20 @@ done
 
 echo "so-boot-mine-update: ${up} minions up (settled after ${elapsed}s); running mine.update"
 /usr/bin/salt '*' mine.update --out=txt
+
+# Best-effort: confirm the manager can render node_data (non-False) now that the
+# mine is updated. node_data: False makes salt/top.sls fall back to the bootstrap
+# recovery branch instead of the manager's real config, so we surface that in the
+# journal here. We never block highstate -- if still empty, the recovery branch
+# and later highstates self-heal.
+/usr/bin/salt-call saltutil.refresh_pillar >/dev/null 2>&1
+sleep 2
+status=$(/usr/bin/salt-call --out=json pillar.get node_data 2>/dev/null \
+  | python3 -c 'import sys,json; d=json.load(sys.stdin).get("local"); print("rendered" if d else "empty")' 2>/dev/null)
+status=${status:-empty}
+if [ "$status" = "rendered" ]; then
+  echo "so-boot-mine-update: node_data renders; highstate will apply manager config"
+else
+  echo "so-boot-mine-update: WARNING node_data still empty after mine.update; highstate may hit the bootstrap recovery branch"
+fi
+exit 0
