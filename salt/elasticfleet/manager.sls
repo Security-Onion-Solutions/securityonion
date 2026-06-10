@@ -55,7 +55,7 @@ so-elastic-fleet-package-upgrade:
     - name: /usr/sbin/so-elastic-fleet-package-upgrade
     - retry:
         attempts: 3
-        interval: 10
+        interval: 30
     - onchanges:
       - file: /opt/so/state/elastic_fleet_packages.txt
 
