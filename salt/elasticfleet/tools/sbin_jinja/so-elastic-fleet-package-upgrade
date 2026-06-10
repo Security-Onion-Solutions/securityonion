@@ -15,13 +15,10 @@ PKG_LOAD_FAILURES_NAMES=()
 echo "Upgrading {{ PACKAGE }} package..."
 if VERSION=$(elastic_fleet_package_latest_version_check "{{ PACKAGE }}"); then
     if ! elastic_fleet_package_install "{{ PACKAGE }}" "$VERSION"; then
-        # exit 1 on failure to upgrade a default package, allow salt to handle retries
-        echo -e "\nERROR: Failed to upgrade {{ PACKAGE }} to version: $VERSION"
         PKG_LOAD_FAILURES=$((PKG_LOAD_FAILURES + 1))
         PKG_LOAD_FAILURES_NAMES+=("{{ PACKAGE }}")
     fi
 else
-    echo -e "\nERROR: Failed to get version information for integration {{ PACKAGE }}"
     PKG_LOAD_FAILURES=$((PKG_LOAD_FAILURES + 1))
     PKG_LOAD_FAILURES_NAMES+=("{{ PACKAGE }}")
 fi
@@ -33,6 +30,7 @@ if [ $PKG_LOAD_FAILURES -gt 0 ]; then
     for PKG in "${PKG_LOAD_FAILURES_NAMES[@]}"; do
         echo " - $PKG"
     done
+    # exit 1 on failure to upgrade a default package, allow salt to handle retries
     exit 1
 else
     echo "Successfully upgraded all packages."
