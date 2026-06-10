@@ -9,26 +9,16 @@
 {%- import_yaml 'elasticsearch/defaults.yaml' as ELASTICSEARCHDEFAULTS %}
 
 {%- set DATA_RETENTION_METHOD = salt['pillar.get']('elasticsearch:data_retention_method', ELASTICSEARCHDEFAULTS.elasticsearch.get('data_retention_method', 'ILM')) %}
-{%- from 'elasticsearch/template.map.jinja' import ES_INDEX_SETTINGS %}
-{%- if GLOBALS.role != "so-heavynode" %}
-{%-   from 'elasticsearch/template.map.jinja' import ALL_ADDON_SETTINGS %}
-{%- endif %}
-{%- set DLM_STREAMS = [] %}
-{%- for index, settings in ES_INDEX_SETTINGS.items() %}
-{%-   if settings.index_template is defined and settings.index_template.data_stream is defined and settings.data_stream_lifecycle is defined %}
-{%-     do DLM_STREAMS.append({'template': index, 'data_retention': settings.data_stream_lifecycle.get('data_retention', '')}) %}
-{%-   endif %}
-{%- endfor %}
-{%- if GLOBALS.role != "so-heavynode" %}
-{%-   for index, settings in ALL_ADDON_SETTINGS.items() %}
-{%-     if settings.index_template is defined and settings.index_template.data_stream is defined and settings.data_stream_lifecycle is defined %}
-{%-       do DLM_STREAMS.append({'template': index, 'data_retention': settings.data_stream_lifecycle.get('data_retention', '')}) %}
-{%-     endif %}
-{%-   endfor %}
-{%- endif %}
 
-STREAM_CONFIG='{{ DLM_STREAMS | tojson }}'
-DATA_RETENTION_METHOD="{{ DATA_RETENTION_METHOD }}"
+ELASTICSEARCH_TEMPLATES_DIR="${ELASTICSEARCH_TEMPLATES_DIR:-/opt/so/conf/elasticsearch/templates}"
+TEMPLATE_DIRS=(
+    "${ELASTICSEARCH_TEMPLATES_DIR}/index"
+    "${ELASTICSEARCH_TEMPLATES_DIR}/addon-index"
+)
+DATA_RETENTION_METHOD=$(cat <<'EOF'
+{{ DATA_RETENTION_METHOD }}
+EOF
+)
 DLM_FAILURES=0
 DLM_FAILURE_NAMES=()
 
@@ -36,6 +26,44 @@ if [[ "$DATA_RETENTION_METHOD" != "DLM" && "$DATA_RETENTION_METHOD" != "ILM" ]];
     echo "Unsupported data retention method $DATA_RETENTION_METHOD. Expected DLM or ILM."
     exit 1
 fi
+
+validate_template_file() {
+    local template_file="$1"
+
+    if ! jq -e 'type == "object" and (.data_stream == null or (.data_stream | type == "object")) and (.template.lifecycle == null or (.template.lifecycle | type == "object")) and (.template.lifecycle.data_retention == null or (.template.lifecycle.data_retention | type == "string"))' >/dev/null 2>&1 "$template_file"; then
+        echo "Invalid index template JSON: $template_file"
+        return 1
+    fi
+}
+
+is_data_stream_template() {
+    jq -e '.data_stream | type == "object"' >/dev/null 2>&1 "$1"
+}
+
+has_data_stream_lifecycle() {
+    jq -e '.template.lifecycle | type == "object"' >/dev/null 2>&1 "$1"
+}
+
+get_data_retention() {
+    jq -r '.template.lifecycle.data_retention // ""' "$1"
+}
+
+find_template_file() {
+    local template="$1"
+    local template_dir
+    local template_file
+
+    for template_dir in "${TEMPLATE_DIRS[@]}"; do
+        template_file="${template_dir}/${template}-template.json"
+
+        if [[ -f "$template_file" ]]; then
+            echo "$template_file"
+            return 0
+        fi
+    done
+
+    return 1
+}
 
 set_data_stream_lifecycle() {
     local data_stream="$1"
@@ -110,19 +138,34 @@ if ! data_streams=$(so-elasticsearch-query "_data_stream?format=json" --retry 3 
     exit 1
 fi
 
-while read -r config; do
-    template=$(jq -r '.template' <<< "$config")
-    data_retention=$(jq -r '.data_retention // ""' <<< "$config")
+while read -r data_stream_config; do
+    data_stream=$(jq -r '.name' <<< "$data_stream_config")
+    template=$(jq -r '.template' <<< "$data_stream_config")
 
-    while read -r data_stream; do
-        [[ -z "$data_stream" ]] && continue
+    if ! template_file=$(find_template_file "$template"); then
+        echo "Skipping $data_stream: index template file not found for $template."
+        continue
+    fi
 
-        if ! process_data_stream "$data_stream" "$data_retention"; then
-            DLM_FAILURES=$((DLM_FAILURES + 1))
-            DLM_FAILURE_NAMES+=("$data_stream")
-        fi
-    done <<< "$(jq -r --arg template "$template" '.data_streams[]? | select(.template == $template) | .name' <<< "$data_streams")"
-done <<< "$(jq -c '.[]' <<< "$STREAM_CONFIG")"
+    validate_template_file "$template_file" || exit 1
+
+    if ! is_data_stream_template "$template_file"; then
+        echo "Skipping $data_stream: $template_file is not a data stream template."
+        continue
+    fi
+
+    if [[ "$DATA_RETENTION_METHOD" == "DLM" ]] && ! has_data_stream_lifecycle "$template_file"; then
+        echo "Skipping $data_stream: $template_file does not define data stream lifecycle."
+        continue
+    fi
+
+    data_retention=$(get_data_retention "$template_file")
+
+    if ! process_data_stream "$data_stream" "$data_retention"; then
+        DLM_FAILURES=$((DLM_FAILURES + 1))
+        DLM_FAILURE_NAMES+=("$data_stream")
+    fi
+done < <(jq -c '.data_streams[]' <<< "$data_streams")
 
 if [[ $DLM_FAILURES -eq 0 ]]; then
     echo "Data stream lifecycle updates completed successfully."
