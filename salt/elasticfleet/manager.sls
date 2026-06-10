@@ -9,6 +9,7 @@
 
 include:
   - elasticfleet.config
+  - kibana.healthcheck
 
 # If enabled, automatically update Fleet Logstash Outputs
 {% if ELASTICFLEETMERGED.config.server.enable_auto_configuration %}
@@ -19,6 +20,8 @@ so-elastic-fleet-auto-configure-logstash-outputs:
     - retry:
         attempts: 4
         interval: 30
+    - require:
+      - http: wait_for_so-kibana
 {%   endif %}
 
 # If enabled, automatically update Fleet Server URLs & ES Connection
@@ -28,6 +31,8 @@ so-elastic-fleet-auto-configure-server-urls:
     - retry:
         attempts: 4
         interval: 30
+    - require:
+      - http: wait_for_so-kibana
 {% endif %}
 
 # Automatically update Fleet Server Elasticsearch URLs & Agent Artifact URLs
@@ -37,6 +42,8 @@ so-elastic-fleet-auto-configure-elasticsearch-urls:
     - retry:
         attempts: 4
         interval: 30
+    - require:
+      - http: wait_for_so-kibana
 
 so-elastic-fleet-auto-configure-artifact-urls:
   cmd.run:
@@ -44,6 +51,8 @@ so-elastic-fleet-auto-configure-artifact-urls:
     - retry:
         attempts: 4
         interval: 30
+    - require:
+      - http: wait_for_so-kibana
 
 so-elastic-fleet-package-statefile:
   file.managed:
@@ -56,6 +65,8 @@ so-elastic-fleet-package-upgrade:
     - retry:
         attempts: 3
         interval: 30
+    - require:
+      - http: wait_for_so-kibana
     - onchanges:
       - file: /opt/so/state/elastic_fleet_packages.txt
 
@@ -65,6 +76,8 @@ so-elastic-fleet-integrations:
     - retry:
         attempts: 3
         interval: 10
+    - require:
+      - http: wait_for_so-kibana
 
 so-elastic-agent-grid-upgrade:
   cmd.run:
@@ -72,6 +85,8 @@ so-elastic-agent-grid-upgrade:
     - retry:
         attempts: 12
         interval: 5
+    - require:
+      - http: wait_for_so-kibana
 
 so-elastic-fleet-integration-upgrade:
   cmd.run:
@@ -79,16 +94,22 @@ so-elastic-fleet-integration-upgrade:
     - retry:
         attempts: 3
         interval: 10
+    - require:
+      - http: wait_for_so-kibana
 
 {# Optional integrations script doesn't need the retries like so-elastic-fleet-integration-upgrade which loads the default integrations #}
 so-elastic-fleet-addon-integrations:
   cmd.run:
     - name: /usr/sbin/so-elastic-fleet-optional-integrations-load
+    - require:
+      - http: wait_for_so-kibana
 
 {% if ELASTICFLEETMERGED.config.defend_filters.enable_auto_configuration %}
 so-elastic-defend-manage-filters-file-watch:
   cmd.run:
     - name: python3 /sbin/so-elastic-defend-manage-filters.py -c /opt/so/conf/elasticsearch/curl.config -d /opt/so/conf/elastic-fleet/defend-exclusions/disabled-filters.yaml -i /nsm/securityonion-resources/event_filters/ -i /opt/so/conf/elastic-fleet/defend-exclusions/rulesets/custom-filters/ &>> /opt/so/log/elasticfleet/elastic-defend-manage-filters.log
+    - require:
+      - http: wait_for_so-kibana
     - onchanges:
       - file: elasticdefendcustom
       - file: elasticdefenddisabled

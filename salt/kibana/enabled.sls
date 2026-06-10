@@ -10,6 +10,7 @@
 
 include:
   - kibana.config
+  - kibana.healthcheck
   - kibana.sostatus
 
 # Start the kibana docker
@@ -59,6 +60,8 @@ so-kibana:
     {% endif %}
     - watch:
       - file: kibanaconfig
+    - require_in:
+      - http: wait_for_so-kibana
 
 delete_so-kibana_so-status.disabled:
   file.uncomment:
