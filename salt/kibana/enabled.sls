@@ -6,11 +6,11 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
+{%   from 'elasticsearch/config.map.jinja' import ELASTICSEARCHMERGED %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 
 include:
   - kibana.config
-  - kibana.healthcheck
   - kibana.sostatus
 
 # Start the kibana docker
@@ -60,8 +60,19 @@ so-kibana:
     {% endif %}
     - watch:
       - file: kibanaconfig
-    - require_in:
-      - http: wait_for_so-kibana
+
+wait_for_so-kibana:
+  http.wait_for_successful_query:
+    - name: "http://localhost:5601/api/status"
+    - username: 'so_elastic'
+    - password: '{{ ELASTICSEARCHMERGED.auth.users.so_elastic_user.pass }}'
+    - ssl: True
+    - verify_ssl: False
+    - status: 200
+    - wait_for: 300
+    - request_interval: 15
+    - require:
+      - docker_container: so-kibana
 
 delete_so-kibana_so-status.disabled:
   file.uncomment:

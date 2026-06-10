@@ -9,7 +9,7 @@
 
 include:
   - elasticfleet.config
-  - kibana.healthcheck
+  - kibana.enabled
 
 # If enabled, automatically update Fleet Logstash Outputs
 {% if ELASTICFLEETMERGED.config.server.enable_auto_configuration %}
