@@ -61,14 +61,24 @@
 {% if ALL_ADDON_SETTINGS_ORIG.keys() | length > 0 %}
 {%   for index in ALL_ADDON_SETTINGS_ORIG.keys() %}
 {%     do ALL_ADDON_SETTINGS_GLOBAL_OVERRIDES.update({index: salt['defaults.merge'](ALL_ADDON_SETTINGS_ORIG[index], PILLAR_GLOBAL_OVERRIDES, in_place=False)}) %}
+{#     Explicitly excluding addon indices from ES_INDEX_SETTINGS_ORIG
+         When manager.soc_managed_annotations runs, new entries are added to the salt/elasticsearch/defaults.yaml file to support 'revert to default' functionality.
+         Subsequent map renders will then incorrectly include 'integration X' in 'ES_INDEX_SETTINGS_ORIG' due to being in the defaults.yaml file. #}
+{%     if index in ES_INDEX_SETTINGS_ORIG.keys() %}
+{%       do ES_INDEX_SETTINGS_ORIG.pop(index) %}
+{%     endif %}
 {%   endfor %}
 {% endif %}
 
 {% set ES_INDEX_SETTINGS = {} %}
-{% macro create_final_index_template(DEFINED_SETTINGS, GLOBAL_OVERRIDES, FINAL_INDEX_SETTINGS) %}
+{% macro create_final_index_template(DEFINED_SETTINGS, GLOBAL_OVERRIDES, FINAL_INDEX_SETTINGS, EXCLUDE_INDICES=[]) %}
 
 {% do GLOBAL_OVERRIDES.update(salt['defaults.merge'](GLOBAL_OVERRIDES, ES_INDEX_PILLAR, in_place=False)) %}
 {% for index, settings in GLOBAL_OVERRIDES.items() %}
+
+{%   if index in EXCLUDE_INDICES %}
+{%     continue %}
+{%   endif %}
 
 {#   prevent this action from being performed on custom defined indices. #}
 {#   the custom defined index is not present in either of the dictionaries and fails to reder. #}
@@ -150,10 +160,19 @@
 {% endfor %}
 {% endmacro %}
 
-{{ create_final_index_template(ES_INDEX_SETTINGS_ORIG, ES_INDEX_SETTINGS_GLOBAL_OVERRIDES, ES_INDEX_SETTINGS) }}
-{{ create_final_index_template(ALL_ADDON_SETTINGS_ORIG, ALL_ADDON_SETTINGS_GLOBAL_OVERRIDES, ALL_ADDON_SETTINGS) }}
+{# Exclude addon integrations from final ES_INDEX_SETTINGS #}
+{{ create_final_index_template(ES_INDEX_SETTINGS_ORIG, ES_INDEX_SETTINGS_GLOBAL_OVERRIDES, ES_INDEX_SETTINGS, ALL_ADDON_SETTINGS_ORIG.keys() | list ) }}
+
+{# Exclude SO managed indices, otherwise ALL_ADDON_SETTINGS will include pillar values
+  of core integrations without merging defaults, resulting in an overlapping, but bad index template being generated. #}
+{{ create_final_index_template(ALL_ADDON_SETTINGS_ORIG, ALL_ADDON_SETTINGS_GLOBAL_OVERRIDES, ALL_ADDON_SETTINGS, ES_INDEX_SETTINGS_ORIG.keys() | list ) }}
 
 {% set SO_MANAGED_INDICES = [] %}
 {% for index, settings in ES_INDEX_SETTINGS.items() %}
 {%   do SO_MANAGED_INDICES.append(index) %}
+{% endfor %}
+
+{% set ADDON_INDICES = [] %}
+{% for index, settings in ALL_ADDON_SETTINGS.items() %}
+{%   do ADDON_INDICES.append(index) %}
 {% endfor %}

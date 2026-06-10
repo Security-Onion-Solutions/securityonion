@@ -767,7 +767,10 @@ if ! [[ -f $install_opt_file ]]; then
 		title "Applying the registry state"
 		logCmd "salt-call state.apply -l info registry"
 		title "Seeding the docker registry"
-		docker_seed_registry
+		if ! docker_seed_registry; then
+			error "Failed to seed the docker registry"
+			fail_setup
+		fi
 		title "Applying the manager state"
 		logCmd "salt-call state.apply -l info manager"
 		logCmd "salt-call state.apply influxdb -l info"
@@ -792,7 +795,7 @@ if ! [[ -f $install_opt_file ]]; then
 			error "Failed to run so-elastic-fleet-setup"
 			fail_setup
 		fi
-		checkin_at_boot
+		mark_setup_complete
 		set_initial_firewall_access
         initialize_elasticsearch_indices "so-case so-casehistory so-assistant-session so-assistant-chat"
 		# run a final highstate before enabling scheduled highstates. 
