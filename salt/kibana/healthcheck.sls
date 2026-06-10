@@ -9,7 +9,7 @@
 
 wait_for_so-kibana:
   http.wait_for_successful_query:
-    - name: "https://localhost:5601/api/status"
+    - name: "http://localhost:5601/api/status"
     - username: 'so_elastic'
     - password: '{{ ELASTICSEARCHMERGED.auth.users.so_elastic_user.pass }}'
     - ssl: True
