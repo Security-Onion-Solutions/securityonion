@@ -6,6 +6,23 @@
 
 . /usr/sbin/so-common
 
+MAX_JOBS=10
+
+put_policy() {
+  local desc="$1" policyname="$2" data="$3"
+  echo "Setting up ${desc} policy..."
+  curl -K /opt/so/conf/elasticsearch/curl.config -s -k -L \
+    -X PUT "https://localhost:9200/_ilm/policy/${policyname}" \
+    -H 'Content-Type: application/json' -d"${data}"
+}
+
+# Block until fewer than MAX_JOBS background curls are running.
+throttle() {
+  while (( $(jobs -rp | wc -l) >= MAX_JOBS )); do
+    wait -n
+  done
+}
+
 {%- from 'elasticsearch/template.map.jinja' import ES_INDEX_SETTINGS %}
 {%- if GLOBALS.role != "so-heavynode" %}
 {%-   from 'elasticsearch/template.map.jinja' import ALL_ADDON_SETTINGS %}
@@ -14,35 +31,26 @@
 {%- for index, settings in ES_INDEX_SETTINGS.items() %}
 {%-   if settings.policy is defined %}
 {%-     if index == 'so-logs-detections.alerts' %}
-  echo
-  echo "Setting up so-logs-detections.alerts-so policy..."
-  curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -s -k -L -X PUT "https://localhost:9200/_ilm/policy/{{ index }}-so" -H 'Content-Type: application/json' -d'{ "policy": {{ settings.policy | tojson(true) }} }'
-  echo
+  throttle
+  put_policy "so-logs-detections.alerts-so" "{{ index }}-so" '{ "policy": {{ settings.policy | tojson(true) }} }' &
 {%-     elif index == 'so-logs-soc' %}
-  echo
-  echo "Setting up so-soc-logs policy..."
-  curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -s -k -L -X PUT "https://localhost:9200/_ilm/policy/so-soc-logs" -H 'Content-Type: application/json' -d'{ "policy": {{ settings.policy | tojson(true) }} }'
-  echo
-  echo
-  echo "Setting up {{ index }}-logs policy..."
-  curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -s -k -L -X PUT "https://localhost:9200/_ilm/policy/{{ index }}-logs" -H 'Content-Type: application/json' -d'{ "policy": {{ settings.policy | tojson(true) }} }'
-  echo
+  throttle
+  put_policy "so-soc-logs" "so-soc-logs" '{ "policy": {{ settings.policy | tojson(true) }} }' &
+  throttle
+  put_policy "{{ index }}-logs" "{{ index }}-logs" '{ "policy": {{ settings.policy | tojson(true) }} }' &
 {%-     else %}
-  echo
-  echo "Setting up {{ index }}-logs policy..."
-  curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -s -k -L -X PUT "https://localhost:9200/_ilm/policy/{{ index }}-logs" -H 'Content-Type: application/json' -d'{ "policy": {{ settings.policy | tojson(true) }} }'
-  echo
+  throttle
+  put_policy "{{ index }}-logs" "{{ index }}-logs" '{ "policy": {{ settings.policy | tojson(true) }} }' &
 {%-     endif %}
 {%-   endif %}
 {%- endfor %}
-echo
 {%- if GLOBALS.role != "so-heavynode" %}
 {%-   for index, settings in ALL_ADDON_SETTINGS.items() %}
 {%-     if settings.policy is defined %}
-  echo
-  echo "Setting up {{ index }}-logs policy..."
-  curl -K /opt/so/conf/elasticsearch/curl.config -b "sid=$SESSIONCOOKIE" -s -k -L -X PUT "https://localhost:9200/_ilm/policy/{{ index }}-logs" -H 'Content-Type: application/json' -d'{ "policy": {{ settings.policy | tojson(true) }} }'
-  echo
+  throttle
+  put_policy "{{ index }}-logs" "{{ index }}-logs" '{ "policy": {{ settings.policy | tojson(true) }} }' &
 {%-     endif %}
 {%-   endfor %}
 {%- endif %}
+
+wait
