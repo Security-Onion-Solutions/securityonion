@@ -8,9 +8,13 @@
 
 MAX_JOBS=10
 
+# Lock used to serialize block writes so concurrent jobs never interleave their output.
+ILM_OUTPUT_LOCK=$(mktemp)
+trap 'rm -f "$ILM_OUTPUT_LOCK"' EXIT
+
 # Policies are loaded concurrently (up to MAX_JOBS at a time) for speed. Each policy's block is
-# printed atomically the moment its curl returns, so output appears in COMPLETION ORDER, not the
-# order policies are defined in configuration.
+# printed the moment its curl returns, so output appears in COMPLETION ORDER, not the order
+# policies are defined in configuration.
 echo "Loading ILM policies concurrently; output below appears in completion order, not configuration order."
 echo
 
@@ -19,8 +23,11 @@ put_policy() {
   result=$(curl -K /opt/so/conf/elasticsearch/curl.config -s -k -L \
     -X PUT "https://localhost:9200/_ilm/policy/${policyname}" \
     -H 'Content-Type: application/json' -d"${data}")
-  # Single atomic write so concurrent jobs don't interleave; prints live as each curl finishes.
-  printf 'Setting up %s policy...\n%s\n\n' "${desc}" "${result}"
+  # curl above ran in parallel; serialize just this block write so concurrent jobs never interleave.
+  {
+    flock 200
+    printf 'Setting up %s policy...\n%s\n\n' "${desc}" "${result}"
+  } 200>>"${ILM_OUTPUT_LOCK}"
 }
 
 # Block until fewer than MAX_JOBS background curls are running.
