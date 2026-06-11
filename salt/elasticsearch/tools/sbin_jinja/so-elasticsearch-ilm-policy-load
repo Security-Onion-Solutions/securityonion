@@ -8,12 +8,19 @@
 
 MAX_JOBS=10
 
+# Policies are loaded concurrently (up to MAX_JOBS at a time) for speed. Each policy's block is
+# printed atomically the moment its curl returns, so output appears in COMPLETION ORDER, not the
+# order policies are defined in configuration.
+echo "Loading ILM policies concurrently; output below appears in completion order, not configuration order."
+echo
+
 put_policy() {
-  local desc="$1" policyname="$2" data="$3"
-  echo "Setting up ${desc} policy..."
-  curl -K /opt/so/conf/elasticsearch/curl.config -s -k -L \
+  local desc="$1" policyname="$2" data="$3" result
+  result=$(curl -K /opt/so/conf/elasticsearch/curl.config -s -k -L \
     -X PUT "https://localhost:9200/_ilm/policy/${policyname}" \
-    -H 'Content-Type: application/json' -d"${data}"
+    -H 'Content-Type: application/json' -d"${data}")
+  # Single atomic write so concurrent jobs don't interleave; prints live as each curl finishes.
+  printf 'Setting up %s policy...\n%s\n\n' "${desc}" "${result}"
 }
 
 # Block until fewer than MAX_JOBS background curls are running.
