@@ -18,7 +18,7 @@ so-kibana:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-kibana:{{ GLOBALS.so_version }}
     - hostname: kibana
-    - user: kibana
+    - user: "932:0"
     - networks:
       - sobridge:
         - ipv4_address: {{ DOCKERMERGED.containers['so-kibana'].ip }}

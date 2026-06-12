@@ -33,7 +33,7 @@ so-logstash:
     - networks:
       - sobridge:
         - ipv4_address: {{ DOCKERMERGED.containers['so-logstash'].ip }}
-    - user: logstash
+    - user: "931:0"
     - extra_hosts:
     {% for node in LOGSTASH_NODES %}
     {%   for hostname, ip in node.items() %}
