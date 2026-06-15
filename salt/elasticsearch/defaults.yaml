@@ -19,18 +19,9 @@ elasticsearch:
               flood_stage: 90%
               high: 85%
               low: 80%
-    # don't want to set retention here since it will make ES restart with every update +
-    #   potentially case where we could unintentially fall back to retention 7d and cause data loss
-    # data_streams:
-    #   lifecycle:
-    #     retention:
-    #       default: 7d
     indices:
       id_field_data:
         enabled: false
-    # index:
-      # lifecycle:
-        # prefer_ilm: true
     logger:
       org:
         elasticsearch:
@@ -73,7 +64,6 @@ elasticsearch:
             verification_mode: none
   index_settings:
     global_overrides:
-    # Tie this into cluster setting for data_streams.lifecycle.retention.default
       data_stream_lifecycle:
         data_retention: 90d
       index_template:
@@ -2110,6 +2100,7 @@ elasticsearch:
         composed_of:
         - .logs-endpoint.actions@package
         - .logs-endpoint.actions@custom
+        - endpoint@custom
         - event-mappings
         - so-fleet_integrations.ip_mappings-1
         - so-fleet_globals-1
@@ -2119,8 +2110,9 @@ elasticsearch:
           hidden: false
         ignore_missing_component_templates:
         - .logs-endpoint.actions@custom
+        - endpoint@custom
         index_patterns:
-        - logs-endpoint.actions-*
+        - .logs-endpoint.actions-*
         priority: 501
         template:
           settings:
@@ -2171,6 +2163,7 @@ elasticsearch:
         composed_of:
         - .logs-endpoint.action.responses@package
         - .logs-endpoint.action.responses@custom
+        - endpoint@custom
         - event-mappings
         - so-fleet_integrations.ip_mappings-1
         - so-fleet_globals-1
@@ -2180,14 +2173,15 @@ elasticsearch:
           hidden: false
         ignore_missing_component_templates:
         - .logs-endpoint.action.responses@custom
+        - endpoint@custom
         index_patterns:
-        - logs-endpoint.action.responses-*
+        - .logs-endpoint.action.responses-*
         priority: 501
         template:
           settings:
             index:
               lifecycle:
-                name: so-logs-endpoint.actions-logs
+                name: so-logs-endpoint.action.responses-logs
               mapping:
                 total_fields:
                   limit: 5000
