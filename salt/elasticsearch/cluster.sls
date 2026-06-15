@@ -165,7 +165,8 @@ so-elasticsearch-roles-load:
 {%    set ap = "absent" %}
 {%  endif %}
 {%  if grains.role in ['so-eval', 'so-standalone', 'so-heavynode'] %}
-{%    if ELASTICSEARCHMERGED.index_clean %}
+{#    Remove so-elasticsearch-indices-delete script when using DLM #}
+{%    if ELASTICSEARCHMERGED.index_clean and ELASTICSEARCHMERGED.data_retention_method == "ILM" %}
 {%      set ap = "present" %}
 {%    else %}
 {%      set ap = "absent" %}
