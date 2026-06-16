@@ -783,18 +783,14 @@ pin_elasticsearch_data_retention_method() {
 #
 # Reference: https://github.com/elastic/kibana/issues/263048
 kibana_backport_streams_index_template() {
-    local current_template updated_template current_template_exists
+    local current_template updated_template
 
-    current_template_exists=$(so-elasticsearch-query "_index_template/.kibana_streams" -o /dev/null -w "%{http_code}")
-    if [[ "$current_template_exists" == "404" ]]; then
+    set +e
+    if ! current_template=$(so-elasticsearch-query "_index_template/.kibana_streams" --retry 3 --retry-delay 5 --fail); then
         echo "Index template .kibana_streams does not exist, skipping backport."
         return 0
     fi
-
-    if ! current_template=$(so-elasticsearch-query "_index_template/.kibana_streams" --retry 3 --retry-delay 5 --fail); then
-        echo "Unable to retrieve .kibana_streams index template, skipping backport."
-        return 0
-    fi
+    set -e
 
     updated_template=$(jq '.index_templates[0].index_template | .template.settings += {"index.auto_expand_replicas": "0-1"} | del(.created_date_millis, .modified_date_millis)' <<< "$current_template")
 
