@@ -131,10 +131,11 @@ check_err() {
 # Collect bash error context before passing off to check_err()
 on_err() {
   local exit_code=$?
+  # turn off xtrace to prevent added noise in debug log
+  set +x 2>/dev/null || true
+
   # Use first error context, multiple errors can happen with command substitutions or nested functions. We just need context from the initial error.
   [[ -n $SOUP_ERR_CONTEXT ]] && return $exit_code
-  # turn off xtrace to prevent added noise in debug log
-  [[ $- == *x* ]] && set +x
 
   local cmd=$BASH_COMMAND
   local line=${BASH_LINENO[0]}
@@ -2033,7 +2034,7 @@ if [[ $SOUP_DEBUG == 1 ]]; then
   exec {SOUP_XTRACE_FD}>>"$SOUP_DEBUG_LOG"
   export SOUP_XTRACE_FD
   BASH_XTRACEFD=$SOUP_XTRACE_FD
-  PS4='[${BASH_SOURCE##*/}:${LINENO} ${FUNCNAME[0]:-main}] | '
+  PS4='+ [${BASH_SOURCE##*/}:${LINENO} ${FUNCNAME[0]:-main}()] | '
   set -x
   export SOUP_DEBUG
 fi
