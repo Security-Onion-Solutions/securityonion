@@ -8,18 +8,33 @@
 
 . /usr/sbin/so-elastic-fleet-common
 
+PKG_LOAD_FAILURES=0
+PKG_LOAD_FAILURES_NAMES=()
+
 {%- for PACKAGE in SUPPORTED_PACKAGES %}
 echo "Upgrading {{ PACKAGE }} package..."
 if VERSION=$(elastic_fleet_package_latest_version_check "{{ PACKAGE }}"); then
     if ! elastic_fleet_package_install "{{ PACKAGE }}" "$VERSION"; then
-        # exit 1 on failure to upgrade a default package, allow salt to handle retries
-        echo -e "\nERROR: Failed to upgrade $PACKAGE to version: $VERSION"
-        exit 1
+        PKG_LOAD_FAILURES=$((PKG_LOAD_FAILURES + 1))
+        PKG_LOAD_FAILURES_NAMES+=("{{ PACKAGE }}")
     fi
 else
-    echo -e "\nERROR: Failed to get version information for integration $PACKAGE"
+    PKG_LOAD_FAILURES=$((PKG_LOAD_FAILURES + 1))
+    PKG_LOAD_FAILURES_NAMES+=("{{ PACKAGE }}")
 fi
 echo
 {%- endfor %}
+
+if [ $PKG_LOAD_FAILURES -gt 0 ]; then
+    echo "ERROR: Failed to upgrade $PKG_LOAD_FAILURES package(s):"
+    for PKG in "${PKG_LOAD_FAILURES_NAMES[@]}"; do
+        echo " - $PKG"
+    done
+    # exit 1 on failure to upgrade a default package, allow salt to handle retries
+    exit 1
+else
+    echo "Successfully upgraded all packages."
+fi
+
 echo
 /usr/sbin/so-elasticsearch-templates-load

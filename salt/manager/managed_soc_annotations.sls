@@ -16,40 +16,35 @@
 {%       endif %}
 {%     endfor %}
 {%   endfor %}
+{%   set soc_annotation_lines = [] %}
+{%   set defaults_lines = [] %}
+{%   for k in matched_integration_names %}
+{%     do soc_annotation_lines.append('    ' ~ k ~ ': *dataStreamSettings') %}
+{%     do defaults_lines.append('    ' ~ k ~ ':') %}
+{%     set defaults_yaml = salt['slsutil.serialize']('yaml', ADDON_INTEGRATION_DEFAULTS[k], default_flow_style=False).strip() %}
+{%     for line in defaults_yaml.splitlines() %}
+{%       do defaults_lines.append('      ' ~ line) %}
+{%     endfor %}
+{%   endfor %}
 {%   set es_soc_annotations = '/opt/so/saltstack/default/salt/elasticsearch/soc_elasticsearch.yaml' %}
-{{   es_soc_annotations }}:
-     file.serialize:
-       - dataset:
-           {% set data = salt['file.read'](es_soc_annotations) | load_yaml %}
-           {% set es = data.get('elasticsearch', {}) %}
-           {% set index_settings = es.get('index_settings', {}) %}
-           {% set input = index_settings.get('so-logs', {}) %}
-           {% for k in matched_integration_names %}
-           {%   do index_settings.update({k: input}) %}
-           {% endfor %}
-           {% for k in addon_integration_keys %}
-           {%   if k not in matched_integration_names and k in index_settings %}
-           {%     do index_settings.pop(k) %}
-           {%   endif %}
-           {% endfor %}
-           {{ data }}
+manage_soc_annotations:
+  file.blockreplace:
+    - name: {{ es_soc_annotations }}
+    - marker_start: '    # START managed SOC integration annotations'
+    - marker_end: '    # END managed SOC integration annotations'
+    - content: {{ soc_annotation_lines | join('\n') | tojson }}
+    - insert_after_match: '^    # Managed SOC integration annotations are inserted below this line\.'
+    - append_if_not_found: False
+    - show_changes: True
 
 {#   Managed elasticsearch/defaults.yaml file for enabling 'Revert to default' via SOC UI for newly added config items #}
 {%   set es_defaults = '/opt/so/saltstack/default/salt/elasticsearch/defaults.yaml' %}
 {{   es_defaults }}:
-     file.serialize:
-       - dataset:
-           {% set data = salt['file.read'](es_defaults) | load_yaml %}
-           {% set es = data.get('elasticsearch', {}) %}
-           {% set index_settings = es.get('index_settings', {}) %}
-           {% for k in matched_integration_names %}
-           {%   set input = ADDON_INTEGRATION_DEFAULTS[k] %}
-           {%     do index_settings.update({k: input})%}
-           {% endfor %}
-           {% for k in addon_integration_keys %}
-           {%   if k not in matched_integration_names and k in index_settings %}
-           {%     do index_settings.pop(k) %}
-           {%   endif %}
-           {% endfor %}
-           {{ data }}
+  file.blockreplace:
+    - marker_start: '    # START managed SOC integration defaults'
+    - marker_end: '    # END managed SOC integration defaults'
+    - content: {{ defaults_lines | join('\n') | tojson }}
+    - insert_after_match: '^  index_settings:$'
+    - append_if_not_found: False
+    - show_changes: True
 {% endif %}

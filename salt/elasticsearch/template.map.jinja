@@ -4,7 +4,11 @@
    Elastic License 2.0. #}
 
 {% import_yaml 'elasticsearch/defaults.yaml' as ELASTICSEARCHDEFAULTS %}
+{# ELASTICSEARCHMERGED only used here to collect data_retention_method. This file intentionally works with ELASTICSEARCHDEFAULTS #}
+{% from 'elasticsearch/config.map.jinja' import ELASTICSEARCHMERGED %}
+
 {% set DEFAULT_GLOBAL_OVERRIDES = ELASTICSEARCHDEFAULTS.elasticsearch.index_settings.pop('global_overrides') %}
+{% set DATA_RETENTION_METHOD = ELASTICSEARCHMERGED.data_retention_method %}
 
 {% set PILLAR_GLOBAL_OVERRIDES = {} %}
 {% set ES_INDEX_PILLAR = salt['pillar.get']('elasticsearch:index_settings', {}) %}
@@ -104,6 +108,17 @@
 {%   if settings.index_template is defined %}
 {%     if not settings.get('index_sorting', False) | to_bool and settings.index_template.template.settings.index.sort is defined %}
 {%       do settings.index_template.template.settings.index.pop('sort') %}
+{%     endif %}
+{%     if DATA_RETENTION_METHOD == 'DLM' and settings.index_template.data_stream is defined and settings.data_stream_lifecycle is defined %}
+{%       if settings.data_stream_lifecycle.data_retention is defined and settings.data_stream_lifecycle.data_retention %}
+{%         do settings.index_template.template.update({'lifecycle': {'data_retention': settings.data_stream_lifecycle.data_retention}}) %}
+{%       else %}
+{%         do settings.index_template.template.update({'lifecycle': {}}) %}
+{%       endif %}
+{%       if settings.index_template.template.settings.index.lifecycle is not defined %}
+{%         do settings.index_template.template.settings.index.update({'lifecycle': {}}) %}
+{%       endif %}
+{%       do settings.index_template.template.settings.index.lifecycle.update({'prefer_ilm': false}) %}
 {%     endif %}
 {%   endif %}
 
