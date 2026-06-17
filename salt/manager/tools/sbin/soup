@@ -16,6 +16,7 @@ POSTVERSION=$INSTALLEDVERSION
 INSTALLEDSALTVERSION=$(salt --versions-report | grep Salt: | awk '{print $2}')
 BATCHSIZE=5
 SOUP_LOG=/root/soup.log
+SOUP_DEBUG_LOG=/root/soup-debug.log
 WHATWOULDYOUSAYYAHDOHERE=soup
 whiptail_title='Security Onion UPdater'
 NOTIFYCUSTOMELASTICCONFIG=false
@@ -34,6 +35,7 @@ if [[ -f /etc/salt/cloud.profiles.d/socloud.conf ]]; then
 fi
 # used to display messages to the user at the end of soup
 declare -a FINAL_MESSAGE_QUEUE=()
+SOUP_ERR_CONTEXT=
 
 
 check_err() {
@@ -114,9 +116,48 @@ check_err() {
       echo "$err_msg"
     fi
 
+    if [[ -n $SOUP_ERR_CONTEXT ]]; then
+      echo ""
+      printf '%s\n' "$SOUP_ERR_CONTEXT"
+    fi
+
+    echo "SOUP XTRACE debug log (if enabled) at $SOUP_DEBUG_LOG. Re-run soup with SOUP_DEBUG=1 to create $SOUP_DEBUG_LOG"
+
     exit $exit_code
   fi
 
+}
+
+# Collect bash error context before passing off to check_err()
+on_err() {
+  local exit_code=$?
+  # turn off xtrace to prevent added noise in debug log
+  set +x 2>/dev/null || true
+
+  # Use first error context, multiple errors can happen with command substitutions or nested functions. We just need context from the initial error.
+  [[ -n $SOUP_ERR_CONTEXT ]] && return $exit_code
+
+  local cmd=$BASH_COMMAND
+  local line=${BASH_LINENO[0]}
+  local function=${FUNCNAME[1]:-main}
+  local source=${BASH_SOURCE[1]##*/}
+  local -a err_lines=(
+    "ERROR on: ${cmd}"
+    "  source: ${source}:${line} in ${function}()"
+  )
+  local i caller_line caller_src caller_func
+
+  for ((i=2; i<${#FUNCNAME[@]}-1; i++)); do
+    caller_line=${BASH_LINENO[$((i-1))]}
+    [[ -n $caller_line && $caller_line -gt 0 ]] || continue
+    caller_src=${BASH_SOURCE[$i]##*/}
+    caller_func=${FUNCNAME[$i]:-main}
+    err_lines+=("  called by: ${caller_src}:${caller_line} in ${caller_func}()")
+  done
+
+  SOUP_ERR_CONTEXT=$(printf '%s\n' "${err_lines[@]}")
+
+  return $exit_code
 }
 
 airgap_mounted() {
@@ -1982,4 +2023,20 @@ EOF
   read -r input
 fi
 
-main "$@" | tee -a $SOUP_LOG
+set -o errtrace
+trap on_err ERR
+
+if [[ $SOUP_DEBUG == 1 ]]; then
+  if [ -f $SOUP_DEBUG_LOG ]; then
+    current_time=$(date +%Y%m%d.%H%M%S)
+    mv $SOUP_DEBUG_LOG $SOUP_DEBUG_LOG.$INSTALLEDVERSION.$current_time
+  fi
+  exec {SOUP_XTRACE_FD}>>"$SOUP_DEBUG_LOG"
+  export SOUP_XTRACE_FD
+  BASH_XTRACEFD=$SOUP_XTRACE_FD
+  PS4='+ [${BASH_SOURCE##*/}:${LINENO} ${FUNCNAME[0]:-main}()] | '
+  set -x
+  export SOUP_DEBUG
+fi
+
+main "$@" 2>&1 | tee -a $SOUP_LOG
