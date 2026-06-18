@@ -131,6 +131,8 @@ check_err() {
 # Collect bash error context before passing off to check_err()
 on_err() {
   local exit_code=$?
+  # Ignore failures in blocks that explicitly disabled errexit with `set +e`.
+  [[ $- == *e* ]] || return $exit_code
   # turn off xtrace to prevent added noise in debug log
   set +x 2>/dev/null || true
 
