@@ -23,73 +23,90 @@ if [ $? -ne 0 ]; then
 fi
 
 default_packages=({% for pkg in SUPPORTED_PACKAGES %}"{{ pkg }}"{% if not loop.last %} {% endif %}{% endfor %})
+# JSON array of the default packages, used by the jq filter below.
+default_packages_json=$(printf '%s\n' "${default_packages[@]}" | jq -R . | jq -s '.')
 
-ERROR=false
+# Output lock (serializes concurrent job output) and failure file (one marker line per
+# failed integration). Mirrors the pattern used by elastic_fleet_load_integrations_dir.
+OUTPUT_LOCK=$(mktemp)
+FAIL_FILE=$(mktemp)
+trap 'rm -f "$OUTPUT_LOCK" "$FAIL_FILE"' EXIT
+
+# Cache of package name -> latest available version, so the same package is only looked up
+# once instead of once per (policy, integration).
+declare -A LATEST_VERSION_CACHE
+
 for AGENT_POLICY in $agent_policies; do
-    if ! integrations=$(elastic_fleet_integration_policy_names "$AGENT_POLICY"); then
+    # Fetch the agent policy a single time; package name/version and integration id are all
+    # extracted locally below instead of re-fetching the same policy per integration.
+    if ! POLICY_JSON=$(fleet_api "agent_policies/$AGENT_POLICY"); then
         # this script upgrades default integration packages, exit 1 and let salt handle retrying
         exit 1
     fi
-    for INTEGRATION in $integrations; do
-        if ! [[ "$INTEGRATION" == "elastic-defend-endpoints" ]] && ! [[ "$INTEGRATION" == "fleet_server-"* ]]; then
-            # Get package name so we know what package to look for when checking the current and latest available version
-            if ! PACKAGE_NAME=$(elastic_fleet_integration_policy_package_name "$AGENT_POLICY" "$INTEGRATION"); then
+
+    # One jq pass emits name/package.name/package.version/id for every eligible integration.
+    # The endpoint/fleet_server skips and the default-package gate are applied here in jq.
+    # $defaults (not $def, a jq reserved keyword) holds the default package list.
+    while IFS=$'\t' read -r INTEGRATION PACKAGE_NAME PACKAGE_VERSION INTEGRATION_ID; do
+        [ -n "$INTEGRATION" ] || continue
+
+        # Look up the latest available version once per package, then memoize it.
+        if [[ -z "${LATEST_VERSION_CACHE[$PACKAGE_NAME]+set}" ]]; then
+            if ! AVAILABLE_VERSION=$(elastic_fleet_package_latest_version_check "$PACKAGE_NAME"); then
+                echo "Error: Failed getting latest version for $PACKAGE_NAME"
                 exit 1
             fi
-            {%- if not AUTO_UPGRADE_INTEGRATIONS %}
-            if [[ " ${default_packages[@]} " =~ " $PACKAGE_NAME " ]]; then
-            {%- endif %}
-                # Get currently installed version of package
-                attempt=0
-                max_attempts=3
-                while [ $attempt -lt $max_attempts ]; do
-                    if PACKAGE_VERSION=$(elastic_fleet_integration_policy_package_version "$AGENT_POLICY" "$INTEGRATION") && AVAILABLE_VERSION=$(elastic_fleet_package_latest_version_check "$PACKAGE_NAME"); then
-                        break
-                    fi
-                    attempt=$((attempt + 1))
-                done
-                if [ $attempt -eq $max_attempts ]; then
-                    echo "Error: Failed getting $PACKAGE_VERSION or $AVAILABLE_VERSION"
-                    exit 1
-                fi
-
-                # Get integration ID
-                if ! INTEGRATION_ID=$(elastic_fleet_integration_id "$AGENT_POLICY" "$INTEGRATION"); then
-                    exit 1
-                fi
-
-                if [[ "$PACKAGE_VERSION" != "$AVAILABLE_VERSION" ]]; then
-                    # Dry run of the upgrade
-                    echo ""
-                    echo "Current $PACKAGE_NAME package version ($PACKAGE_VERSION) is not the same as the latest available package ($AVAILABLE_VERSION)..."
-                    echo "Upgrading $INTEGRATION..."
-                    echo "Starting dry run..."
-                    if ! DRYRUN_OUTPUT=$(elastic_fleet_integration_policy_dryrun_upgrade "$INTEGRATION_ID"); then
-                        exit 1
-                    fi
-                    DRYRUN_ERRORS=$(echo "$DRYRUN_OUTPUT" | jq .[].hasErrors)
-
-                    # If no errors with dry run, proceed with actual upgrade
-                    if [[ "$DRYRUN_ERRORS" == "false" ]]; then
-                        echo "No errors detected. Proceeding with upgrade..."
-                        if ! elastic_fleet_integration_policy_upgrade "$INTEGRATION_ID"; then
-                            echo "Error: Upgrade failed for $PACKAGE_NAME with integration ID '$INTEGRATION_ID'."
-                            ERROR=true
-                            continue
-                        fi
-                    else
-                        echo "Errors detected during dry run for $PACKAGE_NAME policy upgrade..."
-                        ERROR=true
-                        continue
-                    fi
-                fi
-            {%- if not AUTO_UPGRADE_INTEGRATIONS %}
-            fi
-            {%- endif %}
+            LATEST_VERSION_CACHE[$PACKAGE_NAME]=$AVAILABLE_VERSION
         fi
-    done
+        AVAILABLE_VERSION=${LATEST_VERSION_CACHE[$PACKAGE_NAME]}
+
+        if [[ "$PACKAGE_VERSION" != "$AVAILABLE_VERSION" ]]; then
+            # Dry run, then (if clean) the actual upgrade, dispatched as a throttled background
+            # job. Each job builds its full log into one block, then flushes it under a single
+            # shared lock (OUTPUT_LOCK) so concurrent jobs never interleave on stdout; a failed
+            # job also appends a marker line to FAIL_FILE while holding that same lock.
+            elastic_fleet_throttle
+            {
+                block=$'\n'"Current $PACKAGE_NAME package version ($PACKAGE_VERSION) is not the same as the latest available package ($AVAILABLE_VERSION)..."$'\n'
+                block+="Upgrading $INTEGRATION..."$'\n'"Starting dry run..."$'\n'
+                fail=""
+                if ! DRYRUN_OUTPUT=$(elastic_fleet_integration_policy_dryrun_upgrade "$INTEGRATION_ID"); then
+                    block+="Error: Failed to complete dry run for '$INTEGRATION_ID'."$'\n'
+                    fail="dryrun $INTEGRATION"
+                elif [[ "$(jq .[].hasErrors <<<"$DRYRUN_OUTPUT")" == "false" ]]; then
+                    block+="No errors detected. Proceeding with upgrade..."$'\n'
+                    if ! elastic_fleet_integration_policy_upgrade "$INTEGRATION_ID"; then
+                        block+="Error: Upgrade failed for $PACKAGE_NAME with integration ID '$INTEGRATION_ID'."$'\n'
+                        fail="upgrade $INTEGRATION"
+                    fi
+                else
+                    block+="Errors detected during dry run for $PACKAGE_NAME policy upgrade..."$'\n'
+                    fail="dryrun-errors $INTEGRATION"
+                fi
+                {
+                    flock 9
+                    printf '%s' "$block"
+                    [ -n "$fail" ] && printf '%s\n' "$fail" >>"$FAIL_FILE"
+                } 9>>"$OUTPUT_LOCK"
+            } &
+        fi
+    done < <(jq -r --argjson defaults "$default_packages_json" '
+        .item.package_policies[]
+        | select(.name != "elastic-defend-endpoints")
+        | select(.name | startswith("fleet_server-") | not)
+        {%- if not AUTO_UPGRADE_INTEGRATIONS %}
+        | select(.package.name | IN($defaults[]))
+        {%- endif %}
+        | [.name, .package.name, .package.version, .id] | @tsv
+    ' <<<"$POLICY_JSON")
 done
-if [[ "$ERROR" == "true" ]]; then
+
+# Barrier: wait for every dispatched dry-run/upgrade job to finish.
+wait
+
+if [ -s "$FAIL_FILE" ]; then
+    printf '\nFailed integration upgrades:\n'
+    cat "$FAIL_FILE"
     exit 1
 fi
 echo
