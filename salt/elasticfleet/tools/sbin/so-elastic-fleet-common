@@ -36,7 +36,7 @@ MAX_FLEET_JOBS=${MAX_FLEET_JOBS:-10}
 # Block until fewer than MAX_FLEET_JOBS background jobs are running.
 elastic_fleet_throttle() {
     while (( $(jobs -rp | wc -l) >= MAX_FLEET_JOBS )); do
-        wait -n
+        wait -n || true
     done
 }
 
@@ -47,7 +47,7 @@ elastic_fleet_throttle() {
 #   $2 DIR              - directory of integration *.json files
 #   $3 LABEL           - human-readable label for log output
 #   $4 SKIP_CREATE_NAME - (optional) integration name to skip when creating (still updated if present)
-# Returns 1 if any integration failed to create/update.
+# Returns 1 if the policy cannot be fetched or if any integration failed to create/update.
 elastic_fleet_load_integrations_dir() {
     local AGENT_POLICY=$1
     local DIR=$2
@@ -62,7 +62,19 @@ elastic_fleet_load_integrations_dir() {
     i=0
 
     # Fetch the agent policy a single time; we look up integration ids locally below.
-    POLICY_JSON=$(fleet_api "agent_policies/$AGENT_POLICY")
+    if ! POLICY_JSON=$(fleet_api "agent_policies/$AGENT_POLICY"); then
+        echo "Error: Failed to retrieve agent policy '$AGENT_POLICY'."
+        rm -f "$FAIL_FILE"
+        rm -rf "$OUT_DIR"
+        return 1
+    fi
+
+    if ! jq -e '.item.package_policies' <<<"$POLICY_JSON" >/dev/null 2>&1; then
+        echo "Error: Invalid agent policy response for '$AGENT_POLICY'."
+        rm -f "$FAIL_FILE"
+        rm -rf "$OUT_DIR"
+        return 1
+    fi
 
     for INTEGRATION in "$DIR"/*.json; do
         [ -e "$INTEGRATION" ] || continue
@@ -90,7 +102,7 @@ elastic_fleet_load_integrations_dir() {
         } >"$OUT_DIR/$(printf '%03d' "$i")" 9>>"$FAIL_FILE" &
         i=$((i+1))
     done
-    wait
+    wait || true
 
     # Emit per-integration output grouped and in submission order (glob sorts numerically).
     cat "$OUT_DIR"/* 2>/dev/null

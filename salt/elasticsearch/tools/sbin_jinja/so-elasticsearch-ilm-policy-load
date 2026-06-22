@@ -6,11 +6,12 @@
 
 . /usr/sbin/so-common
 
-MAX_JOBS=10
+MAX_JOBS=${MAX_ILM_JOBS:-10}
 
 # Lock used to serialize block writes so concurrent jobs never interleave their output.
 ILM_OUTPUT_LOCK=$(mktemp)
-trap 'rm -f "$ILM_OUTPUT_LOCK"' EXIT
+ILM_FAIL_FILE=$(mktemp)
+trap 'rm -f "$ILM_OUTPUT_LOCK" "$ILM_FAIL_FILE"' EXIT
 
 # Policies are loaded concurrently (up to MAX_JOBS at a time) for speed. Each policy's block is
 # printed the moment its curl returns, so output appears in COMPLETION ORDER, not the order
@@ -19,21 +20,31 @@ echo "Loading ILM policies concurrently; output below appears in completion orde
 echo
 
 put_policy() {
-  local desc="$1" policyname="$2" data="$3" result
-  result=$(curl -K /opt/so/conf/elasticsearch/curl.config -s -k -L \
+  local desc="$1" policyname="$2" data="$3" result rc=0
+  if ! result=$(curl -K /opt/so/conf/elasticsearch/curl.config -s -k -L --fail \
     -X PUT "https://localhost:9200/_ilm/policy/${policyname}" \
-    -H 'Content-Type: application/json' -d"${data}")
+    -H 'Content-Type: application/json' -d"${data}" 2>&1); then
+    rc=1
+  elif ! jq -e '.acknowledged == true' <<<"$result" >/dev/null 2>&1; then
+    rc=1
+  fi
+
   # curl above ran in parallel; serialize just this block write so concurrent jobs never interleave.
   {
     flock 200
     printf 'Setting up %s policy...\n%s\n\n' "${desc}" "${result}"
+    if (( rc != 0 )); then
+      printf '%s\n' "${policyname}" >>"$ILM_FAIL_FILE"
+    fi
   } 200>>"${ILM_OUTPUT_LOCK}"
+
+  return "$rc"
 }
 
 # Block until fewer than MAX_JOBS background curls are running.
 throttle() {
   while (( $(jobs -rp | wc -l) >= MAX_JOBS )); do
-    wait -n
+    wait -n || true
   done
 }
 
@@ -67,4 +78,14 @@ throttle() {
 {%-   endfor %}
 {%- endif %}
 
-wait
+wait || true
+
+if [[ -s "$ILM_FAIL_FILE" ]]; then
+  echo "ERROR: Failed to load ILM policy(s):"
+  while read -r POLICY; do
+    echo " - $POLICY"
+  done < "$ILM_FAIL_FILE"
+  exit 1
+else
+  echo "Successfully loaded all ILM policies."
+fi
