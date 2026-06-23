@@ -12,17 +12,22 @@ PKG_LOAD_FAILURES=0
 PKG_LOAD_FAILURES_NAMES=()
 
 {%- for PACKAGE in SUPPORTED_PACKAGES %}
-echo "Upgrading {{ PACKAGE }} package..."
-if VERSION=$(elastic_fleet_package_latest_version_check "{{ PACKAGE }}"); then
-    if ! elastic_fleet_package_install "{{ PACKAGE }}" "$VERSION"; then
-        PKG_LOAD_FAILURES=$((PKG_LOAD_FAILURES + 1))
-        PKG_LOAD_FAILURES_NAMES+=("{{ PACKAGE }}")
+if INSTALLED_VERSION=$(elastic_fleet_package_version_check "{{ PACKAGE }}") && LATEST_VERSION=$(elastic_fleet_package_latest_version_check "{{ PACKAGE }}"); then
+
+    if [ "$INSTALLED_VERSION" == "$LATEST_VERSION" ]; then
+        echo "{{ PACKAGE }} integration version $INSTALLED_VERSION is already at the reported latest version $LATEST_VERSION, skipping upgrade."
+    else
+        echo "Upgrading {{ PACKAGE }} package to version $LATEST_VERSION..."
+        if ! elastic_fleet_package_install "{{ PACKAGE }}" "$LATEST_VERSION"; then
+            PKG_LOAD_FAILURES=$((PKG_LOAD_FAILURES + 1))
+            PKG_LOAD_FAILURES_NAMES+=("{{ PACKAGE }}")
+        fi
     fi
 else
+    echo "ERROR: Failed to get version information for integration {{ PACKAGE }}"
     PKG_LOAD_FAILURES=$((PKG_LOAD_FAILURES + 1))
     PKG_LOAD_FAILURES_NAMES+=("{{ PACKAGE }}")
 fi
-echo
 {%- endfor %}
 
 if [ $PKG_LOAD_FAILURES -gt 0 ]; then
@@ -35,6 +40,3 @@ if [ $PKG_LOAD_FAILURES -gt 0 ]; then
 else
     echo "Successfully upgraded all packages."
 fi
-
-echo
-/usr/sbin/so-elasticsearch-templates-load
