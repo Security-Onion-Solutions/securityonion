@@ -67,8 +67,6 @@ so-elastic-fleet-package-upgrade:
         interval: 30
     - require:
       - http: wait_for_so-kibana
-    - onchanges:
-      - file: /opt/so/state/elastic_fleet_packages.txt
 
 so-elastic-fleet-integrations:
   cmd.run:
