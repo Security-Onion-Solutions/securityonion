@@ -130,6 +130,17 @@ common_sbin:
       - so-pcap-import
 {% endif %}
 
+# Pin physical NIC names by MAC (run-once) so a kernel upgrade can't renumber the
+# interfaces SO binds by name. The marker keeps it a one-time setup; an admin can
+# pre-create the marker to opt out.
+pin_nic_names:
+  cmd.run:
+    - name: /usr/sbin/so-nic-pin
+    - unless: 'test -e /opt/so/state/nic_names_pinned'
+    - require:
+      - file: common_sbin
+      - file: statedir
+
 common_sbin_jinja:
   file.recurse:
     - name: /usr/sbin

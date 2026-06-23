@@ -16,7 +16,7 @@ include:
 # Install the registry container
 so-dockerregistry:
   docker_container.running:
-    - image: ghcr.io/security-onion-solutions/registry:3.0.0
+    - image: ghcr.io/security-onion-solutions/registry:3.1.1
     - hostname: so-registry
     - networks:
       - sobridge:
