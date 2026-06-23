@@ -57,6 +57,22 @@ so_repo:
     - enabled: 1
     - gpgcheck: 1
 
+so_kernel_repo:
+  pkgrepo.managed:
+    - name: securityonionkernel
+    - humanname: Security Onion Kernel Repo
+  {% if GLOBALS.is_manager %}
+    - baseurl: file:///nsm/kernelrepo/
+  {% else %}
+    - baseurl: https://{{ GLOBALS.repo_host }}/kernelrepo
+  {% endif %}
+    - enabled: 1
+    - gpgcheck: 1
+    # Only assign the kernel repo once physical NIC names are pinned by MAC, so the
+    # UEK8 kernel update can't renumber interfaces SO binds by name (see pin_nic_names
+    # in salt/common/init.sls, which drops this marker via /usr/sbin/so-nic-pin).
+    - onlyif: 'test -e /opt/so/state/nic_names_pinned'
+
 {% endif %}
   
 # TODO: Add a pillar entry for custom repos

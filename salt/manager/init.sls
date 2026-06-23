@@ -86,6 +86,16 @@ repo_dir:
       - group
     - show_changes: False
 
+kernelrepo_dir:
+  file.directory:
+    - name: /nsm/kernelrepo
+    - user: socore
+    - group: socore
+    - recurse:
+      - user
+      - group
+    - show_changes: False
+
 manager_sbin:
   file.recurse:
     - name: /usr/sbin
@@ -119,6 +129,13 @@ so-repo-mirrorlist:
   file.managed:
     - name: /opt/so/conf/reposync/mirror.txt
     - source: salt://manager/files/mirror.txt
+    - user: socore
+    - group: socore
+
+so-repo-kernel-mirrorlist:
+  file.managed:
+    - name: /opt/so/conf/reposync/mirror-kernel.txt
+    - source: salt://manager/files/mirror-kernel.txt
     - user: socore
     - group: socore
 
