@@ -9,14 +9,17 @@
 # Make sure you are root before doing anything
 uid="$(id -u)"
 if [ "$uid" -ne 0 ]; then
-	echo "This script must be run using sudo!"
-	fail_setup
+	echo "This script must be run using sudo!" >&2
+	exit 1
 fi
 
 # Save the original argument array since we modify it
 original_args=("$@")
 
-cd "$(dirname "$0")" || fail_setup
+cd "$(dirname "$0")" || {
+	echo "Unable to change to setup directory" >&2
+	exit 1
+}
 
 echo "Getting started..."
 
