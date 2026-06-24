@@ -14,5 +14,12 @@ curl --retry 5 --retry-delay 60 -A "reposync/$(sync_options)" https://sigs.secur
 dnf reposync --norepopath -g --delete -m -c /opt/so/conf/reposync/repodownload.conf --repoid=securityonionsync --download-metadata -p /nsm/repo/
 createrepo /nsm/repo
 
-dnf reposync --norepopath -g --delete -m -c /opt/so/conf/reposync/repodownload.conf --repoid=securityonionkernel --download-metadata -p /nsm/kernelrepo/
-createrepo /nsm/kernelrepo
+# The kernel repo section is deployed to repodownload.conf by the manager highstate, which
+# runs AFTER this script during soup. On the first upgrade to a kernel-aware version the
+# on-disk config still predates the section, so guard on its presence to avoid dnf's
+# "Unknown repo: 'securityonionkernel'" aborting the sync (set -e). The next sync after the
+# highstate deploys the section will pick it up.
+if grep -q '^\[securityonionkernel\]' /opt/so/conf/reposync/repodownload.conf; then
+  dnf reposync --norepopath -g --delete -m -c /opt/so/conf/reposync/repodownload.conf --repoid=securityonionkernel --download-metadata -p /nsm/kernelrepo/
+  createrepo /nsm/kernelrepo
+fi
