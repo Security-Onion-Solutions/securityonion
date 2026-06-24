@@ -1,7 +1,7 @@
 #!py
 
 # Reactor invoked by the pillar_db beacon when SOC records settings changes in
-# the so_soc.audit_settings table (see salt/_beacons/pillar_db.py). The beacon
+# the securityonion.audit_settings table (see salt/_beacons/pillar_db.py). The beacon
 # emits one event per new row carrying setting_id and node_id.
 #
 # Two branches, keyed on node_id:

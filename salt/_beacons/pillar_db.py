@@ -6,7 +6,7 @@
 # Custom salt beacon that watches the SOC audit_settings table in postgres for
 # new settings changes and emits a beacon event per new row. This replaces the
 # inotify watch on /opt/so/saltstack/local/pillar -- instead of monitoring pillar
-# files on disk, we monitor the so_soc.audit_settings table that SOC writes to.
+# files on disk, we monitor the securityonion.audit_settings table that SOC writes to.
 #
 # Detection is poll-based with a monotonic `id` watermark persisted to
 # WATERMARK_FILE: each pass selects rows with id greater than the last id seen,
@@ -24,7 +24,7 @@ log = logging.getLogger(__name__)
 
 WATERMARK_FILE = '/opt/so/state/pillar_db_watch.id'
 CONTAINER = 'so-postgres'
-DATABASE = 'so_soc'
+DATABASE = 'securityonion'
 
 # Unaligned, tuples-only psql output with a field separator that cannot appear in
 # an id/setting_id/node_id, so we can split each row reliably.
@@ -60,7 +60,7 @@ def _write_watermark(value):
 
 
 def _query(sql):
-    # Run a query against so_soc inside the so-postgres container over the unix
+    # Run a query against securityonion inside the so-postgres container over the unix
     # socket (trust auth, no password). Returns stdout on success, or None on any
     # failure so the caller can no-op and retry on the next interval.
     cmd = [
