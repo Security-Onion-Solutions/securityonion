@@ -60,9 +60,9 @@ def _make_logger():
 
 
 def _load_push_cfg():
-    """Read the global:push pillar subtree via salt-call. Returns a dict."""
+    """Read the salt:auto_apply pillar subtree via salt-call. Returns a dict."""
     caller = salt.client.Caller()
-    cfg = caller.cmd('pillar.get', 'global:push', {})
+    cfg = caller.cmd('pillar.get', 'salt:auto_apply', {})
     return cfg if isinstance(cfg, dict) else {}
 
 
@@ -135,7 +135,7 @@ def main():
     try:
         push = _load_push_cfg()
     except Exception:
-        log.exception('failed to read global:push pillar; aborting drain pass')
+        log.exception('failed to read salt:auto_apply pillar; aborting drain pass')
         return 1
 
     if not push.get('enabled', True):

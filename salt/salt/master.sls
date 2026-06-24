@@ -10,7 +10,7 @@
 #    software that is protected by the license key."
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
-{% from 'global/map.jinja' import GLOBALMERGED %}
+{% from 'salt/auto_apply.map.jinja' import AUTOAPPLY %}
 {% if sls in allowed_states %}
 
 include:
@@ -65,7 +65,7 @@ engines_config:
     - name: /etc/salt/master.d/engines.conf
     - source: salt://salt/files/engines.conf
 
-{% if GLOBALMERGED.push.enabled %}
+{% if AUTOAPPLY.enabled %}
 reactor_pushstate_config:
   file.managed:
     - name: /etc/salt/master.d/reactor_pushstate.conf

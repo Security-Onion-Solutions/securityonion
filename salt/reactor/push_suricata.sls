@@ -34,9 +34,9 @@ def _sensor_compound_plus_import():
 def _push_enabled():
     try:
         caller = Caller()
-        return bool(caller.cmd('pillar.get', 'global:push:enabled', True))
+        return bool(caller.cmd('pillar.get', 'salt:auto_apply:enabled', True))
     except Exception:
-        LOG.exception('push_suricata: pillar.get global:push:enabled failed, assuming enabled')
+        LOG.exception('push_suricata: pillar.get salt:auto_apply:enabled failed, assuming enabled')
         return True
 
 

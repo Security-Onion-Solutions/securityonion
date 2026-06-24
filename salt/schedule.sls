@@ -1,22 +1,22 @@
 {% from 'vars/globals.map.jinja' import GLOBALS %}
-{% from 'global/map.jinja' import GLOBALMERGED %}
+{% from 'salt/auto_apply.map.jinja' import AUTOAPPLY %}
 
 highstate_schedule:
   schedule.present:
     - function: state.highstate
-    - hours: {{ GLOBALMERGED.push.highstate_interval_hours }}
+    - hours: {{ AUTOAPPLY.highstate_interval_hours }}
     - maxrunning: 1
 {% if not GLOBALS.is_manager %}
     - splay: 1800
 {% endif %}
 
-{% if GLOBALS.is_manager and GLOBALMERGED.push.enabled %}
+{% if GLOBALS.is_manager and AUTOAPPLY.enabled %}
 push_drain_schedule:
   schedule.present:
     - function: cmd.run
     - job_args:
       - /usr/sbin/so-push-drainer
-    - seconds: {{ GLOBALMERGED.push.drain_interval }}
+    - seconds: {{ AUTOAPPLY.drain_interval }}
     - maxrunning: 1
     - return_job: False
 {% elif GLOBALS.is_manager %}

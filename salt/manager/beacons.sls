@@ -1,10 +1,10 @@
 {% from 'vars/globals.map.jinja' import GLOBALS %}
-{% from 'global/map.jinja' import GLOBALMERGED %}
+{% from 'salt/auto_apply.map.jinja' import AUTOAPPLY %}
 
 include:
   - salt.minion
 
-{% if GLOBALS.is_manager and GLOBALMERGED.push.enabled %}
+{% if GLOBALS.is_manager and AUTOAPPLY.enabled %}
 salt_beacons_pushstate:
   file.managed:
     - name: /etc/salt/minion.d/beacons_pushstate.conf

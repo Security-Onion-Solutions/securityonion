@@ -35,9 +35,9 @@ def _sensor_compound():
 def _push_enabled():
     try:
         caller = Caller()
-        return bool(caller.cmd('pillar.get', 'global:push:enabled', True))
+        return bool(caller.cmd('pillar.get', 'salt:auto_apply:enabled', True))
     except Exception:
-        LOG.exception('push_strelka: pillar.get global:push:enabled failed, assuming enabled')
+        LOG.exception('push_strelka: pillar.get salt:auto_apply:enabled failed, assuming enabled')
         return True
 
 

@@ -1,7 +1,7 @@
-{% from 'global/map.jinja' import GLOBALMERGED %}
+{% from 'salt/auto_apply.map.jinja' import AUTOAPPLY %}
 {% set actions = salt['pillar.get']('actions', []) %}
-{% set BATCH = GLOBALMERGED.push.batch %}
-{% set BATCH_WAIT = GLOBALMERGED.push.batch_wait %}
+{% set BATCH = AUTOAPPLY.batch %}
+{% set BATCH_WAIT = AUTOAPPLY.batch_wait %}
 
 {% for action in actions %}
 {%   if action.get('highstate') %}
