@@ -1820,6 +1820,9 @@ securityonion_repo() {
 			echo "mirrorlist=file:///etc/yum/mirror-kernel.txt" >> /etc/yum.repos.d/securityonionkernel.repo
 			echo "enabled=1" >> /etc/yum.repos.d/securityonionkernel.repo
 			echo "gpgcheck=1" >> /etc/yum.repos.d/securityonionkernel.repo
+			# Supplementary kernel repo: tolerate it being empty/unreachable so a missing
+			# repomd.xml can't make every dnf operation fail before the repo is populated.
+			echo "skip_if_unavailable=1" >> /etc/yum.repos.d/securityonionkernel.repo
 			logCmd "dnf repolist"
 		else
 			echo "[securityonion]" > /etc/yum.repos.d/securityonion.repo
@@ -1834,6 +1837,7 @@ securityonion_repo() {
 			echo "enabled=1" >> /etc/yum.repos.d/securityonionkernel.repo
 			echo "gpgcheck=1" >> /etc/yum.repos.d/securityonionkernel.repo
 			echo "sslverify=0" >> /etc/yum.repos.d/securityonionkernel.repo
+			echo "skip_if_unavailable=1" >> /etc/yum.repos.d/securityonionkernel.repo
 			logCmd "dnf repolist"
 		fi
 	elif [[ ! $waitforstate ]]; then
@@ -1849,6 +1853,7 @@ securityonion_repo() {
 		echo "enabled=1" >> /etc/yum.repos.d/securityonionkernel.repo
 		echo "gpgcheck=1" >> /etc/yum.repos.d/securityonionkernel.repo
 		echo "sslverify=0" >> /etc/yum.repos.d/securityonionkernel.repo
+		echo "skip_if_unavailable=1" >> /etc/yum.repos.d/securityonionkernel.repo
 	elif [[ $waitforstate ]]; then
 		echo "[securityonion]" > /etc/yum.repos.d/securityonion.repo
 		echo "name=Security Onion Repo" >> /etc/yum.repos.d/securityonion.repo
@@ -1860,6 +1865,7 @@ securityonion_repo() {
 		echo "baseurl=file:///nsm/kernelrepo/" >> /etc/yum.repos.d/securityonionkernel.repo
 		echo "enabled=1" >> /etc/yum.repos.d/securityonionkernel.repo
 		echo "gpgcheck=1" >> /etc/yum.repos.d/securityonionkernel.repo
+		echo "skip_if_unavailable=1" >> /etc/yum.repos.d/securityonionkernel.repo
 	fi
 	logCmd "dnf repolist all"
 	if [[ $waitforstate ]]; then

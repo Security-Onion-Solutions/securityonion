@@ -68,6 +68,10 @@ so_kernel_repo:
   {% endif %}
     - enabled: 1
     - gpgcheck: 1
+    # Supplementary kernel repo: tolerate it being empty/unreachable (e.g. before the
+    # manager has populated /nsm/kernelrepo) so a missing repomd.xml can't make every
+    # dnf/pkg operation on the grid fail.
+    - skip_if_unavailable: 1
     # Only assign the kernel repo once physical NIC names are pinned by MAC, so the
     # UEK8 kernel update can't renumber interfaces SO binds by name (see pin_nic_names
     # in salt/common/init.sls, which drops this marker via /usr/sbin/so-nic-pin).
