@@ -9,13 +9,11 @@
 RETURN_CODE=0
 
 if [ ! -f /opt/so/state/eaintegrations.txt ]; then
-  # First, check for any package upgrades
-  /usr/sbin/so-elastic-fleet-package-upgrade
 
-  # Second, update Fleet Server policies
+  # update Fleet Server policies
   /usr/sbin/so-elastic-fleet-integration-policy-elastic-fleet-server
 
-  # Third, configure Elastic Defend Integration seperately
+  # configure Elastic Defend Integration separately
   /usr/sbin/so-elastic-fleet-integration-policy-elastic-defend
 
   # Each group fetches its agent policy once and dispatches create/update writes concurrently.
@@ -32,9 +30,12 @@ if [ ! -f /opt/so/state/eaintegrations.txt ]; then
   elastic_fleet_load_integrations_dir "so-grid-nodes_heavy" \
     /opt/so/conf/elastic-fleet/integrations/grid-nodes_heavy "Grid Nodes Policy_Heavy" || RETURN_CODE=1
 
-  # Fleet Server - Optional integrations (one agent policy per FleetServer_* directory)
+  # Fleet Server - Optional integrations (adds integration configuration to a given FleetServer_ policy)
   for FLEET_DIR in /opt/so/conf/elastic-fleet/integrations-optional/FleetServer*/; do
     [ -d "$FLEET_DIR" ] || continue
+    INTEGRATIONS=("${FLEET_DIR%/}"/*.json)
+    [ -e "${INTEGRATIONS[0]}" ] || continue
+
     FLEET_POLICY=$(basename "$FLEET_DIR")
     elastic_fleet_load_integrations_dir "$FLEET_POLICY" \
       "${FLEET_DIR%/}" "Fleet Server Policy" "elasticsearch-logs" || RETURN_CODE=1
