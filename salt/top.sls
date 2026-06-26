@@ -19,7 +19,7 @@ base:
     - repo.client
     - versionlock
     - ntp
-    - schedule
+    - salt.highstate_schedule
     - logrotate
 
   # manager node on proper salt version with empty node_data pillar
@@ -55,6 +55,7 @@ base:
     - motd
     - salt.minion-check
     - salt.lasthighstate
+    - salt.push_drain_schedule
     - common
     - docker
     - docker_clean
@@ -300,7 +301,6 @@ base:
     - nginx
     - elasticfleet
     - elasticfleet.install_agent_grid
-    - schedule
     - stig
 
   '*_hypervisor and I@features:vrt and G@saltversion:{{saltversion}}':

@@ -5,7 +5,7 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-
+{% from 'salt/schedule.map.jinja' import SCHEDULEMERGED %}
 
 # this script checks the time the file /opt/so/log/salt/state-apply-test was last modified and restarts the salt-minion service if it is outside a threshold date/time
 # the file is modified via file.touch using a scheduled job healthcheck.salt-minion.state-apply-test that runs a state.apply. 
@@ -23,8 +23,8 @@ SYSTEM_START_TIME=$(date -d "$(</proc/uptime awk '{print $1}') seconds ago" +%s)
 LAST_HIGHSTATE_END=$([ -e "/opt/so/log/salt/lasthighstate" ] && date -r /opt/so/log/salt/lasthighstate +%s || echo 0)
 LAST_HEALTHCHECK_STATE_APPLY=$([ -e "/opt/so/log/salt/state-apply-test" ] && date -r /opt/so/log/salt/state-apply-test +%s || echo 0)
 # SETTING THRESHOLD TO ANYTHING UNDER 600 seconds may cause a lot of salt-minion restarts since the job to touch the file occurs every 5-8 minutes by default
-# THRESHOLD is derived from the global push highstate interval + 1 hour, so the minion-check grace period tracks the schedule automatically.
-THRESHOLD=$(( ({{ salt['pillar.get']('global:push:highstate_interval_hours', 2) }} + 1) * 3600 )) #within how many seconds the file /opt/so/log/salt/state-apply-test must have been touched/modified before the salt minion is restarted
+# THRESHOLD is derived from the salt schedule highstate interval + 1 hour, so the minion-check grace period tracks the schedule automatically.
+THRESHOLD=$(( ({{ SCHEDULEMERGED.highstate_interval_hours }} + 1) * 3600 )) #within how many seconds the file /opt/so/log/salt/state-apply-test must have been touched/modified before the salt minion is restarted
 THRESHOLD_DATE=$((LAST_HEALTHCHECK_STATE_APPLY+THRESHOLD))
 
 logCmd() {
