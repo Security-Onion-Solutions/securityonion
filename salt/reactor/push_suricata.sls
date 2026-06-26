@@ -1,7 +1,7 @@
 #!py
 
-# Reactor invoked by the inotify beacon on rule file changes under
-# /opt/so/saltstack/local/salt/suricata/rules/.
+# Reactor invoked by the rules_db poll beacon (salt/_beacons/rules_db.py) on rule
+# file changes under /opt/so/saltstack/local/salt/suricata/rules/.
 #
 # Writes (or updates) a push intent at /opt/so/state/push_pending/rules_suricata.json
 # and returns {}. The so-push-drainer schedule picks up ready intents, dedupes
