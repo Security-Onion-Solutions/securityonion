@@ -5,21 +5,33 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-
-
-# Usage: so-stop kibana | playbook | thehive
-
+# shellcheck disable=SC1091
 . /usr/sbin/so-common
 
-if [ $# -ge 1 ]; then
-	echo $banner
-	printf "Stopping $1...\n"
-	echo $banner
+usage() {
+    echo "Usage: $0 <component>"
+    echo ""
+    echo "Examples:"
+    echo "  $0 kibana             Stop Kibana"
+    exit 1
+}
 
-	case $1 in
-    		*) docker stop so-$1 ; docker rm so-$1 ;;
-	esac
-else
-	echo -e "\nPlease provide an argument by running like so-stop $component, or by using the component-specific script.\nEx. so-stop logstash, or so-logstash-stop\n"	
+if [[ $# -lt 1 ]]; then
+    usage
 fi
 
+
+#shellcheck disable=SC2154
+echo "$banner"
+printf "Stopping %s...\n" "$1"
+echo "$banner"
+case $1 in
+	"elasticfleet"|"elastic-fleet")
+        docker_check_running "elastic-fleet" "--stop"
+        docker rm "so-elastic-fleet" 2> /dev/null
+        ;;
+    *)
+        docker_check_running "$1" "--stop"
+        docker rm "so-${1}" 2> /dev/null
+    ;;
+esac

@@ -5,27 +5,41 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-
-
-# Usage: so-restart  kibana | playbook 
-
 . /usr/sbin/so-common
 
-if [ $# -ge 1 ]; then
+usage() {
+    echo "Usage: $0 <component> [args]"
+    echo ""
+    echo "Supported args:"
+    echo "  --force | -f          Force stop all Salt jobs before starting component."
+    echo ""
+    echo "Examples:"
+    echo "  $0 kibana             Restart Kibana"
+    echo "  $0 kibana --force     Force stop all Salt jobs before restarting Kibana"
+    exit 1
+}
 
-        echo $banner
-        printf "Restarting $1...\n\nThis could take a while if another Salt job is running. \nRun this command with --force to stop all Salt jobs before proceeding.\n"
-        echo $banner
-
-        if [ "$2" = "--force" ]; then
-                printf "\nForce-stopping all Salt jobs before proceeding\n\n"
-                salt-call saltutil.kill_all_jobs
-        fi
-
-        case $1 in
-                "elastic-fleet") docker stop so-elastic-fleet && docker rm so-elastic-fleet && salt-call state.apply elasticfleet queue=True;;
-                *)  docker stop so-$1 ; docker rm so-$1 ; salt-call state.apply $1 queue=True;;
-        esac
-else
-        echo -e "\nPlease provide an argument by running like so-restart $component, or by using the component-specific script.\nEx. so-restart logstash, or so-logstash-restart\n"
+if [[ $# -lt 1 ]]; then
+    usage
 fi
+
+#shellcheck disable=SC2154
+echo "$banner"
+printf "Restarting %s...\n\nThis could take a while if another Salt job is running. \nRun this command with --force to stop all Salt jobs before proceeding.\n" "$1"
+echo "$banner"
+if [[ "$2" = "--force" ]] || [[ "$2" = "-f" ]]; then
+    printf "\nForce-stopping all Salt jobs before proceeding\n\n"
+    salt-call saltutil.kill_all_jobs
+fi
+case $1 in
+    "elastic-fleet"|"elasticfleet")
+        docker_check_running "elastic-fleet" "--stop"
+        docker rm "so-elastic-fleet" 2> /dev/null
+        salt-call state.apply elasticfleet queue=True
+        ;;
+    *)
+        docker_check_running "$1" "--stop"
+        docker rm "so-${1}" 2> /dev/null
+        salt-call state.apply "$1" queue=True
+        ;;
+esac
