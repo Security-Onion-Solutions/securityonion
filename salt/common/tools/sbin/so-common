@@ -291,6 +291,20 @@ download_and_verify() {
 	fi
 }
 
+# check if container with name is running and optionally stop it
+docker_check_running() {
+    # show running containers, only names
+    if docker ps --format '{{.Names}}' | grep -q "^so-${1}$"; then
+        if [[ "$2" == "--stop" ]]; then
+            docker stop "so-${1}"
+        fi
+
+        return 0
+    else
+        return 1
+    fi
+}
+
 elastic_license() {
 
 read -r -d '' message <<- EOM
