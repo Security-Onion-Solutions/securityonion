@@ -1,0 +1,57 @@
+#!/bin/bash
+#
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+#
+# so-kernel-upgrade — switch the boot default to the installed UEK8 (6.x) kernel.
+#
+# Security Onion is moving off the EL9 stock kernel / UEK7 (5.x) onto UEK8 (6.x).
+# Installing the kernel-uek-core package adds a UEK8 boot entry but does NOT make it the
+# default: kernel-install/grubby only auto-promote a new kernel within the running
+# kernel's flavor lineage, and we're crossing from a 5.x kernel to the new 6.x UEK flavor.
+# So even with UPDATEDEFAULT=yes and DEFAULTKERNEL=kernel-uek-core the box keeps booting
+# the old kernel. This tool finds the newest installed 6.x UEK kernel and makes it the
+# GRUB default via grubby so the next boot comes up on UEK8.
+#
+# Idempotent: if the UEK8 kernel is already the default it does nothing. It only sets the
+# boot default; it does NOT reboot — the admin reboots the node on their own schedule.
+
+log() { echo "[so-kernel-upgrade] $*"; }
+
+[ "$(id -u)" -eq 0 ] || { log "must run as root"; exit 1; }
+command -v grubby >/dev/null 2>&1 || { log "grubby not found"; exit 1; }
+
+# Newest installed UEK8 (6.x) kernel known to the bootloader. UEK8 vmlinuz paths look like
+# /boot/vmlinuz-6.12.0-203.76.7.5.el9uek.x86_64; the 5.x UEK7 and 5.14 RHCK won't match.
+target="$(grubby --info=ALL 2>/dev/null \
+    | sed -n 's/^kernel="\(.*\)"$/\1/p' \
+    | grep -E '/vmlinuz-6\.[0-9]+.*uek' \
+    | sort -V | tail -1)"
+
+if [ -z "$target" ]; then
+    log "no installed 6.x UEK (UEK8) kernel found — confirm the kernel repo is assigned and"
+    log "'dnf update' has installed kernel-uek-core. Nothing to do."
+    exit 0
+fi
+
+current="$(grubby --default-kernel 2>/dev/null)"
+if [ "$current" = "$target" ]; then
+    log "UEK8 kernel is already the boot default: $target"
+    exit 0
+fi
+
+log "current default kernel: ${current:-unknown}"
+log "switching boot default to UEK8 kernel: $target"
+grubby --set-default="$target" || { log "ERROR: grubby --set-default failed for $target"; exit 1; }
+
+# Verify the change actually took before claiming success.
+now="$(grubby --default-kernel 2>/dev/null)"
+if [ "$now" != "$target" ]; then
+    log "ERROR: default kernel is still '${now:-unknown}' after set-default"
+    exit 1
+fi
+
+log "boot default is now $target"
+log "REBOOT REQUIRED to start using the UEK8 kernel (currently running $(uname -r))."
