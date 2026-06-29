@@ -1,6 +1,6 @@
 #!py
 
-# Reactor invoked by the rules_db poll beacon (salt/_beacons/rules_db.py) on rule
+# Reactor invoked by the rules_beacon poll beacon (salt/_beacons/rules_beacon.py) on rule
 # file changes under /opt/so/saltstack/local/salt/strelka/rules/compiled/.
 #
 # Writes (or updates) a push intent at /opt/so/state/push_pending/rules_strelka.json

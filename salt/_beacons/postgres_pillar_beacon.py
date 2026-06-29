@@ -22,7 +22,7 @@ import subprocess
 
 log = logging.getLogger(__name__)
 
-WATERMARK_FILE = '/opt/so/state/pillar_db_watch.id'
+WATERMARK_FILE = '/opt/so/state/postgres_pillar_beacon_watch.id'
 CONTAINER = 'so-postgres'
 DATABASE = 'securityonion'
 
@@ -56,7 +56,7 @@ def _write_watermark(value):
             f.write(str(int(value)))
         os.rename(tmp, WATERMARK_FILE)
     except OSError:
-        log.exception('pillar_db beacon: failed to persist watermark to %s', WATERMARK_FILE)
+        log.exception('postgres_pillar_beacon: failed to persist watermark to %s', WATERMARK_FILE)
 
 
 def _query(sql):
@@ -71,13 +71,13 @@ def _query(sql):
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
     except subprocess.TimeoutExpired:
-        log.warning('pillar_db beacon: psql timed out')
+        log.warning('postgres_pillar_beacon: psql timed out')
         return None
     except Exception:
-        log.exception('pillar_db beacon: failed to exec psql')
+        log.exception('postgres_pillar_beacon: failed to exec psql')
         return None
     if result.returncode != 0:
-        log.warning('pillar_db beacon: psql failed (rc=%s): %s',
+        log.warning('postgres_pillar_beacon: psql failed (rc=%s): %s',
                     result.returncode, (result.stderr or '').strip())
         return None
     return result.stdout
@@ -97,7 +97,7 @@ def beacon(config):
         try:
             _write_watermark(int((seed or '0').strip() or 0))
         except ValueError:
-            log.warning('pillar_db beacon: could not parse MAX(id) seed: %r', seed)
+            log.warning('postgres_pillar_beacon: could not parse MAX(id) seed: %r', seed)
         return retval
 
     rows = _query(
@@ -116,12 +116,12 @@ def beacon(config):
             continue
         parts = line.split(FIELD_SEP)
         if len(parts) < 3:
-            log.warning('pillar_db beacon: skipping malformed row: %r', line)
+            log.warning('postgres_pillar_beacon: skipping malformed row: %r', line)
             continue
         try:
             row_id = int(parts[0])
         except ValueError:
-            log.warning('pillar_db beacon: skipping row with non-int id: %r', line)
+            log.warning('postgres_pillar_beacon: skipping row with non-int id: %r', line)
             continue
         setting_id = parts[1]
         node_id = parts[2]
@@ -136,7 +136,7 @@ def beacon(config):
 
     if max_id > watermark:
         _write_watermark(max_id)
-        log.info('pillar_db beacon: emitted %d change(s), watermark %d -> %d',
+        log.info('postgres_pillar_beacon: emitted %d change(s), watermark %d -> %d',
                  len(retval), watermark, max_id)
 
     return retval

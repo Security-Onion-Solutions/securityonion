@@ -1,7 +1,7 @@
 #!py
 
-# Reactor invoked by the pillar_db beacon when SOC records settings changes in
-# the securityonion.audit_settings table (see salt/_beacons/pillar_db.py). The beacon
+# Reactor invoked by the postgres_pillar_beacon when SOC records settings changes in
+# the securityonion.audit_settings table (see salt/_beacons/postgres_pillar_beacon.py). The beacon
 # emits one event per new row carrying setting_id and node_id.
 #
 # Two branches, keyed on node_id:
@@ -134,7 +134,7 @@ def run():
         LOG.info('push_pillar: push disabled, skipping')
         return {}
 
-    # The pillar_db beacon nests its payload under data['data']; fall back to the
+    # The postgres_pillar_beacon nests its payload under data['data']; fall back to the
     # top level so the reactor is robust to either shape.
     event = data.get('data', data)  # noqa: F821 -- data provided by reactor
     setting_id = event.get('setting_id', '')

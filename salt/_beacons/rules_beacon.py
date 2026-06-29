@@ -19,7 +19,7 @@
 # up on the next one).
 #
 # Each emitted event carries the watched directory path under the configured tag
-# (e.g. salt/beacon/<minion>/rules_db/suricata); the push_suricata / push_strelka
+# (e.g. salt/beacon/<minion>/rules_beacon/suricata); the push_suricata / push_strelka
 # reactors write a push intent, after which the existing so-push-drainer /
 # orch.push_batch pipeline takes over unchanged.
 
@@ -95,7 +95,7 @@ def _fingerprint(directory):
 
 
 def _watermark_file(tag):
-    return os.path.join(WATERMARK_DIR, 'rules_db_%s.hash' % tag)
+    return os.path.join(WATERMARK_DIR, 'rules_beacon_%s.hash' % tag)
 
 
 def _read_watermark(tag):
@@ -115,7 +115,7 @@ def _write_watermark(tag, digest):
             f.write(digest)
         os.rename(tmp, path)
     except OSError:
-        log.exception('rules_db beacon: failed to persist watermark to %s', path)
+        log.exception('rules_beacon: failed to persist watermark to %s', path)
 
 
 def beacon(config):
@@ -134,6 +134,6 @@ def beacon(config):
         if digest != previous:
             _write_watermark(tag, digest)
             retval.append({'tag': tag, 'path': directory})
-            log.info('rules_db beacon: change detected in %s, emitting %s', directory, tag)
+            log.info('rules_beacon: change detected in %s, emitting %s', directory, tag)
 
     return retval
