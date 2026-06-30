@@ -850,6 +850,28 @@ kibana_backport_streams_index_template() {
 
 }
 
+# Runs kafka-features.sh upgrade --release-version $1
+#   Upgrades Kafka KRaft cluster metadata
+update_kafka_metadata() {
+    metadata_version="$1"
+    global_pillar="/opt/so/saltstack/local/pillar/global/soc_global.sls"
+    if PIPELINE=$(so-yaml.py get -r "$global_pillar" global.pipeline 2> /dev/null) && [[ "$PIPELINE" == "KAFKA" ]]; then
+        kafka_nodes_raw=$(salt-call pillar.get kafka:nodes --out=json)
+        if kafka_nodes=$(jq -er '.local | select(type == "object" and length > 0)' <<< "$kafka_nodes_raw"); then
+            bootstrap_servers=$(jq -r '[to_entries[] | select(.value.role | contains("broker")) | "\(.value.ip):9092"] | join(",")' <<< "$kafka_nodes")
+            echo "Upgrading Kafka KRaft cluster version"
+            so-kafka-cli kafka-features.sh --bootstrap-server "$bootstrap_servers" --command-config /opt/kafka/config/kraft/client.properties upgrade --release-version "$metadata_version" 2>/dev/null || true
+
+            return 0
+        else
+            FINAL_MESSAGE_QUEUE+=("WARNING: Unable to automatically perform Kafka Kraft cluster metadata update. This step can be performed manually using the following command (replacing \$BROKER_IP with the ip of atleast 1 available Kafka broker):")
+            FINAL_MESSAGE_QUEUE+=("    - so-kafka-cli kafka-features.sh --bootstrap-server \$BROKER_IP:9092 --command-config /opt/kafka/config/kraft/client.properties upgrade --release-version $metadata_version")
+        fi
+    else
+        echo "Nothing to do!"
+    fi
+}
+
 up_to_3.2.0() {
   fix_logstash_0013_lumberjack_pipeline_name
 
@@ -866,6 +888,8 @@ post_to_3.2.0() {
   /sbin/so-elastic-agent-gen-installers
 
   kibana_backport_streams_index_template
+
+  update_kafka_metadata "4.3"
 
   POSTVERSION=3.2.0
 }
