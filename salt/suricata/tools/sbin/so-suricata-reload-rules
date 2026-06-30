@@ -7,5 +7,19 @@
 
 . /usr/sbin/so-common
 
-retry 60 3 'docker exec so-suricata /opt/suricata/bin/suricatasc -c reload-rules /var/run/suricata/suricata-command.socket' '{"message":"done","return":"OK"}' || fail "The Suricata container was not ready in time."
-retry 60 3 'docker exec so-suricata /opt/suricata/bin/suricatasc -c ruleset-reload-nonblocking /var/run/suricata/suricata-command.socket' '{"message":"done","return":"OK"}' || fail "The Suricata container was not ready in time."
+reload_suricata_rules() {
+  # $1 = suricatasc command (reload-rules | ruleset-reload-nonblocking)
+  local output
+  output=$(docker exec so-suricata /opt/suricata/bin/suricatasc -c "$1" /var/run/suricata/suricata-command.socket)
+  echo "$output"
+  # A reload already running is fine — the new rules get picked up by it.
+  if [[ "$output" =~ "Reload already in progress" ]]; then
+    echo "A rule reload is already in progress; treating as success."
+    return 0
+  fi
+  [[ "$output" =~ '{"message":"done","return":"OK"}' ]] && return 0
+  return 1
+}
+
+retry 60 3 'reload_suricata_rules reload-rules' || fail "The Suricata container was not ready in time."
+retry 60 3 'reload_suricata_rules ruleset-reload-nonblocking' || fail "The Suricata container was not ready in time."
