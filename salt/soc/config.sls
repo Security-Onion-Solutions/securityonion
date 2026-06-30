@@ -134,6 +134,22 @@ socsigmasopipeline:
     - group: 939
     - mode: 600
 
+socsigmaplaybookpipeline:
+  file.managed:
+    - name: /opt/so/conf/soc/sigma_playbook_pipeline.yaml
+    - source: salt://soc/files/soc/sigma_playbook_pipeline.yaml
+    - user: 939
+    - group: 939
+    - mode: 600
+
+socplaybookplaceholdermap:
+  file.managed:
+    - name: /opt/so/conf/soc/playbook_placeholder_map.yaml
+    - source: salt://soc/files/soc/playbook_placeholder_map.yaml
+    - user: 939
+    - group: 939
+    - mode: 600
+
 socbanner:
   file.managed:
     - name: /opt/so/conf/soc/banner.md

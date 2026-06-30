@@ -63,6 +63,14 @@ transformations:
       rule_conditions:
       - type: logsource
         category: antivirus
+    # OS-agnostic process_creation scoping for product-less (NIDS/host-pivot) rules.
+    - id: process_creation_os_agnostic
+      type: add_condition
+      conditions:
+        event.category: process
+      rule_conditions:
+      - type: logsource
+        category: process_creation
     # Transforms the `Hashes` field to ECS fields
     # ECS fields are used by the hash fields emitted by Elastic Defend
     # If shipped with Elastic Agent, sysmon logs will also have hashes mapped to ECS fields    
@@ -108,6 +116,40 @@ transformations:
       - type: logsource
         product: windows
         category: driver_load
+    - id: ecs_fix_process_creation
+      type: field_name_mapping
+      mapping:
+        # bare `Hashes` (the combined-string case is broken out above)
+        winlog.event_data.Hashes: process.hash.sha256
+        winlog.event_data.IntegrityLevel: process.Ext.token.integrity_level_name
+        winlog.event_data.ParentName: process.parent.name
+      rule_conditions:
+      - type: logsource
+        product: windows
+        category: process_creation
+    - id: ecs_fix_registry_set
+      type: field_name_mapping
+      mapping:
+        winlog.event_data.Details: registry.data.strings
+        # field rename only; EventType values (SetValue/CreateKey) still differ from
+        # event.action values (modification/creation)
+        winlog.event_data.EventType: event.action
+      rule_conditions:
+      - type: logsource
+        product: windows
+        category: registry_set
+    - id: ecs_fix_image_load
+      type: field_name_mapping
+      mapping:
+        file.path: dll.path
+        file.code_signature.signed: dll.code_signature.exists
+        winlog.event_data.Signature: dll.code_signature.subject_name
+        file.code_signature.status: dll.code_signature.status
+        winlog.event_data.Hashes: dll.hash.sha256
+      rule_conditions:
+      - type: logsource
+        product: windows
+        category: image_load
     - id: linux_security_add-fields
       type: add_condition
       conditions:
@@ -281,6 +323,15 @@ transformations:
       rule_conditions:
       - type: logsource
         category: file_event
+    # Scope image_load rules to Elastic Endpoint library events (event.category:library, dll.*
+    # populated).
+    - id: endpoint_image_load_add-fields
+      type: add_condition
+      conditions:
+        event.category: 'library'
+      rule_conditions:
+      - type: logsource
+        category: image_load
     # Maps network rules to all network logs
     # This targets all network logs, all services, generated from endpoints and network
     - id: network_add-fields
