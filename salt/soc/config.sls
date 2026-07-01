@@ -150,6 +150,14 @@ socplaybookplaceholdermap:
     - group: 939
     - mode: 600
 
+socplaybookplaceholdermapcustom:
+  file.managed:
+    - name: /opt/so/conf/soc/playbook_placeholder_map_custom.yaml
+    - source: salt://soc/files/soc/playbook_placeholder_map_custom.yaml
+    - user: 939
+    - group: 939
+    - mode: 600
+
 socbanner:
   file.managed:
     - name: /opt/so/conf/soc/banner.md
