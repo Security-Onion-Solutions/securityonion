@@ -244,8 +244,7 @@ check_airgap() {
       is_airgap=0
       UPDATE_DIR=/tmp/soagupdate/SecurityOnion
       AGDOCKER=/tmp/soagupdate/docker
-      AGREPO=/tmp/soagupdate/minimal/Packages
-      AGUEKREPO=/tmp/soagupdate/uek/Packages
+      AGREPO=/tmp/soagupdate/minimal/Packages      AGUEKREPO=/tmp/soagupdate/uek/Packages
   else
       is_airgap=1
   fi
@@ -1008,9 +1007,9 @@ update_airgap_rules() {
 update_airgap_repos() {
   # Update the files in the repo
   echo "Syncing new updates to /nsm/repo & /nsm/kernelrepo"
-  # using --delete to replicate so-repo-sync behavior of keeping only latest packages in local repo
-  rsync -a --delete "$AGREPO"/ /nsm/repo/
-  rsync -a --delete "$AGUEKREPO"/ /nsm/kernelrepo/
+  # Airgap soup copies new files into the local repo, but doesn't remove old packages. Retaining the ability to rollback package updates
+  rsync -a "$AGREPO"/ /nsm/repo/
+  rsync -a "$AGUEKREPO"/ /nsm/kernelrepo/
 
   dnf -y install yum-utils createrepo_c
 
