@@ -245,6 +245,7 @@ check_airgap() {
       UPDATE_DIR=/tmp/soagupdate/SecurityOnion
       AGDOCKER=/tmp/soagupdate/docker
       AGREPO=/tmp/soagupdate/minimal/Packages
+      AGUEKREPO=/tmp/soagupdate/uek/Packages
   else
       is_airgap=1
   fi
@@ -1004,13 +1005,19 @@ update_airgap_rules() {
   rsync -a $UPDATE_DIR/agrules/securityonion-resources/* /nsm/securityonion-resources/
 }
 
-update_airgap_repo() {
+update_airgap_repos() {
   # Update the files in the repo
-  echo "Syncing new updates to /nsm/repo"
-  rsync -a $AGREPO/* /nsm/repo/
-  echo "Creating repo"
+  echo "Syncing new updates to /nsm/repo & /nsm/kernelrepo"
+  # using --delete to replicate so-repo-sync behavior of keeping only latest packages in local repo
+  rsync -a --delete "$AGREPO"/ /nsm/repo/
+  rsync -a --delete "$AGUEKREPO"/ /nsm/kernelrepo/
+
   dnf -y install yum-utils createrepo_c
+
+  echo "Running createrepo for /nsm/repo"
   createrepo /nsm/repo
+  echo "Running createrepo for /nsm/kernelrepo"
+  createrepo /nsm/kernelrepo
 }
 
 update_salt_mine() {
@@ -1766,7 +1773,7 @@ main() {
   set -e
 
   if [[ $is_airgap -eq 0 ]]; then
-    update_airgap_repo
+    update_airgap_repos
     dnf clean all
     check_os_updates
   elif [[ $OS == 'oracle' ]]; then
