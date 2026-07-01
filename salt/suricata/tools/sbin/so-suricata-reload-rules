@@ -7,19 +7,50 @@
 
 . /usr/sbin/so-common
 
-reload_suricata_rules() {
-  # $1 = suricatasc command (reload-rules | ruleset-reload-nonblocking)
-  local output
-  output=$(docker exec so-suricata /opt/suricata/bin/suricatasc -c "$1" /var/run/suricata/suricata-command.socket)
-  echo "$output"
-  # A reload already running is fine — the new rules get picked up by it.
-  if [[ "$output" =~ "Reload already in progress" ]]; then
-    echo "A rule reload is already in progress; treating as success."
+RULES_FILE="/opt/so/rules/suricata/all-rulesets.rules"
+SOCKET="/var/run/suricata/suricata-command.socket"
+SURICATASC="docker exec so-suricata /opt/suricata/bin/suricatasc"
+
+# Epoch mtime of the ruleset we need Suricata to have loaded. Captured once so a
+# file update mid-reload does not move the goalpost.
+target_mtime=$(stat -c %Y "$RULES_FILE") || fail "Could not stat the Suricata rules file: $RULES_FILE"
+
+# Format an epoch as a human-readable local timestamp for log messages.
+fmt_time() { date -d "@$1" '+%Y-%m-%d %H:%M:%S %Z' 2>/dev/null; }
+
+# Epoch of Suricata's last *completed* ruleset reload; non-zero return on failure.
+suricata_reload_epoch() {
+  local out ts
+  out=$($SURICATASC -c ruleset-reload-time "$SOCKET" 2>/dev/null)
+  ts=$(echo "$out" | jq -r '.message[0].last_reload // empty' 2>/dev/null)
+  [ -n "$ts" ] || return 1
+  date -d "$ts" +%s 2>/dev/null
+}
+
+# Trigger a fresh reload and confirm Suricata is running a ruleset at least as new
+# as the rules file. Returns 0 only when both hold, so retry keeps going until an
+# in-progress reload clears and our own reload completes.
+reload_and_verify() {
+  local out reload_epoch
+  out=$($SURICATASC -c reload-rules "$SOCKET")
+  echo "reload-rules: $out"
+
+  if [[ "$out" =~ "Reload already in progress" ]]; then
+    echo "A reload is already in progress; waiting for it to clear so a fresh reload can load the current ruleset."
+    return 1
+  fi
+  if [[ ! "$out" =~ '{"message":"done","return":"OK"}' ]]; then
+    echo "Suricata not ready or unexpected reload output; will retry."
+    return 1
+  fi
+
+  reload_epoch=$(suricata_reload_epoch) || { echo "Could not read ruleset-reload-time; will retry."; return 1; }
+  if [ "$reload_epoch" -ge "$target_mtime" ]; then
+    echo "Loaded ruleset is current: last reload ($(fmt_time "$reload_epoch")) is newer than rules file ($(fmt_time "$target_mtime"))."
     return 0
   fi
-  [[ "$output" =~ '{"message":"done","return":"OK"}' ]] && return 0
+  echo "Loaded ruleset is stale: last reload ($(fmt_time "$reload_epoch")) is older than rules file ($(fmt_time "$target_mtime")); retrying."
   return 1
 }
 
-retry 60 3 'reload_suricata_rules reload-rules' || fail "The Suricata container was not ready in time."
-retry 60 3 'reload_suricata_rules ruleset-reload-nonblocking' || fail "The Suricata container was not ready in time."
+retry 60 3 'reload_and_verify' || fail "Suricata did not load the current ruleset in time."
