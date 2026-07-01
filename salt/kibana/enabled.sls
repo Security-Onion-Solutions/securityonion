@@ -69,7 +69,7 @@ wait_for_so-kibana:
     - ssl: True
     - verify_ssl: False
     - status: 200
-    - wait_for: 300
+    - wait_for: 600
     - request_interval: 15
     - require:
       - docker_container: so-kibana
