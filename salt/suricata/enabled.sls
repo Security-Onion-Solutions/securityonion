@@ -66,10 +66,11 @@ so-suricata:
       - file: suriclassifications
 
 surirulereload:
-  cmd.run: 
+  cmd.run:
     - name: /usr/sbin/so-suricata-reload-rules >> /opt/so/log/suricata/reload.log 2>&1
-    - onchanges: 
+    - onchanges:
         - file: surirulesync
+    - onlyif: test -f /opt/so/rules/suricata/all-rulesets.rules
     - require:
         - docker_container: so-suricata
     

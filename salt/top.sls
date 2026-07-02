@@ -84,7 +84,6 @@ base:
     - zeek
     - strelka
     - elastalert
-    - utility
     - elasticfleet
     - pcap.cleanup
 
@@ -114,7 +113,6 @@ base:
     - zeek
     - strelka
     - elastalert
-    - utility
     - elasticfleet
     - stig
     - kafka
@@ -142,7 +140,6 @@ base:
     - elastic-fleet-package-registry
     - kibana
     - elastalert
-    - utility
     - elasticfleet
     - stig
     - kafka
@@ -169,7 +166,6 @@ base:
     - elastic-fleet-package-registry
     - kibana
     - elastalert
-    - utility
     - elasticfleet
     - kafka
 
@@ -199,7 +195,6 @@ base:
     - elastic-fleet-package-registry
     - kibana
     - elastalert
-    - utility
     - elasticfleet
     - stig
     - kafka
@@ -223,7 +218,6 @@ base:
     - elasticsearch
     - elastic-fleet-package-registry
     - kibana
-    - utility
     - suricata
     - zeek
     - elasticfleet

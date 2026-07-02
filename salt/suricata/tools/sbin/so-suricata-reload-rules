@@ -11,12 +11,11 @@ RULES_FILE="/opt/so/rules/suricata/all-rulesets.rules"
 SOCKET="/var/run/suricata/suricata-command.socket"
 SURICATASC="docker exec so-suricata /opt/suricata/bin/suricatasc"
 
-# Epoch mtime of the ruleset we need Suricata to have loaded. Captured once so a
-# file update mid-reload does not move the goalpost.
-target_mtime=$(stat -c %Y "$RULES_FILE") || fail "Could not stat the Suricata rules file: $RULES_FILE"
-
 # Format an epoch as a human-readable local timestamp for log messages.
 fmt_time() { date -d "@$1" '+%Y-%m-%d %H:%M:%S %Z' 2>/dev/null; }
+
+# Prefix each input line with the current timestamp.
+timestamp_lines() { while IFS= read -r line; do printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S %Z')" "$line"; done; }
 
 # Epoch of Suricata's last *completed* ruleset reload; non-zero return on failure.
 suricata_reload_epoch() {
@@ -53,4 +52,14 @@ reload_and_verify() {
   return 1
 }
 
-retry 60 3 'reload_and_verify' || fail "Suricata did not load the current ruleset in time."
+# Run the reload/verify, timestamping every line of output (ours and the
+# retry/fail helpers') so reload.log shows when each step ran. The pipeline is
+# synchronous, so the log is fully flushed and ordered before we exit; the
+# script's real exit code is preserved via PIPESTATUS.
+{
+  # Epoch mtime of the ruleset we need Suricata to have loaded. Captured once so
+  # a file update mid-reload does not move the goalpost.
+  target_mtime=$(stat -c %Y "$RULES_FILE") || fail "Could not stat the Suricata rules file: $RULES_FILE"
+  retry 60 3 'reload_and_verify' || fail "Suricata did not load the current ruleset in time."
+} 2>&1 | timestamp_lines
+exit "${PIPESTATUS[0]}"
