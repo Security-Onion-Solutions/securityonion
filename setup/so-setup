@@ -87,8 +87,7 @@ if [[ "$setup_type" == 'iso' ]]; then
 	if [[ $is_rpm ]]; then
 		is_iso=true
 	else
-		echo "Only use 'so-setup iso' for an ISO install on Security Onion ISO images. Please run 'so-setup network' instead."
-		fail_setup
+		fail_setup "Only use 'so-setup iso' for an ISO install on Security Onion ISO images. Please run 'so-setup network' instead."
 	fi
 fi
 
@@ -127,7 +126,7 @@ catch() {
 	info "Fatal error occurred at $1 in so-setup, failing setup."
 	grep --color=never "ERROR" "$setup_log" > "$error_log"
 	whiptail_setup_failed
-	fail_setup
+	fail_setup "Fatal error occurred at $1 in so-setup"
 }
 
 # Add the progress function for manager node type installs
@@ -235,8 +234,7 @@ case "$setup_type" in
 		info "Beginning Security Onion $setup_type install"
 		;;
 	*)
-		error "Invalid install type, must be 'iso', 'network' or 'desktop'."
-		fail_setup
+		fail_setup "Invalid install type, must be 'iso', 'network' or 'desktop'."
 		;;
 esac
 
@@ -770,8 +768,7 @@ if ! [[ -f $install_opt_file ]]; then
 		logCmd "salt-call state.apply -l info registry"
 		title "Seeding the docker registry"
 		if ! docker_seed_registry; then
-			error "Failed to seed the docker registry"
-			fail_setup
+			fail_setup "Failed to seed the docker registry"
 		fi
 		title "Applying the manager state"
 		logCmd "salt-call state.apply -l info manager"
@@ -794,8 +791,7 @@ if ! [[ -f $install_opt_file ]]; then
 		title "Setting up Elastic Fleet"
 		logCmd "salt-call state.apply elasticfleet.config"	
 		if ! logCmd so-elastic-fleet-setup; then
-			error "Failed to run so-elastic-fleet-setup"
-			fail_setup
+			fail_setup "Failed to run so-elastic-fleet-setup"
 		fi
 		mark_setup_complete
 		set_initial_firewall_access

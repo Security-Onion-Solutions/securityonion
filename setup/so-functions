@@ -29,8 +29,12 @@ title() {
 }
 
 fail_setup() {
+	local err_msg=$1
+	if [[ -n "$err_msg" ]]; then
+		error "$err_msg"
+	fi
 	error "Setup encountered an unrecoverable failure, exiting"
-	touch /root/failure
+	echo "setup incomplete: $err_msg" > /root/failure
 	exit 1
 }
 
@@ -697,7 +701,7 @@ compare_main_nic_ip() {
 			EOM
 
 		  [[ -n $TESTING ]] || whiptail --title "$whiptail_title" --msgbox "$message" 11 75
-		  kill -SIGINT "$(ps --pid $$ -oppid=)"; fail_setup
+		  kill -SIGINT "$(ps --pid $$ -oppid=)"; fail_setup "Main IP mismatch"
 	  fi
 	else
 		# Setup uses MAINIP, but since we ignore the equality condition when using a VPN 
@@ -755,8 +759,7 @@ configure_management_bond() {
 	info "Setting up $bond_name management interface with mode $bond_mode"
 
 	if [[ ${#MBNICS[@]} -eq 0 ]]; then
-		error "[ERROR] No management bond NICs were selected."
-		fail_setup
+		fail_setup "No management bond NICs selected"
 	fi
 
 	nmcli -t -f NAME con show | grep -Fxq "$bond_name"
@@ -913,8 +916,7 @@ detect_os() {
 		is_rpm=true
 		is_supported=true
 	else
-		info "This OS is not supported. Security Onion requires Oracle Linux 9."
-		fail_setup
+		fail_setup "This OS is not supported. Security Onion requires Oracle Linux 9."
 	fi
 
 	info "Found OS: $OS $OSVER"
@@ -922,7 +924,7 @@ detect_os() {
 
 download_elastic_agent_artifacts() {
 	if ! update_elastic_agent 2>&1 | tee -a "$setup_log"; then
-		fail_setup
+		fail_setup "Failed to update Elastic Agent"
 	fi
 }
 
@@ -1566,7 +1568,7 @@ proxy_validate() {
 		error "Received error: $proxy_test_err"
 		if [[ -n $TESTING ]]; then
 			error "Exiting setup"
-			kill -SIGINT "$(ps --pid $$ -oppid=)"; fail_setup
+			kill -SIGINT "$(ps --pid $$ -oppid=)"; fail_setup "Proxy validation failed"
 		fi
 	fi
 	return $ret
@@ -1773,8 +1775,7 @@ ensure_pyyaml() {
 	local result=$?
 	set +o pipefail
 	if [[ $result -ne 0 ]] || ! rpm -q python3-pyyaml >/dev/null 2>&1; then
-		error "Failed to install python3-pyyaml (exit=$result)"
-		fail_setup
+		fail_setup "Failed to install python3-pyyaml (exit=$result)"
 	fi
 	info "python3-pyyaml installed successfully"
 }
@@ -1871,7 +1872,7 @@ repo_sync_local() {
 
 	if [[ ! $is_airgap ]]; then
 		curl --retry 5 --retry-delay 60 -A "netinstall/$SOVERSION/$OS/$(uname -r)/1" https://sigs.securityonion.net/checkup --output /tmp/install
-		retry 5 60 "dnf reposync --norepopath -g --delete -m -c /opt/so/conf/reposync/repodownload.conf --repoid=securityonionsync --download-metadata -p /nsm/repo/" >> "$setup_log" 2>&1 || fail_setup
+		retry 5 60 "dnf reposync --norepopath -g --delete -m -c /opt/so/conf/reposync/repodownload.conf --repoid=securityonionsync --download-metadata -p /nsm/repo/" >> "$setup_log" 2>&1 || fail_setup "Repo sync failed"
 		# After the download is complete run createrepo
 		create_repo
 	fi
@@ -1884,10 +1885,10 @@ saltify() {
 
 	if [[ $waitforstate ]]; then
 		# install all for a manager
-		retry 30 10 "bash ../salt/salt/scripts/bootstrap-salt.sh -r -M -X stable $SALTVERSION" || fail_setup
+		retry 30 10 "bash ../salt/salt/scripts/bootstrap-salt.sh -r -M -X stable $SALTVERSION" || fail_setup "Failed to install salt master"
 	else
 		# just a minion
-		retry 30 10 "bash ../salt/salt/scripts/bootstrap-salt.sh -r -X stable $SALTVERSION" || fail_setup
+		retry 30 10 "bash ../salt/salt/scripts/bootstrap-salt.sh -r -X stable $SALTVERSION" || fail_setup "Failed to install salt minion"
 	fi
 
 	salt_install_module_deps
@@ -1959,7 +1960,7 @@ set_main_ip() {
 			info "MAINIP=$MAINIP"
 			info "MNIC_IP=$MNIC_IP"
 			whiptail_error_message "The management IP could not be determined. Please check the log at /root/sosetup.log and verify the network configuration. Select OK to exit."
-			fail_setup
+			fail_setup "Could not determine MAINIP or MNIC_IP"
 		fi
 		sleep 1
 	done
@@ -2163,7 +2164,7 @@ set_initial_firewall_access() {
 set_management_interface() {
 	title "Setting up the main interface"
 	if [[ $MNIC == "bond1" ]]; then
-		configure_management_bond || fail_setup
+		configure_management_bond || fail_setup "Failed to configure management bond"
 	fi
 
 	if [ "$address_type" = 'DHCP' ]; then
