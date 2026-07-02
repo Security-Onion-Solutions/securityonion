@@ -46,9 +46,9 @@ so-soc:
       - /opt/so/conf/soc/banner.md:/opt/sensoroni/html/login/banner.md:ro
       - /opt/so/conf/soc/sigma_so_pipeline.yaml:/opt/sensoroni/sigma_so_pipeline.yaml:ro
       - /opt/so/conf/soc/sigma_playbook_pipeline.yaml:/opt/sensoroni/sigma_playbook_pipeline.yaml:ro
-      - /opt/so/conf/soc/sigma_final_pipeline.yaml:/opt/sensoroni/sigma_final_pipeline.yaml:rw
+      - /opt/so/conf/soc/sigma_final_pipeline.yaml:/opt/sensoroni/sigma_final_pipeline.yaml:ro
       - /opt/so/conf/soc/playbook_placeholder_map.yaml:/opt/sensoroni/playbook_placeholder_map.yaml:ro
-      - /opt/so/conf/soc/playbook_placeholder_map_custom.yaml:/opt/sensoroni/playbook_placeholder_map_custom.yaml:rw
+      - /opt/so/conf/soc/playbook_placeholder_map_custom.yaml:/opt/sensoroni/playbook_placeholder_map_custom.yaml:ro
       - /opt/so/conf/soc/custom.js:/opt/sensoroni/html/js/custom.js:ro
       - /opt/so/conf/soc/custom_roles:/opt/sensoroni/rbac/custom_roles:ro
       - /opt/so/conf/soc/soc_users_roles:/opt/sensoroni/rbac/users_roles:rw
