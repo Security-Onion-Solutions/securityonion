@@ -6,6 +6,10 @@
 {% from 'repo/client/map.jinja' import REPOPATH with context %}
 {% from 'vars/globals.map.jinja' import GLOBALS %}
 
+{% import_yaml 'salt/minion.defaults.yaml' as saltversion %}
+{% set saltversion = saltversion.salt.minion.version %}
+{% set INSTALLEDSALTVERSION = grains.saltversion %}
+
 {% set role = grains.id.split('_') | last %}
 {% set MANAGER = salt['grains.get']('master') %}
 {% if grains['os'] == 'OEL' %}
@@ -56,6 +60,32 @@ so_repo:
   {% endif %}
     - enabled: 1
     - gpgcheck: 1
+
+# Only assign the kernel repo once this node's running salt matches the version this
+# SO release ships. During a soup the grid is mid-salt-upgrade; gating here keeps the
+# UEK8 kernel repo (and the kernel update it enables) from activating until the node is
+# fully on the target salt, the same way other states defer across the upgrade window.
+{% if saltversion | string == INSTALLEDSALTVERSION | string %}
+so_kernel_repo:
+  pkgrepo.managed:
+    - name: securityonionkernel
+    - humanname: Security Onion Kernel Repo
+  {% if GLOBALS.is_manager %}
+    - baseurl: file:///nsm/kernelrepo/
+  {% else %}
+    - baseurl: https://{{ GLOBALS.repo_host }}/kernelrepo
+  {% endif %}
+    - enabled: 1
+    - gpgcheck: 1
+    # Supplementary kernel repo: tolerate it being empty/unreachable (e.g. before the
+    # manager has populated /nsm/kernelrepo) so a missing repomd.xml can't make every
+    # dnf/pkg operation on the grid fail.
+    - skip_if_unavailable: 1
+    # Only assign the kernel repo once physical NIC names are pinned by MAC, so the
+    # UEK8 kernel update can't renumber interfaces SO binds by name (see pin_nic_names
+    # in salt/common/init.sls, which drops this marker via /usr/sbin/so-nic-pin).
+    - onlyif: 'test -e /opt/so/state/nic_names_pinned'
+{% endif %}
 
 {% endif %}
   
