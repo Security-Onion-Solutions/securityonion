@@ -1,0 +1,75 @@
+#!/bin/bash
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+. /usr/sbin/so-elastic-fleet-common
+
+
+# passed in as arg from elasticfleet/install_agent_grid.sls, else pulled from pillar later
+GRIDNODETOKEN="$1"
+
+check_agent_health() {
+    timeout=180
+    interval=10
+    start=$SECONDS
+
+    while (( SECONDS - start < timeout )); do
+        if elastic-agent status 2>/dev/null | grep -A1 'elastic-agent$' | grep -q 'status: (HEALTHY)'; then
+            return 0
+        fi
+        echo "elastic-agent is not yet healthy. Waiting for ${interval} seconds before checking again..."
+        sleep "$interval"
+    done
+
+    echo "elastic-agent did not become healthy within ${timeout} seconds"
+    return 1
+}
+
+if command -v elastic-agent >/dev/null 2>&1; then
+    elastic-agent uninstall -f
+fi
+
+if [[ -z "$GRIDNODETOKEN" ]]; then
+    noderole=$(so-yaml.py get -r /etc/salt/grains role)
+    if [[ "$noderole" == "so-heavynode" ]]; then
+        GRIDNODETOKEN=$(salt-call pillar.get global:fleet_grid_enrollment_token_heavy --out=newline_values_only)
+    else
+        GRIDNODETOKEN=$(salt-call pillar.get global:fleet_grid_enrollment_token_general --out=newline_values_only)
+    fi
+fi
+
+if [[ ! -x /opt/so/so-elastic-agent_linux_amd64 ]]; then
+    echo "Downloading elastic-agent installer... This could take a while if another Salt job is running."
+    salt-call state.sls_id pull_agent_installer elasticfleet.install_agent_grid queue=True
+fi
+
+if [[ -x /opt/so/so-elastic-agent_linux_amd64 ]]; then
+    attempts=0
+    cd /opt/so/ || exit 1
+
+    while [[ $attempts -lt 3 ]]; do
+        if ./so-elastic-agent_linux_amd64 -token="$GRIDNODETOKEN" -force; echo "Verifying elastic-agent health..." && check_agent_health; then
+            rm -f /opt/so/so-elastic-agent_linux_amd64
+            elastic-agent status
+
+            exit 0
+        fi
+
+        attempts=$((attempts + 1))
+
+        if [[ $attempts -lt 3 ]]; then
+            echo "so-elastic-agent installer failed. Retrying in 20 seconds..."
+            sleep 20
+        fi
+    done
+
+    echo "so-elastic-agent installer failed after 3 attempts. Exiting."
+
+    exit 1
+else
+    echo "Unable to locate so-elastic-agent installer. Exiting."
+
+    exit 1
+fi
