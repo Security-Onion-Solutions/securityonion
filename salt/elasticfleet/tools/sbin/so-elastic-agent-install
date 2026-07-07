@@ -19,11 +19,11 @@ check_agent_health() {
         if elastic-agent status 2>/dev/null | grep -A1 'elastic-agent$' | grep -q 'status: (HEALTHY)'; then
             return 0
         fi
-        echo "elastic-agent is not yet healthy. Waiting for ${interval} seconds before checking again..."
+        echo "The Elastic Agent is not yet healthy. Waiting for ${interval} seconds before checking again..."
         sleep "$interval"
     done
 
-    echo "elastic-agent did not become healthy within ${timeout} seconds"
+    echo "The Elastic Agent did not become healthy within ${timeout} seconds"
     return 1
 }
 
@@ -41,7 +41,7 @@ if [[ -z "$GRIDNODETOKEN" ]]; then
 fi
 
 if [[ ! -x /opt/so/so-elastic-agent_linux_amd64 ]]; then
-    echo "Downloading elastic-agent installer... This could take a while if another Salt job is running."
+    echo "Downloading so-elastic-agent installer... This could take a while if another Salt job is running."
     salt-call state.sls_id pull_agent_installer elasticfleet.install_agent_grid queue=True
 fi
 
@@ -50,7 +50,7 @@ if [[ -x /opt/so/so-elastic-agent_linux_amd64 ]]; then
     cd /opt/so/ || exit 1
 
     while [[ $attempts -lt 3 ]]; do
-        if ./so-elastic-agent_linux_amd64 -token="$GRIDNODETOKEN" -force; echo "Verifying elastic-agent health..." && check_agent_health; then
+        if ./so-elastic-agent_linux_amd64 -token="$GRIDNODETOKEN" -force; echo "Verifying Elastic Agent health..." && check_agent_health; then
             rm -f /opt/so/so-elastic-agent_linux_amd64
             elastic-agent status
 
@@ -60,12 +60,12 @@ if [[ -x /opt/so/so-elastic-agent_linux_amd64 ]]; then
         attempts=$((attempts + 1))
 
         if [[ $attempts -lt 3 ]]; then
-            echo "so-elastic-agent installer failed. Retrying in 20 seconds..."
+            echo "Unable to verify Elastic Agent health... Retrying in 20 seconds..."
             sleep 20
         fi
     done
 
-    echo "so-elastic-agent installer failed after 3 attempts. Exiting."
+    echo "The so-elastic-agent installer failed after 3 attempts. Exiting."
 
     exit 1
 else
