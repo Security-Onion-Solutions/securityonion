@@ -727,6 +727,16 @@ soc:
             description: Maximum length of the system prompt addendum. Longer prompts will be truncated.
             global: True
             advanced: True
+          maxSubSessionTokens:
+            description: Maximum number of output tokens a delegated sub-session may generate across all of its turns. When the budget is reached, the sub-agent is halted and its result is returned to the parent agent. Set to 0 to disable the limit.
+            global: True
+            advanced: True
+            forcedType: int
+          maxDelegationDepth:
+            description: Maximum delegation nesting depth for sub-agents. For example, a value of 2 lets the main agent delegate to a sub-agent that may itself delegate one level deeper. Any deeper delegation is refused and the requesting agent continues without it. Set to 0 to disable the limit.
+            global: True
+            advanced: True
+            forcedType: int
           adapters:
             description: Configuration for AI adapters used by the Onion AI assistant. Please see documentation for help on which fields are required for which protocols.
             global: True
@@ -765,12 +775,29 @@ soc:
               label: Health Timeout Seconds
               required: False
               forcedType: int
+          agentic:
+            description: Indicates if the Assistant Module should operate in agentic mode or not. If true, agents can work together to solve tasks.
+            global: True
+            forcedType: bool
+          agentMapping:
+            Orchestrator:
+              description: The initial agent in most agentic conversations. This agent will delegate requests to specialized agents.
+              global: True
+            Hunter:
+              description: This agent is specialized in querying events.
+              global: True
       client:
         assistant:
           enabled:
             description: Set to true to enable the Onion AI assistant in SOC.
             global: True
             forcedType: bool
+          toolBusyMaxRetries:
+            description: How many times to retry auto approving a tool while a tool is already running.
+            global: True
+          toolBusyRetryDelayMs:
+            description: How long in milliseconds to wait between each retry when auto approving a tool.
+            global: True
           investigationPrompt: 
             description: Prompt given to Onion AI when beginning an investigation.
             global: True
