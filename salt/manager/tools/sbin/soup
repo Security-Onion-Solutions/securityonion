@@ -784,6 +784,17 @@ post_to_3.1.0() {
 
 ### 3.2.0 Scripts ###
 
+recollate_postgres() {
+  echo ""
+  echo "Recollating PostgreSQL databases. The following output may contain warnings about a version mismatch, followed by a note indicating that the collation version has been changed."
+  for db in postgres securityonion so_telegraf; do
+    docker exec so-postgres psql -U postgres $db -c "reindex database $db"
+    docker exec so-postgres psql -U postgres $db -c "alter database $db refresh collation version"
+  done
+  echo "Recollating PostgreSQL databases complete."
+  echo ""
+}
+
 bootstrap_so_soc_database() {
   # init-db.sh is mounted into so-postgres at /docker-entrypoint-initdb.d/init-db.sh
   # and runs automatically only on a fresh data directory. Hosts upgrading from
@@ -804,6 +815,9 @@ bootstrap_so_soc_database() {
     return 0
   fi
   echo "Database bootstrap complete."
+
+  echo "Restarting so-soc container to pick up database changes"
+  docker restart so-soc
 }
 
 # Existing grids should keep ILM unless an admin explicitly opts in to DLM.
@@ -871,17 +885,6 @@ update_kafka_metadata() {
     else
         echo "Nothing to do!"
     fi
-}
-
-recollate_postgres() {
-  echo ""
-  echo "Recollating PostgreSQL databases. The following output may contain warnings about a version mismatch, followed by a note indicating that the collation version has been changed."
-  for db in postgres securityonion so_telegraf; do
-    docker exec so-postgres psql -U postgres $db -c "reindex database $db"
-    docker exec so-postgres psql -U postgres $db -c "alter database $db refresh collation version"
-  done
-  echo "Recollating PostgreSQL databases complete."
-  echo ""
 }
 
 up_to_3.2.0() {
