@@ -50,14 +50,22 @@ fi
 
 if [[ ! -x /opt/so/so-elastic-agent_linux_amd64 ]]; then
     echo "Downloading so-elastic-agent installer... This could take a while if another Salt job is running."
-    salt-call state.sls_id pull_agent_installer elasticfleet.install_agent_grid queue=True
-fi
 
-uninstall_agent
+    # When running outside of elasticfleet/install_agent_grid.sls we need to download the installer independently.
+    #  PYTHONWARNINGS="ignore" to avoid messages like the following when running salt-call:
+    #  '/opt/saltstack/salt/lib/python3.10/site-packages/salt/transport/base.py:129: TransportWarning: Unclosed transport! <salt.transport.zeromq.RequestClient object at 0x7fc5f0ee7a30>
+    #    File "/bin/salt-call", line 12, in <module>
+    #      sys.exit(salt_call())'
+
+    PYTHONWARNINGS="ignore" salt-call state.single file.managed name=/opt/so/so-elastic-agent_linux_amd64 source=salt://elasticfleet/files/so_agent-installers/so-elastic-agent_linux_amd64 mode=755 makedirs=True queue=True
+
+fi
 
 if [[ -x /opt/so/so-elastic-agent_linux_amd64 ]]; then
     attempts=0
     cd /opt/so/ || exit 1
+
+    uninstall_agent
 
     while [[ $attempts -lt 3 ]]; do
         if ./so-elastic-agent_linux_amd64 -token="$GRIDNODETOKEN" -force && echo "Verifying Elastic Agent health..." && check_agent_health; then
