@@ -789,7 +789,7 @@ bootstrap_so_soc_database() {
   # and runs automatically only on a fresh data directory. Hosts upgrading from
   # 3.1.0 already have /nsm/postgres populated, so the so_soc bootstrap block
   # added in 3.2 never fires. Re-run the script explicitly; it's idempotent.
-  echo "Bootstrapping so_soc database via init-db.sh."
+  echo "Bootstrapping database via init-db.sh."
   # The postgres image has no USER directive, so `docker exec` defaults to
   # root, and the container env intentionally omits POSTGRES_USER (the upstream
   # entrypoint defaults it transiently during first-init only). Recreate both
@@ -800,10 +800,10 @@ bootstrap_so_soc_database() {
     return 0
   fi
   if ! $exec_cmd; then
-    FINAL_MESSAGE_QUEUE+=("WARNING: init-db.sh failed inside so-postgres during the 3.2.0 upgrade; the so_soc database may not have been bootstrapped. Re-run manually: $exec_cmd")
+    FINAL_MESSAGE_QUEUE+=("WARNING: init-db.sh failed inside so-postgres during the 3.2.0 upgrade; the database may not have been bootstrapped. Re-run manually: $exec_cmd")
     return 0
   fi
-  echo "so_soc bootstrap complete."
+  echo "Database bootstrap complete."
 }
 
 # Existing grids should keep ILM unless an admin explicitly opts in to DLM.
@@ -873,6 +873,17 @@ update_kafka_metadata() {
     fi
 }
 
+recollate_postgres() {
+  echo ""
+  echo "Recollating PostgreSQL databases. The following output may contain warnings about a version mismatch, followed by a note indicating that the collation version has been changed."
+  for db in postgres securityonion so_telegraf; do
+    docker exec so-postgres psql -U postgres $db -c "reindex database $db"
+    docker exec so-postgres psql -U postgres $db -c "alter database $db refresh collation version"
+  done
+  echo "Recollating PostgreSQL databases complete."
+  echo ""
+}
+
 up_to_3.2.0() {
   fix_logstash_0013_lumberjack_pipeline_name
 
@@ -882,6 +893,9 @@ up_to_3.2.0() {
 }
 
 post_to_3.2.0() {
+  # Recollate due to image OS rebase
+  recollate_postgres
+
   bootstrap_so_soc_database
 
   # Including agent regen script here since it was missed in post_to_3.1.0
