@@ -874,12 +874,9 @@ update_kafka_metadata() {
 }
 
 recollate_postgres() {
-  for db in postgres securityonion so-telegraf; do
-    exec_cmd="docker exec so-postgres psql -U postgres $db -c \"reindex database $db; alter database $db refresh collation version;\""
-    if ! $exec_cmd; then
-      FINAL_MESSAGE_QUEUE+=("WARNING: recollating $db database failed. Re-run manually: $exec_cmd")
-      return 0
-    fi
+  for db in postgres securityonion so_telegraf; do
+    docker exec so-postgres psql -U postgres $db -c "reindex database $db"
+    docker exec so-postgres psql -U postgres $db -c "alter database $db refresh collation version"
   done
 }
 
