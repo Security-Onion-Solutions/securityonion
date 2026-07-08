@@ -21,11 +21,9 @@ pull_agent_installer:
 
 run_installer:
   cmd.run:
-    - name: ./so-elastic-agent_linux_amd64 -token={{ GRIDNODETOKEN }} -force
-    - cwd: /opt/so
-    - retry:
-        attempts: 3
-        interval: 20
+    - name: /usr/sbin/so-elastic-agent-install "{{ GRIDNODETOKEN }}"
+    - require:
+      - file: pull_agent_installer
 
 cleanup_agent_installer:
   file.absent:

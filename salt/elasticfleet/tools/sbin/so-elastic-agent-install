@@ -1,0 +1,95 @@
+#!/bin/bash
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+. /usr/sbin/so-elastic-fleet-common
+
+
+# passed in as arg from elasticfleet/install_agent_grid.sls, else pulled from pillar later
+GRIDNODETOKEN="$1"
+
+check_agent_health() {
+    timeout=180
+    interval=10
+    start=$SECONDS
+
+    while (( SECONDS - start < timeout )); do
+        if elastic-agent status 2>/dev/null | grep -A1 'elastic-agent$' | grep -q 'status: (HEALTHY)'; then
+            return 0
+        fi
+        echo "The Elastic Agent is not yet healthy. Waiting for ${interval} seconds before checking again..."
+        sleep "$interval"
+    done
+
+    echo "The Elastic Agent did not become healthy within ${timeout} seconds"
+    return 1
+}
+
+uninstall_agent() {
+    if command -v elastic-agent >/dev/null 2>&1; then
+        elastic-agent uninstall -f
+    fi
+}
+
+if [[ -z "$GRIDNODETOKEN" ]]; then
+    noderole=$(so-yaml.py get -r /etc/salt/grains role)
+    if [[ "$noderole" == "so-heavynode" ]]; then
+        GRIDNODETOKEN=$(salt-call pillar.get global:fleet_grid_enrollment_token_heavy --out=newline_values_only)
+    else
+        GRIDNODETOKEN=$(salt-call pillar.get global:fleet_grid_enrollment_token_general --out=newline_values_only)
+    fi
+fi
+
+if [[ -z "$GRIDNODETOKEN" ]]; then
+    echo "Unable to determine Elastic Fleet enrollment token. Exiting."
+
+    exit 1
+fi
+
+if [[ ! -x /opt/so/so-elastic-agent_linux_amd64 ]]; then
+    echo "Downloading so-elastic-agent installer... This could take a while if another Salt job is running."
+
+    # When running outside of elasticfleet/install_agent_grid.sls we need to download the installer independently.
+    #  PYTHONWARNINGS="ignore" to avoid messages like the following when running salt-call:
+    #  '/opt/saltstack/salt/lib/python3.10/site-packages/salt/transport/base.py:129: TransportWarning: Unclosed transport! <salt.transport.zeromq.RequestClient object at 0x7fc5f0ee7a30>
+    #    File "/bin/salt-call", line 12, in <module>
+    #      sys.exit(salt_call())'
+
+    PYTHONWARNINGS="ignore" salt-call state.single file.managed name=/opt/so/so-elastic-agent_linux_amd64 source=salt://elasticfleet/files/so_agent-installers/so-elastic-agent_linux_amd64 mode=755 makedirs=True queue=True
+
+fi
+
+if [[ -x /opt/so/so-elastic-agent_linux_amd64 ]]; then
+    attempts=0
+    cd /opt/so/ || exit 1
+
+    uninstall_agent
+
+    while [[ $attempts -lt 3 ]]; do
+        if ./so-elastic-agent_linux_amd64 -token="$GRIDNODETOKEN" -force && echo "Verifying Elastic Agent health..." && check_agent_health; then
+            rm -f /opt/so/so-elastic-agent_linux_amd64
+            elastic-agent status
+
+            exit 0
+        fi
+
+        attempts=$((attempts + 1))
+
+        if [[ $attempts -lt 3 ]]; then
+            echo "Unable to verify Elastic Agent health... Retrying in 20 seconds..."
+            sleep 20
+        fi
+    done
+
+    uninstall_agent
+    rm -f /opt/so/so-elastic-agent_linux_amd64
+    echo "The so-elastic-agent installer failed after 3 attempts. Exiting."
+
+    exit 1
+else
+    echo "Unable to locate so-elastic-agent installer. Exiting."
+
+    exit 1
+fi
