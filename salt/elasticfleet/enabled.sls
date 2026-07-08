@@ -11,6 +11,10 @@
 
 {#   This value is generated during node install and stored in minion pillar #}
 {%   set SERVICETOKEN = salt['pillar.get']('elasticfleet:config:server:es_token','') %}
+{#   Prevent Elastic Agent from re-enrolling with a new agent.id everytime the container starts up.
+       - if a fresh enrollment is needed use 'so-stop elasticfleet'
+       #}
+{%   set ENROLLED = salt['file.file_exists']('/opt/so/conf/elastic-fleet/state/fleet.enc') %}
 
 include:
   - ca
@@ -65,6 +69,7 @@ so-elastic-fleet:
       - /etc/pki/elasticfleet-server.crt:/etc/pki/elasticfleet-server.crt:ro
       - /etc/pki/elasticfleet-server.key:/etc/pki/elasticfleet-server.key:ro
       - /etc/pki/tls/certs/intca.crt:/etc/pki/tls/certs/intca.crt:ro
+      - /opt/so/conf/elastic-fleet/state:/usr/share/elastic-agent/state
       - /opt/so/log/elasticfleet:/usr/share/elastic-agent/logs 
      {% if DOCKERMERGED.containers['so-elastic-fleet'].custom_bind_mounts %}
         {% for BIND in DOCKERMERGED.containers['so-elastic-fleet'].custom_bind_mounts %}
@@ -72,6 +77,7 @@ so-elastic-fleet:
         {% endfor %}
       {% endif %}      
     - environment:
+      {% if not ENROLLED %}
       - FLEET_SERVER_ENABLE=true
       - FLEET_URL=https://{{ GLOBALS.hostname }}:8220
       - FLEET_SERVER_ELASTICSEARCH_HOST=https://{{ GLOBALS.manager }}:9200
@@ -81,6 +87,9 @@ so-elastic-fleet:
       - FLEET_SERVER_CERT_KEY=/etc/pki/elasticfleet-server.key
       - FLEET_CA=/etc/pki/tls/certs/intca.crt     
       - FLEET_SERVER_ELASTICSEARCH_CA=/etc/pki/tls/certs/intca.crt
+      {% endif %}
+      - STATE_PATH=/usr/share/elastic-agent/state
+      - CONFIG_PATH=/usr/share/elastic-agent/state
       - LOGS_PATH=logs
       {% if DOCKERMERGED.containers['so-elastic-fleet'].extra_env %}
         {% for XTRAENV in DOCKERMERGED.containers['so-elastic-fleet'].extra_env %}
@@ -99,6 +108,7 @@ so-elastic-fleet:
       - x509: etc_elasticfleet_crt
     - require:
       - file: trusttheca
+      - file: eastatedir
       - x509: etc_elasticfleet_key
       - x509: etc_elasticfleet_crt
 
