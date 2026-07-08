@@ -33,8 +33,6 @@ uninstall_agent() {
     fi
 }
 
-uninstall_agent
-
 if [[ -z "$GRIDNODETOKEN" ]]; then
     noderole=$(so-yaml.py get -r /etc/salt/grains role)
     if [[ "$noderole" == "so-heavynode" ]]; then
@@ -54,6 +52,8 @@ if [[ ! -x /opt/so/so-elastic-agent_linux_amd64 ]]; then
     echo "Downloading so-elastic-agent installer... This could take a while if another Salt job is running."
     salt-call state.sls_id pull_agent_installer elasticfleet.install_agent_grid queue=True
 fi
+
+uninstall_agent
 
 if [[ -x /opt/so/so-elastic-agent_linux_amd64 ]]; then
     attempts=0
