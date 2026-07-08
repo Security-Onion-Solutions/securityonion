@@ -874,10 +874,14 @@ update_kafka_metadata() {
 }
 
 recollate_postgres() {
+  echo ""
+  echo "Recollating PostgreSQL databases. The following output may contain warnings about a version mismatch, followed by a note indicating that the collation version has been changed."
   for db in postgres securityonion so_telegraf; do
     docker exec so-postgres psql -U postgres $db -c "reindex database $db"
     docker exec so-postgres psql -U postgres $db -c "alter database $db refresh collation version"
   done
+  echo "Recollating PostgreSQL databases complete."
+  echo ""
 }
 
 up_to_3.2.0() {
