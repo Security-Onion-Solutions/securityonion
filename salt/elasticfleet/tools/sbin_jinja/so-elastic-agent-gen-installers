@@ -30,7 +30,7 @@ done
 if [[ -z $FLEETHOST ]] || [[ -z $ENROLLMENTOKEN ]]; then 
   printf "\nFleet Host URL, Enrollment Token or Elastic Version empty - exiting..."
   printf "\nFleet Host: $FLEETHOST, Enrollment Token: $ENROLLMENTOKEN\n"
-  exit 
+  exit 1
 fi
 
 OSARCH=( "linux-x86_64" "windows-x86_64" "darwin-x86_64" "darwin-aarch64" )
@@ -62,31 +62,54 @@ do
 done 
 
 GOTARGETOS=( "linux" "windows" "darwin" "darwin/arm64" )
-GOARCH="amd64"
 printf "\n### Generating OS packages using the cleaned up tarballs"
-for GOOS in "${GOTARGETOS[@]}"
-do
+for GOOS in "${GOTARGETOS[@]}"; do
+    GOARCH="amd64"
     if [[ $GOOS == 'darwin/arm64' ]]; then GOOS="darwin" && GOARCH="arm64"; fi
     printf "\n\n### Generating $GOOS/$GOARCH Installer...\n"
     docker run -e CGO_ENABLED=0 -e GOOS=$GOOS -e GOARCH=$GOARCH \
     --mount type=bind,source=/etc/pki/tls/certs/,target=/workspace/files/cert/ \
     --mount type=bind,source=/nsm/elastic-agent-workspace/,target=/workspace/files/elastic-agent/ \
-    --mount type=bind,source=/opt/so/saltstack/local/salt/elasticfleet/files/so_agent-installers/,target=/output/ \
+    --mount type=bind,source=/opt/so/saltstack/local/salt/elasticfleet/files/,target=/output/ \
     {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elastic-agent-builder:{{ GLOBALS.so_version }} go build -ldflags "-X main.fleetHostURLsList=$FLEETHOST -X main.enrollmentToken=$ENROLLMENTOKEN"  -o /output/so-elastic-agent_${GOOS}_${GOARCH}
     printf "\n### $GOOS/$GOARCH Installer Generated...\n"
 done
 
 printf "\n\n### Generating MSI...\n"
-cp /opt/so/saltstack/local/salt/elasticfleet/files/so_agent-installers/so-elastic-agent_windows_amd64 /opt/so/saltstack/local/salt/elasticfleet/files/so_agent-installers/so-elastic-agent_windows_amd64.exe
+cp /opt/so/saltstack/local/salt/elasticfleet/files/so-elastic-agent_windows_amd64 /opt/so/saltstack/local/salt/elasticfleet/files/so-elastic-agent_windows_amd64.exe
 docker run \
---mount type=bind,source=/opt/so/saltstack/local/salt/elasticfleet/files/so_agent-installers/,target=/output/ -w /output \
+--mount type=bind,source=/opt/so/saltstack/local/salt/elasticfleet/files/,target=/output/ -w /output \
 {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elastic-agent-builder:{{ GLOBALS.so_version }} wixl -o so-elastic-agent_windows_amd64_msi --arch x64 /workspace/so-elastic-agent.wxs
 printf "\n### MSI Generated...\n"
 
+# Verify installers were created
+for GOOS in "${GOTARGETOS[@]}"; do
+    GOARCH="amd64"
+    if [[ $GOOS == 'darwin/arm64' ]]; then GOOS="darwin"; GOARCH="arm64"; fi
+    if [[ ! -f /opt/so/saltstack/local/salt/elasticfleet/files/so-elastic-agent_${GOOS}_${GOARCH} ]]; then
+        printf "\n### ERROR: Installer for %s/%s was not generated. Exiting...\n" "$GOOS" "$GOARCH"
+        exit 1
+    fi
+    # After verifying new installer was generated, move it to so_agent-installers directory
+    mv /opt/so/saltstack/local/salt/elasticfleet/files/so-elastic-agent_${GOOS}_${GOARCH} /opt/so/saltstack/local/salt/elasticfleet/files/so_agent-installers/
+done
+
+# Verify MSI installer
+if [[ ! -f /opt/so/saltstack/local/salt/elasticfleet/files/so-elastic-agent_windows_amd64_msi ]]; then
+    printf "\n### ERROR: Installer MSI was not generated. Exiting...\n"
+    exit 1
+else
+    # After verifying new installer MSI was generated, move it to so_agent-installers directory
+    mv /opt/so/saltstack/local/salt/elasticfleet/files/so-elastic-agent_windows_amd64_msi /opt/so/saltstack/local/salt/elasticfleet/files/so_agent-installers/
+fi
+
 printf "\n### Cleaning up temp files \n"
 rm -rf /nsm/elastic-agent-workspace
-rm -rf /opt/so/saltstack/local/salt/elasticfleet/files/so_agent-installers/so-elastic-agent_windows_amd64.exe
+rm -rf /opt/so/saltstack/local/salt/elasticfleet/files/so-elastic-agent_windows_amd64.exe
 
 printf "\n### Copying so_agent-installers to /nsm/elastic-fleet/ for nginx.\n"
 \cp -vr /opt/so/saltstack/local/salt/elasticfleet/files/so_agent-installers/ /nsm/elastic-fleet/
 chmod 644 /nsm/elastic-fleet/so_agent-installers/*
+
+# if we got here all installers have been generated successfully
+exit 0
