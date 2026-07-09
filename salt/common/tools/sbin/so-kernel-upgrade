@@ -5,37 +5,56 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 #
-# so-kernel-upgrade — install the UEK8 (6.x) kernel if needed and make it the boot default.
+# so-kernel-upgrade — install the UEK8 (6.x) kernel and make it the boot default.
 #
-# Security Onion is moving off the EL9 stock kernel (RHCK, 5.14) / UEK7 (5.15) onto UEK8 (6.x).
-# Two separate things have to happen, and neither is automatic:
+# Security Onion is moving off the EL9 stock kernel (RHCK, 5.14) and UEK7 (5.15) onto UEK8
+# (6.x). Three things have to happen, and none of them are automatic:
 #
-#   1. Install it. A node running RHCK has no kernel-uek* package at all, so 'dnf update'
-#      never pulls UEK8 in — there is nothing to upgrade. The kernel-uek metapackage has to
-#      be installed explicitly from the securityonionkernel repo.
-#   2. Boot it. Installing kernel-uek-core adds a UEK8 boot entry but does NOT make it the
-#      default: kernel-install/grubby only auto-promote a new kernel within the running
-#      kernel's flavor lineage, and we're crossing from a 5.x kernel to the new 6.x UEK
-#      flavor. So even with UPDATEDEFAULT=yes and DEFAULTKERNEL=kernel-uek-core the box
-#      keeps booting the old kernel until grubby is told otherwise.
+#   1. Populate. The manager mirrors the UEK8 packages into /nsm/kernelrepo via so-repo-sync,
+#      and serves them to the grid over https://<manager>/kernelrepo. Until that sync runs the
+#      repo is valid but EMPTY -- dnf resolves it happily and installs nothing, with no error.
+#   2. Install. A node on RHCK has no kernel-uek* package at all, so there is nothing for
+#      'dnf update' to upgrade. A node on UEK7 does have kernel-uek installed, so
+#      'dnf install kernel-uek' reports "Nothing to do" and exits 0 without installing 6.x.
+#      Both cases need an explicit install of the UEK8 NEVRA.
+#   3. Boot it. Installing kernel-uek-core adds a UEK8 boot entry but does NOT make it the
+#      default: kernel-install/grubby only auto-promote within the running kernel's flavor
+#      lineage, and we're crossing from 5.x to the 6.x UEK flavor. So even with
+#      UPDATEDEFAULT=yes and DEFAULTKERNEL=kernel-uek-core the box keeps booting the old
+#      kernel until grubby is told otherwise.
 #
-# This tool does both, then points DEFAULTKERNEL at kernel-uek-core so later kernel updates
-# stay on the UEK line.
+# Every one of those failure modes is silent by default. This tool does all three and fails
+# loudly when it cannot, rather than reporting success while changing nothing.
+#
+# Manager vs minion: only the manager owns /nsm/kernelrepo, so only the manager can populate
+# it. If the repo is empty here, a manager runs so-repo-sync itself; a minion has no way to
+# fix it and exits non-zero telling the admin to sync the manager first.
 #
 # Idempotent: an already-installed, already-default UEK8 kernel is left alone. It only sets
-# the boot default; it does NOT reboot — the admin reboots the node on their own schedule.
+# the boot default; it does NOT reboot -- the admin reboots the node on their own schedule.
+
+. /usr/sbin/so-common
 
 KERNEL_REPO="securityonionkernel"
 KERNEL_PKG="kernel-uek"
+KERNEL_REPO_DIR="/nsm/kernelrepo"
+REPOSYNC_CONF="/opt/so/conf/reposync/repodownload.conf"
+GLOBAL_PILLAR="/opt/so/saltstack/local/pillar/global/soc_global.sls"
 
 log() { echo "[so-kernel-upgrade] $*"; }
+die() { echo "[so-kernel-upgrade] ERROR: $*" >&2; exit 1; }
 
-[ "$(id -u)" -eq 0 ] || { log "must run as root"; exit 1; }
-command -v grubby >/dev/null 2>&1 || { log "grubby not found"; exit 1; }
-command -v dnf >/dev/null 2>&1 || { log "dnf not found"; exit 1; }
+command -v grubby >/dev/null 2>&1 || die "grubby not found"
+command -v dnf >/dev/null 2>&1 || die "dnf not found"
+
+ARCH="$(rpm -E '%{_arch}')"
+
+is_airgap() {
+    [ -f "$GLOBAL_PILLAR" ] && grep -q 'airgap: *[Tt]rue' "$GLOBAL_PILLAR"
+}
 
 # Newest installed UEK8 (6.x) kernel known to the bootloader. UEK8 vmlinuz paths look like
-# /boot/vmlinuz-6.12.0-203.76.7.5.el9uek.x86_64; the 5.15 UEK7 and 5.14 RHCK won't match.
+# /boot/vmlinuz-6.12.0-204.92.4.2.el9uek.x86_64; UEK7 (5.15) and RHCK (5.14) won't match.
 find_uek8() {
     grubby --info=ALL 2>/dev/null \
         | sed -n 's/^kernel="\(.*\)"$/\1/p' \
@@ -43,28 +62,86 @@ find_uek8() {
         | sort -V | tail -1
 }
 
+# Newest UEK8 kernel-uek NEVRA offered by the kernel repo, empty if the repo has none.
+# Restricted to the kernel repo so a UEK7 kernel-uek in the main repo can't be picked up,
+# and filtered to 6.x so we never "succeed" by reinstalling the 5.15 we already have.
+uek8_available() {
+    dnf -q repoquery --disablerepo='*' --enablerepo="$KERNEL_REPO" \
+        --arch="$ARCH" --latest-limit=1 \
+        --qf '%{name}-%{evr}.%{arch}\n' "$KERNEL_PKG" 2>/dev/null \
+        | grep -E "^${KERNEL_PKG}-6\." | tail -1
+}
+
+kernelrepo_rpm_count() {
+    find "$KERNEL_REPO_DIR" -maxdepth 1 -name '*.rpm' 2>/dev/null | wc -l
+}
+
+# The kernel repo starts life as valid-but-empty (kernelrepo_init_empty in
+# salt/manager/init.sls) and is filled by so-repo-sync. During a soup, so-repo-sync runs
+# BEFORE the highstate deploys the [securityonionkernel] section into repodownload.conf, so
+# the first kernel-aware soup leaves the repo empty until the next nightly sync.
+sync_kernel_repo() {
+    if is_airgap; then
+        log "airgap install: $KERNEL_REPO_DIR is populated from the airgap ISO, not by so-repo-sync."
+        return 1
+    fi
+    if ! grep -q "^\[${KERNEL_REPO}\]" "$REPOSYNC_CONF" 2>/dev/null; then
+        log "$REPOSYNC_CONF has no [${KERNEL_REPO}] section -- run a highstate to deploy it."
+        return 1
+    fi
+
+    log "populating $KERNEL_REPO_DIR with so-repo-sync (mirrors upstream; can take several minutes)"
+    su socore -c '/usr/sbin/so-repo-sync' || { log "so-repo-sync failed"; return 1; }
+
+    dnf -q clean expire-cache >/dev/null 2>&1
+    return 0
+}
+
+# Make the kernel repo actually able to serve a UEK8 package, or fail trying.
+ensure_kernel_repo() {
+    # The repo is assigned by the repo.client highstate, and only once NICs are pinned by MAC
+    # (/opt/so/state/nic_names_pinned) so the kernel swap can't renumber interfaces SO binds
+    # by name. skip_if_unavailable=1 means a broken repo is silently ignored, so check first.
+    if ! dnf -q repolist --enabled 2>/dev/null | awk '{print $1}' | grep -qx "$KERNEL_REPO"; then
+        log "repo '$KERNEL_REPO' is not enabled on this node."
+        log "Run a highstate first; the repo is skipped until /opt/so/state/nic_names_pinned"
+        log "exists (run so-nic-pin) and this node's salt matches the version this release ships."
+        die "kernel repo unavailable"
+    fi
+
+    [ -n "$(uek8_available)" ] && return 0
+
+    log "repo '$KERNEL_REPO' is enabled but offers no UEK8 $KERNEL_PKG package"
+
+    if ! is_manager_node; then
+        log "This is a minion; it consumes the kernel repo from the manager and cannot populate it."
+        log "On the manager, run:  su socore -c /usr/sbin/so-repo-sync"
+        log "then re-run this script here."
+        die "manager's kernel repo is empty"
+    fi
+
+    log "this is a manager and $KERNEL_REPO_DIR holds $(kernelrepo_rpm_count) rpm(s)"
+    sync_kernel_repo || die "could not populate $KERNEL_REPO_DIR"
+
+    [ -n "$(uek8_available)" ] \
+        || die "so-repo-sync completed but $KERNEL_REPO still offers no UEK8 $KERNEL_PKG"
+}
+
 target="$(find_uek8)"
 
 if [ -z "$target" ]; then
-    log "no UEK8 kernel installed — installing $KERNEL_PKG from $KERNEL_REPO"
+    log "no UEK8 kernel installed (running $(uname -r))"
 
-    # The repo is assigned by the repo.client highstate, and only once NICs are pinned by MAC
-    # (/opt/so/state/nic_names_pinned) so the kernel swap can't renumber interfaces SO binds
-    # by name. Without the repo we'd silently pull nothing, so fail loudly instead.
-    if ! dnf -q repolist --enabled 2>/dev/null | awk '{print $1}' | grep -qx "$KERNEL_REPO"; then
-        log "ERROR: repo '$KERNEL_REPO' is not enabled on this node."
-        log "Run a highstate first; it is skipped until /opt/so/state/nic_names_pinned exists"
-        log "(run so-nic-pin) and this node's salt matches the version this release ships."
-        exit 1
-    fi
+    ensure_kernel_repo
+    nevra="$(uek8_available)"
 
-    dnf -y install "$KERNEL_PKG" || { log "ERROR: failed to install $KERNEL_PKG"; exit 1; }
+    # Install the explicit NEVRA, not the bare package name. On a UEK7 node 'dnf install
+    # kernel-uek' sees kernel-uek-5.15 already installed, prints "Nothing to do" and exits 0.
+    log "installing $nevra from $KERNEL_REPO"
+    dnf -y install "$nevra" || die "failed to install $nevra"
 
     target="$(find_uek8)"
-    if [ -z "$target" ]; then
-        log "ERROR: $KERNEL_PKG installed but no 6.x UEK boot entry appeared — check 'grubby --info=ALL'"
-        exit 1
-    fi
+    [ -n "$target" ] || die "$nevra installed but no 6.x UEK boot entry appeared -- check 'grubby --info=ALL'"
     log "installed UEK8 kernel: $target"
 fi
 
@@ -75,24 +152,25 @@ if [ -f /etc/sysconfig/kernel ] && ! grep -q '^DEFAULTKERNEL=kernel-uek-core$' /
     sed -i 's/^DEFAULTKERNEL=.*/DEFAULTKERNEL=kernel-uek-core/' /etc/sysconfig/kernel
 fi
 
+reboot_notice() {
+    [ "$(uname -r)" = "$(basename "$1" | sed 's/^vmlinuz-//')" ] \
+        || log "REBOOT REQUIRED to start using the UEK8 kernel (currently running $(uname -r))."
+}
+
 current="$(grubby --default-kernel 2>/dev/null)"
 if [ "$current" = "$target" ]; then
     log "UEK8 kernel is already the boot default: $target"
-    [ "$(uname -r)" = "$(basename "$target" | sed 's/^vmlinuz-//')" ] \
-        || log "REBOOT REQUIRED to start using it (currently running $(uname -r))."
+    reboot_notice "$target"
     exit 0
 fi
 
 log "current default kernel: ${current:-unknown}"
 log "switching boot default to UEK8 kernel: $target"
-grubby --set-default="$target" || { log "ERROR: grubby --set-default failed for $target"; exit 1; }
+grubby --set-default="$target" || die "grubby --set-default failed for $target"
 
 # Verify the change actually took before claiming success.
 now="$(grubby --default-kernel 2>/dev/null)"
-if [ "$now" != "$target" ]; then
-    log "ERROR: default kernel is still '${now:-unknown}' after set-default"
-    exit 1
-fi
+[ "$now" = "$target" ] || die "default kernel is still '${now:-unknown}' after set-default"
 
 log "boot default is now $target"
-log "REBOOT REQUIRED to start using the UEK8 kernel (currently running $(uname -r))."
+reboot_notice "$target"
