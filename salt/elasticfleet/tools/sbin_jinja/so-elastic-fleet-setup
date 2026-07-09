@@ -245,10 +245,17 @@ printf '%s\n'\
 
 # Call Elastic-Fleet Salt State
 printf "\nApplying elasticfleet state\n"
-if ! salt-call state.apply elasticfleet queue=True; then
-    printf "\nFailure(s) in elasticfleet state... Exiting...\n"
-    exit 1
-fi
+for state_attempt in {1..3}; do
+    if salt-call state.apply elasticfleet queue=True; then
+        break
+    elif [[ $state_attempt -lt 3 ]]; then
+        printf "\nElasticfleet state did not complete successfully... Attempt (%s/3). Retrying...\n" "$state_attempt"
+        sleep 10
+    else
+        printf "\nFailure(s) in elasticfleet state... Exiting...\n"
+        exit 1
+    fi
+done
 
 # Generate installers & install Elastic Agent on the node
 for agent_gen_attempt in {1..3}; do
