@@ -131,11 +131,14 @@ salt_minion_service:
 {% endif %}
     - order: last
 
-# block until the just-restarted salt-minion is back and can execute modules locally, so
-# follow-on jobs and the next highstate iteration do not race the restart. onchanges +
-# require on salt_minion_service catches every restart trigger uniformly because watch
-# mod_watch results replace the service state's running entry. wait logic lives in
-# /usr/sbin/so-salt-minion-wait (deployed by common_sbin from common/tools/sbin/).
+# block until the just-restarted salt-minion daemon logs "Minion is ready to receive requests!"
+# for the current instance, so follow-on jobs and the next highstate iteration do not race the
+# restart. onchanges + require on salt_minion_service catches every restart trigger uniformly
+# because watch mod_watch results replace the service state's running entry. wait logic lives in
+# /usr/sbin/so-salt-minion-wait (deployed by salt_sbin from salt/tools/sbin/); it keys the ready
+# line to the current daemon pid (resolved via systemd, not the pidfile) and corroborates with the
+# master req/publish sockets. set_log_levels above enforces the log_level_logfile: info that the
+# ready line depends on.
 wait_for_salt_minion_ready:
   cmd.run:
     - name: /usr/sbin/so-salt-minion-wait
