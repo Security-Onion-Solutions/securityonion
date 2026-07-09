@@ -10,6 +10,15 @@
 {% set AGENT_STATUS = salt['service.available']('elastic-agent') %}
 {% set AGENT_EXISTS = salt['file.file_exists']('/opt/Elastic/Agent/elastic-agent') %}
 
+so-elastic-agent-install:
+  file.managed:
+    - name: /usr/sbin/so-elastic-agent-install
+    - source: salt://elasticfleet/tools/sbin/so-elastic-agent-install
+    - user: 947
+    - group: 939
+    - mode: 755
+    - show_changes: False
+
 {% if not AGENT_STATUS or not AGENT_EXISTS %}
 
 pull_agent_installer:
