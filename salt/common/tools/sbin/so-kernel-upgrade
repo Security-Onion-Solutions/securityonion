@@ -8,7 +8,7 @@
 # so-kernel-upgrade — install the UEK8 (6.x) kernel and make it the boot default.
 #
 # Security Onion is moving off the EL9 stock kernel (RHCK, 5.14) and UEK7 (5.15) onto UEK8
-# (6.x). Three things have to happen, and none of them are automatic:
+# (6.x). Three things have to happen, and the tool has to drive each one:
 #
 #   1. Populate. The manager mirrors the UEK8 packages into /nsm/kernelrepo via so-repo-sync,
 #      and serves them to the grid over https://<manager>/kernelrepo. Until that sync runs the
@@ -17,13 +17,17 @@
 #      'dnf update' to upgrade. A node on UEK7 does have kernel-uek installed, so
 #      'dnf install kernel-uek' reports "Nothing to do" and exits 0 without installing 6.x.
 #      Both cases need an explicit install of the UEK8 NEVRA.
-#   3. Boot it. Installing kernel-uek-core adds a UEK8 boot entry but does NOT make it the
-#      default: kernel-install/grubby only auto-promote within the running kernel's flavor
-#      lineage, and we're crossing from 5.x to the 6.x UEK flavor. So even with
-#      UPDATEDEFAULT=yes and DEFAULTKERNEL=kernel-uek-core the box keeps booting the old
-#      kernel until grubby is told otherwise.
+#   3. Boot it. Whether a newly installed UEK8 kernel becomes the boot default depends on the
+#      RUNNING kernel's flavor. kernel-install/grubby (with UPDATEDEFAULT=yes) only auto-promote
+#      within the running kernel's flavor lineage:
+#        - From UEK7 (5.x, kernel-uek) the install stays in the kernel-uek lineage and IS
+#          auto-promoted, so no grubby change is needed -- just make sure the repo is populated
+#          and install UEK8.
+#        - From the stock EL9 kernel (RHCK, 5.14, no UEK) it is a flavor CROSS that is NOT
+#          auto-promoted, so the box keeps booting RHCK until grubby is told otherwise.
+#      This tool inspects the running kernel and only runs 'grubby --set-default' for RHCK.
 #
-# Every one of those failure modes is silent by default. This tool does all three and fails
+# Every one of those failure modes is silent by default. This tool handles each case and fails
 # loudly when it cannot, rather than reporting success while changing nothing.
 #
 # Manager vs minion: only the manager owns /nsm/kernelrepo, so only the manager can populate
@@ -60,6 +64,19 @@ find_uek8() {
         | sed -n 's/^kernel="\(.*\)"$/\1/p' \
         | grep -E '/vmlinuz-6\.[0-9]+.*uek' \
         | sort -V | tail -1
+}
+
+# Classify the RUNNING kernel (uname -r) -- this, not what's installed, is what decides whether
+# a UEK8 install auto-promotes to the boot default:
+#   uek8  6.x UEK    already on the target line; nothing to do
+#   uek7  5.x UEK    a UEK8 install stays in the kernel-uek lineage and auto-promotes (no grubby)
+#   rhck  5.14 EL9   crossing into the UEK flavor does NOT auto-promote (needs grubby --set-default)
+running_flavor() {
+    case "$(uname -r)" in
+        6.*uek*) echo uek8 ;;
+        *uek*)   echo uek7 ;;
+        *)       echo rhck ;;
+    esac
 }
 
 # Newest UEK8 kernel-uek NEVRA offered by the kernel repo, empty if the repo has none.
@@ -127,50 +144,96 @@ ensure_kernel_repo() {
         || die "so-repo-sync completed but $KERNEL_REPO still offers no UEK8 $KERNEL_PKG"
 }
 
-target="$(find_uek8)"
-
-if [ -z "$target" ]; then
-    log "no UEK8 kernel installed (running $(uname -r))"
-
-    ensure_kernel_repo
-    nevra="$(uek8_available)"
-
-    # Install the explicit NEVRA, not the bare package name. On a UEK7 node 'dnf install
-    # kernel-uek' sees kernel-uek-5.15 already installed, prints "Nothing to do" and exits 0.
-    log "installing $nevra from $KERNEL_REPO"
-    dnf -y install "$nevra" || die "failed to install $nevra"
-
-    target="$(find_uek8)"
-    [ -n "$target" ] || die "$nevra installed but no 6.x UEK boot entry appeared -- check 'grubby --info=ALL'"
-    log "installed UEK8 kernel: $target"
-fi
-
-# Keep future kernel updates on the UEK line rather than falling back to RHCK. Oracle ships
-# this file; only rewrite it when it's actually pointing somewhere else.
-if [ -f /etc/sysconfig/kernel ] && ! grep -q '^DEFAULTKERNEL=kernel-uek-core$' /etc/sysconfig/kernel; then
-    log "setting DEFAULTKERNEL=kernel-uek-core in /etc/sysconfig/kernel"
-    sed -i 's/^DEFAULTKERNEL=.*/DEFAULTKERNEL=kernel-uek-core/' /etc/sysconfig/kernel
-fi
-
 reboot_notice() {
     [ "$(uname -r)" = "$(basename "$1" | sed 's/^vmlinuz-//')" ] \
         || log "REBOOT REQUIRED to start using the UEK8 kernel (currently running $(uname -r))."
 }
 
-current="$(grubby --default-kernel 2>/dev/null)"
-if [ "$current" = "$target" ]; then
-    log "UEK8 kernel is already the boot default: $target"
-    reboot_notice "$target"
+# Keep future kernel updates on the UEK line rather than falling back to RHCK. Oracle ships
+# /etc/sysconfig/kernel; only rewrite it when it's actually pointing somewhere else.
+set_default_kernel_conf() {
+    if [ -f /etc/sysconfig/kernel ] && ! grep -q '^DEFAULTKERNEL=kernel-uek-core$' /etc/sysconfig/kernel; then
+        log "setting DEFAULTKERNEL=kernel-uek-core in /etc/sysconfig/kernel"
+        sed -i 's/^DEFAULTKERNEL=.*/DEFAULTKERNEL=kernel-uek-core/' /etc/sysconfig/kernel
+    fi
+}
+
+# Make sure a UEK8 kernel is installed, leaving its boot entry in INSTALLED_UEK8. If one is
+# already present we leave the repo alone -- it may be disabled or empty and we don't need it
+# just to flip the boot default. Otherwise install the explicit NEVRA, not the bare package
+# name: on a UEK7 node 'dnf install kernel-uek' sees 5.15 already present, prints "Nothing to
+# do" and exits 0 without installing 6.x.
+ensure_uek8_installed() {
+    INSTALLED_UEK8="$(find_uek8)"
+    if [ -n "$INSTALLED_UEK8" ]; then
+        log "UEK8 kernel already installed: $INSTALLED_UEK8"
+        return 0
+    fi
+
+    ensure_kernel_repo
+    local nevra; nevra="$(uek8_available)"
+    log "installing $nevra from $KERNEL_REPO"
+    dnf -y install "$nevra" || die "failed to install $nevra"
+
+    INSTALLED_UEK8="$(find_uek8)"
+    [ -n "$INSTALLED_UEK8" ] || die "$nevra installed but no 6.x UEK boot entry appeared -- check 'grubby --info=ALL'"
+    log "installed UEK8 kernel: $INSTALLED_UEK8"
+}
+
+case "$(running_flavor)" in
+uek8)
+    # Already on the 6.x UEK line. A plain 'dnf update' keeps this node current within the
+    # lineage and auto-promotes newer builds, so there is nothing for this tool to do.
+    log "already running a UEK8 kernel ($(uname -r)); nothing to do."
     exit 0
-fi
+    ;;
 
-log "current default kernel: ${current:-unknown}"
-log "switching boot default to UEK8 kernel: $target"
-grubby --set-default="$target" || die "grubby --set-default failed for $target"
+uek7)
+    # On a 5.x UEK kernel. Installing UEK8 stays inside the kernel-uek lineage, so dnf/grubby
+    # (UPDATEDEFAULT=yes) auto-promote it and we do NOT touch grubby. A node still on UEK7
+    # usually means the kernel repo was empty when it last updated, so populate it and install.
+    log "running UEK7 kernel ($(uname -r)); the kernel repo was likely not yet populated when"
+    log "this node last updated. Populating it and installing UEK8 -- the update stays on the"
+    log "kernel-uek line, so it becomes the boot default automatically (no grubby change needed)."
+    set_default_kernel_conf
+    ensure_uek8_installed
 
-# Verify the change actually took before claiming success.
-now="$(grubby --default-kernel 2>/dev/null)"
-[ "$now" = "$target" ] || die "default kernel is still '${now:-unknown}' after set-default"
+    now="$(grubby --default-kernel 2>/dev/null)"
+    if [ "$now" = "$INSTALLED_UEK8" ]; then
+        log "boot default auto-promoted to UEK8 kernel: $INSTALLED_UEK8"
+    else
+        log "WARNING: expected the UEK8 kernel to auto-promote but the default is still"
+        log "'${now:-unknown}'. Run 'grubby --set-default=$INSTALLED_UEK8' to force it."
+    fi
+    reboot_notice "$INSTALLED_UEK8"
+    ;;
 
-log "boot default is now $target"
-reboot_notice "$target"
+rhck)
+    # On the stock EL9 kernel (5.14, no UEK installed). Crossing from RHCK into the UEK flavor
+    # does NOT auto-promote -- kernel-install/grubby only auto-promote within the running
+    # kernel's flavor lineage -- so after installing we must set the boot default explicitly.
+    log "running stock EL9 (RHCK) kernel ($(uname -r)); installing UEK8 and setting it as the"
+    log "boot default explicitly (a RHCK->UEK flavor change does not auto-promote)."
+    set_default_kernel_conf
+    ensure_uek8_installed
+    target="$INSTALLED_UEK8"
+
+    current="$(grubby --default-kernel 2>/dev/null)"
+    if [ "$current" = "$target" ]; then
+        log "UEK8 kernel is already the boot default: $target"
+        reboot_notice "$target"
+        exit 0
+    fi
+
+    log "current default kernel: ${current:-unknown}"
+    log "switching boot default to UEK8 kernel: $target"
+    grubby --set-default="$target" || die "grubby --set-default failed for $target"
+
+    # Verify the change actually took before claiming success.
+    now="$(grubby --default-kernel 2>/dev/null)"
+    [ "$now" = "$target" ] || die "default kernel is still '${now:-unknown}' after set-default"
+
+    log "boot default is now $target"
+    reboot_notice "$target"
+    ;;
+esac
