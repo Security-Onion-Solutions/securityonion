@@ -9,14 +9,19 @@
 
 # passed in as arg from elasticfleet/install_agent_grid.sls, else pulled from pillar later
 GRIDNODETOKEN="$1"
+LOGFILE="/opt/so/SO-Elastic-Agent_Installer_Health.log"
 
 check_agent_health() {
-    timeout=180
+    timeout=300
     interval=10
     start=$SECONDS
 
+    truncate -s 0 "$LOGFILE"
+
     while (( SECONDS - start < timeout )); do
-        if elastic-agent status 2>/dev/null | grep -A1 'elastic-agent$' | grep -q 'status: (HEALTHY)'; then
+        agent_status=$(elastic-agent status 2>&1)
+        echo -e "\n$(date)\n$agent_status\n" >> "$LOGFILE"
+        if echo "$agent_status" | grep -A1 'elastic-agent$' | grep -q 'status: (HEALTHY)'; then
             return 0
         fi
         echo "The Elastic Agent is not yet healthy. Waiting for ${interval} seconds before checking again..."
