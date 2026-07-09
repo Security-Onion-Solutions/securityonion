@@ -39,7 +39,11 @@
 
 . /usr/sbin/so-common
 
+# Client-side repo id (what dnf enables on this node, from repo/client/oracle.sls) vs the
+# reposync-side section in repodownload.conf that the manager mirrors from (mirrors the
+# securityonion/securityonionsync split for the main repo).
 KERNEL_REPO="securityonionkernel"
+KERNEL_REPO_SYNC="securityonionkernelsync"
 KERNEL_PKG="kernel-uek"
 KERNEL_REPO_DIR="/nsm/kernelrepo"
 REPOSYNC_CONF="/opt/so/conf/reposync/repodownload.conf"
@@ -95,15 +99,15 @@ kernelrepo_rpm_count() {
 
 # The kernel repo starts life as valid-but-empty (kernelrepo_init_empty in
 # salt/manager/init.sls) and is filled by so-repo-sync. During a soup, so-repo-sync runs
-# BEFORE the highstate deploys the [securityonionkernel] section into repodownload.conf, so
+# BEFORE the highstate deploys the [securityonionkernelsync] section into repodownload.conf, so
 # the first kernel-aware soup leaves the repo empty until the next nightly sync.
 sync_kernel_repo() {
     if is_airgap; then
         log "airgap install: $KERNEL_REPO_DIR is populated from the airgap ISO, not by so-repo-sync."
         return 1
     fi
-    if ! grep -q "^\[${KERNEL_REPO}\]" "$REPOSYNC_CONF" 2>/dev/null; then
-        log "$REPOSYNC_CONF has no [${KERNEL_REPO}] section -- run a highstate to deploy it."
+    if ! grep -q "^\[${KERNEL_REPO_SYNC}\]" "$REPOSYNC_CONF" 2>/dev/null; then
+        log "$REPOSYNC_CONF has no [${KERNEL_REPO_SYNC}] section -- run a highstate to deploy it."
         return 1
     fi
 
