@@ -16,8 +16,6 @@ check_agent_health() {
     interval=10
     start=$SECONDS
 
-    truncate -s 0 "$LOGFILE"
-
     while (( SECONDS - start < timeout )); do
         agent_status=$(elastic-agent status 2>&1)
         echo -e "\n$(date)\n$agent_status\n" >> "$LOGFILE"
@@ -69,6 +67,8 @@ fi
 if [[ -x /opt/so/so-elastic-agent_linux_amd64 ]]; then
     attempts=0
     cd /opt/so/ || exit 1
+
+    truncate -s 0 "$LOGFILE"
 
     uninstall_agent
 
