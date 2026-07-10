@@ -18,6 +18,7 @@
 
 QUIET=false
 UPTIME_REQ=1800 #in seconds, how long the box has to be up before considering restarting salt-minion due to /opt/so/log/salt/state-apply-test not being touched
+HIGHSTATE_UPTIME_REQ=900 #in seconds; if the box has been up this long and no highstate has completed since boot, force one
 CURRENT_TIME=$(date +%s)
 SYSTEM_START_TIME=$(date -d "$(</proc/uptime awk '{print $1}') seconds ago" +%s)
 LAST_HIGHSTATE_END=$([ -e "/opt/so/log/salt/lasthighstate" ] && date -r /opt/so/log/salt/lasthighstate +%s || echo 0)
@@ -76,6 +77,8 @@ done
 
 log "running so-salt-minion-check"
 
+RESTARTED=false
+
 if [ $CURRENT_TIME -ge $((SYSTEM_START_TIME+$UPTIME_REQ))  ]; then
   if [ $THRESHOLD_DATE -le $CURRENT_TIME ]; then
     log "salt-minion is unable to apply states" E
@@ -93,9 +96,24 @@ if [ $CURRENT_TIME -ge $((SYSTEM_START_TIME+$UPTIME_REQ))  ]; then
     logCmd "systemctl start salt-minion" I
     log "waiting for salt-minion to become ready, then applying highstate in the background (queued)" I
     nohup bash -c '/usr/sbin/so-salt-minion-wait; salt-call state.highstate queue=True' >> "/opt/so/log/salt/so-salt-minion-check" 2>&1 &
+    RESTARTED=true
   else
     log "/opt/so/log/salt/healthcheck-state-apply last touched: `date -d @$LAST_HEALTHCHECK_STATE_APPLY` must be touched by `date -d @$THRESHOLD_DATE` to avoid salt-minion restart" I
   fi
 else
   log "system uptime only $((CURRENT_TIME-SYSTEM_START_TIME)) seconds does not meet $UPTIME_REQ second requirement." I
+fi
+
+# If the host has been up long enough but no highstate has completed since this boot,
+# force one. This recovers a host whose boot highstate (so-boot-highstate.service) failed
+# or was skipped, even while the minion is otherwise healthy (touching state-apply-test).
+# We deliberately do NOT enable highstate here: if soup has disabled it during an upgrade,
+# Salt will refuse the highstate and we avoid forcing one mid-upgrade.
+if ! $RESTARTED && [ $CURRENT_TIME -ge $((SYSTEM_START_TIME+HIGHSTATE_UPTIME_REQ)) ] && [ $LAST_HIGHSTATE_END -lt $SYSTEM_START_TIME ]; then
+  if salt-call --local saltutil.running 2>/dev/null | grep -q 'state.highstate'; then
+    log "no highstate has completed since boot, but one is already running; skipping" I
+  else
+    log "no highstate has completed since boot after $((CURRENT_TIME-SYSTEM_START_TIME))s uptime; applying highstate" E
+    nohup bash -c 'salt-call state.highstate -l info queue=True' >> "/opt/so/log/salt/so-salt-minion-check" 2>&1 &
+  fi
 fi
