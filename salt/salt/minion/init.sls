@@ -138,7 +138,8 @@ salt_minion_service:
 # /usr/sbin/so-salt-minion-wait (deployed by salt_sbin from salt/tools/sbin/); it keys the ready
 # line to the current daemon pid (resolved via systemd, not the pidfile) and corroborates with the
 # master req/publish sockets. set_log_levels above enforces the log_level_logfile: info that the
-# ready line depends on.
+# ready line depends on. salt restarts this unit with --no-block, so mod_watch returns while the old
+# daemon is still up; the script waits for systemd's restart job to drain before it reads MainPID.
 wait_for_salt_minion_ready:
   cmd.run:
     - name: /usr/sbin/so-salt-minion-wait

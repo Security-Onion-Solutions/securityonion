@@ -26,6 +26,14 @@
 # logs the ready line, while systemd's MainPID is the parent. During a restart the pidfile can still
 # name the OLD child, whose own ready line is already in the log -- matching it would report ready
 # instantly. Children of the current MainPID structurally exclude the old instance.
+#
+# That is only true once systemd has actually swapped MainPID. Salt restarts this unit with
+# --no-block (salt/modules/systemd_service.py:_no_block_default returns True for salt-minion), so
+# service.restart returns as soon as the job is enqueued and the state proceeds to run this script
+# while the OLD daemon is still up -- observed at ~7s before MainPID flips. Reading MainPID in that
+# window names the outgoing instance, which is still fully connected and has its own ready line, so
+# every gate below would pass on the daemon that is about to die. Wait for systemd's job queue for
+# the unit to drain first; that is the deterministic "the swap has happened" signal.
 
 . /usr/sbin/so-common
 
@@ -75,6 +83,13 @@ elif [ "$USE_LOG_GATE" -eq 1 ]; then
 else
   echo "so-salt-minion-wait: INFO file logging unavailable (log_level_logfile='${LOG_LEVEL_LOGFILE:-unset}'); gating on master sockets only"
 fi
+
+# True while systemd still has a queued or running job for the unit, i.e. an in-flight --no-block
+# restart. MainPID still names the outgoing daemon until this drains. The unit name is passed as a
+# filter and grepped as well, so this stays correct if an older systemctl ignores the filter.
+restart_pending() {
+  systemctl list-jobs --no-legend salt-minion.service 2>/dev/null | grep -q 'salt-minion\.service'
+}
 
 # Emit the pid(s) of the current daemon instance. systemd's MainPID is the parent keepalive process;
 # its child runs tune_in. Fall back to MainPID when there is no child (--disable-keepalive path).
@@ -134,8 +149,16 @@ sleep "$INITIAL_SLEEP"
 
 elapsed="$INITIAL_SLEEP"
 pids=""
+announced_pending=0
 while [ "$elapsed" -lt "$TIMEOUT" ]; do
-  if pids=$(resolve_daemon_pids); then
+  if restart_pending; then
+    # An in-flight --no-block restart: MainPID still names the outgoing daemon. Evaluating now
+    # would bless the instance that is about to be torn down.
+    if [ "$announced_pending" -eq 0 ]; then
+      echo "so-salt-minion-wait: systemd restart job in flight; waiting for it to drain"
+      announced_pending=1
+    fi
+  elif pids=$(resolve_daemon_pids); then
     # shellcheck disable=SC2086
     for pid in $pids; do
       if instance_ready "$pid"; then
@@ -149,5 +172,6 @@ while [ "$elapsed" -lt "$TIMEOUT" ]; do
 done
 
 mainpid=$(systemctl show -p MainPID --value salt-minion 2>/dev/null)
-echo "salt-minion did not become ready within ${TIMEOUT}s (MainPID=${mainpid:-unknown}, candidate pids='${pids:-none}', log_gate=${USE_LOG_GATE}, socket_gate=${USE_SOCKET_GATE}, log_file=${LOG_FILE})" >&2
+restart_pending && pending=yes || pending=no
+echo "salt-minion did not become ready within ${TIMEOUT}s (MainPID=${mainpid:-unknown}, candidate pids='${pids:-none}', restart_job_pending=${pending}, log_gate=${USE_LOG_GATE}, socket_gate=${USE_SOCKET_GATE}, log_file=${LOG_FILE})" >&2
 exit 1
