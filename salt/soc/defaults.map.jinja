@@ -8,6 +8,7 @@
 {% from 'docker/docker.map.jinja' import DOCKERMERGED -%}
 {% set INFLUXDB_TOKEN = salt['pillar.get']('influxdb:token') %}
 {% import_text 'influxdb/metrics_link.txt' as METRICS_LINK %}
+{% from 'telegraf/map.jinja' import TELEGRAFMERGED %}
 
 {% for module, application_url in GLOBALS.application_urls.items() %}
 {%   do SOCDEFAULTS.soc.config.server.modules[module].update({'hostUrl': application_url}) %}
@@ -24,13 +25,22 @@
 
 {% do SOCDEFAULTS.soc.config.server.modules.elastic.update({'username': GLOBALS.elasticsearch.auth.users.so_elastic_user.user, 'password': GLOBALS.elasticsearch.auth.users.so_elastic_user.pass}) %}
 
-{% do SOCDEFAULTS.soc.config.server.modules.influxdb.update({'hostUrl': 'https://' ~ GLOBALS.influxdb_host ~ ':8086'}) %}
-{% do SOCDEFAULTS.soc.config.server.modules.influxdb.update({'token': INFLUXDB_TOKEN}) %}
-{% for tool in SOCDEFAULTS.soc.config.server.client.tools %}
-{%   if tool.name == "toolInfluxDb" and METRICS_LINK | length > 0 %}
-{%     do tool.update({'link': METRICS_LINK}) %}
-{%   endif %}
-{% endfor %}
+{% if TELEGRAFMERGED.output == 'POSTGRES' %}
+{%   for tool in SOCDEFAULTS.soc.config.server.client.tools %}
+{%     if tool.name == "toolInfluxDb" %}
+{%       do SOCDEFAULTS.soc.config.server.client.tools.remove(tool) %}
+{%     endif %}
+{%   endfor %}
+
+{% else %}
+{%   do SOCDEFAULTS.soc.config.server.modules.influxdb.update({'hostUrl': 'https://' ~ GLOBALS.influxdb_host ~ ':8086'}) %}
+{%   do SOCDEFAULTS.soc.config.server.modules.influxdb.update({'token': INFLUXDB_TOKEN}) %}
+{%   for tool in SOCDEFAULTS.soc.config.server.client.tools %}
+{%     if tool.name == "toolInfluxDb" and METRICS_LINK | length > 0 %}
+{%       do tool.update({'link': METRICS_LINK}) %}
+{%     endif %}
+{%   endfor %}
+{% endif %}
 
 {% do SOCDEFAULTS.soc.config.server.modules.statickeyauth.update({'anonymousCidr': DOCKERMERGED.range, 'apiKey': pillar.sensoroni.config.sensoronikey}) %}
 
