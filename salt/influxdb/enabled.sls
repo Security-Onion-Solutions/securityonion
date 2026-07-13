@@ -9,6 +9,9 @@
 {%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   set PASSWORD = salt['pillar.get']('secrets:influx_pass') %}
 {%   set TOKEN = salt['pillar.get']('influxdb:token') %}
+{%   from 'docker/macros/docker_endpoint.jinja' import clear_stale_endpoint %}
+
+{{ clear_stale_endpoint('so-influxdb', 'sobridge', DOCKERMERGED.containers['so-influxdb'].ip) }}
 
 include:
   - influxdb.ssl

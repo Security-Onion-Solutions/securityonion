@@ -16,6 +16,9 @@
 {%   set KAFKANODES = salt['pillar.get']('kafka:nodes') %}
 {%   set KAFKA_EXTERNAL_ACCESS = salt['pillar.get']('kafka:config:external_access:enabled', default=False) %}
 {%   if 'gmd' in salt['pillar.get']('features', []) %}
+{%   from 'docker/macros/docker_endpoint.jinja' import clear_stale_endpoint %}
+
+{{ clear_stale_endpoint('so-kafka', 'sobridge', DOCKERMERGED.containers['so-kafka'].ip) }}
 
 include:
   - kafka.ca

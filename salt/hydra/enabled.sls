@@ -14,6 +14,9 @@
 {%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 {%   if 'api' in salt['pillar.get']('features', []) %}
+{%   from 'docker/macros/docker_endpoint.jinja' import clear_stale_endpoint %}
+
+{{ clear_stale_endpoint('so-hydra', 'sobridge', DOCKERMERGED.containers['so-hydra'].ip) }}
 
 include:
   - hydra.config

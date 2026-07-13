@@ -7,6 +7,9 @@
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
+{%   from 'docker/macros/docker_endpoint.jinja' import clear_stale_endpoint %}
+
+{{ clear_stale_endpoint('so-strelka-frontend', 'sobridge', DOCKERMERGED.containers['so-strelka-frontend'].ip, state_id='strelka_frontend') }}
 
 include:
   - strelka.frontend.config

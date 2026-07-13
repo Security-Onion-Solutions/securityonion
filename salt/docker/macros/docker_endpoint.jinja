@@ -1,0 +1,12 @@
+{% macro clear_stale_endpoint(container, network, ipv4, state_id=None) %}
+{{ container }}_{{ network }}_stale_endpoint:
+  cmd.run:
+    - name: docker network disconnect -f {{ network }} {{ container }} || true
+    - onlyif: docker inspect {{ container }}
+    - unless: >-
+        docker inspect -f
+        '{{ '{{' }} with index .NetworkSettings.Networks "{{ network }}" {{ '}}' }}{{ '{{' }} .IPAMConfig.IPv4Address {{ '}}' }}{{ '{{' }} end {{ '}}' }}'
+        {{ container }} 2>/dev/null | grep -qx '{{ ipv4 }}'
+    - require_in:
+      - docker_container: {{ state_id or container }}
+{% endmacro %}

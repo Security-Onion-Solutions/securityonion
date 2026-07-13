@@ -8,6 +8,9 @@
 {%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   from 'elasticsearch/config.map.jinja' import ELASTICSEARCHMERGED %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
+{%   from 'docker/macros/docker_endpoint.jinja' import clear_stale_endpoint %}
+
+{{ clear_stale_endpoint('so-kibana', 'sobridge', DOCKERMERGED.containers['so-kibana'].ip) }}
 
 include:
   - kibana.config

@@ -8,6 +8,7 @@
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 {%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   from 'nginx/map.jinja' import NGINXMERGED %}
+{%   from 'docker/macros/docker_endpoint.jinja' import clear_stale_endpoint %}
 
 include:
   - nginx.ssl
@@ -30,6 +31,8 @@ make-rule-dir-nginx:
 {#     if this is an so-fleet node then we want to use the port bindings, custom bind mounts defined for fleet #}
 {%     set container_config = 'so-nginx-fleet-node' %}
 {%   endif %}
+
+{{ clear_stale_endpoint('so-nginx', 'sobridge', DOCKERMERGED.containers[container_config].ip) }}
 
 so-nginx:
   docker_container.running:

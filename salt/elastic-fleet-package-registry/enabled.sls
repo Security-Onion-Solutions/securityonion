@@ -7,6 +7,9 @@
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 {%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
+{%   from 'docker/macros/docker_endpoint.jinja' import clear_stale_endpoint %}
+
+{{ clear_stale_endpoint('so-elastic-fleet-package-registry', 'sobridge', DOCKERMERGED.containers['so-elastic-fleet-package-registry'].ip) }}
 
 include:
   - elastic-fleet-package-registry.config

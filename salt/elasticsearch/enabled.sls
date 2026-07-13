@@ -10,6 +10,9 @@
 {%   from 'elasticsearch/config.map.jinja' import ELASTICSEARCH_NODES %}
 {%   from 'elasticsearch/config.map.jinja' import ELASTICSEARCH_SEED_HOSTS %}
 {%   from 'elasticsearch/config.map.jinja' import ELASTICSEARCHMERGED %}
+{%   from 'docker/macros/docker_endpoint.jinja' import clear_stale_endpoint %}
+
+{{ clear_stale_endpoint('so-elasticsearch', 'sobridge', DOCKERMERGED.containers['so-elasticsearch'].ip) }}
 
 include:
   - ca

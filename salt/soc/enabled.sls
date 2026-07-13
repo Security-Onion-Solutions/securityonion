@@ -10,6 +10,9 @@
 {%   from 'soc/merged.map.jinja' import DOCKER_EXTRA_HOSTS %}
 {%   from 'soc/merged.map.jinja' import SOCMERGED %}
 
+{% from 'docker/macros/docker_endpoint.jinja' import clear_stale_endpoint %}
+{{ clear_stale_endpoint('so-soc', 'sobridge', DOCKERMERGED.containers['so-soc'].ip) }}
+
 include:
   - ca
   - soc.config

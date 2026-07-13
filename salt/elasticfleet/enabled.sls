@@ -8,6 +8,7 @@
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 {%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   from 'elasticfleet/map.jinja' import ELASTICFLEETMERGED %}
+{%   from 'docker/macros/docker_endpoint.jinja' import clear_stale_endpoint %}
 
 {#   This value is generated during node install and stored in minion pillar #}
 {%   set SERVICETOKEN = salt['pillar.get']('elasticfleet:config:server:es_token','') %}
@@ -43,6 +44,8 @@ elasticagent_syncartifacts:
 {% endif %}
 
 {%   if SERVICETOKEN != '' %}
+{{ clear_stale_endpoint('so-elastic-fleet', 'sobridge', DOCKERMERGED.containers['so-elastic-fleet'].ip) }}
+
 so-elastic-fleet:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elastic-agent:{{ GLOBALS.so_version }}

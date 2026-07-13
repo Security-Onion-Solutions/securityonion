@@ -10,6 +10,9 @@
 {%   from 'logstash/map.jinja' import LOGSTASH_MERGED %}
 {%   from 'logstash/map.jinja' import LOGSTASH_NODES %}
 {%   set lsheap = LOGSTASH_MERGED.settings.lsheap %}
+{%   from 'docker/macros/docker_endpoint.jinja' import clear_stale_endpoint %}
+
+{{ clear_stale_endpoint('so-logstash', 'sobridge', DOCKERMERGED.containers['so-logstash'].ip) }}
 
 include:
   - ca

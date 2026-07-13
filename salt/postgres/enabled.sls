@@ -8,6 +8,9 @@
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 {%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   set SO_POSTGRES_USER = salt['pillar.get']('postgres:auth:users:so_postgres_user:user', 'so_postgres') %}
+{%   from 'docker/macros/docker_endpoint.jinja' import clear_stale_endpoint %}
+
+{{ clear_stale_endpoint('so-postgres', 'sobridge', DOCKERMERGED.containers['so-postgres'].ip) }}
 
 include:
   - postgres.auth
