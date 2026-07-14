@@ -12,7 +12,17 @@
 UPDATE_DIR=/tmp/sogh/securityonion
 DEFAULT_SALT_DIR=/opt/so/saltstack/default
 INSTALLEDVERSION=$(cat /etc/soversion)
-POSTVERSION=$INSTALLEDVERSION
+# /etc/sopostversion is a soup-owned marker (no salt state manages it) tracking how
+# far the post-upgrade walk has progressed. Its presence means a prior upgrade did
+# not finish its post-upgrade steps; its contents are the resume point. It is read
+# here before preupgrade_changes mutates INSTALLEDVERSION and before any highstate
+# stamps /etc/soversion from the pillar.
+POSTVERSION_FILE=/etc/sopostversion
+if [ -f "$POSTVERSION_FILE" ]; then
+  POSTVERSION=$(cat "$POSTVERSION_FILE")
+else
+  POSTVERSION=$INSTALLEDVERSION
+fi
 INSTALLEDSALTVERSION=$(salt --versions-report | grep Salt: | awk '{print $2}')
 BATCHSIZE=5
 SOUP_LOG=/root/soup.log
@@ -414,6 +424,13 @@ preupgrade_changes() {
     true
 }
 
+set_postversion() {
+    # Persist post-upgrade walk progress so an interrupted upgrade can resume the
+    # remaining steps on the next soup run (see /etc/sopostversion handling).
+    POSTVERSION="$1"
+    echo "$POSTVERSION" > "$POSTVERSION_FILE"
+}
+
 postupgrade_changes() {
     # This function is to add any new pillar items if needed.
     echo "Running post upgrade processes."
@@ -421,6 +438,8 @@ postupgrade_changes() {
     [[ "$POSTVERSION" =~ ^2\.4\.21[0-9]+$ ]] && post_to_3.0.0
     [[ "$POSTVERSION" == "3.0.0" ]] && post_to_3.1.0
     [[ "$POSTVERSION" == "3.1.0" ]] && post_to_3.2.0
+    # All applicable post-upgrade steps completed; clear the resume marker.
+    rm -f "$POSTVERSION_FILE"
     true
 }
 
@@ -513,7 +532,7 @@ post_to_3.0.0() {
   # convert yes/no in suricata pillars to true/false
   convert_suricata_yes_no
 
-  POSTVERSION=3.0.0
+  set_postversion 3.0.0
 }
 
 ### 3.0.0 End ###
@@ -776,7 +795,7 @@ post_to_3.1.0() {
   # Check for unhealthy / unauthorized integration transform jobs and attempt reauthorizations
   check_transform_health_and_reauthorize || true
 
-  POSTVERSION=3.1.0
+  set_postversion 3.1.0
 }
 
 ### 3.1.0 End ###
@@ -911,7 +930,7 @@ post_to_3.2.0() {
 
   update_kafka_metadata "4.3"
 
-  POSTVERSION=3.2.0
+  set_postversion 3.2.0
 }
 
 ### 3.2.0 End ###
@@ -1063,6 +1082,14 @@ upgrade_check() {
   fi
   [[ -f /etc/sohotfix ]] && CURRENTHOTFIX=$(cat /etc/sohotfix)
   if [ "$INSTALLEDVERSION" == "$NEWVERSION" ]; then
+    # A leftover post-version marker means a previous upgrade to this version
+    # advanced /etc/soversion (the highstate stamps it from the pillar) but did not
+    # finish its post-upgrade steps. Resume the upgrade instead of reporting "latest".
+    if [ -f "$POSTVERSION_FILE" ] && [ "$(cat "$POSTVERSION_FILE")" != "$NEWVERSION" ]; then
+      echo "A previous upgrade to $NEWVERSION did not complete its post-upgrade steps; resuming."
+      is_hotfix=false
+      return 0
+    fi
     echo "Checking to see if there are hotfixes needed"
     if [ "$HOTFIXVERSION" == "$CURRENTHOTFIX" ]; then
       echo "You are already running the latest version of Security Onion."
@@ -1814,9 +1841,14 @@ main() {
     create_local_directories "/opt/so/saltstack/default"
     apply_hotfix
     echo "Hotfix applied"
-    update_version
     enable_highstate
     highstate
+    # Record the hotfix only after the highstate succeeds. /etc/sohotfix is written
+    # solely by soup (no salt state manages it), so deferring the write means a failed
+    # hotfix highstate leaves the old hotfix value and re-running soup re-applies it,
+    # rather than reporting "already latest". The soversion/pillar writes in
+    # update_version are no-ops here since the version is unchanged for a hotfix.
+    update_version
   else
     echo ""
     echo "Performing upgrade from Security Onion $INSTALLEDVERSION to Security Onion $NEWVERSION."
@@ -1873,6 +1905,10 @@ main() {
     copy_new_files
     echo ""
     create_local_directories "/opt/so/saltstack/default"
+    # Seed the resume marker before the highstate stamps /etc/soversion to the new
+    # version, so an interrupted upgrade is detectable as "not finished" on re-run.
+    # POSTVERSION still holds the pre-upgrade (or prior resume) version here.
+    [ -f "$POSTVERSION_FILE" ] || echo "$POSTVERSION" > "$POSTVERSION_FILE"
     update_version
 
     echo ""
