@@ -19,6 +19,7 @@ include:
 so-postgres:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-postgres:{{ GLOBALS.so_version }}
+    - restart_policy: unless-stopped
     - hostname: so-postgres
     - networks:
       - sobridge:

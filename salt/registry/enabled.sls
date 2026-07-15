@@ -17,14 +17,13 @@ include:
 so-dockerregistry:
   docker_container.running:
     - image: ghcr.io/security-onion-solutions/registry:3.1.1
+    # Intentionally `always`-- registry is critical and must
+    # come back up even if it was manually stopped.
+    - restart_policy: always
     - hostname: so-registry
     - networks:
       - sobridge:
         - ipv4_address: {{ DOCKERMERGED.containers['so-dockerregistry'].ip }}
-    # Intentionally `always` (not unless-stopped) -- registry is critical infra
-    # and must come back up even if it was manually stopped. Do not homogenize
-    # to unless-stopped; see the container auto-restart section of the plan.
-    - restart_policy: always
     - port_bindings:
       {% for BINDING in DOCKERMERGED.containers['so-dockerregistry'].port_bindings %}
       - {{ BINDING }}

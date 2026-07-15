@@ -22,6 +22,7 @@ include:
 so-hydra:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-hydra:{{ GLOBALS.so_version }}
+    - restart_policy: unless-stopped
     - hostname: hydra
     - name: so-hydra
     - networks:
@@ -58,8 +59,6 @@ so-hydra:
       - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
     {%   endfor %}
     {% endif %}
-    # Intentionally unless-stopped -- matches the fleet default.
-    - restart_policy: unless-stopped
     - watch:
       - file: hydraconfig
     - require:

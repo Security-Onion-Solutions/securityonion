@@ -12,7 +12,17 @@
 UPDATE_DIR=/tmp/sogh/securityonion
 DEFAULT_SALT_DIR=/opt/so/saltstack/default
 INSTALLEDVERSION=$(cat /etc/soversion)
-POSTVERSION=$INSTALLEDVERSION
+# /etc/sopostversion is a soup-owned marker (no salt state manages it) tracking how
+# far the post-upgrade walk has progressed. Its presence means a prior upgrade did
+# not finish its post-upgrade steps; its contents are the resume point. It is read
+# here before preupgrade_changes mutates INSTALLEDVERSION and before any highstate
+# stamps /etc/soversion from the pillar.
+POSTVERSION_FILE=/etc/sopostversion
+if [ -f "$POSTVERSION_FILE" ]; then
+  POSTVERSION=$(cat "$POSTVERSION_FILE")
+else
+  POSTVERSION=$INSTALLEDVERSION
+fi
 INSTALLEDSALTVERSION=$(salt --versions-report | grep Salt: | awk '{print $2}')
 BATCHSIZE=5
 SOUP_LOG=/root/soup.log
@@ -23,6 +33,10 @@ NOTIFYCUSTOMELASTICCONFIG=false
 TOPFILE=/opt/so/saltstack/default/salt/top.sls
 BACKUPTOPFILE=/opt/so/saltstack/default/salt/top.sls.backup
 SALTUPGRADED=false
+# Set true once soup begins modifying the system (past the pre-flight checks), so the
+# EXIT trap can tell the user the update did not finish and must be re-run. Only the
+# pre-flight gates (ES compatibility, disk, network) fail before this is set.
+SOUP_UPGRADE_STARTED=false
 SALT_CLOUD_INSTALLED=false
 SALT_CLOUD_CONFIGURED=false
 # Check if salt-cloud is installed
@@ -122,6 +136,28 @@ check_err() {
     fi
 
     echo "SOUP XTRACE debug log (if enabled) at $SOUP_DEBUG_LOG. Re-run soup with SOUP_DEBUG=1 to create $SOUP_DEBUG_LOG"
+
+    # If soup had already started modifying the system, make it unmistakable that the
+    # update is incomplete and must be re-run. soup is resumable: a version upgrade
+    # picks up from the /etc/sopostversion marker, and a hotfix re-applies because
+    # /etc/sohotfix is only advanced after a successful highstate.
+    if [[ "$SOUP_UPGRADE_STARTED" == "true" ]]; then
+      echo ""
+      echo "=============================================================================="
+      echo " UPGRADE INCOMPLETE"
+      echo "=============================================================================="
+      echo " This soup run did NOT finish. Your Security Onion installation may be in a"
+      echo " partially-updated state and is not yet fully upgraded."
+      echo ""
+      echo " Review the error above and $SOUP_LOG, resolve the underlying problem, then"
+      echo " run soup again to resume and complete the update:"
+      echo ""
+      echo "     sudo soup"
+      echo ""
+      echo " soup is resumable -- re-running it continues from where this run stopped."
+      echo "=============================================================================="
+      echo ""
+    fi
 
     exit $exit_code
   fi
@@ -291,6 +327,30 @@ check_pillar_items() {
   fi
 }
 
+check_cluster_health() {
+  echo "Checking Elasticsearch cluster health."
+  # Require a 'green' cluster before upgrading; anything less (yellow, red, or
+  # unreachable) blocks. Modeled on the wait used in so-elasticsearch-roles-load.
+  if so-elasticsearch-query "_cluster/health?wait_for_status=green&timeout=120s" --fail > /dev/null 2>&1; then
+    printf "\nThe Elasticsearch cluster is healthy (green). We can proceed with SOUP.\n\n"
+  else
+    printf "\nThe Elasticsearch cluster is not green. Please resolve the cluster health issue so the cluster is green before running SOUP again.\n\n"
+    exit 0
+  fi
+}
+
+check_fleet_server() {
+  echo "Checking that Elastic Fleet Server is responding."
+  # Modeled on the wait_for_so-elastic-fleet state check in elasticfleet/enabled.sls,
+  # which waits for HTTP 200 from the Fleet Server status API.
+  if curl -sk --fail --retry 3 --retry-delay 10 --max-time 30 "https://localhost:8220/api/status" > /dev/null 2>&1; then
+    printf "\nElastic Fleet Server is responding. We can proceed with SOUP.\n\n"
+  else
+    printf "\nElastic Fleet Server is not responding at https://localhost:8220/api/status. Please ensure Elastic Fleet is healthy before running SOUP again.\n\n"
+    exit 0
+  fi
+}
+
 check_saltmaster_status() {
   set +e
   echo "Waiting on the Salt Master service to be ready."
@@ -414,6 +474,13 @@ preupgrade_changes() {
     true
 }
 
+set_postversion() {
+    # Persist post-upgrade walk progress so an interrupted upgrade can resume the
+    # remaining steps on the next soup run (see /etc/sopostversion handling).
+    POSTVERSION="$1"
+    echo "$POSTVERSION" > "$POSTVERSION_FILE"
+}
+
 postupgrade_changes() {
     # This function is to add any new pillar items if needed.
     echo "Running post upgrade processes."
@@ -421,6 +488,8 @@ postupgrade_changes() {
     [[ "$POSTVERSION" =~ ^2\.4\.21[0-9]+$ ]] && post_to_3.0.0
     [[ "$POSTVERSION" == "3.0.0" ]] && post_to_3.1.0
     [[ "$POSTVERSION" == "3.1.0" ]] && post_to_3.2.0
+    # All applicable post-upgrade steps completed; clear the resume marker.
+    rm -f "$POSTVERSION_FILE"
     true
 }
 
@@ -513,7 +582,7 @@ post_to_3.0.0() {
   # convert yes/no in suricata pillars to true/false
   convert_suricata_yes_no
 
-  POSTVERSION=3.0.0
+  set_postversion 3.0.0
 }
 
 ### 3.0.0 End ###
@@ -692,7 +761,7 @@ ensure_postgres_local_pillar() {
 }
 
 ensure_salt_local_pillar() {
-  # The salt.auto_apply settings (moved from global.push) are a new SOC settings
+  # The salt.auto_apply settings are a new SOC settings
   # module, so the new pillar/top.sls references salt.soc_salt / salt.adv_salt
   # unconditionally. Managers upgrading from before this change have no
   # /opt/so/saltstack/local/pillar/salt/ (make_some_dirs only runs at install
@@ -755,7 +824,6 @@ fix_logstash_0013_lumberjack_pipeline_name() {
 up_to_3.1.0() {
   ensure_postgres_local_pillar
   ensure_postgres_secret
-  determine_elastic_agent_upgrade
   elasticsearch_backup_index_templates
   # Clear existing component template state file.
   rm -f /opt/so/state/esfleet_component_templates.json
@@ -792,19 +860,30 @@ post_to_3.1.0() {
   # Check for unhealthy / unauthorized integration transform jobs and attempt reauthorizations
   check_transform_health_and_reauthorize || true
 
-  POSTVERSION=3.1.0
+  set_postversion 3.1.0
 }
 
 ### 3.1.0 End ###
 
 ### 3.2.0 Scripts ###
 
+recollate_postgres() {
+  echo ""
+  echo "Recollating PostgreSQL databases. The following output may contain warnings about a version mismatch, followed by a note indicating that the collation version has been changed."
+  for db in postgres securityonion so_telegraf; do
+    docker exec so-postgres psql -U postgres $db -c "reindex database $db"
+    docker exec so-postgres psql -U postgres $db -c "alter database $db refresh collation version"
+  done
+  echo "Recollating PostgreSQL databases complete."
+  echo ""
+}
+
 bootstrap_so_soc_database() {
   # init-db.sh is mounted into so-postgres at /docker-entrypoint-initdb.d/init-db.sh
   # and runs automatically only on a fresh data directory. Hosts upgrading from
   # 3.1.0 already have /nsm/postgres populated, so the so_soc bootstrap block
   # added in 3.2 never fires. Re-run the script explicitly; it's idempotent.
-  echo "Bootstrapping so_soc database via init-db.sh."
+  echo "Bootstrapping database via init-db.sh."
   # The postgres image has no USER directive, so `docker exec` defaults to
   # root, and the container env intentionally omits POSTGRES_USER (the upstream
   # entrypoint defaults it transiently during first-init only). Recreate both
@@ -815,10 +894,13 @@ bootstrap_so_soc_database() {
     return 0
   fi
   if ! $exec_cmd; then
-    FINAL_MESSAGE_QUEUE+=("WARNING: init-db.sh failed inside so-postgres during the 3.2.0 upgrade; the so_soc database may not have been bootstrapped. Re-run manually: $exec_cmd")
+    FINAL_MESSAGE_QUEUE+=("WARNING: init-db.sh failed inside so-postgres during the 3.2.0 upgrade; the database may not have been bootstrapped. Re-run manually: $exec_cmd")
     return 0
   fi
-  echo "so_soc bootstrap complete."
+  echo "Database bootstrap complete."
+
+  echo "Restarting so-soc container to pick up database changes"
+  docker restart so-soc
 }
 
 # Existing grids should keep ILM unless an admin explicitly opts in to DLM.
@@ -891,6 +973,9 @@ update_kafka_metadata() {
 up_to_3.2.0() {
   ensure_salt_local_pillar
 
+  # download 9.3.7 elastic agent packages
+  determine_elastic_agent_upgrade
+
   fix_logstash_0013_lumberjack_pipeline_name
 
   pin_elasticsearch_data_retention_method
@@ -899,9 +984,12 @@ up_to_3.2.0() {
 }
 
 post_to_3.2.0() {
+  # Recollate due to image OS rebase
+  recollate_postgres
+
   bootstrap_so_soc_database
 
-  # Including agent regen script here since it was missed in post_to_3.1.0
+  # Generate 9.3.7 elastic agent installers
   echo "Regenerating Elastic Agent Installers"
   /sbin/so-elastic-agent-gen-installers
 
@@ -909,7 +997,7 @@ post_to_3.2.0() {
 
   update_kafka_metadata "4.3"
 
-  POSTVERSION=3.2.0
+  set_postversion 3.2.0
 }
 
 ### 3.2.0 End ###
@@ -1061,8 +1149,20 @@ upgrade_check() {
   fi
   [[ -f /etc/sohotfix ]] && CURRENTHOTFIX=$(cat /etc/sohotfix)
   if [ "$INSTALLEDVERSION" == "$NEWVERSION" ]; then
+    # A leftover post-version marker means a previous upgrade to this version
+    # advanced /etc/soversion (the highstate stamps it from the pillar) but did not
+    # finish its post-upgrade steps. Resume the upgrade instead of reporting "latest".
+    if [ -f "$POSTVERSION_FILE" ] && [ "$(cat "$POSTVERSION_FILE")" != "$NEWVERSION" ]; then
+      echo "A previous upgrade to $NEWVERSION did not complete its post-upgrade steps; resuming."
+      is_hotfix=false
+      return 0
+    fi
     echo "Checking to see if there are hotfixes needed"
     if [ "$HOTFIXVERSION" == "$CURRENTHOTFIX" ]; then
+      # Reaching here means we are at the target version and NOT resuming (the resume
+      # check above returned otherwise). Clear any stale resume marker so a completed
+      # upgrade is never mistaken for a partial one and re-run on a later invocation.
+      rm -f "$POSTVERSION_FILE"
       echo "You are already running the latest version of Security Onion."
       exit 0
     else
@@ -1174,7 +1274,8 @@ verify_es_version_compatibility() {
         ["8.18.4"]="8.18.6 8.18.8 9.0.8"
 	    ["8.18.6"]="8.18.8 9.0.8"
 	    ["8.18.8"]="9.0.8"
-        ["9.0.8"]="9.3.3"
+        ["9.0.8"]="9.3.3 9.3.7"
+        ["9.3.3"]="9.3.7"
     )
 
     # Elasticsearch MUST upgrade through these versions
@@ -1757,6 +1858,15 @@ main() {
   set_minionid
   MINION_ROLE=$(lookup_role)
   echo "Found that Security Onion $INSTALLEDVERSION is currently installed."
+  # /etc/soversion is stamped to the target version before the upgrade fully
+  # completes, so a lingering resume marker means this grid is only partially
+  # upgraded even though the line above shows the target version. Make that explicit
+  # so it is not mistaken for a finished upgrade.
+  if [ -f "$POSTVERSION_FILE" ] && [ "$(cat "$POSTVERSION_FILE")" != "$INSTALLEDVERSION" ]; then
+    echo ""
+    echo "NOTE: A previous upgrade to $INSTALLEDVERSION did not finish. This grid is"
+    echo "      partially upgraded and this soup run will resume and complete it."
+  fi
   echo ""
   check_minimum_version
 
@@ -1785,6 +1895,12 @@ main() {
   echo "Verifying Elasticsearch version compatibility across the grid before upgrading."
   verify_es_version_compatibility
 
+  # Pre-flight health checks: confirm the grid is in a good state before we change
+  # anything. These run before any modifications, so a failure exits cleanly and the
+  # operator can fix the issue and re-run soup.
+  check_cluster_health
+  check_fleet_server
+
   echo "Checking for Salt Master and Minion updates."
   upgrade_check_salt
   set -e
@@ -1801,6 +1917,7 @@ main() {
   fi
 
   if [ "$is_hotfix" == "true" ]; then
+    SOUP_UPGRADE_STARTED=true
     echo "Applying $HOTFIXVERSION hotfix"
     # since we don't run the backup.config_backup state on import we wont snapshot previous version states and pillars
     if [[ ! "$MINION_ROLE" == "import" ]]; then
@@ -1811,10 +1928,16 @@ main() {
     create_local_directories "/opt/so/saltstack/default"
     apply_hotfix
     echo "Hotfix applied"
-    update_version
     enable_highstate
     highstate
+    # Record the hotfix only after the highstate succeeds. /etc/sohotfix is written
+    # solely by soup (no salt state manages it), so deferring the write means a failed
+    # hotfix highstate leaves the old hotfix value and re-running soup re-applies it,
+    # rather than reporting "already latest". The soversion/pillar writes in
+    # update_version are no-ops here since the version is unchanged for a hotfix.
+    update_version
   else
+    SOUP_UPGRADE_STARTED=true
     echo ""
     echo "Performing upgrade from Security Onion $INSTALLEDVERSION to Security Onion $NEWVERSION."
     echo ""
@@ -1870,6 +1993,10 @@ main() {
     copy_new_files
     echo ""
     create_local_directories "/opt/so/saltstack/default"
+    # Seed the resume marker before the highstate stamps /etc/soversion to the new
+    # version, so an interrupted upgrade is detectable as "not finished" on re-run.
+    # POSTVERSION still holds the pre-upgrade (or prior resume) version here.
+    [ -f "$POSTVERSION_FILE" ] || echo "$POSTVERSION" > "$POSTVERSION_FILE"
     update_version
 
     echo ""

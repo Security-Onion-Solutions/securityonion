@@ -7,6 +7,11 @@
 {% from 'soc/defaults.map.jinja' import SOCDEFAULTS with context %}
 {% from 'elasticsearch/config.map.jinja' import ELASTICSEARCH_NODES %}
 {% from 'manager/map.jinja' import MANAGERMERGED %}
+{% from 'telegraf/map.jinja' import TELEGRAFMERGED %}
+{%- set PG_ENTRY = salt['pillar.get']('telegraf:postgres_creds:' ~ grains.id, {}) %}
+{%- set PG_USER = PG_ENTRY.get('user', '') %}
+{%- set PG_PASS = PG_ENTRY.get('pass', '') %}
+
 {% set DOCKER_EXTRA_HOSTS = ELASTICSEARCH_NODES %}
 {% do DOCKER_EXTRA_HOSTS.append({GLOBALS.influxdb_host:pillar.node_data[GLOBALS.influxdb_host].ip}) %}
 
@@ -75,6 +80,20 @@
 {%   do SOCMERGED.config.server.update({'airgapEnabled': false}) %}
 {% endif %}
 
+{# Define the postgresmetrics module if telegraf is setup to only use Postgres #}
+{% if TELEGRAFMERGED.output != 'INFLUXDB' and PG_USER and PG_PASS %}
+{%   do SOCMERGED.config.server.modules.update({
+        'postgresmetrics': {
+          'database': 'so_telegraf',
+          'host': GLOBALS.manager_ip,
+          'password': PG_PASS,
+          'port': 5432,
+          'sslMode': 'allow',
+          'user': PG_USER,
+        }
+      }) %}
+{%   do SOCMERGED.config.server.modules.pop('influxdb') %}
+{% endif %}
 
 {# Define the Detections custom ruleset that should always be present #}
 {% set CUSTOM_RULESET = {
