@@ -692,7 +692,7 @@ ensure_postgres_local_pillar() {
 }
 
 ensure_salt_local_pillar() {
-  # The salt.auto_apply settings (moved from global.push) are a new SOC settings
+  # The salt.auto_apply settings are a new SOC settings
   # module, so the new pillar/top.sls references salt.soc_salt / salt.adv_salt
   # unconditionally. Managers upgrading from before this change have no
   # /opt/so/saltstack/local/pillar/salt/ (make_some_dirs only runs at install
@@ -755,7 +755,6 @@ fix_logstash_0013_lumberjack_pipeline_name() {
 up_to_3.1.0() {
   ensure_postgres_local_pillar
   ensure_postgres_secret
-  determine_elastic_agent_upgrade
   elasticsearch_backup_index_templates
   # Clear existing component template state file.
   rm -f /opt/so/state/esfleet_component_templates.json
@@ -799,12 +798,23 @@ post_to_3.1.0() {
 
 ### 3.2.0 Scripts ###
 
+recollate_postgres() {
+  echo ""
+  echo "Recollating PostgreSQL databases. The following output may contain warnings about a version mismatch, followed by a note indicating that the collation version has been changed."
+  for db in postgres securityonion so_telegraf; do
+    docker exec so-postgres psql -U postgres $db -c "reindex database $db"
+    docker exec so-postgres psql -U postgres $db -c "alter database $db refresh collation version"
+  done
+  echo "Recollating PostgreSQL databases complete."
+  echo ""
+}
+
 bootstrap_so_soc_database() {
   # init-db.sh is mounted into so-postgres at /docker-entrypoint-initdb.d/init-db.sh
   # and runs automatically only on a fresh data directory. Hosts upgrading from
   # 3.1.0 already have /nsm/postgres populated, so the so_soc bootstrap block
   # added in 3.2 never fires. Re-run the script explicitly; it's idempotent.
-  echo "Bootstrapping so_soc database via init-db.sh."
+  echo "Bootstrapping database via init-db.sh."
   # The postgres image has no USER directive, so `docker exec` defaults to
   # root, and the container env intentionally omits POSTGRES_USER (the upstream
   # entrypoint defaults it transiently during first-init only). Recreate both
@@ -815,10 +825,13 @@ bootstrap_so_soc_database() {
     return 0
   fi
   if ! $exec_cmd; then
-    FINAL_MESSAGE_QUEUE+=("WARNING: init-db.sh failed inside so-postgres during the 3.2.0 upgrade; the so_soc database may not have been bootstrapped. Re-run manually: $exec_cmd")
+    FINAL_MESSAGE_QUEUE+=("WARNING: init-db.sh failed inside so-postgres during the 3.2.0 upgrade; the database may not have been bootstrapped. Re-run manually: $exec_cmd")
     return 0
   fi
-  echo "so_soc bootstrap complete."
+  echo "Database bootstrap complete."
+
+  echo "Restarting so-soc container to pick up database changes"
+  docker restart so-soc
 }
 
 # Existing grids should keep ILM unless an admin explicitly opts in to DLM.
@@ -891,6 +904,9 @@ update_kafka_metadata() {
 up_to_3.2.0() {
   ensure_salt_local_pillar
 
+  # download 9.3.7 elastic agent packages
+  determine_elastic_agent_upgrade
+
   fix_logstash_0013_lumberjack_pipeline_name
 
   pin_elasticsearch_data_retention_method
@@ -899,9 +915,12 @@ up_to_3.2.0() {
 }
 
 post_to_3.2.0() {
+  # Recollate due to image OS rebase
+  recollate_postgres
+
   bootstrap_so_soc_database
 
-  # Including agent regen script here since it was missed in post_to_3.1.0
+  # Generate 9.3.7 elastic agent installers
   echo "Regenerating Elastic Agent Installers"
   /sbin/so-elastic-agent-gen-installers
 
@@ -1174,7 +1193,8 @@ verify_es_version_compatibility() {
         ["8.18.4"]="8.18.6 8.18.8 9.0.8"
 	    ["8.18.6"]="8.18.8 9.0.8"
 	    ["8.18.8"]="9.0.8"
-        ["9.0.8"]="9.3.3"
+        ["9.0.8"]="9.3.3 9.3.7"
+        ["9.3.3"]="9.3.7"
     )
 
     # Elasticsearch MUST upgrade through these versions
