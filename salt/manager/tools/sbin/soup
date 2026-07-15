@@ -327,6 +327,31 @@ check_pillar_items() {
   fi
 }
 
+check_cluster_health() {
+  echo "Checking Elasticsearch cluster health."
+  # Block only if the cluster cannot reach at least 'yellow' status (i.e. it is red or
+  # unreachable); 'yellow' is normal for many Security Onion deployments. Modeled on the
+  # wait used in so-elasticsearch-roles-load.
+  if so-elasticsearch-query "_cluster/health?wait_for_status=yellow&timeout=120s" --fail > /dev/null 2>&1; then
+    printf "\nThe Elasticsearch cluster is healthy. We can proceed with SOUP.\n\n"
+  else
+    printf "\nThe Elasticsearch cluster is not healthy (it did not reach at least 'yellow' status). Please resolve the cluster health issue before running SOUP again.\n\n"
+    exit 0
+  fi
+}
+
+check_fleet_server() {
+  echo "Checking that Elastic Fleet Server is responding."
+  # Modeled on the wait_for_so-elastic-fleet state check in elasticfleet/enabled.sls,
+  # which waits for HTTP 200 from the Fleet Server status API.
+  if curl -sk --fail --retry 3 --retry-delay 10 --max-time 30 "https://localhost:8220/api/status" > /dev/null 2>&1; then
+    printf "\nElastic Fleet Server is responding. We can proceed with SOUP.\n\n"
+  else
+    printf "\nElastic Fleet Server is not responding at https://localhost:8220/api/status. Please ensure Elastic Fleet is healthy before running SOUP again.\n\n"
+    exit 0
+  fi
+}
+
 check_saltmaster_status() {
   set +e
   echo "Waiting on the Salt Master service to be ready."
@@ -1853,6 +1878,12 @@ main() {
 
   echo "Verifying Elasticsearch version compatibility across the grid before upgrading."
   verify_es_version_compatibility
+
+  # Pre-flight health checks: confirm the grid is in a good state before we change
+  # anything. These run before any modifications, so a failure exits cleanly and the
+  # operator can fix the issue and re-run soup.
+  check_cluster_health
+  check_fleet_server
 
   echo "Checking for Salt Master and Minion updates."
   upgrade_check_salt
