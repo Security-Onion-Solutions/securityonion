@@ -15,7 +15,6 @@
 
 include:
   - salt.minion
-  - salt.master.pyinotify
   - salt.master.boot_mine_update
 {%   if 'vrt' in salt['pillar.get']('features', []) %}
   - salt.cloud
