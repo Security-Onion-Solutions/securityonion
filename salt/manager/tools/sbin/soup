@@ -329,13 +329,12 @@ check_pillar_items() {
 
 check_cluster_health() {
   echo "Checking Elasticsearch cluster health."
-  # Block only if the cluster cannot reach at least 'yellow' status (i.e. it is red or
-  # unreachable); 'yellow' is normal for many Security Onion deployments. Modeled on the
-  # wait used in so-elasticsearch-roles-load.
-  if so-elasticsearch-query "_cluster/health?wait_for_status=yellow&timeout=120s" --fail > /dev/null 2>&1; then
-    printf "\nThe Elasticsearch cluster is healthy. We can proceed with SOUP.\n\n"
+  # Require a 'green' cluster before upgrading; anything less (yellow, red, or
+  # unreachable) blocks. Modeled on the wait used in so-elasticsearch-roles-load.
+  if so-elasticsearch-query "_cluster/health?wait_for_status=green&timeout=120s" --fail > /dev/null 2>&1; then
+    printf "\nThe Elasticsearch cluster is healthy (green). We can proceed with SOUP.\n\n"
   else
-    printf "\nThe Elasticsearch cluster is not healthy (it did not reach at least 'yellow' status). Please resolve the cluster health issue before running SOUP again.\n\n"
+    printf "\nThe Elasticsearch cluster is not green. Please resolve the cluster health issue so the cluster is green before running SOUP again.\n\n"
     exit 0
   fi
 }
