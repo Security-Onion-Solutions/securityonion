@@ -6,7 +6,7 @@
 # Writes (or updates) a push intent at /opt/so/state/push_pending/rules_strelka.json
 # and returns {}. The so-push-drainer schedule picks up ready intents, dedupes
 # across pending files, and dispatches orch.push_batch. Reactors never dispatch
-# directly -- see plan /home/mreeves/.claude/plans/goofy-marinating-hummingbird.md.
+# directly
 
 import fcntl
 import json
