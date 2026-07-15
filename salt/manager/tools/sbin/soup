@@ -1118,6 +1118,10 @@ upgrade_check() {
     fi
     echo "Checking to see if there are hotfixes needed"
     if [ "$HOTFIXVERSION" == "$CURRENTHOTFIX" ]; then
+      # Reaching here means we are at the target version and NOT resuming (the resume
+      # check above returned otherwise). Clear any stale resume marker so a completed
+      # upgrade is never mistaken for a partial one and re-run on a later invocation.
+      rm -f "$POSTVERSION_FILE"
       echo "You are already running the latest version of Security Onion."
       exit 0
     else
@@ -1813,6 +1817,15 @@ main() {
   set_minionid
   MINION_ROLE=$(lookup_role)
   echo "Found that Security Onion $INSTALLEDVERSION is currently installed."
+  # /etc/soversion is stamped to the target version before the upgrade fully
+  # completes, so a lingering resume marker means this grid is only partially
+  # upgraded even though the line above shows the target version. Make that explicit
+  # so it is not mistaken for a finished upgrade.
+  if [ -f "$POSTVERSION_FILE" ] && [ "$(cat "$POSTVERSION_FILE")" != "$INSTALLEDVERSION" ]; then
+    echo ""
+    echo "NOTE: A previous upgrade to $INSTALLEDVERSION did not finish. This grid is"
+    echo "      partially upgraded and this soup run will resume and complete it."
+  fi
   echo ""
   check_minimum_version
 
