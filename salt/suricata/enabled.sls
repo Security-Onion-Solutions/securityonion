@@ -17,8 +17,8 @@ include:
 so-suricata:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-suricata:{{ GLOBALS.so_version }}
-    - privileged: True
     - restart_policy: unless-stopped
+    - privileged: True
     - environment:
       - INTERFACE={{ GLOBALS.sensor.interface }}
       {% if DOCKERMERGED.containers['so-suricata'].extra_env %}
