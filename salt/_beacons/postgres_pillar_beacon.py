@@ -83,7 +83,7 @@ def _query(sql):
     return result.stdout
 
 
-def beacon(config):
+def beacon(config):  # noqa: C901
     retval = []
 
     watermark = _read_watermark()
