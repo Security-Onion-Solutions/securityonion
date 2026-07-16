@@ -437,6 +437,8 @@ get_soup_script_hashes() {
   GITIMGCMN=$(md5sum $UPDATE_DIR/salt/common/tools/sbin/so-image-common | awk '{print $1}')
   CURRENTSOFIREWALL=$(md5sum /usr/sbin/so-firewall | awk '{print $1}')
   GITSOFIREWALL=$(md5sum $UPDATE_DIR/salt/manager/tools/sbin/so-firewall | awk '{print $1}')
+  CURRENTSOYAML=$(md5sum /usr/sbin/so-yaml.py | awk '{print $1}')
+  GITSOYAML=$(md5sum $UPDATE_DIR/salt/manager/tools/sbin/so-yaml.py | awk '{print $1}')
 }
 
 highstate() {
@@ -1241,7 +1243,7 @@ upgrade_salt() {
 
 verify_latest_update_script() {
   get_soup_script_hashes
-  if [[ "$CURRENTSOUP" == "$GITSOUP" && "$CURRENTCMN" == "$GITCMN" && "$CURRENTIMGCMN" == "$GITIMGCMN" && "$CURRENTSOFIREWALL" == "$GITSOFIREWALL" ]]; then
+  if [[ "$CURRENTSOUP" == "$GITSOUP" && "$CURRENTCMN" == "$GITCMN" && "$CURRENTIMGCMN" == "$GITIMGCMN" && "$CURRENTSOFIREWALL" == "$GITSOFIREWALL" && "$CURRENTSOYAML" == "$GITSOYAML" ]]; then
     echo "This version of the soup script is up to date. Proceeding."
   else
     echo "You are not running the latest soup version. Updating soup and its components. This might take multiple runs to complete."
@@ -1250,7 +1252,7 @@ verify_latest_update_script() {
 
     # Verify that soup scripts updated as expected
     get_soup_script_hashes
-    if [[ "$CURRENTSOUP" == "$GITSOUP" && "$CURRENTCMN" == "$GITCMN" && "$CURRENTIMGCMN" == "$GITIMGCMN" && "$CURRENTSOFIREWALL" == "$GITSOFIREWALL" ]]; then
+    if [[ "$CURRENTSOUP" == "$GITSOUP" && "$CURRENTCMN" == "$GITCMN" && "$CURRENTIMGCMN" == "$GITIMGCMN" && "$CURRENTSOFIREWALL" == "$GITSOFIREWALL" && "$CURRENTSOYAML" == "$GITSOYAML" ]]; then
       echo "Succesfully updated soup scripts."
     else
       echo "There was a problem updating soup scripts. Trying to rerun script update."
@@ -1561,18 +1563,13 @@ verify_es_version_compatibility() {
 }
 
 wait_for_salt_minion_with_restart() {
-    local minion="$1"
-    local max_wait="${2:-60}"
-    local interval="${3:-3}"
-    local logfile="$4"
-    
-    wait_for_salt_minion "$minion" "$max_wait" "$interval" "$logfile"
+    /usr/sbin/so-salt-minion-wait
     local result=$?
     
     if [[ $result -ne 0 ]]; then
         echo "$(date '+%a %d %b %Y %H:%M:%S.%6N') - salt-minion not ready, attempting restart..."
         systemctl_func "restart" "salt-minion"
-        wait_for_salt_minion "$minion" "$max_wait" "$interval" "$logfile"
+        /usr/sbin/so-salt-minion-wait
         result=$?
     fi
     
@@ -2028,7 +2025,7 @@ main() {
     echo ""
     echo "Running a highstate. This could take several minutes."
     set +e
-    wait_for_salt_minion_with_restart "$MINIONID" "60" "3" "$SOUP_LOG" || fail "Salt minion was not running or ready."
+    wait_for_salt_minion_with_restart || fail "Salt minion was not running or ready."
     highstate
     set -e
 
@@ -2041,7 +2038,7 @@ main() {
     check_saltmaster_status
 
     echo "Running a highstate to complete the Security Onion upgrade on this manager. This could take several minutes."
-    wait_for_salt_minion_with_restart "$MINIONID" "60" "3" "$SOUP_LOG" || fail "Salt minion was not running or ready."
+    wait_for_salt_minion_with_restart || fail "Salt minion was not running or ready."
 
     # Stop long-running scripts to allow potentially updated scripts to load on the next execution.
     if pgrep salt-relay.sh > /dev/null 2>&1; then
