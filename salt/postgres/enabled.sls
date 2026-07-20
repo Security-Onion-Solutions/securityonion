@@ -92,12 +92,9 @@ postgres_wait_ready:
       - docker_container: so-postgres
       - file: postgres_sbin
 
-# Re-run the SOC database bootstrap on every highstate so a cluster left
-# partially initialized -- e.g. the container was restarted mid first-init by a
-# watch trigger, so docker-entrypoint-initdb.d never completed -- self-heals:
-# the so_postgres role, its schema/database grants, and the so_telegraf database
-# are all reconciled idempotently. init-db.sh is idempotent and race-safe.
-# POSTGRES_USER is injected because the container env intentionally omits it.
+# Reconcile the SOC database (role, grants, so_telegraf) every highstate so a
+# partially-initialized cluster self-heals. POSTGRES_USER is injected because
+# the container env omits it.
 postgres_bootstrap_soc_db:
   cmd.run:
     - name: docker exec -u postgres -e POSTGRES_USER=postgres so-postgres bash /docker-entrypoint-initdb.d/init-db.sh

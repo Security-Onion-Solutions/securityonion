@@ -8,10 +8,8 @@
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 {%   from 'telegraf/map.jinja' import TELEGRAFMERGED %}
 
-{# postgres_wait_ready and the so-postgres container are declared in
-   postgres.enabled; include it so the require references below resolve and so
-   state.apply postgres.telegraf_users on its own (e.g. from orch.deploy_newnode)
-   still has those IDs in scope. Salt de-duplicates the circular include. #}
+{# postgres.enabled declares the so-postgres container and postgres_wait_ready
+   that the requires below reference. Salt de-duplicates the circular include. #}
 include:
   - postgres.enabled
 

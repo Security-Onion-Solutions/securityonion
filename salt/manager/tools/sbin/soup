@@ -881,12 +881,7 @@ recollate_postgres() {
 }
 
 scrub_postgres_log_passwords() {
-  # Before 3.2 PostgreSQL could log the full CREATE/ALTER ROLE ... PASSWORD
-  # statement -- with the plaintext password -- to postgres.log whenever such a
-  # DDL errored, because log_min_error_statement defaulted to 'error'. The leak
-  # is fixed going forward (the provisioning scripts now SET log_min_error_statement
-  # = panic), but any already-logged secret persists in the on-disk log. Purge it
-  # here. Only the manager runs so-postgres, so this is a local scrub.
+  # Purge plaintext passwords a pre-3.2 postgres could log on DDL errors.
   local log=/opt/so/log/postgres/postgres.log
   [[ -f "$log" ]] || return 0
   if ! grep -qai "PASSWORD '" "$log" 2>/dev/null; then
@@ -896,9 +891,7 @@ scrub_postgres_log_passwords() {
   echo "Removing leaked password statements from $log."
   local tmp
   tmp=$(mktemp)
-  # Drop every line carrying a PASSWORD literal, then rewrite in place with
-  # `cat >` so the file keeps its inode -- postgres holds it open via redirected
-  # stderr and must keep logging to the same file.
+  # Rewrite in place (cat >) to keep the inode postgres is writing to.
   grep -avi "PASSWORD '" "$log" > "$tmp" 2>/dev/null || true
   cat "$tmp" > "$log"
   rm -f "$tmp"
@@ -988,11 +981,7 @@ post_to_3.2.0() {
   # Recollate due to image OS rebase
   recollate_postgres
 
-  # The SOC database (so_postgres role, schema/db grants, so_telegraf) is
-  # bootstrapped idempotently by the postgres.enabled highstate that runs
-  # before this postupgrade step, so no explicit bootstrap call is needed here.
-
-  # Purge any plaintext passwords a pre-3.2 postgres logged on DDL errors.
+  # SOC database bootstrap is handled by the postgres.enabled highstate.
   scrub_postgres_log_passwords
 
   # Generate 9.3.7 elastic agent installers

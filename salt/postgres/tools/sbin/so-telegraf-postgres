@@ -71,9 +71,7 @@ EOSQL
       -v role_user="$ROLE_USER" \
       -v role_pass="$ROLE_PASS" \
       -U postgres -d so_telegraf <<'EOSQL'
--- Shield the plaintext password below from postgres.log if this DDL errors:
--- log_min_error_statement defaults to 'error', which would append a STATEMENT line
--- containing the full CREATE/ALTER ROLE ... PASSWORD text. panic suppresses that.
+-- Keep the password out of postgres.log if this DDL errors.
 SET log_min_error_statement = panic;
 SELECT format(
   CASE WHEN EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = :'role_user')

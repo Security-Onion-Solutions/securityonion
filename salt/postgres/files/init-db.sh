@@ -8,16 +8,10 @@ if [ -z "${SO_POSTGRES_PASS:-}" ] && [ -n "${SO_POSTGRES_PASS_FILE:-}" ] && [ -r
     SO_POSTGRES_PASS="$(< "$SO_POSTGRES_PASS_FILE")"
 fi
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
-    -- Shield the plaintext password below from postgres.log if this DDL errors:
-    -- log_min_error_statement defaults to 'error', which would append a STATEMENT line
-    -- containing the full CREATE/ALTER ROLE ... PASSWORD text. panic suppresses that.
+    -- Keep the password out of postgres.log if this DDL errors.
     SET log_min_error_statement = panic;
-    -- Race-safe upsert: try CREATE, and if the role was created concurrently
-    -- (another session re-entering init) fall back to ALTER. Catching the
-    -- exception -- rather than an IF NOT EXISTS check -- avoids a TOCTOU window
-    -- where CREATE ROLE would abort the whole script with a duplicate-key error
-    -- and skip the grants below. Both SQLSTATEs are covered: duplicate_object
-    -- (role already exists) and unique_violation (racy pg_authid index insert).
+    -- Idempotent, race-safe upsert: CREATE, falling back to ALTER if the role
+    -- already exists or is created concurrently.
     DO \$\$
     BEGIN
         BEGIN
