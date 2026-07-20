@@ -1,0 +1,207 @@
+#!/bin/bash
+#
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+# Block until the current salt-minion daemon is ready to receive requests. Invoked from the
+# wait_for_salt_minion_ready state in salt/minion/init.sls after salt_minion_service fires its
+# watch-driven restart, so follow-on jobs and the next highstate iteration do not race it. It is
+# also correct on an already-running minion (no recent restart): the steady-state readiness signal
+# is the live master sockets, so it does not depend on a restart having just happened.
+#
+# Salt logs "Minion is ready to receive requests!" from Minion.tune_in() only after
+# sync_connect_master() returns, which means the pub channel authenticated, the long-running req
+# channel connected, and _post_master_init() finished loading modules and compiling pillar. Two
+# signals reproduce that:
+#
+#   1. Steady state  the pid holds an ESTABLISHED req connection to a master on 4506 plus a second
+#                    (publish) connection to that same master IP on another port. The publish port is
+#                    learned from the master's auth reply and is absent from minion config, so it is
+#                    derived from the connection rather than read from config. This is the always-on
+#                    authority: it reflects whatever daemon is running now, restart or not.
+#   2. Startup only  the pid-tagged ready line in the minion log. Salt's log_fmt_logfile embeds
+#                    [%(process)d] just before the message, so this is keyed to one daemon instance.
+#                    Salt logs it exactly once per start, so it exists only to close a ~2.8s window
+#                    after the sockets come up where they are established but _post_master_init() is
+#                    still finishing. It is therefore required only within READY_LINE_WINDOW seconds
+#                    of (re)start (by pid uptime); past that the line has scrolled out of the log and
+#                    the socket gate alone decides. See instance_ready().
+#
+# The daemon pid is resolved from systemd, never from /var/run/salt-minion.pid. salt_minion() runs
+# the real minion in a multiprocessing child; that child writes the pidfile, owns the sockets and
+# logs the ready line, while systemd's MainPID is the parent. During a restart the pidfile can still
+# name the OLD child, whose own ready line is already in the log -- matching it would report ready
+# instantly. Children of the current MainPID structurally exclude the old instance.
+#
+# That is only true once systemd has actually swapped MainPID. Salt restarts this unit with
+# --no-block (salt/modules/systemd_service.py:_no_block_default returns True for salt-minion), so
+# service.restart returns as soon as the job is enqueued and the state proceeds to run this script
+# while the OLD daemon is still up -- observed at ~7s before MainPID flips. Reading MainPID in that
+# window names the outgoing instance, which is still fully connected and has its own ready line, so
+# every gate below would pass on the daemon that is about to die. Wait for systemd's job queue for
+# the unit to drain first; that is the deterministic "the swap has happened" signal.
+
+. /usr/sbin/so-common
+
+set -u
+
+TIMEOUT=120
+MASTER_PORT=4506
+LOG_TAIL_LINES=10000
+# Seconds after a (re)start during which the pid-tagged ready line is still required. Past this the
+# daemon is clearly beyond the ~2.8s post-connect race and the socket gate is authoritative -- the
+# one-time ready line has scrolled out of the log tail on a long-running minion. Kept under TIMEOUT
+# so a fresh minion that connects but never logs the line still falls back to socket-only near the
+# end instead of false-timing-out.
+READY_LINE_WINDOW=90
+DEFAULT_LOG_FILE="/opt/so/log/salt/minion"
+LOG_FILE="$DEFAULT_LOG_FILE"
+
+# Decide whether the ready line can ever appear. salt-call --local sets file_client=local, so this
+# reads the merged config (honoring minion.d overrides) without contacting the master. salt defaults
+# log_level_logfile to None, meaning it inherits log_level, so resolve that before deciding.
+LOG_LEVEL_LOGFILE=$(salt-call --local --out=newline_values_only config.get log_level_logfile 2>/dev/null | head -n1)
+case "${LOG_LEVEL_LOGFILE,,}" in
+  ""|none) LOG_LEVEL_LOGFILE=$(salt-call --local --out=newline_values_only config.get log_level 2>/dev/null | head -n1) ;;
+esac
+
+case "${LOG_LEVEL_LOGFILE,,}" in
+  all|garbage|trace|debug|profile|info) USE_LOG_GATE=1 ;;
+  *)                                    USE_LOG_GATE=0 ;;
+esac
+
+if [ "$USE_LOG_GATE" -eq 1 ]; then
+  LOG_FILE=$(salt-call --local --out=newline_values_only config.get log_file 2>/dev/null | head -n1)
+  [ -z "$LOG_FILE" ] && LOG_FILE="$DEFAULT_LOG_FILE"
+  [ -d "$(dirname "$LOG_FILE")" ] || USE_LOG_GATE=0
+fi
+
+if command -v ss >/dev/null 2>&1; then
+  USE_SOCKET_GATE=1
+else
+  USE_SOCKET_GATE=0
+fi
+
+if [ "$USE_LOG_GATE" -eq 0 ] && [ "$USE_SOCKET_GATE" -eq 0 ]; then
+  echo "so-salt-minion-wait: no usable readiness signal (log_level_logfile='${LOG_LEVEL_LOGFILE:-unset}', ss not found)" >&2
+  exit 1
+fi
+
+if [ "$USE_LOG_GATE" -eq 1 ] && [ "$USE_SOCKET_GATE" -eq 1 ]; then
+  echo "so-salt-minion-wait: gating on pid-tagged ready line in ${LOG_FILE} plus master sockets"
+elif [ "$USE_LOG_GATE" -eq 1 ]; then
+  echo "so-salt-minion-wait: ss not found; gating on pid-tagged ready line in ${LOG_FILE} only"
+else
+  echo "so-salt-minion-wait: INFO file logging unavailable (log_level_logfile='${LOG_LEVEL_LOGFILE:-unset}'); gating on master sockets only"
+fi
+
+# True while systemd still has a queued or running job for the unit, i.e. an in-flight --no-block
+# restart. MainPID still names the outgoing daemon until this drains. The unit name is passed as a
+# filter and grepped as well, so this stays correct if an older systemctl ignores the filter.
+restart_pending() {
+  systemctl list-jobs --no-legend salt-minion.service 2>/dev/null | grep -q 'salt-minion\.service'
+}
+
+# Emit the pid(s) of the current daemon instance. systemd's MainPID is the parent keepalive process;
+# its child runs tune_in. Fall back to MainPID when there is no child (--disable-keepalive path).
+resolve_daemon_pids() {
+  local mainpid children
+  mainpid=$(systemctl show -p MainPID --value salt-minion 2>/dev/null)
+  if [ -z "$mainpid" ] || [ "$mainpid" = "0" ]; then
+    return 1
+  fi
+  children=$(pgrep -P "$mainpid" 2>/dev/null)
+  printf '%s\n' "${children:-$mainpid}"
+}
+
+# Elapsed seconds since this pid started (Linux procps etimes). Empty/non-numeric -> failure, so the
+# caller can fall back to the strict (log-gate-enforced) behavior when uptime cannot be read.
+pid_uptime() {
+  local pid=$1 secs
+  secs=$(ps -o etimes= -p "$pid" 2>/dev/null | tr -d ' ')
+  case "$secs" in ''|*[!0-9]*) return 1 ;; esac
+  printf '%s\n' "$secs"
+}
+
+# True iff the ready line tagged with this pid is in the current or most recently rotated log.
+ready_logged() {
+  local pid=$1 f
+  for f in "$LOG_FILE" "$LOG_FILE.1"; do
+    [ -r "$f" ] || continue
+    if tail -n "$LOG_TAIL_LINES" "$f" 2>/dev/null | grep -Fq "[$pid] Minion is ready to receive requests!"; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+# True iff this pid holds an ESTABLISHED req connection to a master on MASTER_PORT and a second
+# ESTABLISHED connection to that same master IP on another port. The trailing comma in "pid=N,"
+# keeps pid=123 from matching pid=1234. Grid comms are IPv4 (the unit's ExecStartPre gates on ip -4).
+socket_ready() {
+  local pid=$1 mip master_ips
+  master_ips=$(ss -tnp state established "dport = :${MASTER_PORT}" 2>/dev/null \
+    | grep -F "pid=${pid}," \
+    | grep -oE "[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:${MASTER_PORT}" \
+    | sed "s/:${MASTER_PORT}\$//" \
+    | sort -u)
+  [ -z "$master_ips" ] && return 1
+  for mip in $master_ips; do
+    if ss -tnp state established "dst ${mip} and dport != :${MASTER_PORT}" 2>/dev/null | grep -qF "pid=${pid},"; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+instance_ready() {
+  local pid=$1 uptime
+  # The log gate only closes the ~2.8s window right after the master sockets come up where they are
+  # established but _post_master_init() is still loading modules/compiling pillar. Salt logs the
+  # pid-tagged ready line exactly once at startup, so on a daemon that started long ago the line has
+  # scrolled out of the log tail and the gate could never pass -- making the wait require a recent
+  # restart. Enforce it only while the daemon is young enough that the race could still be open; past
+  # READY_LINE_WINDOW the socket gate is authoritative. If uptime can't be read, keep the strict
+  # behavior (uptime=0 -> gate enforced) so the fresh-restart path never regresses.
+  if [ "$USE_LOG_GATE" -eq 1 ]; then
+    uptime=$(pid_uptime "$pid") || uptime=0
+    if [ "$uptime" -lt "$READY_LINE_WINDOW" ] && ! ready_logged "$pid"; then
+      return 1
+    fi
+  fi
+  if [ "$USE_SOCKET_GATE" -eq 1 ] && ! socket_ready "$pid"; then
+    return 1
+  fi
+  return 0
+}
+
+elapsed=0
+pids=""
+announced_pending=0
+while [ "$elapsed" -lt "$TIMEOUT" ]; do
+  if restart_pending; then
+    # An in-flight --no-block restart: MainPID still names the outgoing daemon. Evaluating now
+    # would bless the instance that is about to be torn down.
+    if [ "$announced_pending" -eq 0 ]; then
+      echo "so-salt-minion-wait: systemd restart job in flight; waiting for it to drain"
+      announced_pending=1
+    fi
+  elif pids=$(resolve_daemon_pids); then
+    # shellcheck disable=SC2086
+    for pid in $pids; do
+      if instance_ready "$pid"; then
+        echo "salt-minion (pid ${pid}) ready after ${elapsed}s"
+        exit 0
+      fi
+    done
+  fi
+  sleep 1
+  elapsed=$((elapsed + 1))
+done
+
+mainpid=$(systemctl show -p MainPID --value salt-minion 2>/dev/null)
+restart_pending && pending=yes || pending=no
+echo "salt-minion did not become ready within ${TIMEOUT}s (MainPID=${mainpid:-unknown}, candidate pids='${pids:-none}', restart_job_pending=${pending}, log_gate=${USE_LOG_GATE}, socket_gate=${USE_SOCKET_GATE}, log_file=${LOG_FILE})" >&2
+exit 1

@@ -18,6 +18,7 @@ include:
 so-influxdb:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-influxdb:{{ GLOBALS.so_version }}
+    - restart_policy: unless-stopped
     - hostname: influxdb
     - networks:
       - sobridge:

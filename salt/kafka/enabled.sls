@@ -27,6 +27,7 @@ include:
 so-kafka:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-kafka:{{ GLOBALS.so_version }}
+    - restart_policy: unless-stopped
     - hostname: so-kafka
     - name: so-kafka
     - networks:

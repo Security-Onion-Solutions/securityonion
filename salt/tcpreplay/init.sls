@@ -7,6 +7,7 @@ so-tcpreplay:
   docker_container.running:
     - network_mode: "host"
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-tcpreplay:{{ GLOBALS.so_version }}
+    - restart_policy: unless-stopped
     - name: so-tcpreplay
     - user: root
     - interactive: True

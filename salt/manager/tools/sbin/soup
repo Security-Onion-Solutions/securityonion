@@ -762,6 +762,21 @@ ensure_postgres_local_pillar() {
   chown -R socore:socore "$dir"
 }
 
+ensure_salt_local_pillar() {
+  # The salt.auto_apply settings are a new SOC settings
+  # module, so the new pillar/top.sls references salt.soc_salt / salt.adv_salt
+  # unconditionally. Managers upgrading from before this change have no
+  # /opt/so/saltstack/local/pillar/salt/ (make_some_dirs only runs at install
+  # time), so the stubs must be created here before salt-master restarts against
+  # the new top.sls.
+  echo "Ensuring salt local pillar stubs exist."
+  local dir=/opt/so/saltstack/local/pillar/salt
+  mkdir -p "$dir"
+  [[ -f "$dir/soc_salt.sls" ]] || touch "$dir/soc_salt.sls"
+  [[ -f "$dir/adv_salt.sls" ]] || touch "$dir/adv_salt.sls"
+  chown -R socore:socore "$dir"
+}
+
 ensure_postgres_secret() {
   # On a fresh install, generate_passwords + secrets_pillar seed
   # secrets:postgres_pass in /opt/so/saltstack/local/pillar/secrets.sls. That
@@ -958,6 +973,8 @@ update_kafka_metadata() {
 }
 
 up_to_3.2.0() {
+  ensure_salt_local_pillar
+
   # download 9.3.7 elastic agent packages
   determine_elastic_agent_upgrade
 
@@ -1546,18 +1563,13 @@ verify_es_version_compatibility() {
 }
 
 wait_for_salt_minion_with_restart() {
-    local minion="$1"
-    local max_wait="${2:-60}"
-    local interval="${3:-3}"
-    local logfile="$4"
-    
-    wait_for_salt_minion "$minion" "$max_wait" "$interval" "$logfile"
+    /usr/sbin/so-salt-minion-wait
     local result=$?
     
     if [[ $result -ne 0 ]]; then
         echo "$(date '+%a %d %b %Y %H:%M:%S.%6N') - salt-minion not ready, attempting restart..."
         systemctl_func "restart" "salt-minion"
-        wait_for_salt_minion "$minion" "$max_wait" "$interval" "$logfile"
+        /usr/sbin/so-salt-minion-wait
         result=$?
     fi
     
@@ -2011,9 +2023,9 @@ main() {
     enable_highstate
 
     echo ""
-    echo "Running a highstate. This could take several minutes."
+    echo "Running a highstate at $(date +"%T.%6N"). This could take several minutes."
     set +e
-    wait_for_salt_minion_with_restart "$MINIONID" "60" "3" "$SOUP_LOG" || fail "Salt minion was not running or ready."
+    wait_for_salt_minion_with_restart || fail "Salt minion was not running or ready."
     highstate
     set -e
 
@@ -2025,8 +2037,8 @@ main() {
 
     check_saltmaster_status
 
-    echo "Running a highstate to complete the Security Onion upgrade on this manager. This could take several minutes."
-    wait_for_salt_minion_with_restart "$MINIONID" "60" "3" "$SOUP_LOG" || fail "Salt minion was not running or ready."
+    echo "Running a highstate at $(date +"%T.%6N") to complete the Security Onion upgrade on this manager. This could take several minutes."
+    wait_for_salt_minion_with_restart || fail "Salt minion was not running or ready."
 
     # Stop long-running scripts to allow potentially updated scripts to load on the next execution.
     if pgrep salt-relay.sh > /dev/null 2>&1; then

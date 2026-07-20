@@ -111,13 +111,17 @@ mark_setup_complete_for_upgrades:
 
 {% endif %}
 
-# this has to be outside the if statement above since there are <requisite>_in calls to this state
+# this has to be outside the if statement above since there are <requisite>_in calls to this state.
+# uses watch (not listen) so the restart fires in-state and its result lands on this state's
+# running entry; that is what lets wait_for_salt_minion_ready below detect any restart
+# uniformly via onchanges, regardless of whether the trigger came from these files or from
+# external watch_in's (e.g. beacons, master/pyinotify).
 salt_minion_service:
   service.running:
     - name: salt-minion
     - enable: True
     - onlyif: test "{{INSTALLEDSALTVERSION}}" == "{{SALTVERSION}}"
-    - listen:
+    - watch:
       - file: mine_functions
 {% if INSTALLEDSALTVERSION|string == SALTVERSION|string %}
       - file: set_log_levels
@@ -125,4 +129,25 @@ salt_minion_service:
 {% if GLOBALS.is_manager %}
       - file: signing_policy
 {% endif %}
+    - order: last
+
+# block until the salt-minion daemon is ready for the current instance, so follow-on jobs and the
+# next highstate iteration do not race the restart. onchanges + require on salt_minion_service
+# catches every restart trigger uniformly because watch mod_watch results replace the service
+# state's running entry. wait logic lives in /usr/sbin/so-salt-minion-wait (deployed by salt_sbin
+# from salt/tools/sbin/); its steady-state authority is the master req/publish sockets for the
+# current daemon pid (resolved via systemd, not the pidfile), and it corroborates a just-restarted
+# instance with the pid-tagged "Minion is ready to receive requests!" log line only within a short
+# window of startup. Because that socket signal does not require a recent restart, the wait also
+# succeeds cleanly when salt_minion_service reports a non-restart change (e.g. an enable toggle)
+# rather than false-timing-out. set_log_levels above enforces the log_level_logfile: info that the
+# ready line depends on. salt restarts this unit with --no-block, so mod_watch returns while the old
+# daemon is still up; the script waits for systemd's restart job to drain before it reads MainPID.
+wait_for_salt_minion_ready:
+  cmd.run:
+    - name: /usr/sbin/so-salt-minion-wait
+    - onchanges:
+      - service: salt_minion_service
+    - require:
+      - service: salt_minion_service
     - order: last
