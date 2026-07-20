@@ -85,6 +85,23 @@ so-postgres:
       - x509: postgres_crt
       - x509: postgres_key
 
+postgres_wait_ready:
+  cmd.run:
+    - name: /usr/sbin/so-postgres-wait
+    - require:
+      - docker_container: so-postgres
+      - file: postgres_sbin
+
+# Reconcile the SOC database (role, grants, so_telegraf) every highstate so a
+# partially-initialized cluster self-heals. POSTGRES_USER is injected because
+# the container env omits it.
+postgres_bootstrap_soc_db:
+  cmd.run:
+    - name: docker exec -u postgres -e POSTGRES_USER=postgres so-postgres bash /docker-entrypoint-initdb.d/init-db.sh
+    - require:
+      - cmd: postgres_wait_ready
+      - file: postgresinitdb
+
 delete_so-postgres_so-status.disabled:
   file.uncomment:
     - name: /opt/so/conf/so-status/so-status.conf
