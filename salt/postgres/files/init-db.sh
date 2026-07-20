@@ -8,6 +8,10 @@ if [ -z "${SO_POSTGRES_PASS:-}" ] && [ -n "${SO_POSTGRES_PASS_FILE:-}" ] && [ -r
     SO_POSTGRES_PASS="$(< "$SO_POSTGRES_PASS_FILE")"
 fi
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+    -- Shield the plaintext password below from postgres.log if this DDL errors:
+    -- log_min_error_statement defaults to 'error', which would append a STATEMENT line
+    -- containing the full CREATE/ALTER ROLE ... PASSWORD text. panic suppresses that.
+    SET log_min_error_statement = panic;
     DO \$\$
     BEGIN
         IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '${SO_POSTGRES_USER}') THEN
