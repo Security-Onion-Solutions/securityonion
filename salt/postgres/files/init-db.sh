@@ -12,13 +12,19 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
     -- log_min_error_statement defaults to 'error', which would append a STATEMENT line
     -- containing the full CREATE/ALTER ROLE ... PASSWORD text. panic suppresses that.
     SET log_min_error_statement = panic;
+    -- Race-safe upsert: try CREATE, and if the role was created concurrently
+    -- (another session re-entering init) fall back to ALTER. Catching the
+    -- exception -- rather than an IF NOT EXISTS check -- avoids a TOCTOU window
+    -- where CREATE ROLE would abort the whole script with a duplicate-key error
+    -- and skip the grants below. Both SQLSTATEs are covered: duplicate_object
+    -- (role already exists) and unique_violation (racy pg_authid index insert).
     DO \$\$
     BEGIN
-        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '${SO_POSTGRES_USER}') THEN
+        BEGIN
             EXECUTE format('CREATE ROLE %I WITH LOGIN PASSWORD %L', '${SO_POSTGRES_USER}', '${SO_POSTGRES_PASS}');
-        ELSE
-            EXECUTE format('ALTER ROLE %I WITH PASSWORD %L', '${SO_POSTGRES_USER}', '${SO_POSTGRES_PASS}');
-        END IF;
+        EXCEPTION WHEN duplicate_object OR unique_violation THEN
+            EXECUTE format('ALTER ROLE %I WITH LOGIN PASSWORD %L', '${SO_POSTGRES_USER}', '${SO_POSTGRES_PASS}');
+        END;
     END
     \$\$;
     GRANT ALL ON SCHEMA public TO "$SO_POSTGRES_USER";
