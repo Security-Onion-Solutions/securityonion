@@ -1,8 +1,9 @@
 name: Security Onion - Playbook Pipeline
 priority: 97
 transformations:
-    # Route string fields to their lowercase-normalized .caseless subfield so wildcard
-    # matches are case-insensitive.
+    # Route to lowercase-normalized .caseless subfields for case-insensitive matching.
+    # file.path.caseless exists on Defend only (Sysmon file events lack it);
+    # registry.path / dll.path / file.name have no .caseless on any source.
     - id: case_insensitive_string_fields
       type: field_name_mapping
       mapping:
@@ -10,3 +11,121 @@ transformations:
         process.parent.executable: process.parent.executable.caseless
         process.command_line: process.command_line.caseless
         process.parent.command_line: process.parent.command_line.caseless
+        file.path: file.path.caseless
+    # file_activity: playbook-only pseudo-category spanning all file operations.
+    - id: playbook_file_activity_add-fields
+      type: add_condition
+      conditions:
+        event.category: 'file'
+      rule_conditions:
+      - type: logsource
+        category: file_activity
+    # EventType -> event.action is safe as a projection only — the values differ
+    # (Sysmon DeleteFile/SetValue vs ECS deletion/modification).
+    - id: playbook_file_activity_event_type
+      type: field_name_mapping
+      mapping:
+        winlog.event_data.EventType: event.action
+      rule_conditions:
+      - type: logsource
+        category: file_activity
+    - id: playbook_file_event_event_type
+      type: field_name_mapping
+      mapping:
+        winlog.event_data.EventType: event.action
+      rule_conditions:
+      - type: logsource
+        category: file_event
+    - id: playbook_file_delete_event_type
+      type: field_name_mapping
+      mapping:
+        winlog.event_data.EventType: event.action
+      rule_conditions:
+      - type: logsource
+        category: file_delete
+    - id: playbook_file_rename_event_type
+      type: field_name_mapping
+      mapping:
+        winlog.event_data.EventType: event.action
+      rule_conditions:
+      - type: logsource
+        category: file_rename
+    - id: playbook_registry_set_event_type
+      type: field_name_mapping
+      mapping:
+        winlog.event_data.EventType: event.action
+      rule_conditions:
+      - type: logsource
+        category: registry_set
+    # WMI-Activity events carry no event.category; event.dataset is source-specific
+    - id: playbook_wmi_activity_add-fields
+      type: add_condition
+      conditions:
+        event.dataset: 'wmi.operational'
+      rule_conditions:
+      - type: logsource
+        category: wmi
+    - id: playbook_wmi_event_activity_add-fields
+      type: add_condition
+      conditions:
+        event.dataset: 'wmi.operational'
+      rule_conditions:
+      - type: logsource
+        category: wmi_event
+    - id: playbook_ps_script_field-mapping
+      type: field_name_mapping
+      mapping:
+        ScriptBlockText: powershell.file.script_block_text
+        Path: file.path
+      rule_conditions:
+      - type: logsource
+        category: ps_script
+    - id: playbook_ps_script_add-fields
+      type: add_condition
+      conditions:
+        event.dataset: 'windows.powershell_operational'
+        event.code: '4104'
+      rule_conditions:
+      - type: logsource
+        category: ps_script
+    # Data (raw EID 400/600 message blob) -> process.command_line: the winlog
+    # integration parses HostApplication into it; `message` is analyzed text and
+    # wildcard matches on it silently return zero. No .caseless on this dataset.
+    - id: playbook_ps_classic_start_field-mapping
+      type: field_name_mapping
+      mapping:
+        Data: process.command_line
+      rule_conditions:
+      - type: logsource
+        category: ps_classic_start
+    - id: playbook_ps_classic_start_add-fields
+      type: add_condition
+      conditions:
+        event.dataset: 'windows.powershell'
+        event.code: '400'
+      rule_conditions:
+      - type: logsource
+        category: ps_classic_start
+    - id: playbook_ps_classic_provider_start_field-mapping
+      type: field_name_mapping
+      mapping:
+        Data: process.command_line
+      rule_conditions:
+      - type: logsource
+        category: ps_classic_provider_start
+    - id: playbook_ps_classic_provider_start_add-fields
+      type: add_condition
+      conditions:
+        event.dataset: 'windows.powershell'
+        event.code: '600'
+      rule_conditions:
+      - type: logsource
+        category: ps_classic_provider_start
+    # Alert docs nest the host under event_data.host.name; no top-level host.name.
+    - id: playbook_alert_host_field
+      type: field_name_mapping
+      mapping:
+        host.name: event_data.host.name
+      rule_conditions:
+      - type: logsource
+        category: alert
