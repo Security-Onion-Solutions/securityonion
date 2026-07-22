@@ -94,7 +94,9 @@ salt_master_service:
       - file: checkmine_engine
       - file: pillarWatch_engine
       - file: engines_config
-    - order: 9002
+    - require:
+      - cmd: wait_for_salt_minion_ready
+    - order: last
 
 {% else %}
 
