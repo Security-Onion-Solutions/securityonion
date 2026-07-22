@@ -64,6 +64,43 @@ elasticsearch:
               flood_stage:
                 description: The max percentage of used disk space that will cause the node to take protective actions, such as blocking incoming events.
                 helpLink: elasticsearch
+      lifecycle:
+        default:
+          rollover:
+            description: This property accepts a key value pair formatted string and configures the conditions that would trigger a data stream to rollover when it has lifecycle configured.
+            forcedType: string
+            regex: ^max_age=(auto|[1-9][0-9]*[hd]),max_primary_shard_size=[1-9][0-9]*gb,min_docs=(0|[1-9][0-9]*),max_primary_shard_docs=[1-9][0-9]*$
+            regexFailureMessage: Must be in the format of "max_age=auto|<number><h|d>,max_primary_shard_size=<number>gb,min_docs=<number>,max_primary_shard_docs=<number>".
+            advanced: True
+            global: True
+    data_streams:
+      lifecycle:
+        poll_interval:
+          description: How often Elasticsearch checks what the next action is for all data streams with a built-in lifecycle.
+          forcedType: string
+          regex: "^[1-9][0-9]*[mhd]$"
+          regexFailureMessage: Must be a number followed by m, h, or d.
+          advanced: True
+          global: true
+          helpLink: elasticsearch
+        target:
+          merge:
+            policy:
+              merge_factor:
+                description: Data stream lifecycle implements tail merging by updating the Lucene merge policy factor for the target backing index. The merge factor is both the number of segments that should be merged together, and the maximum number of segments that we expect to find.
+                forcedType: int
+                regex: "^[1-9][0-9]*$"
+                advanced: True
+                global: true
+                helpLink: elasticsearch
+              floor_segment:
+                description: Data stream lifecycle implements tail merging by updating the Lucene merge policy floor segment for the target backing index. This floor segment size is a way to prevent indices from having a long tail of very small segments.
+                forcedType: string
+                regex: "^[1-9][0-9]*[MG]B$"
+                regexFailureMessage: Must be a number followed by MB or GB, such as 100MB.
+                advanced: True
+                global: true
+                helpLink: elasticsearch
     action:
       destructive_requires_name:
         description: Requires explicit index names when deleting indices. Prevents accidental deletion of indices via wildcard patterns.
