@@ -131,13 +131,22 @@ transformations:
       type: field_name_mapping
       mapping:
         winlog.event_data.Details: registry.data.strings
-        # field rename only; EventType values (SetValue/CreateKey) still differ from
-        # event.action values (modification/creation)
-        winlog.event_data.EventType: event.action
       rule_conditions:
       - type: logsource
         product: windows
         category: registry_set
+    # ecs_windows renames Initiated -> network.direction without translating the value,
+    # so rules compile to network.direction:"true" and never match (field holds
+    # ingress/egress). network.initiated carries the boolean on both Defend and Sysmon.
+    # Keyed on network.direction because ecs_windows has already renamed by this layer.
+    - id: ecs_fix_network_connection_initiated
+      type: field_name_mapping
+      mapping:
+        network.direction: network.initiated
+      rule_conditions:
+      - type: logsource
+        product: windows
+        category: network_connection
     - id: ecs_fix_image_load
       type: field_name_mapping
       mapping:
@@ -150,6 +159,30 @@ transformations:
       - type: logsource
         product: windows
         category: image_load
+    # Defend reports the driver image in dll.path (file.path is null on driver events) —
+    # same renames as image_load.
+    - id: ecs_fix_driver_load
+      type: field_name_mapping
+      mapping:
+        file.path: dll.path
+        file.code_signature.signed: dll.code_signature.exists
+        winlog.event_data.Signature: dll.code_signature.subject_name
+        file.code_signature.status: dll.code_signature.status
+        winlog.event_data.Hashes: dll.hash.sha256
+      rule_conditions:
+      - type: logsource
+        product: windows
+        category: driver_load
+    - id: ecs_fix_file_rename
+      type: field_name_mapping
+      mapping:
+        # Defend records the pre-rename path in file.Ext.original.path; Sysmon's
+        # SourceFilename has no ECS equivalent.
+        winlog.event_data.SourceFilename: file.Ext.original.path
+      rule_conditions:
+      - type: logsource
+        product: windows
+        category: file_rename
     - id: linux_security_add-fields
       type: add_condition
       conditions:
@@ -323,6 +356,33 @@ transformations:
       rule_conditions:
       - type: logsource
         category: file_event
+    # Without event.type scoping, file_delete rules also match creations.
+    - id: endpoint_file_delete_add-fields
+      type: add_condition
+      conditions:
+        event.category: 'file'
+        event.type: 'deletion'
+      rule_conditions:
+      - type: logsource
+        category: file_delete
+    # Defend reports renames as event.action:rename with event.type:change.
+    - id: endpoint_file_rename_add-fields
+      type: add_condition
+      conditions:
+        event.category: 'file'
+        event.action: 'rename'
+      rule_conditions:
+      - type: logsource
+        category: file_rename
+    # event.type:change selects writes and excludes Defend's read-only registry events.
+    - id: endpoint_registry_set_add-fields
+      type: add_condition
+      conditions:
+        event.category: 'registry'
+        event.type: 'change'
+      rule_conditions:
+      - type: logsource
+        category: registry_set
     # Scope image_load rules to Elastic Endpoint library events (event.category:library, dll.*
     # populated).
     - id: endpoint_image_load_add-fields
@@ -351,6 +411,149 @@ transformations:
       rule_conditions:
       - type: logsource
         category: network_connection
+    # Scope on lookup actions, not network.protocol:dns (also matches Zeek port-53).
+    - id: endpoint_dns_query_add-fields
+      type: add_condition
+      conditions:
+        event.category: 'network'
+        event.action:
+          - 'lookup_requested'
+          - 'lookup_result'
+      rule_conditions:
+      - type: logsource
+        category: dns_query
+    # OS gates: without them a `product: windows` rule in these categories also matches
+    # Linux/macOS. Separate conditions (not `product:` on the mappings above) so the
+    # mappings keep scoping product-less rules.
+    - id: endpoint_file_create_windows_os-gate
+      type: add_condition
+      conditions:
+        host.os.type: 'windows'
+      rule_conditions:
+      - type: logsource
+        category: file_event
+        product: windows
+    - id: endpoint_file_create_linux_os-gate
+      type: add_condition
+      conditions:
+        host.os.type: 'linux'
+      rule_conditions:
+      - type: logsource
+        category: file_event
+        product: linux
+    - id: endpoint_file_create_macos_os-gate
+      type: add_condition
+      conditions:
+        host.os.type: 'macos'
+      rule_conditions:
+      - type: logsource
+        category: file_event
+        product: macos
+    - id: endpoint_file_delete_windows_os-gate
+      type: add_condition
+      conditions:
+        host.os.type: 'windows'
+      rule_conditions:
+      - type: logsource
+        category: file_delete
+        product: windows
+    - id: endpoint_file_delete_linux_os-gate
+      type: add_condition
+      conditions:
+        host.os.type: 'linux'
+      rule_conditions:
+      - type: logsource
+        category: file_delete
+        product: linux
+    - id: endpoint_file_delete_macos_os-gate
+      type: add_condition
+      conditions:
+        host.os.type: 'macos'
+      rule_conditions:
+      - type: logsource
+        category: file_delete
+        product: macos
+    - id: endpoint_file_rename_windows_os-gate
+      type: add_condition
+      conditions:
+        host.os.type: 'windows'
+      rule_conditions:
+      - type: logsource
+        category: file_rename
+        product: windows
+    - id: endpoint_file_rename_linux_os-gate
+      type: add_condition
+      conditions:
+        host.os.type: 'linux'
+      rule_conditions:
+      - type: logsource
+        category: file_rename
+        product: linux
+    - id: endpoint_file_rename_macos_os-gate
+      type: add_condition
+      conditions:
+        host.os.type: 'macos'
+      rule_conditions:
+      - type: logsource
+        category: file_rename
+        product: macos
+    - id: endpoint_network_connection_windows_os-gate
+      type: add_condition
+      conditions:
+        host.os.type: 'windows'
+      rule_conditions:
+      - type: logsource
+        category: network_connection
+        product: windows
+    - id: endpoint_network_connection_linux_os-gate
+      type: add_condition
+      conditions:
+        host.os.type: 'linux'
+      rule_conditions:
+      - type: logsource
+        category: network_connection
+        product: linux
+    - id: endpoint_network_connection_macos_os-gate
+      type: add_condition
+      conditions:
+        host.os.type: 'macos'
+      rule_conditions:
+      - type: logsource
+        category: network_connection
+        product: macos
+    - id: endpoint_dns_query_windows_os-gate
+      type: add_condition
+      conditions:
+        host.os.type: 'windows'
+      rule_conditions:
+      - type: logsource
+        category: dns_query
+        product: windows
+    - id: endpoint_dns_query_linux_os-gate
+      type: add_condition
+      conditions:
+        host.os.type: 'linux'
+      rule_conditions:
+      - type: logsource
+        category: dns_query
+        product: linux
+    - id: endpoint_dns_query_macos_os-gate
+      type: add_condition
+      conditions:
+        host.os.type: 'macos'
+      rule_conditions:
+      - type: logsource
+        category: dns_query
+        product: macos
+    # registry_set / image_load / driver_load are not gated — windows-only telemetry.
+    # wmi / wmi_event are not scoped here: their only handle is event.dataset
+    - id: endpoint_driver_load_add-fields
+      type: add_condition
+      conditions:
+        event.category: 'driver'
+      rule_conditions:
+      - type: logsource
+        category: driver_load
     # Maps "alert" category to SO Alert events
     - id: alert_so_add-fields
       type: add_condition

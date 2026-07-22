@@ -8,22 +8,13 @@
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 {%   from 'telegraf/map.jinja' import TELEGRAFMERGED %}
 
-{# postgres_wait_ready below requires `docker_container: so-postgres`, which is
-   declared in postgres.enabled. Include it here so state.apply postgres.telegraf_users
-   on its own (e.g. from orch.deploy_newnode) still has that ID in scope. Salt
-   de-duplicates the circular include. #}
+{# postgres.enabled declares the so-postgres container and postgres_wait_ready
+   that the requires below reference. Salt de-duplicates the circular include. #}
 include:
   - postgres.enabled
 
 {% set TG_OUT = TELEGRAFMERGED.output | upper %}
 {% if TG_OUT in ['POSTGRES', 'BOTH'] %}
-
-postgres_wait_ready:
-  cmd.run:
-    - name: /usr/sbin/so-postgres-wait
-    - require:
-      - docker_container: so-postgres
-      - file: postgres_sbin
 
 # Ensure the shared Telegraf database exists. init-db.sh only runs on a
 # fresh data dir, so hosts upgraded onto an existing /nsm/postgres volume
