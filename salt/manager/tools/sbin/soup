@@ -442,7 +442,13 @@ get_soup_script_hashes() {
 }
 
 highstate() {
-  # Run a highstate.
+  # Run a highstate with a retry attempt.
+  if salt-call state.highstate -l info queue=True; then
+    return 0
+  fi
+
+  echo "Initial highstate attempt had a problem; retrying in 30 seconds."
+  sleep 30
   salt-call state.highstate -l info queue=True
 }
 
