@@ -46,20 +46,24 @@ transformations:
       - type: logsource
         product: opencanary
     # Maps "antivirus" category to Windows Defender logs shipped by Elastic Agent Winlog Integration
+    # and to Elastic Defend malware alerts
     # winlog.event_data.threat_name has to be renamed prior to ingestion, it is originally winlog.event_data.Threat Name
-    - id: antivirus_field-mappings_windows-defender
+    - id: antivirus_field-mappings
       type: field_name_mapping
       mapping:
-        Signature: winlog.event_data.threat_name
+        Signature:
+          - winlog.event_data.threat_name
+          - rule.name
       rule_conditions:
       - type: logsource
         category: antivirus
-    - id: antivirus_add-fields_windows-defender
+    - id: antivirus_add-fields
       type: add_condition
       conditions:
-        winlog.channel: 'Microsoft-Windows-Windows Defender/Operational'
-        winlog.provider_name: 'Microsoft-Windows-Windows Defender'
-        event.code: "1116"
+        event.code:
+          - "1116"
+          - "malicious_file"
+          - "memory_signature"
       rule_conditions:
       - type: logsource
         category: antivirus
