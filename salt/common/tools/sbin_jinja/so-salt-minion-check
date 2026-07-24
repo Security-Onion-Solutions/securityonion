@@ -25,7 +25,7 @@ LAST_HIGHSTATE_END=$([ -e "/opt/so/log/salt/lasthighstate" ] && date -r /opt/so/
 LAST_HEALTHCHECK_STATE_APPLY=$([ -e "/opt/so/log/salt/state-apply-test" ] && date -r /opt/so/log/salt/state-apply-test +%s || echo 0)
 # SETTING THRESHOLD TO ANYTHING UNDER 600 seconds may cause a lot of salt-minion restarts since the job to touch the file occurs every 5-8 minutes by default
 # THRESHOLD is derived from the salt schedule highstate interval + 1 hour, so the minion-check grace period tracks the schedule automatically.
-THRESHOLD=$(( ({{ SCHEDULEMERGED.highstate_interval_hours }} + 1) * 3600 )) #within how many seconds the file /opt/so/log/salt/state-apply-test must have been touched/modified before the salt minion is restarted
+THRESHOLD=$(( ({{ SCHEDULEMERGED.highstate_interval_minutes }} + 60) * 60 )) #within how many seconds the file /opt/so/log/salt/state-apply-test must have been touched/modified before the salt minion is restarted
 THRESHOLD_DATE=$((LAST_HEALTHCHECK_STATE_APPLY+THRESHOLD))
 
 logCmd() {
