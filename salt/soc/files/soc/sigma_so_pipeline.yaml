@@ -68,13 +68,25 @@ transformations:
       - type: logsource
         category: antivirus
     # OS-agnostic process_creation scoping for product-less (NIDS/host-pivot) rules.
+    # pySigma: rule_cond_expr requires rule_conditions as a mapping, not a list.
     - id: process_creation_os_agnostic
       type: add_condition
       conditions:
         event.category: process
       rule_conditions:
-      - type: logsource
-        category: process_creation
+        pc_cat:
+          type: logsource
+          category: process_creation
+        pc_win:
+          type: logsource
+          product: windows
+        pc_mac:
+          type: logsource
+          product: macos
+        pc_lin:
+          type: logsource
+          product: linux
+      rule_cond_expr: "pc_cat and not (pc_win or pc_mac or pc_lin)"
     # Transforms the `Hashes` field to ECS fields
     # ECS fields are used by the hash fields emitted by Elastic Defend
     # If shipped with Elastic Agent, sysmon logs will also have hashes mapped to ECS fields    

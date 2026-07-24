@@ -12,6 +12,30 @@ transformations:
         process.command_line: process.command_line.caseless
         process.parent.command_line: process.parent.command_line.caseless
         file.path: file.path.caseless
+    # entity_id pivots must also match processes that were already running when the
+    # agent started: Defend emits already_running (event.type:info), not start.
+    # Kept out of Playbook sigma query because Sysmon has no equivalent concept.
+    # contains_field is exact, so child pivots (process.parent.entity_id) stay
+    # start-only. Drop must precede add;
+    - id: playbook_process_lifecycle_drop_start_scope
+      type: drop_detection_item
+      field_name_conditions:
+        - type: include_fields
+          fields: ['event.type']
+      rule_conditions:
+        - type: logsource
+          category: process_creation
+        - type: contains_field
+          field: process.entity_id
+    - id: playbook_process_lifecycle_add-fields
+      type: add_condition
+      conditions:
+        event.type: ['start', 'info']
+      rule_conditions:
+        - type: logsource
+          category: process_creation
+        - type: contains_field
+          field: process.entity_id
     # file_activity: playbook-only pseudo-category spanning all file operations.
     - id: playbook_file_activity_add-fields
       type: add_condition
