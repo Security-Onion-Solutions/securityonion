@@ -11,10 +11,8 @@ ADDON_STATEFILE_SUCCESS=/opt/so/state/addon_estemplates.txt
 ELASTICSEARCH_TEMPLATES_DIR="/opt/so/conf/elasticsearch/templates"
 SO_TEMPLATES_DIR="${ELASTICSEARCH_TEMPLATES_DIR}/index"
 ADDON_TEMPLATES_DIR="${ELASTICSEARCH_TEMPLATES_DIR}/addon-index"
-SO_LOAD_FAILURES=0
-ADDON_LOAD_FAILURES=0
-SO_LOAD_FAILURES_NAMES=()
-ADDON_LOAD_FAILURES_NAMES=()
+FAILED_NAMES=()
+FAILED_COUNT=0
 IS_HEAVYNODE="false"
 FORCE="false"
 VERBOSE="false"
@@ -46,20 +44,86 @@ while [[ $# -gt 0 ]]; do
     shift
 done
 
+# Max number of concurrent template PUT jobs. Override via env if needed.
+MAX_TEMPLATE_JOBS=${MAX_TEMPLATE_JOBS:-10}
+
+# Block until fewer than MAX_TEMPLATE_JOBS background jobs are running.
+template_throttle() {
+    while (( $(jobs -rp | wc -l) >= MAX_TEMPLATE_JOBS )); do
+        wait -n
+    done
+}
+
+# Per-job failure markers and an output lock for serializing parallel job output.
+# Each failed load drops one file (named after the template) into FAIL_DIR; the
+# output of each job is flushed as a single block under flock so concurrent jobs
+# never interleave their (chatty) retry output.
+FAIL_DIR=$(mktemp -d)
+OUTPUT_LOCK="${FAIL_DIR}/.output.lock"
+: > "$OUTPUT_LOCK"
+trap 'rm -rf "$FAIL_DIR"' EXIT
+
+# Record a failure: $1 = the template name/path to report later. Slashes are
+# encoded so the path becomes a safe single filename.
+record_failure() {
+    local marker="${1//\//__}"
+    : > "${FAIL_DIR}/fail.${marker}"
+}
+
+# Populate FAILED_NAMES and FAILED_COUNT from the current phase's markers.
+# Must run in the current shell (not a command substitution) so the array sticks.
+collect_failures() {
+    FAILED_NAMES=()
+    FAILED_COUNT=0
+    local f name
+    shopt -s nullglob
+    for f in "${FAIL_DIR}"/fail.*; do
+        name="${f##*/fail.}"
+        name="${name//__//}"
+        FAILED_NAMES+=("$name")
+        FAILED_COUNT=$((FAILED_COUNT + 1))
+    done
+    shopt -u nullglob
+}
+
+# Clear markers and names between phases so SO and addon counts stay independent.
+reset_failures() {
+    shopt -s nullglob
+    rm -f "${FAIL_DIR}"/fail.*
+    shopt -u nullglob
+    FAILED_NAMES=()
+    FAILED_COUNT=0
+}
+
+# Print a block of text atomically (under the shared output lock) so the output
+# of concurrent background jobs is not interleaved.
+locked_echo() {
+    { flock 9; printf '%s\n' "$1"; } 9>>"$OUTPUT_LOCK"
+}
+
+# Loads one template file via PUT. Intended to be dispatched as a background job.
+#   $1 uri          - e.g. _component_template/foo or _index_template/foo
+#   $2 file         - path to the template JSON
+#   $3 report_name  - name/path to record if this load fails
 load_template() {
     local uri="$1"
     local file="$2"
+    local report_name="$3"
+    local out rc=0 block
 
-    echo "Loading template file $file"
-    if ! output=$(retry 3 3 "so-elasticsearch-query $uri -d@$file -XPUT" "{\"acknowledged\":true}"); then
-        echo "$output"
-
-        return 1
-
+    # Capture everything (including retry's diagnostic chatter) into one block so
+    # concurrent jobs never interleave; the whole block is flushed under one flock.
+    block="Loading template file $file"$'\n'
+    if ! out=$(retry 3 3 "so-elasticsearch-query $uri -d@$file -XPUT" "{\"acknowledged\":true}" 2>&1); then
+        block+="$out"$'\n'
+        rc=1
     elif [[ "$VERBOSE" == "true" ]]; then
-        echo "$output"
+        block+="$out"$'\n'
     fi
 
+    { flock 9; printf '%s' "$block"; } 9>>"$OUTPUT_LOCK"
+
+    (( rc != 0 )) && record_failure "$report_name"
 }
 
 check_required_component_template_exists() {
@@ -110,6 +174,9 @@ load_component_templates() {
         return
     fi
 
+    # Dispatch loads as throttled background jobs. The barrier (wait) happens in
+    # the caller after all component groups have been dispatched, since index
+    # templates must not load until every component template is in place.
     for component in "$pattern"/*.json; do
         tmpl_name=$(basename "${component%.json}")
 
@@ -118,19 +185,9 @@ load_component_templates() {
             tmpl_name="${tmpl_name%-mappings}-mappings"
         fi
 
-        if ! load_template "_component_template/${tmpl_name}" "$component"; then
-            SO_LOAD_FAILURES=$((SO_LOAD_FAILURES + 1))
-            SO_LOAD_FAILURES_NAMES+=("$component")
-        fi
+        template_throttle
+        load_template "_component_template/${tmpl_name}" "$component" "$component" &
     done
-}
-
-check_elasticsearch_responsive() {
-    # Cannot load templates if Elasticsearch is not responding.
-    #  NOTE: Slightly faster exit w/ failure than previous "retry 240 1" if there is a problem with Elasticsearch the
-    #    script should exit sooner rather than hang at the 'so-elasticsearch-templates' salt state.
-    retry 3 15 "so-elasticsearch-query / --output /dev/null --fail" ||
-        fail "Elasticsearch is not responding. Please review Elasticsearch logs /opt/so/log/elasticsearch/securityonion.log for more details. Additionally, consider running so-elasticsearch-troubleshoot."
 }
 
 index_templates_exist() {
@@ -180,6 +237,9 @@ if [[ "$FORCE" == "true" || ! -f "$SO_STATEFILE_SUCCESS" ]] && index_templates_e
     load_component_templates "Elastic Agent" "elastic-agent"
     load_component_templates "Security Onion" "so"
 
+    # Barrier: every component template PUT must complete before we snapshot the
+    # component template list and start loading index templates that depend on them.
+    wait
     component_templates=$(so-elasticsearch-component-templates-list)
     echo -e "Loading Security Onion index templates...\n"
     for so_idx_tmpl in "${SO_TEMPLATES_DIR}"/*.json; do
@@ -189,7 +249,7 @@ if [[ "$FORCE" == "true" || ! -f "$SO_STATEFILE_SUCCESS" ]] && index_templates_e
             # TODO: Better way to load only heavynode specific templates
             if ! check_heavynode_compatiable_index_template "$tmpl_name"; then
                 if [[ "$VERBOSE" == "true" ]]; then
-                    echo "Skipping over $so_idx_tmpl, template is not a heavynode specific index template."
+                    locked_echo "Skipping over $so_idx_tmpl, template is not a heavynode specific index template."
                 fi
 
                 continue
@@ -197,32 +257,34 @@ if [[ "$FORCE" == "true" || ! -f "$SO_STATEFILE_SUCCESS" ]] && index_templates_e
         fi
 
         if check_required_component_template_exists "$so_idx_tmpl"; then
-            if ! load_template "_index_template/$tmpl_name" "$so_idx_tmpl"; then
-                SO_LOAD_FAILURES=$((SO_LOAD_FAILURES + 1))
-                SO_LOAD_FAILURES_NAMES+=("$so_idx_tmpl")
-            fi
+            template_throttle
+            load_template "_index_template/$tmpl_name" "$so_idx_tmpl" "$so_idx_tmpl" &
         else
-            echo "Skipping over $so_idx_tmpl due to missing required component template(s)."
-            SO_LOAD_FAILURES=$((SO_LOAD_FAILURES + 1))
-            SO_LOAD_FAILURES_NAMES+=("$so_idx_tmpl")
+            locked_echo "Skipping over $so_idx_tmpl due to missing required component template(s)."
+            record_failure "$so_idx_tmpl"
 
             continue
         fi
     done
 
-    if [[ $SO_LOAD_FAILURES -eq 0 ]]; then
+    # Barrier: all SO index template PUTs must finish before tallying failures.
+    wait
+
+    collect_failures
+    if [[ $FAILED_COUNT -eq 0 ]]; then
         echo "All Security Onion core templates loaded successfully."
 
         touch "$SO_STATEFILE_SUCCESS"
     else
-        echo "Encountered $SO_LOAD_FAILURES failure(s) loading templates:"
-        for failed_template in "${SO_LOAD_FAILURES_NAMES[@]}"; do
+        echo "Encountered $FAILED_COUNT failure(s) loading templates:"
+        for failed_template in "${FAILED_NAMES[@]}"; do
             echo "  - $failed_template"
         done
         if [[ "$SHOULD_EXIT_ON_FAILURE" == "true" ]]; then
             fail "Failed to load all Security Onion core templates successfully."
         fi
     fi
+    reset_failures
 elif ! index_templates_exist "$SO_TEMPLATES_DIR"; then
     echo "No Security Onion core index templates found in ${SO_TEMPLATES_DIR}, skipping."
 elif [[ -f "$SO_STATEFILE_SUCCESS" ]]; then
@@ -241,26 +303,27 @@ if should_load_addon_templates; then
         tmpl_name=$(basename "${addon_idx_tmpl%-template.json}")
 
         if check_required_component_template_exists "$addon_idx_tmpl"; then
-            if ! load_template "_index_template/${tmpl_name}" "$addon_idx_tmpl"; then
-                ADDON_LOAD_FAILURES=$((ADDON_LOAD_FAILURES + 1))
-                ADDON_LOAD_FAILURES_NAMES+=("$addon_idx_tmpl")
-            fi
+            template_throttle
+            load_template "_index_template/${tmpl_name}" "$addon_idx_tmpl" "$addon_idx_tmpl" &
         else
-            echo "Skipping over $addon_idx_tmpl due to missing required component template(s)."
-            ADDON_LOAD_FAILURES=$((ADDON_LOAD_FAILURES + 1))
-            ADDON_LOAD_FAILURES_NAMES+=("$addon_idx_tmpl")
+            locked_echo "Skipping over $addon_idx_tmpl due to missing required component template(s)."
+            record_failure "$addon_idx_tmpl"
 
             continue
         fi
     done
 
-    if [[ $ADDON_LOAD_FAILURES -eq 0 ]]; then
+    # Barrier: all addon index template PUTs must finish before tallying failures.
+    wait
+
+    collect_failures
+    if [[ $FAILED_COUNT -eq 0 ]]; then
         echo "All addon integration templates loaded successfully."
 
         touch "$ADDON_STATEFILE_SUCCESS"
     else
-        echo "Encountered $ADDON_LOAD_FAILURES failure(s) loading addon integration templates:"
-        for failed_template in "${ADDON_LOAD_FAILURES_NAMES[@]}"; do
+        echo "Encountered $FAILED_COUNT failure(s) loading addon integration templates:"
+        for failed_template in "${FAILED_NAMES[@]}"; do
             echo "  - $failed_template"
         done
         if [[ "$SHOULD_EXIT_ON_FAILURE" == "true" ]]; then

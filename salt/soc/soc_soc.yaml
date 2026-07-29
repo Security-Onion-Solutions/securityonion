@@ -46,7 +46,15 @@ soc:
         syntax: yaml
         file: True
         global: True
-        advanced: True
+        advanced: False
+        helpLink: security-onion-console-customization
+      playbook_placeholder_map_custom__yaml:
+        title: Playbook Placeholder Map
+        description: Custom mappings of Playbook %placeholder% tokens to event fields.
+        syntax: yaml
+        file: True
+        global: True
+        advanced: False
         helpLink: security-onion-console-customization
   config:
     licenseKey:
@@ -383,6 +391,11 @@ soc:
             global: True
             advanced: False
             helpLink: sigma
+          useEsql:
+            description: "(Pre-release) Use Elasticsearch Piped Query Language (ES|QL) instead of EQL (Elastic Query Language) for Elasticsearch queries. The Sigma converter will output ES|QL instead of EQL, allowing support for correlations."
+            global: True
+            advanced: True
+            forcedType: bool
         elastic:
           index:
             description: Comma-separated list of indices or index patterns (wildcard "*" supported) that SOC will search for records.
@@ -452,6 +465,42 @@ soc:
           offlineThresholdMs:
             description: Duration (in milliseconds) that must elapse after a grid node fails to check-in before the node will be marked offline (fault).
             global: True
+            advanced: True
+        onionconfig:
+          saltstackDir:
+            description: Root directory containing the SaltStack tree that SOC reads and writes configuration from. Should not be changed under normal circumstances.
+            global: True
+            advanced: True
+          bypassEnabled:
+            description: When enabled, errors encountered while reading the SaltStack pillar tree (missing files, unreadable directories, etc.) are logged but do not prevent SOC from starting or serving settings. Intended for advanced troubleshooting and recovery scenarios when the pillar tree is partially unreadable.
+            global: True
+            advanced: True
+            forcedType: bool
+        postgres:
+          host:
+            description: Hostname or IP address of the PostgreSQL server used by SOC. Defaults to the manager hostname.
+            global: True
+            advanced: True
+          port:
+            description: Port of the PostgreSQL server used by SOC.
+            global: True
+            advanced: True
+          sslMode:
+            description: "Use encrypted connections to the PostgreSQL server. Must be one of the following values: disable, allow, prefer, require, verify-ca, verify-full."
+            global: True
+            advanced: True
+          database:
+            description: Database used by SOC to authenticate to the PostgreSQL server.
+            global: True
+            advanced: True
+          user:
+            description: Username used by SOC to authenticate to the PostgreSQL server.
+            global: True
+            advanced: True
+          password:
+            description: Password used by SOC to authenticate to the PostgreSQL server.
+            global: True
+            sensitive: True
             advanced: True
         salt:
           longRelayTimeoutMs:
@@ -678,6 +727,16 @@ soc:
             description: Maximum length of the system prompt addendum. Longer prompts will be truncated.
             global: True
             advanced: True
+          maxSubSessionTokens:
+            description: Maximum number of output tokens a delegated sub-session may generate across all of its turns. When the budget is reached, the sub-agent is halted and its result is returned to the parent agent. Set to 0 to disable the limit.
+            global: True
+            advanced: True
+            forcedType: int
+          maxDelegationDepth:
+            description: Maximum delegation nesting depth for sub-agents. For example, a value of 2 lets the main agent delegate to a sub-agent that may itself delegate one level deeper. Any deeper delegation is refused and the requesting agent continues without it. Set to 0 to disable the limit.
+            global: True
+            advanced: True
+            forcedType: int
           adapters:
             description: Configuration for AI adapters used by the Onion AI assistant. Please see documentation for help on which fields are required for which protocols.
             global: True
@@ -716,12 +775,32 @@ soc:
               label: Health Timeout Seconds
               required: False
               forcedType: int
+          agentic:
+            description: Indicates if the Assistant Module should operate in agentic mode or not. If true, agents can work together to solve tasks.
+            global: True
+            forcedType: bool
+          agentMapping:
+            Orchestrator:
+              description: The initial agent in most agentic conversations. This agent will delegate requests to specialized agents.
+              global: True
+            Investigator:
+              description: This agent investigates alerts, explains events and records, and hunts through event data. It can also acknowledge alerts and escalate to cases.
+              global: True
+            DetectionEngineer:
+              description: This agent manages detections and their overrides, including tuning noisy rules and authoring rule content.
+              global: True
       client:
         assistant:
           enabled:
             description: Set to true to enable the Onion AI assistant in SOC.
             global: True
             forcedType: bool
+          toolBusyMaxRetries:
+            description: How many times to retry auto approving a tool while a tool is already running.
+            global: True
+          toolBusyRetryDelayMs:
+            description: How long in milliseconds to wait between each retry when auto approving a tool.
+            global: True
           investigationPrompt: 
             description: Prompt given to Onion AI when beginning an investigation.
             global: True
@@ -818,6 +897,7 @@ soc:
           description: List of available external tools visible in the SOC UI. Each tool is defined in JSON object notation, and must include the "name" key and "link" key, where the link is the tool's URL.
           global: True
           advanced: True
+          multiline: True
           forcedType: "[]{}"
         exportNodeId:
           description: The node ID on which export jobs will be executed.

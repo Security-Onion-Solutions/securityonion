@@ -8,18 +8,35 @@
 
 . /usr/sbin/so-elastic-fleet-common
 
+PKG_LOAD_FAILURES=0
+PKG_LOAD_FAILURES_NAMES=()
+
 {%- for PACKAGE in SUPPORTED_PACKAGES %}
-echo "Upgrading {{ PACKAGE }} package..."
-if VERSION=$(elastic_fleet_package_latest_version_check "{{ PACKAGE }}"); then
-    if ! elastic_fleet_package_install "{{ PACKAGE }}" "$VERSION"; then
-        # exit 1 on failure to upgrade a default package, allow salt to handle retries
-        echo -e "\nERROR: Failed to upgrade $PACKAGE to version: $VERSION"
-        exit 1
+if INSTALLED_VERSION=$(elastic_fleet_package_version_check "{{ PACKAGE }}") && LATEST_VERSION=$(elastic_fleet_package_latest_version_check "{{ PACKAGE }}"); then
+
+    if [ "$INSTALLED_VERSION" == "$LATEST_VERSION" ]; then
+        echo "{{ PACKAGE }} integration version $INSTALLED_VERSION is already at the reported latest version $LATEST_VERSION, skipping upgrade."
+    else
+        echo "Upgrading {{ PACKAGE }} package from $INSTALLED_VERSION to version $LATEST_VERSION..."
+        if ! elastic_fleet_package_install "{{ PACKAGE }}" "$LATEST_VERSION"; then
+            PKG_LOAD_FAILURES=$((PKG_LOAD_FAILURES + 1))
+            PKG_LOAD_FAILURES_NAMES+=("{{ PACKAGE }}")
+        fi
     fi
 else
-    echo -e "\nERROR: Failed to get version information for integration $PACKAGE"
+    echo "ERROR: Failed to get version information for integration {{ PACKAGE }}"
+    PKG_LOAD_FAILURES=$((PKG_LOAD_FAILURES + 1))
+    PKG_LOAD_FAILURES_NAMES+=("{{ PACKAGE }}")
 fi
-echo
 {%- endfor %}
-echo
-/usr/sbin/so-elasticsearch-templates-load
+
+if [ $PKG_LOAD_FAILURES -gt 0 ]; then
+    echo "ERROR: Failed to upgrade $PKG_LOAD_FAILURES package(s):"
+    for PKG in "${PKG_LOAD_FAILURES_NAMES[@]}"; do
+        echo " - $PKG"
+    done
+    # exit 1 on failure to upgrade a default package, allow salt to handle retries
+    exit 1
+else
+    echo "Successfully upgraded all packages."
+fi

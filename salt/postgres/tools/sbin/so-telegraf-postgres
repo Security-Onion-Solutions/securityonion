@@ -71,6 +71,8 @@ EOSQL
       -v role_user="$ROLE_USER" \
       -v role_pass="$ROLE_PASS" \
       -U postgres -d so_telegraf <<'EOSQL'
+-- Keep the password out of postgres.log if this DDL errors.
+SET log_min_error_statement = panic;
 SELECT format(
   CASE WHEN EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = :'role_user')
        THEN 'ALTER ROLE %I WITH LOGIN PASSWORD %L'

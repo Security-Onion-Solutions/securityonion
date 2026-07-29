@@ -15,6 +15,7 @@ include:
 strelka_manager:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-strelka-manager:{{ GLOBALS.so_version }}
+    - restart_policy: unless-stopped
     - binds:
       - /opt/so/conf/strelka/manager/:/etc/strelka/:ro
       {% if DOCKERMERGED.containers['so-strelka-manager'].custom_bind_mounts %}

@@ -16,7 +16,6 @@
 STATE_FILE_SUCCESS=/opt/so/state/estemplates.txt
 INSTALLED_PACKAGE_LIST=/tmp/esfleet_installed_packages.json
 BULK_INSTALL_PACKAGE_LIST=/tmp/esfleet_bulk_install.json
-BULK_INSTALL_PACKAGE_TMP=/tmp/esfleet_bulk_install_tmp.json
 BULK_INSTALL_OUTPUT=/opt/so/state/esfleet_bulk_install_results.json
 INTEGRATION_PACKAGE_COMPONENTS=/opt/so/state/esfleet_package_components.json
 INPUT_PACKAGE_COMPONENTS=/opt/so/state/esfleet_input_package_components.json
@@ -29,29 +28,6 @@ PENDING_UPDATE=false
 #   Requiring some level of manual Elastic Stack configuration before installation
 EXCLUDED_INTEGRATIONS=('apm')
 
-version_conversion(){
-    version=$1
-    echo "$version" | awk -F '.' '{ printf("%d%03d%03d\n", $1, $2, $3); }'
-}
-
-compare_versions() {
-    version1=$1
-    version2=$2
-
-    # Convert versions to numbers
-    num1=$(version_conversion "$version1")
-    num2=$(version_conversion "$version2")
-
-    # Compare using bc
-    if (( $(echo "$num1 < $num2" | bc -l) )); then
-        echo "less"
-    elif (( $(echo "$num1 > $num2" | bc -l) )); then
-        echo "greater"
-    else
-        echo "equal"
-    fi
-}
-
 IFS=$'\n'
 agent_policies=$(elastic_fleet_agent_policy_ids)
 if [ $? -ne 0 ]; then
@@ -63,23 +39,23 @@ default_packages=({% for pkg in SUPPORTED_PACKAGES %}"{{ pkg }}"{% if not loop.l
 
 in_use_integrations=()
 
+# Fetch each agent policy once; its package_policies[] already contain both the integration name
+#  and the .package.name, so extract all non-default package names locally in a single jq instead
+#  of re-fetching the same policy per integration.
+default_packages_json=$(printf '%s\n' "${default_packages[@]}" | jq -R . | jq -s '.')
 for AGENT_POLICY in $agent_policies; do
 
-    if ! integrations=$(elastic_fleet_integration_policy_names "$AGENT_POLICY"); then
+    if ! policy_json=$(fleet_api "agent_policies/$AGENT_POLICY"); then
         # skip the agent policy if we can't get required info, let salt retry. Integrations loaded by this script are non-default integrations.
         echo "Skipping $AGENT_POLICY.. "
         continue
     fi
-    for INTEGRATION in $integrations; do
-        if ! PACKAGE_NAME=$(elastic_fleet_integration_policy_package_name "$AGENT_POLICY" "$INTEGRATION"); then
-            echo  "Not adding $INTEGRATION, couldn't get package name"
-            continue
-        fi
-        # non-default integrations that are in-use in any policy
-        if ! [[ " ${default_packages[@]} " =~ " $PACKAGE_NAME " ]]; then
-            in_use_integrations+=("$PACKAGE_NAME")
-        fi
-    done
+    # non-default integrations that are in-use in any policy
+    while IFS= read -r PACKAGE_NAME; do
+        [ -n "$PACKAGE_NAME" ] && in_use_integrations+=("$PACKAGE_NAME")
+    done < <(jq -r --argjson defaults "$default_packages_json" \
+        '.item.package_policies[].package.name | select(. as $n | ($defaults | index($n)) | not)' \
+        <<<"$policy_json")
 done
 
 if [[ -f $STATE_FILE_SUCCESS  ]]; then
@@ -90,72 +66,55 @@ if [[ -f $STATE_FILE_SUCCESS  ]]; then
         rm -f $INSTALLED_PACKAGE_LIST
         echo $latest_package_list | jq '{packages: [.items[] | {name: .name, latest_version: .version, installed_version: .installationInfo.version, subscription: .conditions.elastic.subscription }]}' >> $INSTALLED_PACKAGE_LIST
 
-        while read -r package; do
-            # get package details
-            package_name=$(echo "$package" | jq -r '.name')
-            latest_version=$(echo "$package" | jq -r '.latest_version')
-            installed_version=$(echo "$package" | jq -r '.installed_version')
-            subscription=$(echo "$package" | jq -r '.subscription')
-            bulk_package=$(echo "$package" | jq '{name: .name, version: .latest_version}' )
+        # Build the bulk install list and the per-package status messages with two jq passes
+        #  instead of a per-package bash loop. The old loop forked ~10 processes per package
+        #  (5 jq + awk/bc for the version compare) and re-parsed/rewrote a growing JSON file on
+        #  every add (O(n^2)). Selection and messages below are identical to that logic.
+        SUB={% if SUB %}true{% else %}false{% endif %}
+        AUTOUP={% if AUTO_UPGRADE_INTEGRATIONS %}true{% else %}false{% endif %}
+        EXCLUDED_JSON=$(printf '%s\n' "${EXCLUDED_INTEGRATIONS[@]}" | jq -R 'select(length>0)' | jq -s '.')
+        INUSE_JSON=$(printf '%s\n' "${in_use_integrations[@]}" | jq -R 'select(length>0)' | jq -s 'unique')
 
-            if [[ ! "${EXCLUDED_INTEGRATIONS[@]}" =~ "$package_name" ]]; then
-            {% if not SUB %}
-                if [[ "$subscription" != "basic" && "$subscription" != "null" && -n "$subscription" ]]; then
-                    # pass over integrations that require non-basic elastic license
-                    echo "$package_name integration requires an Elastic license of $subscription or greater... skipping"
-                    continue
-                else
-                    if [[ "$installed_version" == "null" || -z "$installed_version" ]]; then
-                        echo "$package_name is not installed... Adding to next update."
-                        jq --argjson package "$bulk_package" '.packages += [$package]' $BULK_INSTALL_PACKAGE_LIST > $BULK_INSTALL_PACKAGE_TMP && mv $BULK_INSTALL_PACKAGE_TMP $BULK_INSTALL_PACKAGE_LIST
+        # vnum replicates the previous version_conversion (%d%03d%03d of the first three dotted
+        #  fields); needs() replicates the excluded/subscription/installed/upgrade/in-use logic.
+        JQ_DECISION='
+def vnum:
+  [ (split(".")|.[0:3][] | gsub("[^0-9].*";"") | (if .=="" then "0" else . end) | tonumber) ]
+  | (.[0]//0)*1000000 + (.[1]//0)*1000 + (.[2]//0);
+def needs($sub;$autoup;$excluded;$inuse):
+  .name as $n
+  | ($n | IN($excluded[]) | not)
+  and ( $sub or (.subscription==null or .subscription=="basic" or .subscription=="") )
+  and ( (.installed_version==null or .installed_version=="")
+        or ( ((.latest_version|vnum) > (.installed_version|vnum))
+             and ( $autoup or ($n | IN($inuse[]) | not) ) ) );'
 
-                        PENDING_UPDATE=true
-                    else
-                        results=$(compare_versions "$latest_version" "$installed_version")
-                        if [ $results == "greater" ]; then
-                            {#- When auto_upgrade_integrations is false, skip upgrading in_use_integrations  #}
-                            {%- if not AUTO_UPGRADE_INTEGRATIONS %}
-                            if ! [[ " ${in_use_integrations[@]} " =~ " $package_name " ]]; then
-                            {%- endif %}
-                                echo "$package_name is at version $installed_version latest version is $latest_version... Adding to next update."
-                                jq --argjson package "$bulk_package" '.packages += [$package]' $BULK_INSTALL_PACKAGE_LIST > $BULK_INSTALL_PACKAGE_TMP && mv $BULK_INSTALL_PACKAGE_TMP $BULK_INSTALL_PACKAGE_LIST
+        JQ_ARGS=(--argjson sub "$SUB" --argjson autoup "$AUTOUP" --argjson excluded "$EXCLUDED_JSON" --argjson inuse "$INUSE_JSON")
 
-                                PENDING_UPDATE=true
-                            {%- if not AUTO_UPGRADE_INTEGRATIONS %}
-                            else
-                                echo "skipping available upgrade for in use integration - $package_name."
-                            fi
-                            {%- endif %}
-                        fi
-                    fi
-                fi
-            {% else %}
-                if [[ "$installed_version" == "null" || -z "$installed_version" ]]; then
-                    echo "$package_name is not installed... Adding to next update."
-                    jq --argjson package "$bulk_package" '.packages += [$package]' $BULK_INSTALL_PACKAGE_LIST > $BULK_INSTALL_PACKAGE_TMP && mv $BULK_INSTALL_PACKAGE_TMP $BULK_INSTALL_PACKAGE_LIST
-                    PENDING_UPDATE=true
-                else
-                    results=$(compare_versions "$latest_version" "$installed_version")
-                    if [ $results == "greater" ]; then
-                        {#- When auto_upgrade_integrations is false, skip upgrading in_use_integrations  #}
-                        {%- if not AUTO_UPGRADE_INTEGRATIONS %}
-                        if ! [[ " ${in_use_integrations[@]} " =~ " $package_name " ]]; then
-                        {%- endif %}
-                            echo "$package_name is at version $installed_version latest version is $latest_version... Adding to next update."
-                            jq --argjson package "$bulk_package" '.packages += [$package]' $BULK_INSTALL_PACKAGE_LIST > $BULK_INSTALL_PACKAGE_TMP && mv $BULK_INSTALL_PACKAGE_TMP $BULK_INSTALL_PACKAGE_LIST
-                            PENDING_UPDATE=true
-                        {%- if not AUTO_UPGRADE_INTEGRATIONS %}
-                        else
-                            echo "skipping available upgrade for in use integration - $package_name."
-                        fi
-                        {%- endif %}
-                    fi
-                fi
-            {% endif %}
-            else
-                echo "Skipping $package_name..."
-            fi
-        done <<< "$(jq -c '.packages[]' "$INSTALLED_PACKAGE_LIST")"
+        # (a) Per-package status messages (parity with the previous echo output).
+        jq -r "${JQ_ARGS[@]}" "$JQ_DECISION"'
+          .packages[]
+          | .name as $n
+          | if ($n|IN($excluded[])) then "Skipping \($n)..."
+            elif (($sub|not) and (.subscription!=null and .subscription!="basic" and .subscription!="")) then
+                 "\($n) integration requires an Elastic license of \(.subscription) or greater... skipping"
+            elif (.installed_version==null or .installed_version=="") then
+                 "\($n) is not installed... Adding to next update."
+            elif ((.latest_version|vnum) > (.installed_version|vnum)) then
+                 (if ($autoup or ($n|IN($inuse[])|not))
+                  then "\($n) is at version \(.installed_version) latest version is \(.latest_version)... Adding to next update."
+                  else "skipping available upgrade for in use integration - \($n)." end)
+            else empty end
+        ' "$INSTALLED_PACKAGE_LIST"
+
+        # (b) The bulk install list, built in a single pass.
+        jq "${JQ_ARGS[@]}" "$JQ_DECISION"'
+          {packages: [ .packages[] | select(needs($sub;$autoup;$excluded;$inuse)) | {name, version: .latest_version} ]}
+        ' "$INSTALLED_PACKAGE_LIST" > "$BULK_INSTALL_PACKAGE_LIST"
+
+        if jq -e '.packages | length > 0' "$BULK_INSTALL_PACKAGE_LIST" >/dev/null; then
+            PENDING_UPDATE=true
+        fi
 
         if [ "$PENDING_UPDATE" = true ]; then
             # Run chunked install of packages

@@ -1,0 +1,117 @@
+#!/bin/bash
+#
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+# Runs once per boot on managers (via so-boot-mine-update.service), before
+# so-boot-highstate.service. Waits for the responsive minion set to settle, pushes
+# mine.update, waits until every up minion has actually reported to the mine, then
+# warms the master's per-minion pillar cache so the mine-backed node pillars (node
+# IPs, ES/Redis/Logstash/hypervisor discovery -- some glob- and some pillar/grain-
+# targeted) are complete before the boot highstate renders them. Otherwise a node
+# that is up but not yet fully reported gets dropped from those pillars and torn
+# out of the configs they build (e.g. so-elasticsearch ExtraHosts -> container recreate).
+
+MAX_WAIT=${MINE_UPDATE_MAX_WAIT:-180}   # hard backstop only
+INTERVAL=10
+STABLE_CHECKS=3                          # up-count must hold steady this many polls
+elapsed=0
+prev=-1
+stable=0
+up=0
+
+# Wait for the *reachable* minion set to settle rather than for every accepted
+# key to report up: an operator may accept a minion's key and then intentionally
+# power off that host, so requiring up >= accepted would never be satisfied and
+# we'd always burn the full MAX_WAIT. Once the responsive count stops growing we
+# stop waiting and run mine.update against whoever is up.
+while [ "$elapsed" -lt "$MAX_WAIT" ]; do
+  up=$(/usr/bin/salt-run manage.up --out=json 2>/dev/null \
+    | python3 -c 'import sys,json; print(len(json.load(sys.stdin)))' 2>/dev/null)
+  up=${up:-0}
+  if [ "$up" -gt 0 ] && [ "$up" -eq "$prev" ]; then
+    stable=$((stable + 1))
+    [ "$stable" -ge "$STABLE_CHECKS" ] && break
+  else
+    stable=0
+  fi
+  prev=$up
+  sleep "$INTERVAL"
+  elapsed=$((elapsed + INTERVAL))
+done
+
+echo "so-boot-mine-update: ${up} minions up (settled after ${elapsed}s); running mine.update"
+/usr/bin/salt '*' mine.update --out=txt
+
+# A node that is up but has not yet re-reported network.ip_addrs to the mine is
+# silently dropped from mine-backed pillars (elasticsearch:nodes, node_data, ...)
+# when highstate recompiles them -- which e.g. removes it from so-elasticsearch
+# ExtraHosts and forces a container recreate. After the broad mine.update above,
+# wait until every up minion actually has network.ip_addrs in the mine, re-pushing
+# mine.update to stragglers, before releasing the boot highstate. Bounded by the
+# same MAX_WAIT backstop so a slow/down node never blocks boot indefinitely.
+missing=""
+while [ "$elapsed" -lt "$MAX_WAIT" ]; do
+  up_json=$(/usr/bin/salt-run manage.up --out=json 2>/dev/null)
+  mine_json=$(/usr/bin/salt-run mine.get '*' network.ip_addrs tgt_type=glob --out=json 2>/dev/null)
+  missing=$(printf '%s' "$up_json" | python3 -c '
+import sys, json
+up = set(json.load(sys.stdin) or [])
+mine = {k for k, v in (json.loads(sys.argv[1]) or {}).items() if v}
+print("\n".join(sorted(up - mine)))
+' "$mine_json" 2>/dev/null)
+  if [ -z "$missing" ]; then
+    echo "so-boot-mine-update: mine complete for all up minions after ${elapsed}s"
+    break
+  fi
+  echo "so-boot-mine-update: mine missing up minion(s): $(echo $missing); re-running mine.update"
+  for m in $missing; do /usr/bin/salt "$m" mine.update --out=txt; done
+  sleep "$INTERVAL"
+  elapsed=$((elapsed + INTERVAL))
+done
+[ -n "$missing" ] && echo "so-boot-mine-update: WARNING ${MAX_WAIT}s backstop hit; up minion(s) still absent from mine: $(echo $missing); highstate may drop them from configs"
+
+# The pillar/compound-targeted node pillars (elasticsearch:nodes, redis:nodes,
+# logstash:nodes, hypervisor:nodes) resolve their target against the master's
+# per-minion data cache (grains+pillar in .../minions/<id>/data.p), populated only
+# when a minion's pillar is (re)compiled -- separately from the mine. A freshly
+# booted node can be in the mine (glob/node_data sees it) yet absent from that
+# cache, so it is dropped from those pillars and from the configs they build (e.g.
+# so-elasticsearch ExtraHosts). Force a synchronous pillar refresh so the master
+# caches every up node's pillar; refresh_pillar wait=True returns only once the
+# pillar is recompiled (and thus cached for matching). Retry stragglers <= MAX_WAIT.
+echo "so-boot-mine-update: warming master pillar cache for pillar/grain-targeted node pillars"
+/usr/bin/salt '*' saltutil.refresh_pillar wait=True --out=txt
+missing=""
+while [ "$elapsed" -lt "$MAX_WAIT" ]; do
+  up_json=$(/usr/bin/salt-run manage.up --out=json 2>/dev/null)
+  cached_json=$(/usr/bin/salt-run cache.pillar tgt='*' --out=json 2>/dev/null)
+  missing=$(printf '%s' "$up_json" | python3 -c '
+import sys, json
+up = set(json.load(sys.stdin) or [])
+cached = {k for k, v in (json.loads(sys.argv[1]) or {}).items() if v}
+print("\n".join(sorted(up - cached)))
+' "$cached_json" 2>/dev/null)
+  if [ -z "$missing" ]; then
+    echo "so-boot-mine-update: pillar cache warm for all up minions after ${elapsed}s"
+    break
+  fi
+  echo "so-boot-mine-update: pillar not yet cached for: $(echo $missing); refreshing"
+  for m in $missing; do /usr/bin/salt "$m" saltutil.refresh_pillar wait=True --out=txt; done
+  sleep "$INTERVAL"
+  elapsed=$((elapsed + INTERVAL))
+done
+[ -n "$missing" ] && echo "so-boot-mine-update: WARNING ${MAX_WAIT}s backstop hit; pillar not cached for: $(echo $missing); pillar-targeted pillars may drop them"
+
+# Log what the mine-backed pillars render so the boot-time state is inspectable.
+/usr/bin/salt-call saltutil.refresh_pillar >/dev/null 2>&1
+sleep 2
+for key in node_data elasticsearch:nodes; do
+  rendered=$(/usr/bin/salt-call --out=json pillar.get "$key" 2>/dev/null \
+    | python3 -c 'import sys,json; print(json.dumps(json.load(sys.stdin).get("local"), indent=2, sort_keys=True))' 2>/dev/null)
+  echo "so-boot-mine-update: ${key} rendered as:"
+  echo "${rendered:-null}"
+done
+exit 0

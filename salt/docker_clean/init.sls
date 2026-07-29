@@ -9,7 +9,8 @@
 prune_images:
   cmd.run:
     - name: so-docker-prune
-    - order: last
+    - onlyif: command -v /usr/sbin/so-docker-prune >/dev/null 2>&1
+    - order: 9000
 
 {% else %}
 

@@ -19,6 +19,7 @@ wait_for_elasticsearch:
 so-elastalert:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elastalert:{{ GLOBALS.so_version }}
+    - restart_policy: unless-stopped
     - hostname: elastalert
     - name: so-elastalert
     - user: so-elastalert

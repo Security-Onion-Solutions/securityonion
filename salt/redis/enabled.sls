@@ -17,6 +17,7 @@ include:
 so-redis:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-redis:{{ GLOBALS.so_version }}
+    - restart_policy: unless-stopped
     - hostname: so-redis
     - user: socore
     - networks:

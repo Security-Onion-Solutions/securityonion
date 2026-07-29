@@ -1464,6 +1464,7 @@ soc:
           sigmaRulePackages:
             - core
             - emerging_threats_addon
+          useEsql: false
         elastic:
           hostUrl:
           remoteHostUrls: []
@@ -1499,15 +1500,27 @@ soc:
           playbookRepos:
             default:
               - repo: https://github.com/Security-Onion-Solutions/securityonion-resources-playbooks
+                rulesetName: sos-playbook-resources
                 branch: main
                 folder: securityonion-normalized
+              - repo: https://github.com/Security-Onion-Solutions/securityonion-resources-playbooks
+                rulesetName: sos-published
+                branch: published
+                folder: sigma
             airgap:
               - repo: file:///nsm/airgap-resources/playbooks/securityonion-resources-playbooks
+                rulesetName: sos-resources-ag
                 branch: main
                 folder: securityonion-normalized
+              - repo: file:///nsm/airgap-resources/playbooks/securityonion-resources-playbooks
+                rulesetName: sos-published-ag
+                branch: published
+                folder: sigma
         assistant:
           systemPromptAddendum: ""
           systemPromptAddendumMaxLength: 50000
+          maxSubSessionTokens: 0
+          maxDelegationDepth: 5
           adapters:
             - name: SOAI
               protocol: securityonion_ai_cloud
@@ -1519,6 +1532,21 @@ soc:
               serviceAccountJSON: ""
               serviceAccountLocation: ""
               healthTimeoutSeconds: 5
+          agentic: false
+          agentMapping:
+            Orchestrator: sonnet@SOAI
+            Investigator: gemma@SOAI
+            DetectionEngineer: gemma@SOAI
+        onionconfig:
+          saltstackDir: /opt/so/saltstack
+          bypassEnabled: false
+        postgres:
+          host: ""
+          port: 5432
+          sslMode: "require"
+          database: securityonion
+          user: ""
+          password: ""
         salt:
           queueDir: /opt/sensoroni/queue
           timeoutMs: 45000
@@ -1760,12 +1788,12 @@ soc:
               enabled: true
           queries:
             - name: Default Query
-              description: Show all events grouped by the observer host
-              query: '* | groupby observer.name'
-              showSubtitle: true
-            - name: Log Type
               description: Show all events grouped by module and dataset
               query: '* | groupby event.module* event.dataset'
+              showSubtitle: true
+            - name: Observer
+              description: Show all events grouped by the observer host
+              query: '* | groupby observer.name'
               showSubtitle: true
             - name: SOC - Auth
               description: Users authenticated to SOC grouped by IP address and identity
@@ -2678,6 +2706,8 @@ soc:
           thresholdColorRatioLow: 0.5
           thresholdColorRatioMed: 0.75
           thresholdColorRatioMax: 1
+          toolBusyMaxRetries: 30
+          toolBusyRetryDelayMs: 1000
           availableModels:
             - id: sonnet
               displayName: Claude Sonnet
@@ -2688,4 +2718,14 @@ soc:
               enabled: true
               adapter: SOAI
               charsPerTokenEstimate: 4
+            - id: gemma
+              displayName: Gemma
+              origin: USA
+              contextLimitSmall: 256000
+              contextLimitLarge: 256000
+              lowBalanceColorAlert: 500000
+              enabled: true
+              adapter: SOAI
+              charsPerTokenEstimate: 4
+              
             

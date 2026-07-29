@@ -30,6 +30,94 @@ fleet_api() {
     curl -sK /opt/so/conf/elasticsearch/curl.config -L "localhost:5601/api/fleet/${QUERYPATH}" "$@" --retry 3 --retry-delay 10 --fail 2>/dev/null
 }
 
+# Max number of concurrent Fleet write jobs (create/update). Override via env if needed.
+MAX_FLEET_JOBS=${MAX_FLEET_JOBS:-10}
+
+# Block until fewer than MAX_FLEET_JOBS background jobs are running.
+elastic_fleet_throttle() {
+    while (( $(jobs -rp | wc -l) >= MAX_FLEET_JOBS )); do
+        wait -n || true
+    done
+}
+
+# Load every integration JSON in a directory into a single agent policy.
+# The agent policy is fetched ONCE (not per file), and the create/update writes
+# are dispatched as throttled background jobs.
+#   $1 AGENT_POLICY     - the agent policy id/name to load integrations into
+#   $2 DIR              - directory of integration *.json files
+#   $3 LABEL           - human-readable label for log output
+#   $4 SKIP_CREATE_NAME - (optional) integration name to skip when creating (still updated if present)
+# Returns 1 if the policy cannot be fetched or if any integration failed to create/update.
+elastic_fleet_load_integrations_dir() {
+    local AGENT_POLICY=$1
+    local DIR=$2
+    local LABEL=$3
+    local SKIP_CREATE_NAME=$4
+    local POLICY_JSON FAIL_FILE OUT_DIR INTEGRATION NAME ID i
+
+    FAIL_FILE=$(mktemp)
+    # Each job buffers its full output (header + API response) into its own file so the
+    # parent can print them grouped and in submission order after concurrent writes finish.
+    OUT_DIR=$(mktemp -d)
+    i=0
+
+    # Fetch the agent policy a single time; we look up integration ids locally below.
+    if ! POLICY_JSON=$(fleet_api "agent_policies/$AGENT_POLICY"); then
+        echo "Error: Failed to retrieve agent policy '$AGENT_POLICY'."
+        rm -f "$FAIL_FILE"
+        rm -rf "$OUT_DIR"
+        return 1
+    fi
+
+    if ! jq -e '.item.package_policies' <<<"$POLICY_JSON" >/dev/null 2>&1; then
+        echo "Error: Invalid agent policy response for '$AGENT_POLICY'."
+        rm -f "$FAIL_FILE"
+        rm -rf "$OUT_DIR"
+        return 1
+    fi
+
+    for INTEGRATION in "$DIR"/*.json; do
+        [ -e "$INTEGRATION" ] || continue
+        NAME=$(jq -r .name "$INTEGRATION")
+        ID=$(jq -r --arg n "$NAME" '.item.package_policies[]? | select(.name==$n) | .id' <<<"$POLICY_JSON")
+
+        elastic_fleet_throttle
+        {
+            local RESP
+            if [ -n "$ID" ]; then
+                printf "\n\n%s - Updating integration %s\n" "$LABEL" "$NAME"
+                if ! RESP=$(elastic_fleet_integration_update "$ID" "@$INTEGRATION"); then
+                    flock 9; echo "update ${INTEGRATION##*/}" >&9
+                fi
+                printf '%s\n' "$RESP"
+            elif [ -n "$SKIP_CREATE_NAME" ] && [ "$NAME" == "$SKIP_CREATE_NAME" ]; then
+                printf "\n\n%s - Skipping creation of %s\n" "$LABEL" "$NAME"
+            else
+                printf "\n\n%s - Creating integration %s\n" "$LABEL" "$NAME"
+                if ! RESP=$(elastic_fleet_integration_create "@$INTEGRATION"); then
+                    flock 9; echo "create ${INTEGRATION##*/}" >&9
+                fi
+                printf '%s\n' "$RESP"
+            fi
+        } >"$OUT_DIR/$(printf '%03d' "$i")" 9>>"$FAIL_FILE" &
+        i=$((i+1))
+    done
+    wait || true
+
+    # Emit per-integration output grouped and in submission order (glob sorts numerically).
+    cat "$OUT_DIR"/* 2>/dev/null
+    rm -rf "$OUT_DIR"
+
+    local rc=0
+    if [ -s "$FAIL_FILE" ]; then
+        printf "\n%s: failed integrations:\n" "$LABEL"
+        cat "$FAIL_FILE"
+        rc=1
+    fi
+    rm -f "$FAIL_FILE"
+    return $rc
+}
+
 elastic_fleet_integration_check() {
 
     AGENT_POLICY=$1
@@ -46,7 +134,9 @@ elastic_fleet_integration_create() {
 
     JSON_STRING=$1
 
-    if ! fleet_api "package_policies" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -XPOST -d "$JSON_STRING"; then
+    # --retry-all-errors so transient 409 conflicts (concurrent writes to the same agent
+    # policy) are retried; curl --retry alone does not retry 409.
+    if ! fleet_api "package_policies" --retry-all-errors -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -XPOST -d "$JSON_STRING"; then
         return 1
     fi
 }
@@ -77,7 +167,9 @@ elastic_fleet_integration_update() {
 
     JSON_STRING=$2
 
-    if ! fleet_api "package_policies/$UPDATE_ID" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -XPUT -d "$JSON_STRING"; then
+    # --retry-all-errors so transient 409 conflicts (concurrent writes to the same agent
+    # policy) are retried; curl --retry alone does not retry 409.
+    if ! fleet_api "package_policies/$UPDATE_ID" --retry-all-errors -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -XPUT -d "$JSON_STRING"; then
         return 1
     fi
 }

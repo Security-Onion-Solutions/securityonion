@@ -8,15 +8,20 @@ if [ -z "${SO_POSTGRES_PASS:-}" ] && [ -n "${SO_POSTGRES_PASS_FILE:-}" ] && [ -r
     SO_POSTGRES_PASS="$(< "$SO_POSTGRES_PASS_FILE")"
 fi
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+    -- Keep the password out of postgres.log if this DDL errors.
+    SET log_min_error_statement = panic;
+    -- Idempotent, race-safe upsert: CREATE, falling back to ALTER if the role
+    -- already exists or is created concurrently.
     DO \$\$
     BEGIN
-        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '${SO_POSTGRES_USER}') THEN
+        BEGIN
             EXECUTE format('CREATE ROLE %I WITH LOGIN PASSWORD %L', '${SO_POSTGRES_USER}', '${SO_POSTGRES_PASS}');
-        ELSE
-            EXECUTE format('ALTER ROLE %I WITH PASSWORD %L', '${SO_POSTGRES_USER}', '${SO_POSTGRES_PASS}');
-        END IF;
+        EXCEPTION WHEN duplicate_object OR unique_violation THEN
+            EXECUTE format('ALTER ROLE %I WITH LOGIN PASSWORD %L', '${SO_POSTGRES_USER}', '${SO_POSTGRES_PASS}');
+        END;
     END
     \$\$;
+    GRANT ALL ON SCHEMA public TO "$SO_POSTGRES_USER";
     GRANT ALL PRIVILEGES ON DATABASE "$POSTGRES_DB" TO "$SO_POSTGRES_USER";
     -- Lock the SOC database down at the connect layer; PUBLIC gets CONNECT
     -- by default, which would let per-minion telegraf roles open sessions

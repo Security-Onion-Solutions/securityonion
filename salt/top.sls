@@ -19,7 +19,7 @@ base:
     - repo.client
     - versionlock
     - ntp
-    - schedule
+    - salt.highstate_schedule
     - logrotate
 
   # manager node on proper salt version with empty node_data pillar
@@ -55,6 +55,7 @@ base:
     - motd
     - salt.minion-check
     - salt.lasthighstate
+    - salt.push_drain_schedule
     - common
     - docker
     - docker_clean
@@ -83,7 +84,6 @@ base:
     - zeek
     - strelka
     - elastalert
-    - utility
     - elasticfleet
     - pcap.cleanup
 
@@ -113,7 +113,6 @@ base:
     - zeek
     - strelka
     - elastalert
-    - utility
     - elasticfleet
     - stig
     - kafka
@@ -141,7 +140,6 @@ base:
     - elastic-fleet-package-registry
     - kibana
     - elastalert
-    - utility
     - elasticfleet
     - stig
     - kafka
@@ -168,7 +166,6 @@ base:
     - elastic-fleet-package-registry
     - kibana
     - elastalert
-    - utility
     - elasticfleet
     - kafka
 
@@ -198,7 +195,6 @@ base:
     - elastic-fleet-package-registry
     - kibana
     - elastalert
-    - utility
     - elasticfleet
     - stig
     - kafka
@@ -222,7 +218,6 @@ base:
     - elasticsearch
     - elastic-fleet-package-registry
     - kibana
-    - utility
     - suricata
     - zeek
     - elasticfleet
@@ -300,7 +295,6 @@ base:
     - nginx
     - elasticfleet
     - elasticfleet.install_agent_grid
-    - schedule
     - stig
 
   '*_hypervisor and I@features:vrt and G@saltversion:{{saltversion}}':

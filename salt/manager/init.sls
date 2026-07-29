@@ -15,6 +15,7 @@ include:
   - manager.elasticsearch
   - manager.kibana
   - manager.managed_soc_annotations
+  - manager.beacons
 
 repo_log_dir:
   file.directory:
@@ -86,6 +87,28 @@ repo_dir:
       - group
     - show_changes: False
 
+kernelrepo_dir:
+  file.directory:
+    - name: /nsm/kernelrepo
+    - user: socore
+    - group: socore
+    - recurse:
+      - user
+      - group
+    - show_changes: False
+
+# Ensure /nsm/kernelrepo is always a valid (if empty) repo before it is ever assigned to
+# a client. Without repodata/repomd.xml an enabled file:///nsm/kernelrepo repo makes every
+# dnf operation fail; so-repo-sync only populates it after the highstate, so seed an empty
+# repo here. Only runs when repodata is missing, so it won't clobber a synced repo.
+kernelrepo_init_empty:
+  cmd.run:
+    - name: createrepo /nsm/kernelrepo
+    - unless: 'test -e /nsm/kernelrepo/repodata/repomd.xml'
+    - require:
+      - file: kernelrepo_dir
+      - pkg: install_createrepo
+
 manager_sbin:
   file.recurse:
     - name: /usr/sbin
@@ -119,6 +142,13 @@ so-repo-mirrorlist:
   file.managed:
     - name: /opt/so/conf/reposync/mirror.txt
     - source: salt://manager/files/mirror.txt
+    - user: socore
+    - group: socore
+
+so-repo-kernel-mirrorlist:
+  file.managed:
+    - name: /opt/so/conf/reposync/mirror-kernel.txt
+    - source: salt://manager/files/mirror-kernel.txt
     - user: socore
     - group: socore
 
@@ -230,6 +260,7 @@ surifiltersrules:
     - source: salt://suricata/files/so_filters.rules
     - user: 939
     - group: 939
+
 
 {% else %}
 

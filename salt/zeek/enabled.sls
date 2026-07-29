@@ -16,6 +16,7 @@ include:
 so-zeek:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-zeek:{{ GLOBALS.so_version }}
+    - restart_policy: unless-stopped
     - start: True
     - privileged: True
     {% if DOCKERMERGED.containers['so-zeek'].ulimits %}
