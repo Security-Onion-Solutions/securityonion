@@ -150,15 +150,40 @@ fi
 # Tiered pass: Elasticsearch data nodes first, then receivers, then the remainder. The last
 # tier is defined as the complement of the earlier tiers (and of this manager) so coverage is
 # exhaustive -- sensors, fleet, idh, desktop, hypervisor, and any future role are all included.
-TIERED_ACTIONS=$(cat <<JSON
-[
-  {"highstate": true, "tgt": "( *_searchnode or *_heavynode ) and not $MINIONID", "tgt_type": "compound", "batch": "$BATCH", "batch_wait": $BATCH_WAIT},
-  {"highstate": true, "tgt": "*_receiver and not $MINIONID", "tgt_type": "compound", "batch": "$BATCH", "batch_wait": $BATCH_WAIT},
-  {"highstate": true, "tgt": "not $MINIONID and not *_searchnode and not *_heavynode and not *_receiver", "tgt_type": "compound", "batch": "$BATCH", "batch_wait": $BATCH_WAIT}
-]
-JSON
+TIER_TGTS=(
+  "( *_searchnode or *_heavynode ) and not $MINIONID"
+  "*_receiver and not $MINIONID"
+  "not $MINIONID and not *_searchnode and not *_heavynode and not *_receiver"
 )
-dispatch "tiered pass (searchnodes/heavynodes -> receivers -> remainder)" "$TIERED_ACTIONS"
+
+# Count minions a compound target matches, using the master's key/cache data (no execution).
+tier_count() {
+  salt --out=json -C "$1" --preview-target 2>/dev/null | jq 'length' 2>/dev/null
+}
+
+# Build the actions JSON, including only tiers that actually match minions. An empty target
+# would make orch.push_batch's salt.state step return "No minions returned" -- a failure --
+# even though nothing needed to run, and grids commonly lack a tier (no receiver, etc.).
+# Keep the JSON on a single line: salt parses `pillar=<value>` kwargs with a non-DOTALL
+# regex, so an embedded newline makes it treat the whole token as a positional saltenv
+# instead ("No matching salt environment for environment 'pillar=...'").
+actions=""
+for tgt in "${TIER_TGTS[@]}"; do
+  n=$(tier_count "$tgt"); n=${n:-0}
+  if [ "$n" -ge 1 ]; then
+    [ -n "$actions" ] && actions="$actions, "
+    actions="$actions{\"highstate\": true, \"tgt\": \"$tgt\", \"tgt_type\": \"compound\", \"batch\": \"$BATCH\", \"batch_wait\": $BATCH_WAIT}"
+    log "tier matched $n minion(s): $tgt"
+  else
+    log "tier matched 0 minions, skipping: $tgt"
+  fi
+done
+
+if [ -z "$actions" ]; then
+  log "no remote minions matched any tier; nothing to push (reason=$REASON)"
+  exit 0
+fi
+dispatch "tiered pass (searchnodes/heavynodes -> receivers -> remainder)" "[$actions]"
 
 log "grid highstate complete (reason=$REASON)"
 exit 0
