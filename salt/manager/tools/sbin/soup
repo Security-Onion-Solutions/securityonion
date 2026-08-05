@@ -479,6 +479,7 @@ preupgrade_changes() {
     [[ "$INSTALLEDVERSION" =~ ^2\.4\.21[0-9]+$ ]] && up_to_3.0.0
     [[ "$INSTALLEDVERSION" == "3.0.0" ]] && up_to_3.1.0
     [[ "$INSTALLEDVERSION" == "3.1.0" ]] && up_to_3.2.0
+    [[ "$INSTALLEDVERSION" == "3.2.0" ]] && up_to_3.3.0
     true
 }
 
@@ -496,6 +497,7 @@ postupgrade_changes() {
     [[ "$POSTVERSION" =~ ^2\.4\.21[0-9]+$ ]] && post_to_3.0.0
     [[ "$POSTVERSION" == "3.0.0" ]] && post_to_3.1.0
     [[ "$POSTVERSION" == "3.1.0" ]] && post_to_3.2.0
+    [[ "$POSTVERSION" == "3.2.0" ]] && post_to_3.3.0
     # All applicable post-upgrade steps completed; clear the resume marker.
     rm -f "$POSTVERSION_FILE"
     true
@@ -878,7 +880,7 @@ post_to_3.1.0() {
 recollate_postgres() {
   echo ""
   echo "Recollating PostgreSQL databases. The following output may contain warnings about a version mismatch, followed by a note indicating that the collation version has been changed."
-  for db in postgres securityonion so_telegraf; do
+  for db in template0 template1 postgres securityonion so_telegraf; do
     docker exec so-postgres psql -U postgres $db -c "reindex database $db"
     docker exec so-postgres psql -U postgres $db -c "alter database $db refresh collation version"
   done
@@ -1004,8 +1006,18 @@ post_to_3.2.0() {
 
   set_postversion 3.2.0
 }
-
 ### 3.2.0 End ###
+
+### 3.2.0 Scripts ###
+up_to_3.3.0() {
+  INSTALLEDVERSION=3.3.0
+}
+
+post_to_3.3.0() {
+  # Recollate again since some internal DBs were excluded during 3.2.0 soup
+  recollate_postgres
+}
+### 3.3.0 End ###
 
 
 repo_sync() {
