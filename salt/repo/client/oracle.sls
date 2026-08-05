@@ -60,6 +60,9 @@ so_repo:
   {% endif %}
     - enabled: 1
     - gpgcheck: 1
+  {% if not GLOBALS.is_manager %}
+    - sslverify: 0
+  {% endif %}
 
 # Only assign the kernel repo once this node's running salt matches the version this
 # SO release ships. During a soup the grid is mid-salt-upgrade; gating here keeps the
@@ -77,6 +80,9 @@ so_kernel_repo:
   {% endif %}
     - enabled: 1
     - gpgcheck: 1
+  {% if not GLOBALS.is_manager %}
+    - sslverify: 0
+  {% endif %}
     # Supplementary kernel repo: tolerate it being empty/unreachable (e.g. before the
     # manager has populated /nsm/kernelrepo) so a missing repomd.xml can't make every
     # dnf/pkg operation on the grid fail.

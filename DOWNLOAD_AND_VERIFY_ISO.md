@@ -1,17 +1,17 @@
-### 3.1.0-20260528 ISO image released on 2026/05/28
+### 3.2.0-20260729 ISO image released on 2026/07/29
 
 
 ### Download and Verify
 
-3.1.0-20260528 ISO image:  
-https://download.securityonion.net/file/securityonion/securityonion-3.1.0-20260528.iso
+3.2.0-20260729 ISO image:  
+https://download.securityonion.net/file/securityonion/securityonion-3.2.0-20260729.iso
  
-MD5: 9D6FF58DEEE24089D722C73169765B3E  
-SHA1: 2B8B816B6CEC3B7F96B3C5E040EBF502DD2C412F  
-SHA256: 62FAB57E247C843D6A04F0796D8162C732B65D82FC3E4A59D087135B9FD32912  
+MD5: B1E10F46DF872B655C29325DF965A4DB  
+SHA1: 0F3C7ED80F6D326B7A993C2F899B986320C01BF9  
+SHA256: 7465163C1D1ADFCDC3935530EAFB312E987C016941ADC11841B214553314D1FF  
 
 Signature for ISO image:  
-https://github.com/Security-Onion-Solutions/securityonion/raw/3/main/sigs/securityonion-3.1.0-20260528.iso.sig
+https://github.com/Security-Onion-Solutions/securityonion/raw/3/main/sigs/securityonion-3.2.0-20260729.iso.sig
 
 Signing key:  
 https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/3/main/KEYS  
@@ -25,22 +25,22 @@ wget https://raw.githubusercontent.com/Security-Onion-Solutions/securityonion/3/
 
 Download the signature file for the ISO:  
 ```
-wget https://github.com/Security-Onion-Solutions/securityonion/raw/3/main/sigs/securityonion-3.1.0-20260528.iso.sig
+wget https://github.com/Security-Onion-Solutions/securityonion/raw/3/main/sigs/securityonion-3.2.0-20260729.iso.sig
 ```
 
 Download the ISO image:  
 ```
-wget https://download.securityonion.net/file/securityonion/securityonion-3.1.0-20260528.iso
+wget https://download.securityonion.net/file/securityonion/securityonion-3.2.0-20260729.iso
 ```
 
 Verify the downloaded ISO image using the signature file:  
 ```
-gpg --verify securityonion-3.1.0-20260528.iso.sig securityonion-3.1.0-20260528.iso
+gpg --verify securityonion-3.2.0-20260729.iso.sig securityonion-3.2.0-20260729.iso
 ```
 
 The output should show "Good signature" and the Primary key fingerprint should match what's shown below:
 ```
-gpg: Signature made Wed 27 May 2026 03:03:59 PM EDT using RSA key ID FE507013
+gpg: Signature made Tue 28 Jul 2026 06:17:34 PM EDT using RSA key ID FE507013
 gpg: Good signature from "Security Onion Solutions, LLC <info@securityonionsolutions.com>"
 gpg: WARNING: This key is not certified with a trusted signature!
 gpg:          There is no indication that the signature belongs to the owner.
