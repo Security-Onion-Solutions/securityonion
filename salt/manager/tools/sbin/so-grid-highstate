@@ -33,6 +33,10 @@ LOCK_FILE=/opt/so/state/so-grid-highstate.lock
 SETTLE_MAX_WAIT=${GRID_HIGHSTATE_SETTLE_WAIT:-900}   # backstop for the post-salt-upgrade settle loop
 SETTLE_INTERVAL=15
 SETTLE_STABLE_CHECKS=3
+# salt-minion on an upgraded node restarts ~30s after the upgrade state runs
+# (salt/salt/minion/init.sls start_minion_post_upgrade); wait past that before sampling
+# so the settle loop sees the drop-off instead of settling on the pre-restart set.
+SETTLE_INITIAL_WAIT=${GRID_HIGHSTATE_SETTLE_INITIAL_WAIT:-45}
 
 BATCH=""
 BATCH_WAIT=""
@@ -98,31 +102,51 @@ fi
 
 log "starting grid highstate: reason=$REASON minion=$MINIONID accepted=$NUM_ACCEPTED batch=$BATCH batch_wait=$BATCH_WAIT salt_upgraded=$SALT_UPGRADED"
 
+# Count minions currently responsive on the bus (includes this manager).
+count_up() {
+  salt-run manage.up --out=json 2>/dev/null \
+    | python3 -c 'import sys,json; print(len(json.load(sys.stdin)))' 2>/dev/null
+}
+
 # Dispatch a single synchronous orch.push_batch run for the given actions JSON.
 # Synchronous is fine: soup launched us detached, so blocking here does not hold soup up.
+# expect_restart=true marks a dispatch (the salt-upgrade pass) where a non-zero rc is normal
+# because targets restart salt-minion mid-run -- so we don't log a misleading failure warning.
 dispatch() {
   local desc="$1"
   local actions="$2"
+  local expect_restart="${3:-false}"
+  local rc
   log "dispatching $desc"
-  if salt-run state.orchestrate orch.push_batch pillar="{\"actions\": $actions}" >>"$LOG_FILE" 2>&1; then
+  salt-run state.orchestrate orch.push_batch pillar="{\"actions\": $actions}" >>"$LOG_FILE" 2>&1
+  rc=$?
+  if [ "$rc" -eq 0 ]; then
     log "$desc dispatch completed (rc=0)"
+  elif [ "$expect_restart" = "true" ]; then
+    log "$desc returned rc=$rc; this is expected during a salt upgrade (targets restart salt-minion mid-run). Waiting for them to reconnect before the tiered pass."
   else
-    log "WARNING: $desc dispatch returned rc=$?; nodes it missed will converge on the scheduled highstate"
+    log "WARNING: $desc dispatch returned rc=$rc; nodes it missed will converge on the scheduled highstate"
   fi
 }
 
-# Wait for the responsive minion set to stop growing. Used after the salt-upgrade pass,
-# where minions restart salt-minion (~30s delayed, see salt/salt/minion/init.sls) and drop
-# off the bus before reconnecting on the new version. Mirrors so-boot-mine-update's settle
-# loop: settle on the reachable set rather than requiring up==accepted, since an operator may
-# have intentionally powered a node off. Bounded by SETTLE_MAX_WAIT so a down node never stalls us.
+# Wait for the reachable minion set to recover to its pre-upgrade size and hold steady.
+# Used after the salt-upgrade pass, where targets restart salt-minion (~30s delayed, see
+# salt/salt/minion/init.sls) and drop off the bus before reconnecting on the new version.
+# target = how many minions were reachable just before the pass; requiring up >= target keeps
+# us from releasing the tiered pass while nodes are still down for their restart (settling on
+# the not-yet-restarted subset). We deliberately compare against the pre-upgrade reachable
+# count, not accepted keys, so a node an operator intentionally powered off never stalls us.
+# Bounded by SETTLE_MAX_WAIT.
 wait_for_settle() {
+  local target="$1"
   local elapsed=0 prev=-1 stable=0 up=0
+  # Let the delayed salt-minion restart begin before we start counting stability, otherwise
+  # we could see the pre-restart set as "stable" and settle before the drop-off even happens.
+  sleep "$SETTLE_INITIAL_WAIT"
+  elapsed=$SETTLE_INITIAL_WAIT
   while [ "$elapsed" -lt "$SETTLE_MAX_WAIT" ]; do
-    up=$(salt-run manage.up --out=json 2>/dev/null \
-      | python3 -c 'import sys,json; print(len(json.load(sys.stdin)))' 2>/dev/null)
-    up=${up:-0}
-    if [ "$up" -gt 0 ] && [ "$up" -eq "$prev" ]; then
+    up=$(count_up); up=${up:-0}
+    if [ "$up" -ge "$target" ] && [ "$up" -eq "$prev" ]; then
       stable=$((stable + 1))
       [ "$stable" -ge "$SETTLE_STABLE_CHECKS" ] && break
     else
@@ -132,8 +156,11 @@ wait_for_settle() {
     sleep "$SETTLE_INTERVAL"
     elapsed=$((elapsed + SETTLE_INTERVAL))
   done
-  log "fleet settled at ${up} minions up after ${elapsed}s"
-  [ "$elapsed" -ge "$SETTLE_MAX_WAIT" ] && log "WARNING: ${SETTLE_MAX_WAIT}s settle backstop hit; proceeding with whoever is up"
+  if [ "$up" -ge "$target" ]; then
+    log "fleet recovered to ${up} minions up (>= pre-upgrade ${target}) after ${elapsed}s"
+  else
+    log "WARNING: ${SETTLE_MAX_WAIT}s settle backstop hit; only ${up}/${target} pre-upgrade minions back up; proceeding (stragglers converge on the scheduled highstate)"
+  fi
 }
 
 # Pass 0: when Salt itself was upgraded, remote minions still on the old version only match
@@ -141,10 +168,13 @@ wait_for_settle() {
 # an untiered highstate so they upgrade+reconnect, then wait for them to come back before the
 # real tiered pass applies the new version's states.
 if [ "$SALT_UPGRADED" = "true" ]; then
+  PRE_UP=$(count_up); PRE_UP=${PRE_UP:-1}
+  log "pre-upgrade reachable minions (incl. this manager): $PRE_UP"
   dispatch "salt-upgrade pass (all remote minions)" \
-    "[{\"highstate\": true, \"tgt\": \"not $MINIONID\", \"tgt_type\": \"compound\", \"batch\": \"$BATCH\", \"batch_wait\": $BATCH_WAIT}]"
+    "[{\"highstate\": true, \"tgt\": \"not $MINIONID\", \"tgt_type\": \"compound\", \"batch\": \"$BATCH\", \"batch_wait\": $BATCH_WAIT}]" \
+    true
   log "waiting for minions to reconnect on the new salt version"
-  wait_for_settle
+  wait_for_settle "$PRE_UP"
 fi
 
 # Tiered pass: Elasticsearch data nodes first, then receivers, then the remainder. The last
