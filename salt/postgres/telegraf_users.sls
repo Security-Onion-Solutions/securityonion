@@ -70,25 +70,6 @@ postgres_telegraf_retention_reconcile:
       - cmd: postgres_telegraf_group_role
       - file: postgres_sbin
 
-# One-time recovery for grids whose pg_cron job never ran. Truncating the
-# defaults is destructive, so the watermark keeps it to one pass per host.
-postgres_telegraf_partman_default_repair:
-  cmd.run:
-    - name: mkdir -p /opt/so/state && /usr/sbin/so-telegraf-postgres repair && touch /opt/so/state/telegraf_partman_default_repair
-    - creates: /opt/so/state/telegraf_partman_default_repair
-    - require:
-      - cmd: postgres_telegraf_retention_reconcile
-      - file: postgres_sbin
-
-# Also run from the state, not just hourly from pg_cron, so a grid whose
-# pg_cron worker is dead still recovers on its own.
-postgres_telegraf_partman_maintenance:
-  cmd.run:
-    - name: /usr/sbin/so-telegraf-postgres maintenance
-    - require:
-      - cmd: postgres_telegraf_partman_default_repair
-      - file: postgres_sbin
-
 {% endif %}
 
 {% else %}

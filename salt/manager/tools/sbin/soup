@@ -1013,9 +1013,24 @@ up_to_3.3.0() {
   INSTALLEDVERSION=3.3.0
 }
 
+telegraf_partition_repair() {
+  # Grids upgraded onto an existing /nsm/postgres never ran init-db.sh, so
+  # so_telegraf did not exist when PostgreSQL started and pg_cron's launcher
+  # died without retrying. partman maintenance never ran and every metric piled
+  # up in <parent>_default, which then blocks partition creation outright.
+  # Fresh installs are unaffected. The script no-ops when nothing is stranded.
+  [[ -x /usr/sbin/so-telegraf-partition-repair ]] || return 0
+  docker ps --format '{{.Names}}' | grep -qx so-postgres || return 0
+  echo "Checking Telegraf metric partitions."
+  /usr/sbin/so-telegraf-partition-repair --yes \
+    || echo "  warning: so-telegraf-partition-repair failed; run it manually" >&2
+}
+
 post_to_3.3.0() {
   # Recollate again since some internal DBs were excluded during 3.2.0 soup
   recollate_postgres
+
+  telegraf_partition_repair
 }
 ### 3.3.0 End ###
 

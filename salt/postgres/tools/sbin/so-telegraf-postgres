@@ -12,27 +12,15 @@ set -e
 #   retention    Reconcile partman retention and premake on telegraf parents.
 #                Env: RETENTION_DAYS.
 #   maintenance  Drain default partitions and run partman maintenance.
-#   repair       One-time recovery: TRUNCATE non-empty defaults, then maintain.
 #   check        Report partition health. Non-zero if any parent is unhealthy.
 #
 # Once a default partition holds rows for a day with no child, Postgres cannot
 # create that child at all -- attaching it would violate the default's
 # constraint -- so maintenance drains defaults before calling partman.
+# To recover a grid that is already in that state, use
+# so-telegraf-partition-repair, which discards the backlog instead of moving it.
 
 cmd="${1:?subcommand required}"
-
-# A function rather than re-invoking $0, which assumes the script is executable.
-run_maintenance() {
-  docker exec -i so-postgres psql -v ON_ERROR_STOP=1 -U postgres -d so_telegraf <<'EOSQL'
-SELECT CASE WHEN to_regproc('so_admin.telegraf_maintenance') IS NOT NULL
-            THEN 'true' ELSE 'false' END AS has_proc \gset
-\if :has_proc
-CALL so_admin.telegraf_maintenance();
-\else
-\echo 'so_admin.telegraf_maintenance() is missing; run so-telegraf-postgres group_role first.'
-\endif
-EOSQL
-}
 
 case "$cmd" in
   create_db)
@@ -258,42 +246,15 @@ EOSQL
     ;;
 
   maintenance)
-    run_maintenance
-    ;;
-
-  repair)
-    # Stranded rows are discarded, not repartitioned: most are already past
-    # retention, and moving tens of GB just to drop them isn't worth the WAL.
     docker exec -i so-postgres psql -v ON_ERROR_STOP=1 -U postgres -d so_telegraf <<'EOSQL'
-SELECT CASE WHEN EXISTS (SELECT 1 FROM pg_catalog.pg_extension WHERE extname = 'pg_partman')
-            THEN 'true' ELSE 'false' END AS has_partman \gset
-\if :has_partman
-\echo 'Default partitions holding stranded Telegraf metrics:'
-SELECT format('%I.%I', n.nspname, c.relname) AS default_partition,
-       pg_size_pretty(pg_total_relation_size(c.oid)) AS size
-FROM partman.part_config pc
-JOIN pg_class p ON p.oid = pc.parent_table::regclass
-JOIN pg_inherits i ON i.inhparent = p.oid
-JOIN pg_class c ON c.oid = i.inhrelid
-JOIN pg_namespace n ON n.oid = c.relnamespace
-WHERE pc.parent_table LIKE 'telegraf.%'
-  AND pg_get_expr(c.relpartbound, c.oid) = 'DEFAULT'
-  AND pg_total_relation_size(c.oid) > 0
-ORDER BY pg_total_relation_size(c.oid) DESC;
-
-SELECT format('TRUNCATE TABLE %I.%I', n.nspname, c.relname)
-FROM partman.part_config pc
-JOIN pg_class p ON p.oid = pc.parent_table::regclass
-JOIN pg_inherits i ON i.inhparent = p.oid
-JOIN pg_class c ON c.oid = i.inhrelid
-JOIN pg_namespace n ON n.oid = c.relnamespace
-WHERE pc.parent_table LIKE 'telegraf.%'
-  AND pg_get_expr(c.relpartbound, c.oid) = 'DEFAULT'
-\gexec
+SELECT CASE WHEN to_regproc('so_admin.telegraf_maintenance') IS NOT NULL
+            THEN 'true' ELSE 'false' END AS has_proc \gset
+\if :has_proc
+CALL so_admin.telegraf_maintenance();
+\else
+\echo 'so_admin.telegraf_maintenance() is missing; run so-telegraf-postgres group_role first.'
 \endif
 EOSQL
-    # Premake the window so the next flush has somewhere to land.
-    run_maintenance
     ;;
 
   check)

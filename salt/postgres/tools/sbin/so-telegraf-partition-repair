@@ -1,0 +1,153 @@
+#!/bin/bash
+
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+# Repair Telegraf metric partitions on a grid where pg_partman maintenance
+# stalled and metrics piled up in <parent>_default.
+#
+# Once a default partition holds rows for a day with no child partition,
+# Postgres cannot create that child at all -- attaching it would violate the
+# default's constraint -- so maintenance stays broken until the default is
+# emptied. This discards the stranded rows rather than repartitioning them:
+# most are already past retention, and moving tens of GB just to drop them is
+# not worth the WAL.
+#
+# Self-contained on purpose: it depends only on pg_partman, so it runs against
+# a grid that has not yet picked up the current postgres state.
+#
+# Usage: so-telegraf-partition-repair [--dry-run] [--yes]
+#   --dry-run  Report only; change nothing.
+#   --yes      Skip the confirmation prompt (for soup and other automation).
+
+set -e
+
+DRY_RUN=false
+ASSUME_YES=false
+
+usage() {
+  sed -n '8,24p' "$0" | sed 's/^# \?//'
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --dry-run) DRY_RUN=true ;;
+    --yes|-y)  ASSUME_YES=true ;;
+    -h|--help) usage; exit 0 ;;
+    *) echo "Unknown option: $1" >&2; usage >&2; exit 1 ;;
+  esac
+  shift
+done
+
+fail() { echo "ERROR: $*" >&2; exit 1; }
+
+psql_tg() { docker exec -i so-postgres psql -U postgres -d so_telegraf "$@"; }
+
+# Row counts have to come from dynamic SQL; query_to_xml keeps that in a plain
+# query so this needs no helper functions installed in the database.
+REPORT="
+WITH parents AS (
+    SELECT pc.parent_table,
+           split_part(pc.parent_table, '.', 1) AS sch,
+           split_part(pc.parent_table, '.', 2) AS tbl
+    FROM partman.part_config pc
+    WHERE pc.parent_table LIKE 'telegraf.%'
+), children AS (
+    SELECT p.parent_table,
+           max(to_date(substring(c.relname FROM '_p(\d{8})\$'), 'YYYYMMDD')) AS newest_child
+    FROM parents p
+    JOIN pg_class pt ON pt.oid = p.parent_table::regclass
+    JOIN pg_inherits i ON i.inhparent = pt.oid
+    JOIN pg_class c ON c.oid = i.inhrelid
+    WHERE pg_get_expr(c.relpartbound, c.oid) <> 'DEFAULT'
+    GROUP BY p.parent_table
+), defaults AS (
+    SELECT p.parent_table,
+           format('%I.%I', p.sch, p.tbl || '_default') AS default_table,
+           to_regclass(format('%I.%I', p.sch, p.tbl || '_default')) AS default_oid
+    FROM parents p
+)
+SELECT d.parent_table,
+       c.newest_child,
+       (c.newest_child - current_date) AS days_ahead,
+       CASE WHEN d.default_oid IS NULL THEN NULL ELSE
+            (xpath('/row/cnt/text()',
+                   query_to_xml(format('SELECT count(*) AS cnt FROM %s', d.default_table),
+                                false, true, '')))[1]::text::bigint
+       END AS default_rows,
+       CASE WHEN d.default_oid IS NULL THEN NULL
+            ELSE pg_size_pretty(pg_total_relation_size(d.default_oid)) END AS default_size
+FROM defaults d
+LEFT JOIN children c ON c.parent_table = d.parent_table
+ORDER BY 1
+"
+
+docker ps --format '{{.Names}}' | grep -qx so-postgres \
+  || fail "so-postgres is not running."
+docker exec so-postgres psql -U postgres -tAc \
+  "SELECT 1 FROM pg_database WHERE datname='so_telegraf'" | grep -q 1 \
+  || fail "The so_telegraf database does not exist; Telegraf is not writing to Postgres."
+psql_tg -tAc "SELECT 1 FROM pg_extension WHERE extname='pg_partman'" | grep -q 1 \
+  || fail "pg_partman is not installed in so_telegraf."
+
+echo "Telegraf partition status:"
+psql_tg -c "$REPORT"
+
+stranded=$(psql_tg -tAc "SELECT coalesce(sum(default_rows), 0) FROM ( $REPORT ) t")
+echo "Rows stranded in default partitions: $stranded"
+
+# Report the scheduler too. A grid that needed this script almost always has a
+# pg_cron job that has never fired, and repairing partitions without fixing that
+# just delays the next occurrence.
+cron_db=$(docker exec so-postgres psql -U postgres -tAc \
+  "SELECT current_setting('cron.database_name', true)" | tr -d '[:space:]')
+if [[ -n "$cron_db" ]]; then
+  runs=$(docker exec so-postgres psql -U postgres -d "$cron_db" -tAc \
+    "SELECT count(*) FROM cron.job_run_details d JOIN cron.job j USING (jobid)
+      WHERE j.jobname = 'telegraf-partman-maintenance'" 2>/dev/null | tr -d '[:space:]' || true)
+  if [[ "$runs" == "0" ]]; then
+    echo
+    echo "WARNING: the telegraf-partman-maintenance job has never run. Apply the"
+    echo "         postgres state so pg_cron is pointed at a database that exists"
+    echo "         at server start, or this will recur."
+  fi
+fi
+
+if [[ "$stranded" == "0" ]]; then
+  echo "Nothing stranded. Running maintenance to premake the current window."
+  $DRY_RUN && { echo "(dry run: skipping maintenance)"; exit 0; }
+  psql_tg -v ON_ERROR_STOP=1 -c "CALL partman.run_maintenance_proc()"
+  exit 0
+fi
+
+if $DRY_RUN; then
+  echo "(dry run: would TRUNCATE the default partitions listed above)"
+  exit 0
+fi
+
+if ! $ASSUME_YES; then
+  echo
+  echo "This will permanently discard the $stranded stranded row(s) above."
+  [[ -t 0 ]] || fail "Not a terminal; re-run with --yes to confirm."
+  read -r -p "Continue? [y/N] " answer
+  [[ "$answer" =~ ^[Yy]$ ]] || { echo "Aborted."; exit 1; }
+fi
+
+psql_tg -v ON_ERROR_STOP=1 <<'EOSQL'
+SELECT format('TRUNCATE TABLE %I.%I', n.nspname, c.relname)
+FROM partman.part_config pc
+JOIN pg_class p ON p.oid = pc.parent_table::regclass
+JOIN pg_inherits i ON i.inhparent = p.oid
+JOIN pg_class c ON c.oid = i.inhrelid
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE pc.parent_table LIKE 'telegraf.%'
+  AND pg_get_expr(c.relpartbound, c.oid) = 'DEFAULT'
+\gexec
+CALL partman.run_maintenance_proc();
+EOSQL
+
+echo
+echo "Telegraf partition status after repair:"
+psql_tg -c "$REPORT"
