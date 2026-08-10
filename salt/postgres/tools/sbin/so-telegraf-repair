@@ -102,9 +102,12 @@ parents=$(psql_tg -tAc \
 stranded=$(psql_tg -tAc "SELECT coalesce(sum(default_rows), 0) FROM ( $REPORT ) t")
 behind=$(psql_tg -tAc \
   "SELECT count(*) FROM ( $REPORT ) t WHERE coalesce(days_ahead, -1) < 1")
-low_premake=$(psql_tg -tAc \
+# premake < 7, or infinite_time_partitions off: without the latter partman
+# refuses to premake forward across the gap the stall left behind.
+misconfigured=$(psql_tg -tAc \
   "SELECT count(*) FROM partman.part_config
-    WHERE parent_table LIKE 'telegraf.%' AND premake < $PREMAKE")
+    WHERE parent_table LIKE 'telegraf.%'
+      AND (premake < $PREMAKE OR NOT infinite_time_partitions)")
 
 # Both columns are matched because which one carries the launcher's name varies
 # with the pg_cron version.
@@ -124,14 +127,15 @@ if [[ -n "$cron_db" ]]; then
   [[ -n "$last_run" ]] || last_run=never
 fi
 
-# A grid that has never written a metric has nothing to recover.
+# A grid that has never written a metric has nothing to recover, and an empty
+# cron_db means pg_cron is not loaded at all, which no restart fixes.
 restart_needed=false
-[[ "$launcher" -eq 0 && "$parents" -gt 0 ]] && restart_needed=true
+[[ "$launcher" -eq 0 && "$parents" -gt 0 && -n "$cron_db" ]] && restart_needed=true
 
 repair_needed=false
 [[ "$stranded" -gt 0 ]] && repair_needed=true
 [[ "$behind" -gt 0 ]] && repair_needed=true
-[[ "$low_premake" -gt 0 ]] && repair_needed=true
+[[ "$misconfigured" -gt 0 ]] && repair_needed=true
 $restart_needed && repair_needed=true
 
 echo "Telegraf partition status:"
@@ -151,7 +155,7 @@ if $CHECK_ONLY; then
   echo "Repair is needed:"
   [[ "$stranded" -gt 0 ]]    && echo "  * $stranded row(s) stranded in default partitions"
   [[ "$behind" -gt 0 ]]      && echo "  * $behind parent(s) with no partition for the current window"
-  [[ "$low_premake" -gt 0 ]] && echo "  * $low_premake parent(s) premaking fewer than $PREMAKE days ahead"
+  [[ "$misconfigured" -gt 0 ]] && echo "  * $misconfigured parent(s) with stale partman settings"
   $restart_needed            && echo "  * pg_cron's launcher is dead; maintenance is not running at all"
   echo
   echo "Re-run without --check to repair."
@@ -167,11 +171,13 @@ if [[ "$stranded" -gt 0 ]] && ! $ASSUME_YES; then
   [[ "$answer" =~ ^[Yy]$ ]] || { echo "Aborted."; exit 0; }
 fi
 
-if [[ "$low_premake" -gt 0 ]]; then
-  echo "Raising premake to $PREMAKE on $low_premake parent(s)."
-  # GREATEST so an operator who raised it further keeps their value.
+if [[ "$misconfigured" -gt 0 ]]; then
+  echo "Reconciling partman settings on $misconfigured parent(s)."
+  # GREATEST so an operator who raised premake further keeps their value.
   psql_tg -v ON_ERROR_STOP=1 -c \
-    "UPDATE partman.part_config SET premake = GREATEST(premake, $PREMAKE)
+    "UPDATE partman.part_config
+        SET premake = GREATEST(premake, $PREMAKE),
+            infinite_time_partitions = true
       WHERE parent_table LIKE 'telegraf.%'"
 fi
 

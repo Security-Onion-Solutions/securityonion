@@ -234,10 +234,13 @@ EOSQL
 SELECT CASE WHEN EXISTS (SELECT 1 FROM pg_catalog.pg_extension WHERE extname = 'pg_partman')
             THEN 'true' ELSE 'false' END AS has_partman \gset
 \if :has_partman
+-- infinite_time_partitions so a gap in metrics does not stop partman from
+-- premaking forward, which is what leaves everything in the default.
 UPDATE partman.part_config
 SET retention = :'retention_days' || ' days',
     retention_keep_table = false,
-    premake = 7
+    premake = 7,
+    infinite_time_partitions = true
 WHERE parent_table LIKE 'telegraf.%';
 \endif
 EOSQL
