@@ -1013,24 +1013,38 @@ up_to_3.3.0() {
   INSTALLEDVERSION=3.3.0
 }
 
-telegraf_partition_repair() {
+telegraf_repair() {
   # Grids upgraded onto an existing /nsm/postgres never ran init-db.sh, so
   # so_telegraf did not exist when PostgreSQL started and pg_cron's launcher
   # died without retrying. partman maintenance never ran and every metric piled
   # up in <parent>_default, which then blocks partition creation outright.
-  # Fresh installs are unaffected. The script no-ops when nothing is stranded.
-  [[ -x /usr/sbin/so-telegraf-partition-repair ]] || return 0
+  #
+  # The highstate above has already converted the database to the current state,
+  # but it deliberately does not discard the backlog those grids accumulated.
+  # --check reports whether this host is one of them; it exits 1 only when there
+  # is something to repair, so fresh installs and grids that were never affected
+  # are left alone rather than truncated.
+  local repair=/usr/sbin/so-telegraf-repair
+  [[ -x "$repair" ]] || return 0
   docker ps --format '{{.Names}}' | grep -qx so-postgres || return 0
+
   echo "Checking Telegraf metric partitions."
-  /usr/sbin/so-telegraf-partition-repair --yes \
-    || echo "  warning: so-telegraf-partition-repair failed; run it manually" >&2
+  local status=0
+  "$repair" --check >> "$SOUP_LOG" 2>&1 || status=$?
+  case "$status" in
+    0) echo "  Telegraf partitions are healthy; nothing to repair." ;;
+    1) echo "  Repairing stalled Telegraf partitions."
+       "$repair" --yes \
+         || echo "  warning: so-telegraf-repair failed; run it manually" >&2 ;;
+    *) echo "  Skipping; Telegraf is not storing metrics in Postgres on this host." ;;
+  esac
 }
 
 post_to_3.3.0() {
   # Recollate again since some internal DBs were excluded during 3.2.0 soup
   recollate_postgres
 
-  telegraf_partition_repair
+  telegraf_repair
 }
 ### 3.3.0 End ###
 

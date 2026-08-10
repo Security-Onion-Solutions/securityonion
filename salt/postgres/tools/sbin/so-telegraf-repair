@@ -1,0 +1,261 @@
+#!/bin/bash
+
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+# Put Telegraf metrics storage back in service on a grid where pg_partman
+# maintenance stalled.
+#
+# pg_cron's launcher connects to cron.database_name at postmaster start and is
+# registered BGW_NEVER_RESTART. On a host upgraded onto an existing
+# /nsm/postgres volume, init-db.sh never ran, so so_telegraf did not exist when
+# PostgreSQL started: the launcher died and never retried. partman maintenance
+# therefore never ran, partitions stopped being premade after create_parent's
+# initial window, and every metric landed in <parent>_default. Retention never
+# fired either.
+#
+# That state is self-perpetuating. Once a default partition holds rows for a day
+# with no child, Postgres cannot create that child at all -- attaching it would
+# violate the default's constraint -- so maintenance aborts on the first parent
+# it reaches and fixing the scheduler alone does not recover the grid.
+#
+# This repairs both halves:
+#   * raises premake to 7 on existing parents, so a future outage has a week of
+#     headroom before anything reaches a default partition
+#   * discards the rows stranded in default partitions -- most are past
+#     retention already, and repartitioning tens of GB just to delete most of it
+#     is not worth the WAL
+#   * restarts so-postgres when pg_cron's launcher is dead, which is what makes
+#     the hourly maintenance job start firing again
+#   * runs maintenance once so partitions exist for the current window
+#
+# Self-contained on purpose: it depends only on what an affected grid already
+# has, so it can be handed to an operator whose grid has not picked up the
+# current postgres state yet. Nothing here conflicts with that state -- it
+# reuses the pg_cron job the running version already registered, and the
+# postgres state migrates the job to the postgres database on the next soup.
+#
+# Fresh installs need none of this; the check below reports them healthy and
+# changes nothing.
+#
+# Usage: so-telegraf-repair [--check] [--yes] [--no-restart]
+#   --check       Report health and change nothing.
+#   --yes         Skip the confirmation prompt (for soup and other automation).
+#   --no-restart  Never restart so-postgres, even if pg_cron's launcher is dead.
+#
+# Exit status:
+#   0  healthy, or repair completed
+#   1  repair is needed (--check only)
+#   2  cannot run here: so-postgres, so_telegraf or pg_partman is missing
+
+set -e
+
+# Matches p_premake in telegraf.conf's create_parent template.
+PREMAKE=7
+JOB_NAME=telegraf-partman-maintenance
+
+CHECK_ONLY=false
+ASSUME_YES=false
+NO_RESTART=false
+
+usage() { sed -n '/^# Usage:/,/^#   2 /p' "$0" | sed 's/^# \?//'; }
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --check|--dry-run) CHECK_ONLY=true ;;
+    --yes|-y)          ASSUME_YES=true ;;
+    --no-restart)      NO_RESTART=true ;;
+    -h|--help)         usage; exit 0 ;;
+    *) echo "Unknown option: $1" >&2; usage >&2; exit 2 ;;
+  esac
+  shift
+done
+
+skip() { echo "$*"; exit 2; }
+
+psql_tg() { docker exec -i so-postgres psql -U postgres -d so_telegraf "$@"; }
+psql_pg() { docker exec -i so-postgres psql -U postgres -d postgres "$@"; }
+
+# Row counts have to come from dynamic SQL; query_to_xml keeps that in a plain
+# query so this needs no helper functions installed in the database.
+REPORT="
+WITH parents AS (
+    SELECT pc.parent_table,
+           pc.premake,
+           split_part(pc.parent_table, '.', 1) AS sch,
+           split_part(pc.parent_table, '.', 2) AS tbl
+    FROM partman.part_config pc
+    WHERE pc.parent_table LIKE 'telegraf.%'
+), children AS (
+    SELECT p.parent_table,
+           max(to_date(substring(c.relname FROM '_p(\d{8})\$'), 'YYYYMMDD')) AS newest_child
+    FROM parents p
+    JOIN pg_class pt ON pt.oid = p.parent_table::regclass
+    JOIN pg_inherits i ON i.inhparent = pt.oid
+    JOIN pg_class c ON c.oid = i.inhrelid
+    WHERE pg_get_expr(c.relpartbound, c.oid) <> 'DEFAULT'
+    GROUP BY p.parent_table
+), defaults AS (
+    SELECT p.parent_table,
+           p.premake,
+           format('%I.%I', p.sch, p.tbl || '_default') AS default_table,
+           to_regclass(format('%I.%I', p.sch, p.tbl || '_default')) AS default_oid
+    FROM parents p
+)
+SELECT d.parent_table,
+       c.newest_child,
+       (c.newest_child - current_date) AS days_ahead,
+       d.premake,
+       CASE WHEN d.default_oid IS NULL THEN NULL ELSE
+            (xpath('/row/cnt/text()',
+                   query_to_xml(format('SELECT count(*) AS cnt FROM %s', d.default_table),
+                                false, true, '')))[1]::text::bigint
+       END AS default_rows,
+       CASE WHEN d.default_oid IS NULL THEN NULL
+            ELSE pg_size_pretty(pg_total_relation_size(d.default_oid)) END AS default_size
+FROM defaults d
+LEFT JOIN children c ON c.parent_table = d.parent_table
+ORDER BY 1
+"
+
+docker ps --format '{{.Names}}' | grep -qx so-postgres \
+  || skip "so-postgres is not running; nothing to repair."
+docker exec so-postgres psql -U postgres -tAc \
+  "SELECT 1 FROM pg_database WHERE datname='so_telegraf'" | grep -q 1 \
+  || skip "The so_telegraf database does not exist; Telegraf is not writing to Postgres."
+psql_tg -tAc "SELECT 1 FROM pg_extension WHERE extname='pg_partman'" | grep -q 1 \
+  || skip "pg_partman is not installed in so_telegraf; nothing to repair."
+
+parents=$(psql_tg -tAc \
+  "SELECT count(*) FROM partman.part_config WHERE parent_table LIKE 'telegraf.%'")
+stranded=$(psql_tg -tAc "SELECT coalesce(sum(default_rows), 0) FROM ( $REPORT ) t")
+behind=$(psql_tg -tAc \
+  "SELECT count(*) FROM ( $REPORT ) t WHERE coalesce(days_ahead, -1) < 1")
+low_premake=$(psql_tg -tAc \
+  "SELECT count(*) FROM partman.part_config
+    WHERE parent_table LIKE 'telegraf.%' AND premake < $PREMAKE")
+
+# The dead launcher is the root cause, and it is what a restart fixes. pg_cron
+# registers it as a background worker, so it shows up in pg_stat_activity for as
+# long as it is alive; both columns are matched because which one carries the
+# name varies with the pg_cron version.
+launcher=$(psql_pg -tAc \
+  "SELECT count(*) FROM pg_stat_activity
+    WHERE backend_type ILIKE '%pg_cron%' OR application_name ILIKE '%pg_cron%'")
+
+# The job itself lives in whichever database pg_cron keeps its metadata in:
+# so_telegraf before the postgres state lands, postgres after.
+cron_db=$(docker exec so-postgres psql -U postgres -tAc \
+  "SELECT current_setting('cron.database_name', true)" | tr -d '[:space:]')
+last_run=never
+if [[ -n "$cron_db" ]]; then
+  last_run=$(docker exec so-postgres psql -U postgres -d "$cron_db" -tAc \
+    "SELECT coalesce(max(d.start_time)::text, 'never')
+       FROM cron.job_run_details d JOIN cron.job j USING (jobid)
+      WHERE j.jobname = '$JOB_NAME'" 2>/dev/null | tr -d '[:space:]' || echo unknown)
+  [[ -n "$last_run" ]] || last_run=never
+fi
+
+# Only blame the launcher once Telegraf has actually created something to
+# maintain; a grid that has never written a metric has nothing to recover.
+restart_needed=false
+[[ "$launcher" -eq 0 && "$parents" -gt 0 ]] && restart_needed=true
+
+repair_needed=false
+[[ "$stranded" -gt 0 ]] && repair_needed=true
+[[ "$behind" -gt 0 ]] && repair_needed=true
+[[ "$low_premake" -gt 0 ]] && repair_needed=true
+$restart_needed && repair_needed=true
+
+echo "Telegraf partition status:"
+psql_tg -c "$REPORT"
+echo "Rows stranded in default partitions: $stranded"
+echo "pg_cron metadata database: ${cron_db:-unset}"
+echo "pg_cron launcher running: $([[ "$launcher" -gt 0 ]] && echo yes || echo no)"
+echo "Last $JOB_NAME run: $last_run"
+echo
+
+if ! $repair_needed; then
+  echo "Telegraf partitions are healthy. Nothing to do."
+  exit 0
+fi
+
+if $CHECK_ONLY; then
+  echo "Repair is needed:"
+  [[ "$stranded" -gt 0 ]]    && echo "  * $stranded row(s) stranded in default partitions"
+  [[ "$behind" -gt 0 ]]      && echo "  * $behind parent(s) with no partition for the current window"
+  [[ "$low_premake" -gt 0 ]] && echo "  * $low_premake parent(s) premaking fewer than $PREMAKE days ahead"
+  $restart_needed            && echo "  * pg_cron's launcher is dead; maintenance is not running at all"
+  echo
+  echo "Re-run without --check to repair."
+  exit 1
+fi
+
+if [[ "$stranded" -gt 0 ]] && ! $ASSUME_YES; then
+  echo "This will permanently discard the $stranded stranded row(s) above."
+  $restart_needed && ! $NO_RESTART && \
+    echo "so-postgres will also be restarted, which briefly interrupts SOC."
+  [[ -t 0 ]] || { echo "Not a terminal; re-run with --yes to confirm." >&2; exit 2; }
+  read -r -p "Continue? [y/N] " answer
+  [[ "$answer" =~ ^[Yy]$ ]] || { echo "Aborted."; exit 0; }
+fi
+
+if [[ "$low_premake" -gt 0 ]]; then
+  echo "Raising premake to $PREMAKE on $low_premake parent(s)."
+  # GREATEST so an operator who raised it further keeps their value.
+  psql_tg -v ON_ERROR_STOP=1 -c \
+    "UPDATE partman.part_config SET premake = GREATEST(premake, $PREMAKE)
+      WHERE parent_table LIKE 'telegraf.%'"
+fi
+
+if [[ "$stranded" -gt 0 ]]; then
+  echo "Clearing default partitions."
+  psql_tg -v ON_ERROR_STOP=1 <<'EOSQL'
+SELECT format('TRUNCATE TABLE %I.%I', n.nspname, c.relname)
+FROM partman.part_config pc
+JOIN pg_class p ON p.oid = pc.parent_table::regclass
+JOIN pg_inherits i ON i.inhparent = p.oid
+JOIN pg_class c ON c.oid = i.inhrelid
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE pc.parent_table LIKE 'telegraf.%'
+  AND pg_get_expr(c.relpartbound, c.oid) = 'DEFAULT'
+\gexec
+EOSQL
+fi
+
+if $restart_needed; then
+  if $NO_RESTART; then
+    echo "WARNING: pg_cron's launcher is dead and --no-restart was given."
+    echo "         Maintenance will not run on its own until so-postgres is restarted."
+  else
+    echo "Restarting so-postgres to revive pg_cron's launcher."
+    docker restart so-postgres >/dev/null
+    for _ in $(seq 1 60); do
+      docker exec so-postgres pg_isready -U postgres -q 2>/dev/null && break
+      sleep 2
+    done
+    docker exec so-postgres pg_isready -U postgres -q \
+      || { echo "so-postgres did not come back; check 'docker logs so-postgres'." >&2; exit 1; }
+  fi
+fi
+
+echo "Running partition maintenance."
+# so_admin.telegraf_maintenance() drains defaults before calling partman, but it
+# only exists once the current postgres state has been applied.
+psql_tg -v ON_ERROR_STOP=1 <<'EOSQL'
+SELECT CASE WHEN to_regproc('so_admin.telegraf_maintenance') IS NOT NULL
+            THEN 'true' ELSE 'false' END AS has_proc \gset
+\if :has_proc
+CALL so_admin.telegraf_maintenance();
+\else
+CALL partman.run_maintenance_proc();
+\endif
+EOSQL
+
+echo
+echo "Telegraf partition status after repair:"
+psql_tg -c "$REPORT"
+echo "The $JOB_NAME job runs hourly at :17. Confirm it fired with:"
+echo "  so-telegraf-repair --check"
