@@ -6,39 +6,9 @@
 # Elastic License 2.0.
 
 # Put Telegraf metrics storage back in service on a grid where pg_partman
-# maintenance stalled.
-#
-# pg_cron's launcher connects to cron.database_name at postmaster start and is
-# registered BGW_NEVER_RESTART. On a host upgraded onto an existing
-# /nsm/postgres volume, init-db.sh never ran, so so_telegraf did not exist when
-# PostgreSQL started: the launcher died and never retried. partman maintenance
-# therefore never ran, partitions stopped being premade after create_parent's
-# initial window, and every metric landed in <parent>_default. Retention never
-# fired either.
-#
-# That state is self-perpetuating. Once a default partition holds rows for a day
-# with no child, Postgres cannot create that child at all -- attaching it would
-# violate the default's constraint -- so maintenance aborts on the first parent
-# it reaches and fixing the scheduler alone does not recover the grid.
-#
-# This repairs both halves:
-#   * raises premake to 7 on existing parents, so a future outage has a week of
-#     headroom before anything reaches a default partition
-#   * discards the rows stranded in default partitions -- most are past
-#     retention already, and repartitioning tens of GB just to delete most of it
-#     is not worth the WAL
-#   * restarts so-postgres when pg_cron's launcher is dead, which is what makes
-#     the hourly maintenance job start firing again
-#   * runs maintenance once so partitions exist for the current window
-#
-# Self-contained on purpose: it depends only on what an affected grid already
-# has, so it can be handed to an operator whose grid has not picked up the
-# current postgres state yet. Nothing here conflicts with that state -- it
-# reuses the pg_cron job the running version already registered, and the
-# postgres state migrates the job to the postgres database on the next soup.
-#
-# Fresh installs need none of this; the check below reports them healthy and
-# changes nothing.
+# maintenance stalled: raises premake, discards the rows stranded in default
+# partitions, restarts so-postgres if pg_cron's launcher is dead, and runs
+# maintenance once. Healthy grids are reported and left alone.
 #
 # Usage: so-telegraf-repair [--check] [--yes] [--no-restart]
 #   --check       Report health and change nothing.
@@ -78,8 +48,7 @@ skip() { echo "$*"; exit 2; }
 psql_tg() { docker exec -i so-postgres psql -U postgres -d so_telegraf "$@"; }
 psql_pg() { docker exec -i so-postgres psql -U postgres -d postgres "$@"; }
 
-# Row counts have to come from dynamic SQL; query_to_xml keeps that in a plain
-# query so this needs no helper functions installed in the database.
+# query_to_xml so the per-table row counts need no helper function installed.
 REPORT="
 WITH parents AS (
     SELECT pc.parent_table,
@@ -137,15 +106,12 @@ low_premake=$(psql_tg -tAc \
   "SELECT count(*) FROM partman.part_config
     WHERE parent_table LIKE 'telegraf.%' AND premake < $PREMAKE")
 
-# The dead launcher is the root cause, and it is what a restart fixes. pg_cron
-# registers it as a background worker, so it shows up in pg_stat_activity for as
-# long as it is alive; both columns are matched because which one carries the
-# name varies with the pg_cron version.
+# Both columns are matched because which one carries the launcher's name varies
+# with the pg_cron version.
 launcher=$(psql_pg -tAc \
   "SELECT count(*) FROM pg_stat_activity
     WHERE backend_type ILIKE '%pg_cron%' OR application_name ILIKE '%pg_cron%'")
 
-# The job itself lives in whichever database pg_cron keeps its metadata in:
 # so_telegraf before the postgres state lands, postgres after.
 cron_db=$(docker exec so-postgres psql -U postgres -tAc \
   "SELECT current_setting('cron.database_name', true)" | tr -d '[:space:]')
@@ -158,8 +124,7 @@ if [[ -n "$cron_db" ]]; then
   [[ -n "$last_run" ]] || last_run=never
 fi
 
-# Only blame the launcher once Telegraf has actually created something to
-# maintain; a grid that has never written a metric has nothing to recover.
+# A grid that has never written a metric has nothing to recover.
 restart_needed=false
 [[ "$launcher" -eq 0 && "$parents" -gt 0 ]] && restart_needed=true
 
@@ -242,8 +207,7 @@ if $restart_needed; then
 fi
 
 echo "Running partition maintenance."
-# so_admin.telegraf_maintenance() drains defaults before calling partman, but it
-# only exists once the current postgres state has been applied.
+# so_admin.telegraf_maintenance() only exists once the postgres state has landed.
 psql_tg -v ON_ERROR_STOP=1 <<'EOSQL'
 SELECT CASE WHEN to_regproc('so_admin.telegraf_maintenance') IS NOT NULL
             THEN 'true' ELSE 'false' END AS has_proc \gset

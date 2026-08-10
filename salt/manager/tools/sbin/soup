@@ -1014,16 +1014,8 @@ up_to_3.3.0() {
 }
 
 telegraf_repair() {
-  # Grids upgraded onto an existing /nsm/postgres never ran init-db.sh, so
-  # so_telegraf did not exist when PostgreSQL started and pg_cron's launcher
-  # died without retrying. partman maintenance never ran and every metric piled
-  # up in <parent>_default, which then blocks partition creation outright.
-  #
-  # The highstate above has already converted the database to the current state,
-  # but it deliberately does not discard the backlog those grids accumulated.
-  # --check reports whether this host is one of them; it exits 1 only when there
-  # is something to repair, so fresh installs and grids that were never affected
-  # are left alone rather than truncated.
+  # Only grids whose Telegraf partitions stalled need this; --check exits 1
+  # when there is something to repair, so everyone else is left alone.
   local repair=/usr/sbin/so-telegraf-repair
   [[ -x "$repair" ]] || return 0
   docker ps --format '{{.Names}}' | grep -qx so-postgres || return 0
