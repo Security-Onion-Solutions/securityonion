@@ -183,16 +183,30 @@ fi
 
 if [[ "$stranded" -gt 0 ]]; then
   echo "Clearing default partitions."
+  # One transaction: Telegraf is still writing, so a default emptied without
+  # its partition in place is refilled before maintenance can attach one.
   psql_tg -v ON_ERROR_STOP=1 <<'EOSQL'
-SELECT format('TRUNCATE TABLE %I.%I', n.nspname, c.relname)
-FROM partman.part_config pc
-JOIN pg_class p ON p.oid = pc.parent_table::regclass
-JOIN pg_inherits i ON i.inhparent = p.oid
-JOIN pg_class c ON c.oid = i.inhrelid
-JOIN pg_namespace n ON n.oid = c.relnamespace
-WHERE pc.parent_table LIKE 'telegraf.%'
-  AND pg_get_expr(c.relpartbound, c.oid) = 'DEFAULT'
-\gexec
+DO $$
+DECLARE
+    r record;
+BEGIN
+    FOR r IN
+        SELECT pc.parent_table,
+               format('%I.%I', n.nspname, c.relname) AS default_table
+        FROM partman.part_config pc
+        JOIN pg_class p ON p.oid = pc.parent_table::regclass
+        JOIN pg_inherits i ON i.inhparent = p.oid
+        JOIN pg_class c ON c.oid = i.inhrelid
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE pc.parent_table LIKE 'telegraf.%'
+          AND pg_get_expr(c.relpartbound, c.oid) = 'DEFAULT'
+    LOOP
+        EXECUTE format('TRUNCATE TABLE %s', r.default_table);
+        PERFORM partman.create_partition_time(
+            r.parent_table, ARRAY[date_trunc('day', now())]::timestamptz[]);
+    END LOOP;
+END
+$$;
 EOSQL
 fi
 
