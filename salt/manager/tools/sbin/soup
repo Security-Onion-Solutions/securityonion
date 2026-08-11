@@ -24,7 +24,10 @@ else
   POSTVERSION=$INSTALLEDVERSION
 fi
 INSTALLEDSALTVERSION=$(salt --versions-report | grep Salt: | awk '{print $2}')
-BATCHSIZE=5
+# Optional -b override for the grid highstate batch size (a count like "5" or a
+# percentage like "25%"). Empty means so-soup-grid-highstate uses the salt:auto_apply:batch
+# pillar default.
+BATCHSIZE=
 SOUP_LOG=/root/soup.log
 SOUP_DEBUG_LOG=/root/soup-debug.log
 WHATWOULDYOUSAYYAHDOHERE=soup
@@ -450,6 +453,31 @@ highstate() {
   echo "Initial highstate attempt had a problem; retrying in 30 seconds."
   sleep 30
   salt-call state.highstate -l info queue=True
+}
+
+push_grid_highstate() {
+  # Drive a batched, role-tiered highstate across the rest of the grid so remote minions
+  # pick up this upgrade now instead of waiting up to ~2.5 hours for their own scheduled
+  # highstate (the schedule moved from 15 to 120 minutes). so-soup-grid-highstate does the work
+  # via orch.push_batch; it only exists once the manager highstate has deployed this
+  # version's sbin files, so guard on it. Launch fully detached (setsid) so it survives an
+  # SSH drop, and never let it affect soup's exit status -- it is best-effort with the
+  # scheduled highstate as backstop.
+  if [[ ! -x /usr/sbin/so-soup-grid-highstate ]]; then
+    echo "so-soup-grid-highstate not present; remote nodes will converge on their scheduled highstate."
+    return 0
+  fi
+
+  local extra_args=()
+  if [[ $SALTUPGRADED == true || $UPGRADESALT -eq 1 ]]; then
+    extra_args+=(--salt-upgraded)
+  fi
+  if [[ -n "$BATCHSIZE" ]]; then
+    extra_args+=(--batch "$BATCHSIZE")
+  fi
+
+  echo "Dispatching a grid-wide highstate to remote nodes. Progress: /opt/so/log/salt/so-soup-grid-highstate"
+  setsid nohup /usr/sbin/so-soup-grid-highstate --reason soup "${extra_args[@]}" >/dev/null 2>&1 &
 }
 
 masterlock() {
@@ -1969,6 +1997,9 @@ main() {
     # rather than reporting "already latest". The soversion/pillar writes in
     # update_version are no-ops here since the version is unchanged for a hotfix.
     update_version
+    # Push the hotfix out to the rest of the grid rather than waiting for the scheduled
+    # highstate. Hotfixes never upgrade Salt, so no --salt-upgraded pass is needed.
+    push_grid_highstate
   else
     SOUP_UPGRADE_STARTED=true
     echo ""
@@ -2135,13 +2166,18 @@ main() {
 
     if [[ $NUM_MINIONS -gt 1 ]]; then
 
+      # Actively drive the rest of the grid to this version now. The scheduled highstate
+      # runs only every 120 minutes (salt:schedule:highstate_interval_minutes), so without
+      # this remote nodes could sit on the old version for a couple of hours after soup finishes.
+      push_grid_highstate
+
       cat << EOF
 
 
 
-This appears to be a distributed deployment. Other nodes should update themselves at the next Salt highstate (typically within 15 minutes). Do not manually restart anything until you know that all the search/heavy nodes in your deployment are updated. This is especially important if you are using true clustering for Elasticsearch.
+This appears to be a distributed deployment. soup has dispatched a batched, grid-wide highstate to update the other nodes now: Elasticsearch data nodes (search/heavy nodes) first, then receivers, then sensors and the remaining nodes. Progress is logged to /opt/so/log/salt/so-soup-grid-highstate, and you can watch nodes update from the Grid section of SOC. Do not manually restart anything until you know that all the search/heavy nodes in your deployment are updated. This is especially important if you are using true clustering for Elasticsearch.
 
-Each minion is on a random 15 minute check-in period and things like network bandwidth can be a factor in how long the actual upgrade takes. If you have a heavy node on a slow link, it is going to take a while to get the containers to it. Depending on what changes happened between the versions, Elasticsearch might not be able to talk to said heavy node until the update is complete.
+Nodes are updated in batches, and things like network bandwidth can be a factor in how long the actual upgrade takes. If you have a heavy node on a slow link, it is going to take a while to get the containers to it. Depending on what changes happened between the versions, Elasticsearch might not be able to talk to said heavy node until the update is complete. Any node that is offline or missed a batch will converge on its own scheduled highstate (every 120 minutes by default).
 
 If it looks like you’re missing data after the upgrade, please avoid restarting services and instead make sure at least one search node has completed its upgrade. The best way to do this is to run 'sudo salt-call state.highstate' from a search node and make sure there are no errors. Typically if it works on one node it will work on the rest. Sensor nodes are less complex and will update as they check in so you can monitor those from the Grid section of SOC.
 
@@ -2181,8 +2217,10 @@ while getopts ":b:f:y" opt; do
   case ${opt} in
     b )
       BATCHSIZE="$OPTARG"
-      if ! [[ "$BATCHSIZE" =~ ^[1-9][0-9]*$ ]]; then
-        echo "Batch size must be a number greater than 0."
+      # Accept either a plain count (e.g. 5) or a percentage (e.g. 25%); passed through
+      # to so-soup-grid-highstate --batch, which salt's batch/batch_wait accepts in both forms.
+      if ! [[ "$BATCHSIZE" =~ ^[1-9][0-9]*%?$ ]]; then
+        echo "Batch size must be a number greater than 0, optionally with a trailing % (e.g. 5 or 25%)."
         exit 1
       fi
     ;;
