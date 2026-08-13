@@ -1,0 +1,24 @@
+#!/bin/bash
+
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+# Run zeekctl's periodic maintenance tasks. This is what actually enforces
+# LogExpireInterval, StatsLogExpireInterval and CrashExpireInterval - without a periodic
+# 'zeekctl cron' those settings are inert no matter what they are set to.
+
+# This also restarts any node that died unexpectedly, and marks it crashed so a crash report
+# is produced. That is upstream's default cron behavior and it recovers a single node in
+# place. The beacon in salt/_beacons/zeek.py is the only other recovery path, it is disabled
+# by default (healthcheck:enabled), and it removes and recreates the whole container, so
+# letting zeekctl handle a single dead worker avoids the heavier restart.
+
+if ! docker ps --filter name=so-zeek --format '{{.Names}}' | grep -q '^so-zeek$'; then
+  exit 0
+fi
+
+# Run as the zeek user so the stats logs and zeekctl-config.sh this writes stay owned by
+# uid 937 rather than root.
+docker exec so-zeek runuser -l zeek -c '/opt/zeek/bin/zeekctl cron'

@@ -58,6 +58,52 @@ zeek:
       CompressLogs:
         description: This setting enables compression of Zeek logs. If you are seeing packet loss at the top of the hour in Zeek or PCAP you might need to disable this by seting it to 0. This will use more disk space but save IO and CPU.
         helpLink: zeek
+      LogExpireInterval:
+        description: >-
+          How long to keep rotated Zeek logs in /nsm/zeek/logs. A bare number means DAYS, so 7 means 7 days.
+          You may also give an explicit unit, such as "7 days" or "12 hr". Use 0 to keep logs forever.
+          This value must not be shorter than LogRotationInterval (3600 seconds by default), so the smallest
+          usable value is 1 hr - Zeek will fail to start if it is shorter. Expiry is applied by "zeekctl cron",
+          which runs every 5 minutes, and removes log files older than this based on their modification time.
+        regex: ^(0|[1-9][0-9]*( ?(day|hr)s?)?)$
+        regexFailureMessage: Enter 0, or a positive number optionally followed by "day" or "hr" (for example 7, "7 days", or "12 hr"). Minutes are not accepted because a log expire interval shorter than the log rotation interval prevents Zeek from starting.
+        helpLink: zeek
+        advanced: True
+      StatsLogExpireInterval:
+        description: >-
+          Number of days to keep entries in the Zeek stats log, or 0 to keep them forever.
+          Applied by "zeekctl cron", which runs every 5 minutes.
+        regex: ^[0-9]+$
+        regexFailureMessage: You must enter a whole number of days, or 0 to keep entries forever.
+        helpLink: zeek
+        advanced: True
+      CrashExpireInterval:
+        description: >-
+          Number of days to keep Zeek crash directories, or 0 to keep them forever.
+          Applied by "zeekctl cron", which runs every 5 minutes.
+        regex: ^[0-9]+$
+        regexFailureMessage: You must enter a whole number of days, or 0 to keep crash directories forever.
+        helpLink: zeek
+        advanced: True
+      MinDiskSpace:
+        description: >-
+          Percentage of free disk space below which ZeekControl reports a warning, or 0 to disable the check.
+          Note that this setting only sends email and the Zeek container does not include a mail program,
+          so it currently has no visible effect. It never deletes anything - disk based cleanup is handled
+          separately by so-sensor-clean.
+        regex: ^([0-9]|[1-9][0-9]|100)$
+        regexFailureMessage: You must enter a percentage between 0 and 100.
+        helpLink: zeek
+        advanced: True
+      MailHostUpDown:
+        description: >-
+          Set to 1 to send email when a Zeek node changes between the up and down states.
+          Note that this setting only sends email and the Zeek container does not include a mail program,
+          so it currently has no visible effect.
+        regex: ^[01]$
+        regexFailureMessage: You must enter 0 or 1.
+        helpLink: zeek
+        advanced: True
   policy:
     custom:
       filters: 
