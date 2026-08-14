@@ -87,23 +87,43 @@ zeek:
         advanced: True
       MinDiskSpace:
         description: >-
-          Percentage of free disk space below which ZeekControl reports a warning, or 0 to disable the check.
-          Note that this setting only sends email and the Zeek container does not include a mail program,
-          so it currently has no visible effect. It never deletes anything - disk based cleanup is handled
-          separately by so-sensor-clean.
+          Percentage of free disk space below which ZeekControl reports a warning, or 0 to disable the check
+          entirely. The Zeek container does not include a mail program, so the warning is not emailed - it
+          appears in the output of "zeekctl cron" instead. This setting never deletes anything - cleanup based
+          on disk usage is handled separately by so-sensor-clean.
         regex: ^([0-9]|[1-9][0-9]|100)$
         regexFailureMessage: You must enter a percentage between 0 and 100.
         helpLink: zeek
         advanced: True
-      MailHostUpDown:
+      MailTo:
         description: >-
-          Set to 1 to send email when a Zeek node changes between the up and down states.
-          Note that this setting only sends email and the Zeek container does not include a mail program,
-          so it currently has no visible effect.
+          Address that ZeekControl would send mail to, covering cron output and crash reports, and the address
+          Zeek's notice framework would use. The Zeek container does not include a mail program, and Security
+          Onion never enables the notice email action, so no mail is sent and this address is unused. It is
+          read only for that reason.
+        helpLink: zeek
+        advanced: True
+        readonly: True
+      MailConnectionSummary:
+        description: >-
+          Set to 1 to email the hourly connection summary. This only controls the emailed copy - the summary is
+          generated and archived with the other Zeek logs either way. The Zeek container does not include a mail
+          program, so no mail is sent and this setting has no effect. It is read only for that reason.
         regex: ^[01]$
         regexFailureMessage: You must enter 0 or 1.
         helpLink: zeek
         advanced: True
+        readonly: True
+      MailHostUpDown:
+        description: >-
+          Set to 1 to report when a Zeek node changes between the up and down states. The Zeek container does
+          not include a mail program, so this notification cannot be emailed. It is read only for that reason.
+          Host status detection still runs regardless of this setting - only the notification is affected.
+        regex: ^[01]$
+        regexFailureMessage: You must enter 0 or 1.
+        helpLink: zeek
+        advanced: True
+        readonly: True
   policy:
     custom:
       filters: 
