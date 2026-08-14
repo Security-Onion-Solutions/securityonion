@@ -23,6 +23,11 @@ zeekpacketlosscron:
     - identifier: zeekpacketlosscron
     - user: root
 
+zeekctlcron:
+  cron.absent:
+    - identifier: zeekctlcron
+    - user: root
+
 {% else %}
 
 {{sls}}_state_not_allowed:
