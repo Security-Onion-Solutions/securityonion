@@ -69,10 +69,24 @@ zeek:
         regexFailureMessage: Enter 0, or a positive number optionally followed by "day" or "hr" (for example 7, "7 days", or "12 hr"). Minutes are not accepted because a log expire interval shorter than the log rotation interval prevents Zeek from starting.
         helpLink: zeek
         advanced: True
+      StatsLogEnable:
+        description: >-
+          Set to 1 to have "zeekctl cron" write node statistics to /nsm/zeek/logs/stats. This is
+          disabled because the CPU and memory portion depends on the "top" command, which the Zeek
+          container does not include, so every run records an error for each node instead. The
+          interface packet counters it also collects are not used anywhere in Security Onion, which
+          tracks Zeek packet loss separately through packetloss.log and Telegraf. It is read only
+          for that reason.
+        regex: ^[01]$
+        regexFailureMessage: You must enter 0 or 1.
+        helpLink: zeek
+        advanced: True
+        readonly: True
       StatsLogExpireInterval:
         description: >-
           Number of days to keep entries in the Zeek stats log, or 0 to keep them forever.
-          Applied by "zeekctl cron", which runs every 5 minutes.
+          Applied by "zeekctl cron", which runs every 5 minutes. This has no effect unless
+          StatsLogEnable is turned on, which it is not by default.
         regex: ^[0-9]+$
         regexFailureMessage: You must enter a whole number of days, or 0 to keep entries forever.
         helpLink: zeek
