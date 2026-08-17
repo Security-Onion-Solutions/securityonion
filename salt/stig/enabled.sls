@@ -65,6 +65,15 @@ run_remediate:
     - success_retcodes:
       - 2
 
+# Elastic Agent docker image chowns its directory to the running UID but does not
+#  chown the elastic-agent launcher symlink. fs.protected_symlinks=1 then prevents
+#  non-root users from following that launcher symlink.
+{# OSCAP rule id: xccdf_org.ssgproject.content_rule_sysctl_fs_protected_symlinks #}
+fs.protected_symlinks:
+  sysctl.present:
+    - value: 0
+    - config: /etc/sysctl.conf
+
 {# OSCAP rule id: xccdf_org.ssgproject.content_rule_disable_ctrlaltdel_burstaction #}
 disable_ctrl_alt_del_action:
   file.replace:
