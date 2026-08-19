@@ -81,6 +81,10 @@ ls_custom_pipeline_conf_{{assigned_pipeline}}_{{pipeline}}:
 
 
 {% for assigned_pipeline in ASSIGNED_PIPELINES %}
+{# a blank per-pipeline setting falls back to the global logstash.yml value #}
+{% set PIPELINE_OVERRIDES = LOGSTASH_MERGED.get('pipeline_settings', {}).get(assigned_pipeline, {}) %}
+{% set THREADS = PIPELINE_OVERRIDES.get('pipeline_x_workers') or LOGSTASH_MERGED.config.pipeline_x_workers %}
+{% set BATCH = PIPELINE_OVERRIDES.get('pipeline_x_batch_x_size') or LOGSTASH_MERGED.config.pipeline_x_batch_x_size %}
     {% for CONFIGFILE in LOGSTASH_MERGED.defined_pipelines[assigned_pipeline] %}
 ls_pipeline_{{assigned_pipeline}}_{{CONFIGFILE.split('.')[0] | replace("/","_") }}:
   file.managed:
@@ -92,8 +96,8 @@ ls_pipeline_{{assigned_pipeline}}_{{CONFIGFILE.split('.')[0] | replace("/","_") 
         GLOBALS: {{ GLOBALS }}
         ES_USER: "{{ salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:user', '') }}"
         ES_PASS: "{{ salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:pass', '') }}"
-        THREADS: {{ LOGSTASH_MERGED.config.pipeline_x_workers }}
-        BATCH: {{ LOGSTASH_MERGED.config.pipeline_x_batch_x_size }}
+        THREADS: {{ THREADS }}
+        BATCH: {{ BATCH }}
       {% else %}
     - name: /opt/so/conf/logstash/pipelines/{{assigned_pipeline}}/{{CONFIGFILE.split('/')[1]}}
       {% endif %}
