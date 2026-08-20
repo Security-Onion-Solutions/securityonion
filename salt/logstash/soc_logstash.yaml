@@ -103,8 +103,10 @@ logstash:
         helpLink: logstash
       pipeline_x_ordered:
         description: >-
-          Whether event order is preserved through this pipeline. auto enables ordering only when the
-          pipeline runs a single worker. Leave blank to use the value from logstash.yml.
+          Whether event order is preserved through this pipeline. auto enables ordering only when
+          pipeline.workers is explicitly set to 1, and does nothing otherwise. Setting this to true
+          requires pipeline.workers to be 1 as well; with more workers this pipeline fails to start.
+          Leave blank to use the value from logstash.yml.
         title: pipeline.ordered
         options:
         - ''
@@ -157,8 +159,9 @@ logstash:
       queue_x_max_bytes:
         description: >-
           Total capacity of the persistent queue for this pipeline, in bytes. Only applies when
-          queue.type is persisted. The disk backing /nsm/logstash must be larger than this value. If
-          both queue.max_events and queue.max_bytes are set, whichever is reached first applies. Leave
+          queue.type is persisted. The disk backing /nsm/logstash must have room for this much data or
+          the pipeline fails to start, reporting that it was unable to allocate the space. If both
+          queue.max_events and queue.max_bytes are set, whichever is reached first applies. Leave
           blank to use the value from logstash.yml.
         title: queue.max_bytes
         regex: '^$|^[0-9]+$|^[0-9]+(\.[0-9]+)?\s*(b|kb?|mb?|gb?|tb?|pb?)$'
