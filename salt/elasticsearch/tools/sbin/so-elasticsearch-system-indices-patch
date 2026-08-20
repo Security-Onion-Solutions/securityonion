@@ -9,95 +9,145 @@ set -eo pipefail
 SETTINGS='{"index":{"auto_expand_replicas":"0-1"}}'
 KIBANA_PASSWORD=
 INDEX_PATTERNS=(
-    '.entity_analytics.risk_score.lookup-*'
-    '.entity_analytics.watchlists.*'
-    '.workflows-executions'
-    '.workflows-step-executions'
-    '.entities.v2.latest.security_*'
-    '.entities.v2.history.security_*'
-    'risk-score.risk-score-latest-*'
+  '.entity_analytics.risk_score.lookup-*'
+  '.entity_analytics.watchlists.*'
+  '.workflows-executions'
+  '.workflows-step-executions'
+  '.entities.v2.latest.security_*'
+  '.entities.v2.history.security_*'
+  'risk-score.risk-score-latest-*'
 )
 DATA_STREAM_PATTERNS=(
-    '.entities.v2.updates.security_*'
-    'risk-score.risk-score-*'
+  '.entities.v2.updates.security_*'
+  'risk-score.risk-score-*'
 )
 TEMPLATE_PATTERNS=(
-    'entities_v2_latest_security_default_index_template'
-    'entities_v2_history_security_default_index_template'
-    '.entities_v2_updates_security_default_index_template'
-    '.risk-score.risk-score-default-index-template'
+  'entities_v2_latest_security_default_index_template'
+  'entities_v2_history_security_default_index_template'
+  '.entities_v2_updates_security_default_index_template'
+  '.risk-score.risk-score-default-index-template'
 )
 
 query_es() {
-    if so-elasticsearch-query "$@" --fail --retry 3 --retry-delay 5; then
-        return 0
-    fi
-    
-    # retry failed attempts with so_kibana user (system managed indices reject so_elastic user)
-    local query_path="$1"
-    shift
+  if so-elasticsearch-query "$@" --fail --retry 3 --retry-delay 5; then
+    return 0
+  fi
 
-    if [[ -z "$KIBANA_PASSWORD" ]]; then
-        KIBANA_PASSWORD=$(salt-call pillar.get elasticsearch:auth:users:so_kibana_user:pass --out=newline_values_only)
-    fi
-    [[ -n "$KIBANA_PASSWORD" ]] || return 1
+  # retry failed attempts with so_kibana user (system managed indices reject so_elastic user)
+  local query_path="$1"
+  shift
 
-    echo "Retrying ${query_path} as so_kibana." >&2
-    curl -K /opt/so/conf/elasticsearch/curl.config --user "so_kibana:${KIBANA_PASSWORD}" \
-        -s -k -L --fail --retry 3 --retry-delay 5 -H 'Content-Type: application/json' "https://localhost:9200/${query_path}" "$@"
+  if [[ -z "$KIBANA_PASSWORD" ]]; then
+    KIBANA_PASSWORD=$(salt-call pillar.get elasticsearch:auth:users:so_kibana_user:pass --out=newline_values_only)
+  fi
+  [[ -n "$KIBANA_PASSWORD" ]] || return 1
+
+  echo "Retrying ${query_path} as so_kibana." >&2
+  curl -K /opt/so/conf/elasticsearch/curl.config --user "so_kibana:${KIBANA_PASSWORD}" \
+    -s -k -L --fail --retry 3 --retry-delay 5 -H 'Content-Type: application/json' "https://localhost:9200/${query_path}" "$@"
 }
 
 # add auto_expand_replicas=0-1 to given index
 set_auto_expand_replicas() {
-    local index="$1"
+  local index="$1"
 
-    echo "Setting auto_expand_replicas to 0-1 on ${index}."
-    query_es "${index}/_settings" -XPUT -d "$SETTINGS" >/dev/null
+  echo "Setting auto_expand_replicas to 0-1 on ${index}."
+  query_es "${index}/_settings" -XPUT -d "$SETTINGS" >/dev/null
 }
 
-# resolve index patterns and run set_auto_expand_replicas on each index
+# resolve index patterns and find each index with an unassigned replica
+unassigned_replicas() {
+  local pattern="$1"
+  local resolved_indices response index
+
+  if ! resolved_indices=$(query_es "_resolve/index/${pattern}?expand_wildcards=all" 2>/dev/null); then
+    return 0
+  fi
+
+  while read -r index; do
+    if ! response=$(query_es "_cat/shards/${index}?format=json&h=index,prirep,state" 2>/dev/null); then
+      continue
+    fi
+    jq -r '.[]? | objects | select(.prirep == "r" and .state == "UNASSIGNED") | .index' <<<"$response"
+  done < <(jq -r '.indices[]?.name' <<<"$resolved_indices")
+}
+
+data_stream_indices() {
+  local pattern="$1"
+  local response
+
+  if ! response=$(query_es "_data_stream/${pattern}?expand_wildcards=all" 2>/dev/null); then
+    return 0
+  fi
+  jq -r '.data_streams[]?.indices[]?.index_name' <<<"$response"
+}
+
 update_system_indices() {
-    local pattern="$1"
-    local response index
+  local pattern="$1"
+  local index
 
-    if ! response=$(query_es "_resolve/index/${pattern}?expand_wildcards=all" 2>/dev/null); then
-        return 0
-    fi
-
-    while read -r index; do
-        [[ -n "$index" ]] && set_auto_expand_replicas "$index"
-    done < <(jq -r '.indices[]?.name' <<<"$response")
+  while read -r index; do
+    [[ -n "$index" ]] && set_auto_expand_replicas "$index"
+  done < <(unassigned_replicas "$pattern")
 }
 
-# get data stream backing indices and run set_auto_expand_replicas on each index
+# update data stream backing indices with unassigned replicas
 update_system_ds() {
-    local pattern="$1"
-    local response index
+  local pattern="$1"
+  local index
 
-    if ! response=$(query_es "_data_stream/${pattern}?expand_wildcards=all" 2>/dev/null); then
-        return 0
-    fi
-    # find backing indices for each data stream and update with $SETTINGS
-    while read -r index; do
-        [[ -n "$index" ]] && set_auto_expand_replicas "$index"
-    done < <(jq -r '.data_streams[]?.indices[]?.index_name' <<<"$response")
+  while read -r index; do
+    while read -r unassigned_index; do
+      [[ -n "$unassigned_index" ]] && set_auto_expand_replicas "$unassigned_index"
+    done < <(unassigned_replicas "$index")
+  done < <(data_stream_indices "$pattern")
+}
+
+has_unassigned_replicas() {
+  local pattern="$1"
+  local index
+
+  index=$(unassigned_replicas "$pattern" | sed -n '1p')
+  [[ -n "$index" ]]
+}
+
+data_stream_has_unassigned_replicas() {
+  local pattern="$1"
+  local index
+  while read -r index; do
+    has_unassigned_replicas "$index" && return 0
+  done < <(data_stream_indices "$pattern")
+
+  return 1
+}
+
+needs_patch() {
+  local pattern
+  for pattern in "${INDEX_PATTERNS[@]}"; do
+    has_unassigned_replicas "$pattern" && return 0
+  done
+  for pattern in "${DATA_STREAM_PATTERNS[@]}"; do
+    data_stream_has_unassigned_replicas "$pattern" && return 0
+  done
+
+  return 1
 }
 
 # get index templates, update with auto_expand_replicas=0-1, and PUT back. Keeping mappings/settings/aliases in-place
 update_system_templates() {
-    local pattern="$1"
-    local templates name response template auto_expand_replicas
+  local pattern="$1"
+  local templates name response template auto_expand_replicas
 
-    if ! templates=$(query_es "_index_template/${pattern}" 2>/dev/null); then
-        return 0
-    fi
-    while read -r name; do
-        response=$(query_es "_index_template/${name}")
-        template=$(jq -c '.index_templates[0].index_template' <<<"$response")
-        auto_expand_replicas=$(jq -r '.template.settings["index.auto_expand_replicas"] // .template.settings.index.auto_expand_replicas // empty' <<<"$template")
-        [[ "$auto_expand_replicas" == "0-1" ]] && continue
+  if ! templates=$(query_es "_index_template/${pattern}" 2>/dev/null); then
+    return 0
+  fi
+  while read -r name; do
+    response=$(query_es "_index_template/${name}")
+    template=$(jq -c '.index_templates[0].index_template' <<<"$response")
+    auto_expand_replicas=$(jq -r '.template.settings["index.auto_expand_replicas"] // .template.settings.index.auto_expand_replicas // empty' <<<"$template")
+    [[ "$auto_expand_replicas" == "0-1" ]] && continue
 
-        template=$(jq '
+    template=$(jq '
             if (.template.settings.index | type) == "object" then
                 .template.settings.index.auto_expand_replicas = "0-1"
             else
@@ -105,19 +155,33 @@ update_system_templates() {
             end
             | del(.created_date_millis, .modified_date_millis)
         ' <<<"$template")
-        echo "Setting auto_expand_replicas to 0-1 on index template ${name}."
-        query_es "_index_template/${name}" -XPUT -d "$template" >/dev/null
-    done < <(jq -r '.index_templates[]?.name' <<<"$templates")
+    echo "Setting auto_expand_replicas to 0-1 on index template ${name}."
+    query_es "_index_template/${name}" -XPUT -d "$template" >/dev/null
+  done < <(jq -r '.index_templates[]?.name' <<<"$templates")
 }
 
+if [[ "${1:-}" == "--check" ]]; then
+  needs_patch
+  exit $?
+fi
+
+if [[ $# -ne 0 ]]; then
+  echo "Usage: $0 [--check]" >&2
+  exit 1
+fi
+
 for pattern in "${INDEX_PATTERNS[@]}"; do
+  if has_unassigned_replicas "$pattern"; then
     update_system_indices "$pattern"
+  fi
 done
 
 for pattern in "${DATA_STREAM_PATTERNS[@]}"; do
+  if data_stream_has_unassigned_replicas "$pattern"; then
     update_system_ds "$pattern"
+  fi
 done
 
 for pattern in "${TEMPLATE_PATTERNS[@]}"; do
-    update_system_templates "$pattern"
+  update_system_templates "$pattern"
 done
