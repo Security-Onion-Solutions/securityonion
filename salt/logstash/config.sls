@@ -81,6 +81,14 @@ ls_custom_pipeline_conf_{{assigned_pipeline}}_{{pipeline}}:
 
 
 {% for assigned_pipeline in ASSIGNED_PIPELINES %}
+{# a blank per-pipeline setting falls back to the global logstash.yml value #}
+{% set PARSED_OVERRIDES = LOGSTASH_MERGED.get('pipeline_settings', {}).get(assigned_pipeline, {}) %}
+{% if PARSED_OVERRIDES is not mapping %}
+{%   do salt.log.warning('logstash: ignoring malformed pipeline_settings for pipeline ' ~ assigned_pipeline ~ '; expected a set of settings') %}
+{% endif %}
+{% set PIPELINE_OVERRIDES = PARSED_OVERRIDES if PARSED_OVERRIDES is mapping else {} %}
+{% set THREADS = PIPELINE_OVERRIDES.get('pipeline_x_workers') or LOGSTASH_MERGED.config.pipeline_x_workers %}
+{% set BATCH = PIPELINE_OVERRIDES.get('pipeline_x_batch_x_size') or LOGSTASH_MERGED.config.pipeline_x_batch_x_size %}
     {% for CONFIGFILE in LOGSTASH_MERGED.defined_pipelines[assigned_pipeline] %}
 ls_pipeline_{{assigned_pipeline}}_{{CONFIGFILE.split('.')[0] | replace("/","_") }}:
   file.managed:
@@ -92,8 +100,8 @@ ls_pipeline_{{assigned_pipeline}}_{{CONFIGFILE.split('.')[0] | replace("/","_") 
         GLOBALS: {{ GLOBALS }}
         ES_USER: "{{ salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:user', '') }}"
         ES_PASS: "{{ salt['pillar.get']('elasticsearch:auth:users:so_elastic_user:pass', '') }}"
-        THREADS: {{ LOGSTASH_MERGED.config.pipeline_x_workers }}
-        BATCH: {{ LOGSTASH_MERGED.config.pipeline_x_batch_x_size }}
+        THREADS: {{ THREADS }}
+        BATCH: {{ BATCH }}
       {% else %}
     - name: /opt/so/conf/logstash/pipelines/{{assigned_pipeline}}/{{CONFIGFILE.split('/')[1]}}
       {% endif %}
