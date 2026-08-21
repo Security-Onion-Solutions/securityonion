@@ -11,6 +11,9 @@ KIBANA_PASSWORD=
 INDEX_PATTERNS=(
   '.entity_analytics.risk_score.lookup-*'
   '.entity_analytics.watchlists.*'
+  '.entity_analytics.monitoring.users-*'
+  '.entity_analytics.entity-leads-*'
+  '.asset-criticality.asset-criticality-*'
   '.workflows-executions'
   '.workflows-step-executions'
   '.entities.v2.latest.security_*'
@@ -20,12 +23,16 @@ INDEX_PATTERNS=(
 DATA_STREAM_PATTERNS=(
   '.entities.v2.updates.security_*'
   'risk-score.risk-score-*'
+  '.rule-events'
+  '.alert-actions'
 )
 TEMPLATE_PATTERNS=(
   'entities_v2_latest_security_default_index_template'
   'entities_v2_history_security_default_index_template'
   '.entities_v2_updates_security_default_index_template'
   '.risk-score.risk-score-default-index-template'
+  '.rule-events'
+  '.alert-actions'
 )
 
 query_es() {
@@ -170,18 +177,23 @@ if [[ $# -ne 0 ]]; then
   exit 1
 fi
 
+patched=false
 for pattern in "${INDEX_PATTERNS[@]}"; do
   if has_unassigned_replicas "$pattern"; then
     update_system_indices "$pattern"
+    patched=true
   fi
 done
 
 for pattern in "${DATA_STREAM_PATTERNS[@]}"; do
   if data_stream_has_unassigned_replicas "$pattern"; then
     update_system_ds "$pattern"
+    patched=true
   fi
 done
 
-for pattern in "${TEMPLATE_PATTERNS[@]}"; do
-  update_system_templates "$pattern"
-done
+if [[ "$patched" == true ]]; then
+  for pattern in "${TEMPLATE_PATTERNS[@]}"; do
+    update_system_templates "$pattern"
+  done
+fi
