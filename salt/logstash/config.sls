@@ -125,6 +125,14 @@ lspipelinesyml:
     - defaults:
         ASSIGNED_PIPELINES: {{ ASSIGNED_PIPELINES }}
 
+lslog4j2:
+  file.managed:
+    - name: /opt/so/conf/logstash/etc/log4j2.properties
+    - source: salt://logstash/etc/log4j2.properties.jinja
+    - template: jinja
+    - user: 931
+    - group: 939
+
 lsetcsync:
   file.recurse:
     - name: /opt/so/conf/logstash/etc
@@ -133,7 +141,11 @@ lsetcsync:
     - group: 939
     - template: jinja
     - clean: True
-    - exclude_pat: pipelines*
+{#- both names are matched: the .jinja source so the recurse does not copy it verbatim,
+    and the rendered file so clean: True does not delete what lslog4j2 wrote #}
+    - exclude_pat:
+      - pipelines*
+      - log4j2.properties*
     - defaults:
         LOGSTASH_MERGED: {{ LOGSTASH_MERGED }}
 
