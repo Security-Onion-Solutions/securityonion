@@ -105,6 +105,7 @@ so-logstash:
     {% endif %}
     - watch:
       - file: lsetcsync
+      - file: lslog4j2
       - file: lspipelinesyml
       - file: trusttheca
       {% if GLOBALS.is_manager %}
