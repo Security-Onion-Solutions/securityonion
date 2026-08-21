@@ -16,6 +16,7 @@ logstash:
       heavynode: *assigned_pipelines
       searchnode: *assigned_pipelines
       manager: *assigned_pipelines
+      managerhype: *assigned_pipelines
       managersearch: *assigned_pipelines
       fleet: *assigned_pipelines
   defined_pipelines:
@@ -34,6 +35,11 @@ logstash:
     custom2: *defined_pipelines
     custom3: *defined_pipelines
     custom4: *defined_pipelines
+    custom5: *defined_pipelines
+    custom6: *defined_pipelines
+    custom7: *defined_pipelines
+    custom8: *defined_pipelines
+    custom9: *defined_pipelines
   pipeline_config:
     custom001: &pipeline_config
       description: Pipeline configuration for Logstash
@@ -51,6 +57,351 @@ logstash:
     custom008: *pipeline_config
     custom009: *pipeline_config
     custom010: *pipeline_config
+  pipeline_settings:
+    manager: &pipeline_settings
+      pipeline_x_workers:
+        description: >-
+          Number of worker threads that run filters and outputs for this pipeline. May be set higher
+          than the CPU core count when outputs spend time waiting on I/O. Leave blank to use the value
+          from logstash.yml.
+        title: pipeline.workers
+        regex: '^$|^[1-9][0-9]*$'
+        regexFailureMessage: Must be blank, or a positive whole number.
+        advanced: True
+        global: False
+        helpLink: logstash
+      pipeline_x_batch_x_size:
+        description: >-
+          Maximum number of events an individual worker thread collects before running filters and
+          outputs. Larger batches are more efficient but increase heap use; total in-flight events is
+          workers multiplied by batch size. Leave blank to use the value from logstash.yml.
+        title: pipeline.batch.size
+        regex: '^$|^[1-9][0-9]*$'
+        regexFailureMessage: Must be blank, or a positive whole number.
+        advanced: True
+        global: False
+        helpLink: logstash
+      pipeline_x_batch_x_delay:
+        description: >-
+          Milliseconds a worker waits for the next event before running a batch that is not yet full.
+          Leave blank to use the value from logstash.yml.
+        title: pipeline.batch.delay
+        regex: '^$|^[0-9]+$'
+        regexFailureMessage: Must be blank, or a whole number.
+        advanced: True
+        global: False
+        helpLink: logstash
+      pipeline_x_batch_x_metrics_x_sampling_mode:
+        description: >-
+          Controls how often batch size metrics are collected for this pipeline, which helps tune
+          pipeline.batch.size to the batch sizes actually being processed. Fuller sampling consumes
+          additional heap. Elastic marks this setting as a technical preview that may change in a
+          future release. Leave blank to use the value from logstash.yml.
+        title: pipeline.batch.metrics.sampling_mode
+        options:
+        - ''
+        - 'disabled'
+        - 'minimal'
+        - 'full'
+        advanced: True
+        global: False
+        helpLink: logstash
+      pipeline_x_ordered:
+        description: >-
+          Whether event order is preserved through this pipeline. auto enables ordering only when
+          pipeline.workers is explicitly set to 1, and does nothing otherwise. Setting this to true
+          requires pipeline.workers to be 1 as well; with more workers this pipeline fails to start.
+          Leave blank to use the value from logstash.yml.
+        title: pipeline.ordered
+        options:
+        - ''
+        - 'auto'
+        - 'true'
+        - 'false'
+        advanced: True
+        global: False
+        helpLink: logstash
+      pipeline_x_ecs_compatibility:
+        description: >-
+          Elastic Common Schema compatibility mode for plugins in this pipeline. Security Onion sets
+          this globally and it should rarely be changed per pipeline. Elastic considers values other
+          than disabled to be BETA, and they may produce unintended consequences when upgrading
+          Logstash. Leave blank to use the value from logstash.yml.
+        title: pipeline.ecs_compatibility
+        options:
+        - ''
+        - 'disabled'
+        - 'v1'
+        - 'v8'
+        advanced: True
+        global: False
+        helpLink: logstash
+      pipeline_x_reloadable:
+        description: >-
+          Whether this pipeline may be reloaded when its configuration changes. Leave blank to use the
+          value from logstash.yml.
+        title: pipeline.reloadable
+        options:
+        - ''
+        - 'true'
+        - 'false'
+        advanced: True
+        global: False
+        helpLink: logstash
+      queue_x_type:
+        description: >-
+          Queue backing this pipeline. persisted buffers events to disk under /nsm/logstash so they
+          survive a restart, at some throughput cost; memory does not. Leave blank to use the value
+          from logstash.yml.
+        title: queue.type
+        options:
+        - ''
+        - 'memory'
+        - 'persisted'
+        advanced: True
+        global: False
+        helpLink: logstash
+      queue_x_max_bytes:
+        description: >-
+          Total capacity of the persistent queue for this pipeline, in bytes. Only applies when
+          queue.type is persisted. The disk backing /nsm/logstash must have room for this much data or
+          the pipeline fails to start, reporting that it was unable to allocate the space. If both
+          queue.max_events and queue.max_bytes are set, whichever is reached first applies. Leave
+          blank to use the value from logstash.yml.
+        title: queue.max_bytes
+        regex: '^$|^[0-9]+$|^[0-9]+(\.[0-9]+)?\s*(b|kb?|mb?|gb?|tb?|pb?)$'
+        regexFailureMessage: Must be blank, or a size such as 512mb, 1gb, or 64k. Units are lowercase.
+        advanced: True
+        global: False
+        helpLink: logstash
+      queue_x_page_capacity:
+        description: >-
+          Size of the individual append-only page data files that make up the persistent queue for
+          this pipeline. Only applies when queue.type is persisted. Leave blank to use the value from
+          logstash.yml.
+        title: queue.page_capacity
+        regex: '^$|^[0-9]+$|^[0-9]+(\.[0-9]+)?\s*(b|kb?|mb?|gb?|tb?|pb?)$'
+        regexFailureMessage: Must be blank, or a size such as 512mb, 1gb, or 64k. Units are lowercase.
+        advanced: True
+        global: False
+        helpLink: logstash
+      queue_x_max_events:
+        description: >-
+          Maximum number of unread events in the persistent queue for this pipeline. 0 means
+          unlimited. Only applies when queue.type is persisted. Leave blank to use the value from
+          logstash.yml.
+        title: queue.max_events
+        regex: '^$|^[0-9]+$'
+        regexFailureMessage: Must be blank, or a whole number.
+        advanced: True
+        global: False
+        helpLink: logstash
+      queue_x_checkpoint_x_acks:
+        description: >-
+          Maximum number of acknowledged events before a checkpoint is forced. 0 means unlimited. Only
+          applies when queue.type is persisted. Leave blank to use the value from logstash.yml.
+        title: queue.checkpoint.acks
+        regex: '^$|^[0-9]+$'
+        regexFailureMessage: Must be blank, or a whole number.
+        advanced: True
+        global: False
+        helpLink: logstash
+      queue_x_checkpoint_x_writes:
+        description: >-
+          Maximum number of written events before a checkpoint is forced. Setting this to 1 gives
+          maximum durability at a severe performance cost. 0 means unlimited. Only applies when
+          queue.type is persisted. Leave blank to use the value from logstash.yml.
+        title: queue.checkpoint.writes
+        regex: '^$|^[0-9]+$'
+        regexFailureMessage: Must be blank, or a whole number.
+        advanced: True
+        global: False
+        helpLink: logstash
+      queue_x_checkpoint_x_interval:
+        description: >-
+          Milliseconds between forced checkpoints on the persistent queue head page. 0 eliminates
+          periodic checkpoints. Deprecated by Elastic as of Logstash 9.1. Only applies when queue.type
+          is persisted. Leave blank to use the value from logstash.yml.
+        title: queue.checkpoint.interval
+        regex: '^$|^[0-9]+$'
+        regexFailureMessage: Must be blank, or a whole number.
+        advanced: True
+        global: False
+        helpLink: logstash
+      queue_x_checkpoint_x_retry:
+        description: >-
+          When enabled, Logstash retries four times per attempted checkpoint write that fails; later
+          errors are not retried. Elastic describes this as a workaround for failed checkpoint writes
+          seen only on Windows and on filesystems with non-standard behaviour such as SANs, and does
+          not recommend enabling it otherwise. Only applies when queue.type is persisted. Leave blank
+          to use the value from logstash.yml.
+        title: queue.checkpoint.retry
+        options:
+        - ''
+        - 'true'
+        - 'false'
+        advanced: True
+        global: False
+        helpLink: logstash
+      queue_x_compression:
+        description: >-
+          Compression applied to persistent queue pages for this pipeline, trading CPU for disk: speed
+          favours the fastest operation, size the smallest files, and balanced sits between them. Once
+          compressed events have been written, that queue cannot be read by Logstash releases earlier
+          than 9.2. Only applies when queue.type is persisted. Leave blank to use the value from
+          logstash.yml.
+        title: queue.compression
+        options:
+        - ''
+        - 'none'
+        - 'speed'
+        - 'balanced'
+        - 'size'
+        advanced: True
+        global: False
+        helpLink: logstash
+      queue_x_drain:
+        description: >-
+          When enabled, Logstash waits for the persistent queue to drain before shutting down this
+          pipeline. Draining a large queue makes shutdown take considerably longer. Only applies when
+          queue.type is persisted. Leave blank to use the value from logstash.yml.
+        title: queue.drain
+        options:
+        - ''
+        - 'true'
+        - 'false'
+        advanced: True
+        global: False
+        helpLink: logstash
+      dead_letter_queue_x_enable:
+        description: >-
+          Whether events this pipeline cannot process are written to a dead letter queue instead of
+          being dropped. Leave blank to use the value from logstash.yml.
+        title: dead_letter_queue.enable
+        options:
+        - ''
+        - 'true'
+        - 'false'
+        advanced: True
+        global: False
+        helpLink: logstash
+      dead_letter_queue_x_max_bytes:
+        description: >-
+          Total capacity of the dead letter queue for this pipeline, in bytes. Only applies when
+          dead_letter_queue.enable is true. Leave blank to use the value from logstash.yml.
+        title: dead_letter_queue.max_bytes
+        regex: '^$|^[0-9]+$|^[0-9]+(\.[0-9]+)?\s*(b|kb?|mb?|gb?|tb?|pb?)$'
+        regexFailureMessage: Must be blank, or a size such as 512mb, 1gb, or 64k. Units are lowercase.
+        advanced: True
+        global: False
+        helpLink: logstash
+      dead_letter_queue_x_flush_interval:
+        description: >-
+          Milliseconds before an incomplete dead letter queue segment is flushed and made available to
+          the dead_letter_queue input. Lower values write more, smaller segment files; higher values
+          add latency before events can be read. Only applies when dead_letter_queue.enable is true.
+          Leave blank to use the value from logstash.yml.
+        title: dead_letter_queue.flush_interval
+        regex: '^$|^[0-9]+$'
+        regexFailureMessage: Must be blank, or a whole number.
+        advanced: True
+        global: False
+        helpLink: logstash
+      dead_letter_queue_x_flush_check_interval:
+        description: >-
+          Milliseconds between checks for a stale dead letter queue segment needing a flush. Cannot be
+          set lower than 1000. Smaller values rotate segments sooner at the cost of CPU. Only applies
+          when dead_letter_queue.enable is true. Leave blank to use the value from logstash.yml.
+        title: dead_letter_queue.flush_check_interval
+        regex: '^$|^[0-9]+$'
+        regexFailureMessage: Must be blank, or a whole number.
+        advanced: True
+        global: False
+        helpLink: logstash
+      dead_letter_queue_x_storage_policy:
+        description: >-
+          Action taken when dead_letter_queue.max_bytes is reached: drop_newer stops accepting new
+          events, drop_older removes the oldest events to make room. Only applies when
+          dead_letter_queue.enable is true. Leave blank to use the value from logstash.yml.
+        title: dead_letter_queue.storage_policy
+        options:
+        - ''
+        - 'drop_newer'
+        - 'drop_older'
+        advanced: True
+        global: False
+        helpLink: logstash
+      dead_letter_queue_x_retain_x_age:
+        description: >-
+          How long an event is kept in the dead letter queue before Logstash removes it, such as 5d.
+          Units are d, h, m and s; there is no default unit, so one must be given. Only applies when
+          dead_letter_queue.enable is true. Leave blank to use the value from logstash.yml.
+        title: dead_letter_queue.retain.age
+        regex: '^$|^[0-9]+\s*[dhms]$'
+        regexFailureMessage: Must be blank, or a number followed by d, h, m, or s, such as 5d.
+        advanced: True
+        global: False
+        helpLink: logstash
+      path_x_queue:
+        description: >-
+          Directory inside the Logstash container holding the persistent queue for this pipeline. The
+          default lives under the /nsm/logstash bind mount; a path outside it will not survive a
+          container restart. Logstash creates the directory if it is missing, requires it to be
+          writable, and refuses to start if the path is a symlink. Only applies when queue.type is
+          persisted. Leave blank to use the value from logstash.yml.
+        title: path.queue
+        advanced: True
+        global: False
+        helpLink: logstash
+      path_x_dead_letter_queue:
+        description: >-
+          Directory inside the Logstash container holding the dead letter queue for this pipeline. The
+          default lives under the /nsm/logstash bind mount; a path outside it will not survive a
+          container restart. Logstash creates the directory if it is missing, requires it to be
+          writable, and refuses to start if the path is a symlink. Only applies when
+          dead_letter_queue.enable is true. Leave blank to use the value from logstash.yml.
+        title: path.dead_letter_queue
+        advanced: True
+        global: False
+        helpLink: logstash
+      config_x_debug:
+        description: >-
+          Whether the fully compiled configuration for this pipeline is written to the log. The output
+          may contain sensitive values from the pipeline configuration. Leave blank to use the value
+          from logstash.yml.
+        title: config.debug
+        options:
+        - ''
+        - 'true'
+        - 'false'
+        advanced: True
+        global: False
+        helpLink: logstash
+      config_x_support_escapes:
+        description: >-
+          Whether escape sequences such as \n and \t in this pipeline's quoted strings are
+          interpreted. Leave blank to use the value from logstash.yml.
+        title: config.support_escapes
+        options:
+        - ''
+        - 'true'
+        - 'false'
+        advanced: True
+        global: False
+        helpLink: logstash
+    fleet: *pipeline_settings
+    receiver: *pipeline_settings
+    search: *pipeline_settings
+    custom0: *pipeline_settings
+    custom1: *pipeline_settings
+    custom2: *pipeline_settings
+    custom3: *pipeline_settings
+    custom4: *pipeline_settings
+    custom5: *pipeline_settings
+    custom6: *pipeline_settings
+    custom7: *pipeline_settings
+    custom8: *pipeline_settings
+    custom9: *pipeline_settings
   settings:
     lsheap: 
       description: Heap size to use for logstash
