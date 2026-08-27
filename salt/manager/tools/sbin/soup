@@ -483,11 +483,10 @@ push_grid_highstate() {
 masterlock() {
   echo "Locking Salt Master"
   mv -v $TOPFILE $BACKUPTOPFILE
-  # Render the real top file only for the host running soup; every other
-  # minion gets an empty top (no states) while the master is upgrading.
-  echo "{% if grains['id'] == '$MINIONID' %}" > $TOPFILE
-  cat $BACKUPTOPFILE >> $TOPFILE
-  echo "{% endif %}" >> $TOPFILE
+  echo "base:" > $TOPFILE
+  echo "  $MINIONID:" >> $TOPFILE
+  echo "    - ca" >> $TOPFILE
+  echo "    - elasticsearch" >> $TOPFILE
 }
 
 masterunlock() {
