@@ -68,6 +68,15 @@ so-elastic-fleet-package-upgrade:
     - require:
       - http: wait_for_so-kibana
 
+so-elastic-fleet-integration-upgrade:
+  cmd.run:
+    - name: /usr/sbin/so-elastic-fleet-integration-upgrade
+    - retry:
+        attempts: 3
+        interval: 10
+    - require:
+      - cmd: so-elastic-fleet-package-upgrade
+
 so-elastic-fleet-integrations:
   cmd.run:
     - name: /usr/sbin/so-elastic-fleet-integration-policy-load
@@ -83,15 +92,6 @@ so-elastic-agent-grid-upgrade:
     - retry:
         attempts: 12
         interval: 5
-    - require:
-      - http: wait_for_so-kibana
-
-so-elastic-fleet-integration-upgrade:
-  cmd.run:
-    - name: /usr/sbin/so-elastic-fleet-integration-upgrade
-    - retry:
-        attempts: 3
-        interval: 10
     - require:
       - http: wait_for_so-kibana
 
