@@ -344,16 +344,6 @@ check_cluster_health() {
 
 check_fleet_server() {
   echo "Checking that Elastic Fleet Server is responding."
-  # Before checking fleet health, check for and fix known issue with elastic-agent container and fs.protected_symlinks
-  local protected_symlinks=$(sysctl -b fs.protected_symlinks)
-  if [[ "$protected_symlinks" == "1" ]]; then
-    # disable fs.protected_symlinks and restart elasticfleet
-    sysctl -w fs.protected_symlinks=0
-    docker stop so-elastic-fleet; docker rm -f so-elastic-fleet
-    printf "\nUpdated sysctl fs.protected_symlinks. Restarting fleet before running health check and continuing with soup.\n"
-    salt-call state.apply elasticfleet queue=True
-  fi
-  
   # Modeled on the wait_for_so-elastic-fleet state check in elasticfleet/enabled.sls,
   # which waits for HTTP 200 from the Fleet Server status API.
   if curl -sk --fail --retry 3 --retry-delay 10 --max-time 30 "https://localhost:8220/api/status" > /dev/null 2>&1; then
@@ -1046,20 +1036,8 @@ post_to_3.2.0() {
 }
 ### 3.2.0 End ###
 
-### 3.3.0 Scripts ###
-
- # Sets fs.protected_symlinks=0
- #
- # Elastic Agent docker image chowns its directory to the running UID 
- # but does not chown the elastic-agent launcher symlink. 
- # Preventing non-root users from following that launcher symlink.
-disable_sysctl_fs_protected_symlink() {
-  salt -C 'I@stig:enabled' state.single sysctl.present name=fs.protected_symlinks value=0 config=/etc/sysctl.conf || true
-}
-    
+### 3.2.0 Scripts ###
 up_to_3.3.0() {
-  disable_sysctl_fs_protected_symlink
-  
   INSTALLEDVERSION=3.3.0
 }
 
