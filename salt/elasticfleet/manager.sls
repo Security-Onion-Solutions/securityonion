@@ -68,6 +68,15 @@ so-elastic-fleet-package-upgrade:
     - require:
       - http: wait_for_so-kibana
 
+# initial so-elasticsearch-templates run is earlier, but it can skip over templates that have component templates not yet installed to avoid elasticsearch rejecting the template.
+so-elasticsearch-templates-after-fleet-packages:
+  cmd.run:
+    - name: /usr/sbin/so-elasticsearch-templates-load
+    - cwd: /opt/so
+    - unless: test -f /opt/so/state/estemplates.txt
+    - require:
+      - cmd: so-elastic-fleet-package-upgrade
+
 so-elastic-fleet-integration-upgrade:
   cmd.run:
     - name: /usr/sbin/so-elastic-fleet-integration-upgrade
@@ -101,6 +110,7 @@ so-elastic-fleet-addon-integrations:
     - name: /usr/sbin/so-elastic-fleet-optional-integrations-load
     - require:
       - http: wait_for_so-kibana
+      - cmd: so-elasticsearch-templates-after-fleet-packages
 
 {% if ELASTICFLEETMERGED.config.defend_filters.enable_auto_configuration %}
 so-elastic-defend-manage-filters-file-watch:

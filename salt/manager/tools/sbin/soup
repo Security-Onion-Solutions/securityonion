@@ -2145,7 +2145,13 @@ main() {
     check_saltmaster_status
     postupgrade_changes
     [[ $is_airgap -eq 0 ]] && unmount_update
-
+    
+    if [[ "$es_version" != "$target_es_version" ]]; then
+      # Run final elasticsearch state on manager to ensure addon index templates are created/regenerated and loaded
+      echo "Running final elasticsearch state at $(date +"%T.%6N"), after upgrade to $POSTVERSION"
+      salt-call state.apply elasticsearch queue=True
+    fi
+    
     echo ""
     echo "Upgrade to $NEWVERSION complete."
 
