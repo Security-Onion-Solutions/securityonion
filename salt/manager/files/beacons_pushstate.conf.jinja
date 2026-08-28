@@ -1,0 +1,18 @@
+{% from 'salt/auto_apply.map.jinja' import AUTOAPPLY %}
+beacons:
+  postgres_pillar_beacon:
+    - interval: {{ AUTOAPPLY.drain_interval }}
+    - disable_during_state_run: False
+  local_files_beacon:
+    - interval: {{ AUTOAPPLY.drain_interval }}
+    - disable_during_state_run: False
+    # Tags are app names in salt/reactor/pillar_push_map.yaml.
+    # Allowlist on purpose: salt writes elsewhere under local/salt/ and would self-retrigger.
+    - paths:
+        /opt/so/saltstack/local/salt/suricata/rules: suricata
+        /opt/so/saltstack/local/salt/strelka/rules/compiled: strelka
+        /opt/so/saltstack/local/salt/zeek/policy: zeek
+        /opt/so/saltstack/local/salt/zeek/zkg: zeek
+        /opt/so/saltstack/local/salt/elasticsearch/files/ingest: elasticsearch
+        /opt/so/saltstack/local/salt/elasticsearch/roles: elasticsearch
+        /opt/so/saltstack/local/salt/logstash/pipelines/config/custom: logstash

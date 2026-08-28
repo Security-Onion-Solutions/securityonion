@@ -1,0 +1,15 @@
+[Unit]
+Description=Security Onion boot-time grid mine.update (managers, runs once per boot before highstate)
+After=salt-master.service salt-minion.service network-online.target
+Wants=network-online.target
+Requires=salt-master.service salt-minion.service
+Before=so-boot-highstate.service
+ConditionPathExists=/opt/so/state/setup-complete
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/so-boot-mine-update
+
+[Install]
+WantedBy=multi-user.target

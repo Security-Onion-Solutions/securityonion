@@ -27,12 +27,13 @@ include:
 so-kafka:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-kafka:{{ GLOBALS.so_version }}
+    - restart_policy: unless-stopped
     - hostname: so-kafka
     - name: so-kafka
     - networks:
       - sobridge:
         - ipv4_address: {{ DOCKERMERGED.containers['so-kafka'].ip }}
-    - user: kafka
+    - user: "960"
     - environment:
         KAFKA_HEAP_OPTS: -Xmx2G -Xms1G
         KAFKA_OPTS: "-javaagent:/opt/jolokia/agents/jolokia-agent-jvm-javaagent.jar=port=8778,host={{ DOCKERMERGED.containers['so-kafka'].ip }},policyLocation=file:/opt/jolokia/jolokia.xml {%- if KAFKA_EXTERNAL_ACCESS %} -Djava.security.auth.login.config=/opt/kafka/config/kafka_server_jaas.conf {% endif -%}"

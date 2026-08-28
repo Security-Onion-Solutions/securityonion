@@ -34,6 +34,7 @@ make-rule-dir-nginx:
 so-nginx:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-nginx:{{ GLOBALS.so_version }}
+    - restart_policy: unless-stopped
     - hostname: so-nginx
     - networks:
       - sobridge:
@@ -59,6 +60,7 @@ so-nginx:
       - /opt/so/conf/navigator/layers/:/opt/socore/html/navigator/assets/so:ro
       - /opt/so/conf/navigator/config.json:/opt/socore/html/navigator/assets/config.json:ro
       - /nsm/repo:/opt/socore/html/repo:ro
+      - /nsm/kernelrepo:/opt/socore/html/kernelrepo:ro
       - /nsm/rules:/nsm/rules:ro
       {%   if NGINXMERGED.external_suricata %}
       - /opt/so/rules/nids/suri:/surirules:ro

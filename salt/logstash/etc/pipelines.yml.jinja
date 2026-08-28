@@ -1,4 +1,17 @@
+{%- from 'logstash/map.jinja' import LOGSTASH_MERGED %}
+{%- set PIPELINE_SETTINGS = LOGSTASH_MERGED.get('pipeline_settings', {}) %}
 {%- for assigned_pipeline in ASSIGNED_PIPELINES %}
 - pipeline.id: {{ assigned_pipeline }}
   path.config: "/usr/share/logstash/pipelines/{{ assigned_pipeline }}/"
+{%-   set extra = PIPELINE_SETTINGS.get(assigned_pipeline, {}) %}
+{%-   if extra is mapping %}
+{#-     values are emitted unquoted so yaml re-infers the type logstash expects:
+        4 as an integer, false as a boolean, 1024mb and auto as strings #}
+{%-     for key, value in extra | dictsort %}
+{%-       set rendered = key | replace('_x_', '.') %}
+{%-       if value not in ['', None] and rendered not in ['pipeline.id', 'path.config'] %}
+  {{ rendered }}: {{ value }}
+{%-       endif %}
+{%-     endfor %}
+{%-   endif %}
 {% endfor -%}

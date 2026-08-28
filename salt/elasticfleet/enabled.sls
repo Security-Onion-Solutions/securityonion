@@ -26,7 +26,9 @@ include:
 wait_for_elasticsearch_elasticfleet:
   cmd.run:
     - name: so-elasticsearch-wait
+{% endif %}
 
+{% if GLOBALS.role == "so-fleet" %}
 # Sync Elastic Agent artifacts to Fleet Node
 elasticagent_syncartifacts:
   file.recurse:
@@ -40,6 +42,7 @@ elasticagent_syncartifacts:
 so-elastic-fleet:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elastic-agent:{{ GLOBALS.so_version }}
+    - restart_policy: unless-stopped
     - name: so-elastic-fleet
     - hostname: FleetServer-{{ GLOBALS.hostname }}
     - detach: True
@@ -99,6 +102,17 @@ so-elastic-fleet:
       - file: trusttheca
       - x509: etc_elasticfleet_key
       - x509: etc_elasticfleet_crt
+
+wait_for_so-elastic-fleet:
+  http.wait_for_successful_query:
+    - name: "https://localhost:8220/api/status"
+    - ssl: True
+    - verify_ssl: False
+    - status: 200
+    - wait_for: 300
+    - request_interval: 15
+    - require:
+      - docker_container: so-elastic-fleet
 {%   endif %}
 
 delete_so-elastic-fleet_so-status.disabled:

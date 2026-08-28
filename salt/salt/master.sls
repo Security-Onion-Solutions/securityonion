@@ -10,10 +10,12 @@
 #    software that is protected by the license key."
 
 {% from 'allowed_states.map.jinja' import allowed_states %}
+{% from 'salt/auto_apply.map.jinja' import AUTOAPPLY %}
 {% if sls in allowed_states %}
 
 include:
   - salt.minion
+  - salt.master.boot_mine_update
 {%   if 'vrt' in salt['pillar.get']('features', []) %}
   - salt.cloud
   - salt.cloud.reactor_config_hypervisor
@@ -62,6 +64,21 @@ engines_config:
     - name: /etc/salt/master.d/engines.conf
     - source: salt://salt/files/engines.conf
 
+{% if AUTOAPPLY.enabled %}
+reactor_pushstate_config:
+  file.managed:
+    - name: /etc/salt/master.d/reactor_pushstate.conf
+    - source: salt://salt/files/reactor_pushstate.conf
+    - watch_in:
+      - service: salt_master_service
+{% else %}
+reactor_pushstate_config:
+  file.absent:
+    - name: /etc/salt/master.d/reactor_pushstate.conf
+    - watch_in:
+      - service: salt_master_service
+{% endif %}
+
 # update the bootstrap script when used for salt-cloud
 salt_bootstrap_cloud:
   file.managed:
@@ -77,6 +94,8 @@ salt_master_service:
       - file: checkmine_engine
       - file: pillarWatch_engine
       - file: engines_config
+    - require:
+      - cmd: wait_for_salt_minion_ready
     - order: last
 
 {% else %}

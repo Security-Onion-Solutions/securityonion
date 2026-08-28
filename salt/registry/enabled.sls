@@ -16,12 +16,14 @@ include:
 # Install the registry container
 so-dockerregistry:
   docker_container.running:
-    - image: ghcr.io/security-onion-solutions/registry:3.0.0
+    - image: ghcr.io/security-onion-solutions/registry:3.1.1
+    # Intentionally `always`-- registry is critical and must
+    # come back up even if it was manually stopped.
+    - restart_policy: always
     - hostname: so-registry
     - networks:
       - sobridge:
         - ipv4_address: {{ DOCKERMERGED.containers['so-dockerregistry'].ip }}
-    - restart_policy: always
     - port_bindings:
       {% for BINDING in DOCKERMERGED.containers['so-dockerregistry'].port_bindings %}
       - {{ BINDING }}

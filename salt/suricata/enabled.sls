@@ -17,6 +17,7 @@ include:
 so-suricata:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-suricata:{{ GLOBALS.so_version }}
+    - restart_policy: unless-stopped
     - privileged: True
     - environment:
       - INTERFACE={{ GLOBALS.sensor.interface }}
@@ -65,10 +66,11 @@ so-suricata:
       - file: suriclassifications
 
 surirulereload:
-  cmd.run: 
+  cmd.run:
     - name: /usr/sbin/so-suricata-reload-rules >> /opt/so/log/suricata/reload.log 2>&1
-    - onchanges: 
+    - onchanges:
         - file: surirulesync
+    - onlyif: test -f /opt/so/rules/suricata/all-rulesets.rules
     - require:
         - docker_container: so-suricata
     

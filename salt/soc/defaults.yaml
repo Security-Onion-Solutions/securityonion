@@ -36,8 +36,8 @@ soc:
         icon: fa-stream
         target: ''
         links:
-          - '/joblookup?esid={:soc_id}&time={:@timestamp}&gridId={gridId}'
-          - '/joblookup?ncid={:network.community_id}&time={:@timestamp}&gridId={gridId}'
+          - '/api/joblookup?esid={:soc_id}&time={:@timestamp}&gridId={gridId}'
+          - '/api/joblookup?ncid={:network.community_id}&time={:@timestamp}&gridId={gridId}'
         categories:
           - hunt
           - alerts
@@ -1464,6 +1464,7 @@ soc:
           sigmaRulePackages:
             - core
             - emerging_threats_addon
+          useEsql: false
         elastic:
           hostUrl:
           remoteHostUrls: []
@@ -1499,15 +1500,27 @@ soc:
           playbookRepos:
             default:
               - repo: https://github.com/Security-Onion-Solutions/securityonion-resources-playbooks
+                rulesetName: sos-playbook-resources
                 branch: main
                 folder: securityonion-normalized
+              - repo: https://github.com/Security-Onion-Solutions/securityonion-resources-playbooks
+                rulesetName: sos-published
+                branch: published
+                folder: sigma
             airgap:
               - repo: file:///nsm/airgap-resources/playbooks/securityonion-resources-playbooks
+                rulesetName: sos-resources-ag
                 branch: main
                 folder: securityonion-normalized
+              - repo: file:///nsm/airgap-resources/playbooks/securityonion-resources-playbooks
+                rulesetName: sos-published-ag
+                branch: published
+                folder: sigma
         assistant:
           systemPromptAddendum: ""
           systemPromptAddendumMaxLength: 50000
+          maxSubSessionTokens: 0
+          maxDelegationDepth: 5
           adapters:
             - name: SOAI
               protocol: securityonion_ai_cloud
@@ -1519,6 +1532,35 @@ soc:
               serviceAccountJSON: ""
               serviceAccountLocation: ""
               healthTimeoutSeconds: 5
+          agentic: false
+          agentMapping:
+            Orchestrator: sonnet@SOAI
+            Investigator: gemma@SOAI
+            DetectionEngineer: gemma@SOAI
+          useMemory: true
+          useMemoryScanner: false
+          memoryScanIntervalSeconds: 300
+          memoryProximityThreshold: 0.8
+          messageProximityThreshold: 0.5
+          maxUserMemoriesToInclude: 5
+          maxGlobalMemoriesToInclude: 5
+          maxUserMemoriesToReconcile: 20
+          maxGlobalMemoriesToReconcile: 20
+          memoryModel: gemma@SOAI
+          embedModel: amazon.titan-embed-text-v2@SOAI
+          reconcileModel: gemma@SOAI
+          memoryPersona: ""
+          reconcilePersona: ""
+        onionconfig:
+          saltstackDir: /opt/so/saltstack
+          bypassEnabled: false
+        postgres:
+          host: ""
+          port: 5432
+          sslMode: "require"
+          database: securityonion
+          user: ""
+          password: ""
         salt:
           queueDir: /opt/sensoroni/queue
           timeoutMs: 45000
@@ -1760,12 +1802,12 @@ soc:
               enabled: true
           queries:
             - name: Default Query
-              description: Show all events grouped by the observer host
-              query: '* | groupby observer.name'
-              showSubtitle: true
-            - name: Log Type
               description: Show all events grouped by module and dataset
               query: '* | groupby event.module* event.dataset'
+              showSubtitle: true
+            - name: Observer
+              description: Show all events grouped by the observer host
+              query: '* | groupby observer.name'
               showSubtitle: true
             - name: SOC - Auth
               description: Users authenticated to SOC grouped by IP address and identity
@@ -2643,7 +2685,7 @@ soc:
               # The id (UUIDv4) is pregenerated and can safely be used.
               # Click "Convert" to convert the Sigma rule to use Security Onion field mappings within an EQL query
               #
-              # Rule Creation Guide: https://github.com/SigmaHQ/sigma/wiki/Rule-Creation-Guide
+              # Rule Creation Guide: https://github.com/SigmaHQ/sigma/wiki/Rule-Creation-High%E2%80%90Level-Guide
               # Logsources: https://sigmahq.io/docs/basics/log-sources.html
 
               title: 'A Short Capitalized Title With Less Than 50 Characters'
@@ -2655,7 +2697,7 @@ soc:
               references:
                 - 'https://local.invalid'
               author: '@SecurityOnion'
-              date: 'YYYY/MM/DD'
+              date: '[today]'
               tags:
                 - detection.threat_hunting
                 - attack.technique_id
@@ -2678,6 +2720,8 @@ soc:
           thresholdColorRatioLow: 0.5
           thresholdColorRatioMed: 0.75
           thresholdColorRatioMax: 1
+          toolBusyMaxRetries: 30
+          toolBusyRetryDelayMs: 1000
           availableModels:
             - id: sonnet
               displayName: Claude Sonnet
@@ -2688,4 +2732,23 @@ soc:
               enabled: true
               adapter: SOAI
               charsPerTokenEstimate: 4
+            - id: gemma
+              displayName: Gemma
+              origin: USA
+              contextLimitSmall: 256000
+              contextLimitLarge: 256000
+              lowBalanceColorAlert: 500000
+              enabled: true
+              adapter: SOAI
+              charsPerTokenEstimate: 4
+            - id: amazon.titan-embed-text-v2
+              displayName: amazon.titan-embed-text-v2
+              origin: USA
+              contextLimitSmall: 8192
+              contextLimitLarge: 8192
+              lowBalanceColorAlert: 500000
+              enabled: true
+              adapter: SOAI
+              charsPerTokenEstimate: 4
+              
             

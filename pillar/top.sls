@@ -3,6 +3,8 @@ base:
     - ca
     - global.soc_global
     - global.adv_global
+    - salt.soc_salt
+    - salt.adv_salt
     - docker.soc_docker
     - docker.adv_docker
     - influxdb.token

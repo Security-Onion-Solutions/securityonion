@@ -10,6 +10,15 @@
 {% set AGENT_STATUS = salt['service.available']('elastic-agent') %}
 {% set AGENT_EXISTS = salt['file.file_exists']('/opt/Elastic/Agent/elastic-agent') %}
 
+so-elastic-agent-install:
+  file.managed:
+    - name: /usr/sbin/so-elastic-agent-install
+    - source: salt://elasticfleet/tools/sbin/so-elastic-agent-install
+    - user: 947
+    - group: 939
+    - mode: 755
+    - show_changes: False
+
 {% if not AGENT_STATUS or not AGENT_EXISTS %}
 
 pull_agent_installer:
@@ -21,11 +30,9 @@ pull_agent_installer:
 
 run_installer:
   cmd.run:
-    - name: ./so-elastic-agent_linux_amd64 -token={{ GRIDNODETOKEN }} -force
-    - cwd: /opt/so
-    - retry:
-        attempts: 3
-        interval: 20
+    - name: /usr/sbin/so-elastic-agent-install "{{ GRIDNODETOKEN }}"
+    - require:
+      - file: pull_agent_installer
 
 cleanup_agent_installer:
   file.absent:

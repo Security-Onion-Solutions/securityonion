@@ -5,3 +5,11 @@ salt_bootstrap:
     - source: salt://salt/scripts/bootstrap-salt.sh
     - mode: 755
     - show_changes: False
+
+salt_sbin:
+  file.recurse:
+    - name: /usr/sbin
+    - source: salt://salt/tools/sbin
+    - user: 939
+    - group: 939
+    - file_mode: 755

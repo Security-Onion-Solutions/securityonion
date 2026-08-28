@@ -9,8 +9,11 @@
 {%   from 'elasticsearch/config.map.jinja' import ELASTICSEARCHMERGED %}
 {%   from 'elasticsearch/template.map.jinja' import ES_INDEX_SETTINGS, SO_MANAGED_INDICES %}
 {%   if GLOBALS.role != 'so-heavynode' %}
-{%     from 'elasticsearch/template.map.jinja' import ALL_ADDON_SETTINGS %}
+{%     from 'elasticsearch/template.map.jinja' import ALL_ADDON_SETTINGS, ADDON_INDICES %}
 {%   endif %}
+
+include:
+  - elasticsearch.enabled
 
 escomponenttemplates:
   file.recurse:
@@ -34,6 +37,20 @@ so_index_template_dir:
       - file: so_index_template_{{index}}
       {%- endfor %}
     {%- endif %}
+
+{%  if GLOBALS.role != "so-heavynode" %}
+# Clean up legacy and non-SO managed templates from the elasticsearch/templates/addon-index/ directory
+addon_index_template_dir:
+  file.directory:
+    - name: /opt/so/conf/elasticsearch/templates/addon-index
+    - clean: True
+    {%- if ADDON_INDICES %}
+    - require:
+      {%- for index in ADDON_INDICES %}
+      - file: addon_index_template_{{index}}
+      {%- endfor %}
+    {%- endif %}
+{%  endif %}
 
 # Auto-generate index templates for SO managed indices (directly defined in elasticsearch/defaults.yaml)
 #   These index templates are for the core SO datasets and are always required
@@ -116,6 +133,18 @@ so-elasticsearch-templates:
       - docker_container: so-elasticsearch
       - file: elasticsearch_sbin_jinja
 
+so-elasticsearch-dlm-apply:
+  cmd.run:
+    - name: /usr/sbin/so-elasticsearch-dlm-apply
+    - cwd: /opt/so
+    - require:
+      - docker_container: so-elasticsearch
+      - file: elasticsearch_sbin_jinja
+      - cmd: so-elasticsearch-templates
+    - retry:
+        attempts: 3
+        interval: 10
+
 so-elasticsearch-pipelines:
   cmd.run:
     - name: /usr/sbin/so-elasticsearch-pipelines {{ GLOBALS.hostname }}
@@ -136,7 +165,8 @@ so-elasticsearch-roles-load:
 {%    set ap = "absent" %}
 {%  endif %}
 {%  if grains.role in ['so-eval', 'so-standalone', 'so-heavynode'] %}
-{%    if ELASTICSEARCHMERGED.index_clean %}
+{#    Remove so-elasticsearch-indices-delete script when using DLM #}
+{%    if ELASTICSEARCHMERGED.index_clean and ELASTICSEARCHMERGED.data_retention_method == "ILM" %}
 {%      set ap = "present" %}
 {%    else %}
 {%      set ap = "absent" %}

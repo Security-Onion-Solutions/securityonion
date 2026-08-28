@@ -12,16 +12,34 @@
 UPDATE_DIR=/tmp/sogh/securityonion
 DEFAULT_SALT_DIR=/opt/so/saltstack/default
 INSTALLEDVERSION=$(cat /etc/soversion)
-POSTVERSION=$INSTALLEDVERSION
+# /etc/sopostversion is a soup-owned marker (no salt state manages it) tracking how
+# far the post-upgrade walk has progressed. Its presence means a prior upgrade did
+# not finish its post-upgrade steps; its contents are the resume point. It is read
+# here before preupgrade_changes mutates INSTALLEDVERSION and before any highstate
+# stamps /etc/soversion from the pillar.
+POSTVERSION_FILE=/etc/sopostversion
+if [ -f "$POSTVERSION_FILE" ]; then
+  POSTVERSION=$(cat "$POSTVERSION_FILE")
+else
+  POSTVERSION=$INSTALLEDVERSION
+fi
 INSTALLEDSALTVERSION=$(salt --versions-report | grep Salt: | awk '{print $2}')
-BATCHSIZE=5
+# Optional -b override for the grid highstate batch size (a count like "5" or a
+# percentage like "25%"). Empty means so-soup-grid-highstate uses the salt:auto_apply:batch
+# pillar default.
+BATCHSIZE=
 SOUP_LOG=/root/soup.log
+SOUP_DEBUG_LOG=/root/soup-debug.log
 WHATWOULDYOUSAYYAHDOHERE=soup
 whiptail_title='Security Onion UPdater'
 NOTIFYCUSTOMELASTICCONFIG=false
 TOPFILE=/opt/so/saltstack/default/salt/top.sls
 BACKUPTOPFILE=/opt/so/saltstack/default/salt/top.sls.backup
 SALTUPGRADED=false
+# Set true once soup begins modifying the system (past the pre-flight checks), so the
+# EXIT trap can tell the user the update did not finish and must be re-run. Only the
+# pre-flight gates (ES compatibility, disk, network) fail before this is set.
+SOUP_UPGRADE_STARTED=false
 SALT_CLOUD_INSTALLED=false
 SALT_CLOUD_CONFIGURED=false
 # Check if salt-cloud is installed
@@ -34,6 +52,7 @@ if [[ -f /etc/salt/cloud.profiles.d/socloud.conf ]]; then
 fi
 # used to display messages to the user at the end of soup
 declare -a FINAL_MESSAGE_QUEUE=()
+SOUP_ERR_CONTEXT=
 
 
 check_err() {
@@ -114,9 +133,72 @@ check_err() {
       echo "$err_msg"
     fi
 
+    if [[ -n $SOUP_ERR_CONTEXT ]]; then
+      echo ""
+      printf '%s\n' "$SOUP_ERR_CONTEXT"
+    fi
+
+    echo "SOUP XTRACE debug log (if enabled) at $SOUP_DEBUG_LOG. Re-run soup with SOUP_DEBUG=1 to create $SOUP_DEBUG_LOG"
+
+    # If soup had already started modifying the system, make it unmistakable that the
+    # update is incomplete and must be re-run. soup is resumable: a version upgrade
+    # picks up from the /etc/sopostversion marker, and a hotfix re-applies because
+    # /etc/sohotfix is only advanced after a successful highstate.
+    if [[ "$SOUP_UPGRADE_STARTED" == "true" ]]; then
+      echo ""
+      echo "=============================================================================="
+      echo " UPGRADE INCOMPLETE"
+      echo "=============================================================================="
+      echo " This soup run did NOT finish. Your Security Onion installation may be in a"
+      echo " partially-updated state and is not yet fully upgraded."
+      echo ""
+      echo " Review the error above and $SOUP_LOG, resolve the underlying problem, then"
+      echo " run soup again to resume and complete the update:"
+      echo ""
+      echo "     sudo soup"
+      echo ""
+      echo " soup is resumable -- re-running it continues from where this run stopped."
+      echo "=============================================================================="
+      echo ""
+    fi
+
     exit $exit_code
   fi
 
+}
+
+# Collect bash error context before passing off to check_err()
+on_err() {
+  local exit_code=$?
+  # Ignore failures in blocks that explicitly disabled errexit with `set +e`.
+  [[ $- == *e* ]] || return $exit_code
+  # turn off xtrace to prevent added noise in debug log
+  set +x 2>/dev/null || true
+
+  # Use first error context, multiple errors can happen with command substitutions or nested functions. We just need context from the initial error.
+  [[ -n $SOUP_ERR_CONTEXT ]] && return $exit_code
+
+  local cmd=$BASH_COMMAND
+  local line=${BASH_LINENO[0]}
+  local function=${FUNCNAME[1]:-main}
+  local source=${BASH_SOURCE[1]##*/}
+  local -a err_lines=(
+    "ERROR on: ${cmd}"
+    "  source: ${source}:${line} in ${function}()"
+  )
+  local i caller_line caller_src caller_func
+
+  for ((i=2; i<${#FUNCNAME[@]}-1; i++)); do
+    caller_line=${BASH_LINENO[$((i-1))]}
+    [[ -n $caller_line && $caller_line -gt 0 ]] || continue
+    caller_src=${BASH_SOURCE[$i]##*/}
+    caller_func=${FUNCNAME[$i]:-main}
+    err_lines+=("  called by: ${caller_src}:${caller_line} in ${caller_func}()")
+  done
+
+  SOUP_ERR_CONTEXT=$(printf '%s\n' "${err_lines[@]}")
+
+  return $exit_code
 }
 
 airgap_mounted() {
@@ -188,13 +270,6 @@ airgap_update_dockers() {
   fi
 }
 
-backup_old_states_pillars() {
-
-	tar czf /nsm/backup/$(echo $INSTALLEDVERSION)_$(date +%Y%m%d-%H%M%S)_soup_default_states_pillars.tar.gz /opt/so/saltstack/default/
-	tar czf /nsm/backup/$(echo $INSTALLEDVERSION)_$(date +%Y%m%d-%H%M%S)_soup_local_states_pillars.tar.gz /opt/so/saltstack/local/
-
-}
-
 update_registry() {
   docker stop so-dockerregistry
   docker rm so-dockerregistry
@@ -209,6 +284,7 @@ check_airgap() {
       UPDATE_DIR=/tmp/soagupdate/SecurityOnion
       AGDOCKER=/tmp/soagupdate/docker
       AGREPO=/tmp/soagupdate/minimal/Packages
+      AGUEKREPO=/tmp/soagupdate/uek/Packages
   else
       is_airgap=1
   fi
@@ -251,6 +327,30 @@ check_pillar_items() {
     exit 0
   else
     printf "\nThe manager's pillars can be rendered. We can proceed with SOUP.\n\n"
+  fi
+}
+
+check_cluster_health() {
+  echo "Checking Elasticsearch cluster health."
+  # Require a 'green' cluster before upgrading; anything less (yellow, red, or
+  # unreachable) blocks. Modeled on the wait used in so-elasticsearch-roles-load.
+  if so-elasticsearch-query "_cluster/health?wait_for_status=green&timeout=120s" --fail > /dev/null 2>&1; then
+    printf "\nThe Elasticsearch cluster is healthy (green). We can proceed with SOUP.\n\n"
+  else
+    printf "\nThe Elasticsearch cluster is not green. Please resolve the cluster health issue so the cluster is green before running SOUP again.\n\n"
+    exit 0
+  fi
+}
+
+check_fleet_server() {
+  echo "Checking that Elastic Fleet Server is responding."
+  # Modeled on the wait_for_so-elastic-fleet state check in elasticfleet/enabled.sls,
+  # which waits for HTTP 200 from the Fleet Server status API.
+  if curl -sk --fail --retry 3 --retry-delay 10 --max-time 30 "https://localhost:8220/api/status" > /dev/null 2>&1; then
+    printf "\nElastic Fleet Server is responding. We can proceed with SOUP.\n\n"
+  else
+    printf "\nElastic Fleet Server is not responding at https://localhost:8220/api/status. Please ensure Elastic Fleet is healthy before running SOUP again.\n\n"
+    exit 0
   fi
 }
 
@@ -340,20 +440,54 @@ get_soup_script_hashes() {
   GITIMGCMN=$(md5sum $UPDATE_DIR/salt/common/tools/sbin/so-image-common | awk '{print $1}')
   CURRENTSOFIREWALL=$(md5sum /usr/sbin/so-firewall | awk '{print $1}')
   GITSOFIREWALL=$(md5sum $UPDATE_DIR/salt/manager/tools/sbin/so-firewall | awk '{print $1}')
+  CURRENTSOYAML=$(md5sum /usr/sbin/so-yaml.py | awk '{print $1}')
+  GITSOYAML=$(md5sum $UPDATE_DIR/salt/manager/tools/sbin/so-yaml.py | awk '{print $1}')
 }
 
 highstate() {
-  # Run a highstate.
+  # Run a highstate with a retry attempt.
+  if salt-call state.highstate -l info queue=True; then
+    return 0
+  fi
+
+  echo "Initial highstate attempt had a problem; retrying in 30 seconds."
+  sleep 30
   salt-call state.highstate -l info queue=True
+}
+
+push_grid_highstate() {
+  # Drive a batched, role-tiered highstate across the rest of the grid so remote minions
+  # pick up this upgrade now instead of waiting up to ~2.5 hours for their own scheduled
+  # highstate (the schedule moved from 15 to 120 minutes). so-soup-grid-highstate does the work
+  # via orch.push_batch; it only exists once the manager highstate has deployed this
+  # version's sbin files, so guard on it. Launch fully detached (setsid) so it survives an
+  # SSH drop, and never let it affect soup's exit status -- it is best-effort with the
+  # scheduled highstate as backstop.
+  if [[ ! -x /usr/sbin/so-soup-grid-highstate ]]; then
+    echo "so-soup-grid-highstate not present; remote nodes will converge on their scheduled highstate."
+    return 0
+  fi
+
+  local extra_args=()
+  if [[ $SALTUPGRADED == true || $UPGRADESALT -eq 1 ]]; then
+    extra_args+=(--salt-upgraded)
+  fi
+  if [[ -n "$BATCHSIZE" ]]; then
+    extra_args+=(--batch "$BATCHSIZE")
+  fi
+
+  echo "Dispatching a grid-wide highstate to remote nodes. Progress: /opt/so/log/salt/so-soup-grid-highstate"
+  setsid nohup /usr/sbin/so-soup-grid-highstate --reason soup "${extra_args[@]}" >/dev/null 2>&1 &
 }
 
 masterlock() {
   echo "Locking Salt Master"
   mv -v $TOPFILE $BACKUPTOPFILE
-  echo "base:" > $TOPFILE
-  echo "  $MINIONID:" >> $TOPFILE
-  echo "    - ca" >> $TOPFILE
-  echo "    - elasticsearch" >> $TOPFILE
+  # Render the real top file only for the host running soup; every other
+  # minion gets an empty top (no states) while the master is upgrading.
+  echo "{% if grains['id'] == '$MINIONID' %}" > $TOPFILE
+  cat $BACKUPTOPFILE >> $TOPFILE
+  echo "{% endif %}" >> $TOPFILE
 }
 
 masterunlock() {
@@ -370,9 +504,18 @@ preupgrade_changes() {
     # This function is to add any new pillar items if needed.
     echo "Checking to see if changes are needed."
 
-    [[ "$INSTALLEDVERSION" =~ ^2\.4\.21[0-9]+$ ]] && up_to_3.0.0   
+    [[ "$INSTALLEDVERSION" =~ ^2\.4\.21[0-9]+$ ]] && up_to_3.0.0
     [[ "$INSTALLEDVERSION" == "3.0.0" ]] && up_to_3.1.0
+    [[ "$INSTALLEDVERSION" == "3.1.0" ]] && up_to_3.2.0
+    [[ "$INSTALLEDVERSION" == "3.2.0" ]] && up_to_3.3.0
     true
+}
+
+set_postversion() {
+    # Persist post-upgrade walk progress so an interrupted upgrade can resume the
+    # remaining steps on the next soup run (see /etc/sopostversion handling).
+    POSTVERSION="$1"
+    echo "$POSTVERSION" > "$POSTVERSION_FILE"
 }
 
 postupgrade_changes() {
@@ -381,6 +524,10 @@ postupgrade_changes() {
 
     [[ "$POSTVERSION" =~ ^2\.4\.21[0-9]+$ ]] && post_to_3.0.0
     [[ "$POSTVERSION" == "3.0.0" ]] && post_to_3.1.0
+    [[ "$POSTVERSION" == "3.1.0" ]] && post_to_3.2.0
+    [[ "$POSTVERSION" == "3.2.0" ]] && post_to_3.3.0
+    # All applicable post-upgrade steps completed; clear the resume marker.
+    rm -f "$POSTVERSION_FILE"
     true
 }
 
@@ -473,7 +620,7 @@ post_to_3.0.0() {
   # convert yes/no in suricata pillars to true/false
   convert_suricata_yes_no
 
-  POSTVERSION=3.0.0
+  set_postversion 3.0.0
 }
 
 ### 3.0.0 End ###
@@ -531,6 +678,23 @@ elasticfleet_set_agent_logging_level_warn() {
             echo "  warning: failed to update agent policy '$policy_name' ($policy_id)" >&2
         fi
     done <<< "$policies_to_update"
+}
+
+update_logstash_pipeline_name() {
+    local original_pipeline_name="$1"
+    local new_pipeline_name="$2"
+
+    echo "Checking for conflicting logstash defined_pipelines pillar value."
+    local LOGSTASH_FILE=/opt/so/saltstack/local/pillar/logstash/soc_logstash.sls
+    local MINIONDIR=/opt/so/saltstack/local/pillar/minions
+    for pillar_file in "$LOGSTASH_FILE" "$MINIONDIR"/*.sls; do
+        [[ -f "$pillar_file" ]] || continue
+        if grep -q "$original_pipeline_name$" "$pillar_file"; then
+            echo "Found conflicting defined_pipeline pillar value in $pillar_file. Updating to use the new logstash pipeline name."
+            sed -i "s#$original_pipeline_name\$#$new_pipeline_name#g" "$pillar_file"
+            chown socore:socore "$pillar_file"
+        fi
+    done
 }
 
 check_transform_health_and_reauthorize() {
@@ -634,6 +798,21 @@ ensure_postgres_local_pillar() {
   chown -R socore:socore "$dir"
 }
 
+ensure_salt_local_pillar() {
+  # The salt.auto_apply settings are a new SOC settings
+  # module, so the new pillar/top.sls references salt.soc_salt / salt.adv_salt
+  # unconditionally. Managers upgrading from before this change have no
+  # /opt/so/saltstack/local/pillar/salt/ (make_some_dirs only runs at install
+  # time), so the stubs must be created here before salt-master restarts against
+  # the new top.sls.
+  echo "Ensuring salt local pillar stubs exist."
+  local dir=/opt/so/saltstack/local/pillar/salt
+  mkdir -p "$dir"
+  [[ -f "$dir/soc_salt.sls" ]] || touch "$dir/soc_salt.sls"
+  [[ -f "$dir/adv_salt.sls" ]] || touch "$dir/adv_salt.sls"
+  chown -R socore:socore "$dir"
+}
+
 ensure_postgres_secret() {
   # On a fresh install, generate_passwords + secrets_pillar seed
   # secrets:postgres_pass in /opt/so/saltstack/local/pillar/secrets.sls. That
@@ -676,14 +855,18 @@ rename_strelka_scan_lnk() {
   rm -f "$TMP_VALUE_FILE"
 }
 
+fix_logstash_0013_lumberjack_pipeline_name() {
+    update_logstash_pipeline_name "so/0013_input_lumberjack_fleet.conf" "so/0013_input_lumberjack_fleet.conf.jinja"
+}
+
 up_to_3.1.0() {
   ensure_postgres_local_pillar
   ensure_postgres_secret
-  determine_elastic_agent_upgrade
   elasticsearch_backup_index_templates
   # Clear existing component template state file.
   rm -f /opt/so/state/esfleet_component_templates.json
   rename_strelka_scan_lnk
+  fix_logstash_0013_lumberjack_pipeline_name
 
   INSTALLEDVERSION=3.1.0
 }
@@ -715,10 +898,175 @@ post_to_3.1.0() {
   # Check for unhealthy / unauthorized integration transform jobs and attempt reauthorizations
   check_transform_health_and_reauthorize || true
 
-  POSTVERSION=3.1.0
+  set_postversion 3.1.0
 }
 
 ### 3.1.0 End ###
+
+### 3.2.0 Scripts ###
+
+recollate_postgres() {
+  echo ""
+  echo "Recollating PostgreSQL databases. The following output may contain warnings about a version mismatch, followed by a note indicating that the collation version has been changed."
+  for db in template1 postgres securityonion so_telegraf; do
+    docker exec so-postgres psql -U postgres $db -c "reindex database $db"
+    docker exec so-postgres psql -U postgres $db -c "alter database $db refresh collation version"
+  done
+  echo "Recollating PostgreSQL databases complete."
+  echo ""
+}
+
+scrub_postgres_log_passwords() {
+  # Purge plaintext passwords a pre-3.2 postgres could log on DDL errors.
+  local log=/opt/so/log/postgres/postgres.log
+  [[ -f "$log" ]] || return 0
+  if ! grep -qai "PASSWORD '" "$log" 2>/dev/null; then
+    echo "No leaked passwords found in $log."
+    return 0
+  fi
+  echo "Removing leaked password statements from $log."
+  local tmp
+  tmp=$(mktemp)
+  # Rewrite in place (cat >) to keep the inode postgres is writing to.
+  grep -avi "PASSWORD '" "$log" > "$tmp" 2>/dev/null || true
+  cat "$tmp" > "$log"
+  rm -f "$tmp"
+}
+
+# Existing grids should keep ILM unless an admin explicitly opts in to DLM.
+pin_elasticsearch_data_retention_method() {
+  local elasticsearch_file=/opt/so/saltstack/local/pillar/elasticsearch/soc_elasticsearch.sls
+  mkdir -p "$(dirname "$elasticsearch_file")"
+  [[ -f "$elasticsearch_file" ]] || touch "$elasticsearch_file"
+
+  if so-yaml.py get -r "$elasticsearch_file" elasticsearch.data_retention_method >/dev/null 2>&1; then
+    echo "elasticsearch.data_retention_method already set; leaving as-is."
+    return 0
+  fi
+
+  echo "Pinning existing grid to ILM data retention."
+  so-yaml.py add "$elasticsearch_file" elasticsearch.data_retention_method ILM
+  chown socore:socore "$elasticsearch_file"
+}
+
+# Addes auto_expand_replicas setting to .kibana_streams index template
+#
+# In Kibana 9.3.3 the auto_expand_replicas setting was not added to the .kibana_streams index template. Causing single node deployments to be stuck in yellow state (unable to assign replica). Here we update the template in place using the so_kibana system user (system managed index template) to include the auto_expand_replicas setting
+#
+# Reference: https://github.com/elastic/kibana/issues/263048
+kibana_backport_streams_index_template() {
+    local current_template updated_template
+
+    set +e
+    if ! current_template=$(so-elasticsearch-query "_index_template/.kibana_streams" --retry 3 --retry-delay 5 --fail); then
+        echo "Index template .kibana_streams does not exist, skipping backport."
+        return 0
+    fi
+    set -e
+
+    updated_template=$(jq '.index_templates[0].index_template | .template.settings += {"index.auto_expand_replicas": "0-1"} | del(.created_date_millis, .modified_date_millis)' <<< "$current_template")
+
+    if ! kibana_user_pass=$(/usr/sbin/so-yaml.py get -r /opt/so/saltstack/local/pillar/elasticsearch/auth.sls elasticsearch.auth.users.so_kibana_user.pass); then
+        echo "Unable to retrieve so_kibana_user password, skipping .kibana_streams index template backport."
+        return 0
+    fi
+
+    if ! so-elasticsearch-query "_index_template/.kibana_streams" -XPUT -d "$updated_template" -u "so_kibana:$kibana_user_pass" --retry 3 --retry-delay 5 --fail; then
+        echo "Unable to automatically update .kibana_streams index template"
+        return 0
+    fi
+
+}
+
+# Runs kafka-features.sh upgrade --release-version $1
+#   Upgrades Kafka KRaft cluster metadata
+update_kafka_metadata() {
+    metadata_version="$1"
+    global_pillar="/opt/so/saltstack/local/pillar/global/soc_global.sls"
+    if PIPELINE=$(so-yaml.py get -r "$global_pillar" global.pipeline 2> /dev/null) && [[ "$PIPELINE" == "KAFKA" ]]; then
+        kafka_nodes_raw=$(salt-call pillar.get kafka:nodes --out=json)
+        if kafka_nodes=$(jq -er '.local | select(type == "object" and length > 0)' <<< "$kafka_nodes_raw"); then
+            bootstrap_servers=$(jq -r '[to_entries[] | select(.value.role | contains("broker")) | "\(.value.ip):9092"] | join(",")' <<< "$kafka_nodes")
+            echo "Upgrading Kafka KRaft cluster version"
+            so-kafka-cli kafka-features.sh --bootstrap-server "$bootstrap_servers" --command-config /opt/kafka/config/kraft/client.properties upgrade --release-version "$metadata_version" 2>/dev/null || true
+
+            return 0
+        else
+            FINAL_MESSAGE_QUEUE+=("WARNING: Unable to automatically perform Kafka KRaft cluster metadata update. This step can be performed manually using the following command (replacing \$BROKER_IP with the ip of atleast 1 available Kafka broker):")
+            FINAL_MESSAGE_QUEUE+=("    - so-kafka-cli kafka-features.sh --bootstrap-server \$BROKER_IP:9092 --command-config /opt/kafka/config/kraft/client.properties upgrade --release-version $metadata_version")
+        fi
+    else
+        echo "Nothing to do!"
+    fi
+}
+
+up_to_3.2.0() {
+  ensure_salt_local_pillar
+
+  # download 9.3.7 elastic agent packages
+  determine_elastic_agent_upgrade
+
+  fix_logstash_0013_lumberjack_pipeline_name
+
+  pin_elasticsearch_data_retention_method
+
+  # Run so-elastic-fleet-es-url update with --force to ensure eval/import have
+  #  configured so-manager_elasicsearch as the default output for both monitoring and logs
+  /usr/sbin/so-elastic-fleet-es-url-update --force
+
+  INSTALLEDVERSION=3.2.0
+}
+
+post_to_3.2.0() {
+  # Recollate due to image OS rebase
+  recollate_postgres
+
+  # SOC database bootstrap is handled by the postgres.enabled highstate.
+  scrub_postgres_log_passwords
+
+  # Generate 9.3.7 elastic agent installers
+  echo "Regenerating Elastic Agent Installers"
+  /sbin/so-elastic-agent-gen-installers
+
+  kibana_backport_streams_index_template
+
+  update_kafka_metadata "4.3"
+
+  set_postversion 3.2.0
+}
+### 3.2.0 End ###
+
+### 3.2.0 Scripts ###
+up_to_3.3.0() {
+  INSTALLEDVERSION=3.3.0
+}
+
+telegraf_repair() {
+  # Only grids whose Telegraf partitions stalled need this; --check exits 1
+  # when there is something to repair, so everyone else is left alone.
+  local repair=/usr/sbin/so-telegraf-repair
+  [[ -x "$repair" ]] || return 0
+  docker ps --format '{{.Names}}' | grep -qx so-postgres || return 0
+
+  echo "Checking Telegraf metric partitions."
+  local status=0
+  "$repair" --check >> "$SOUP_LOG" 2>&1 || status=$?
+  case "$status" in
+    0) echo "  Telegraf partitions are healthy; nothing to repair." ;;
+    1) echo "  Repairing stalled Telegraf partitions."
+       "$repair" --yes \
+         || echo "  warning: so-telegraf-repair failed; run it manually" >&2 ;;
+    *) echo "  Skipping; Telegraf is not storing metrics in Postgres on this host." ;;
+  esac
+}
+
+post_to_3.3.0() {
+  # Recollate again since some internal DBs were excluded during 3.2.0 soup
+  recollate_postgres
+
+  telegraf_repair
+}
+### 3.3.0 End ###
 
 
 repo_sync() {
@@ -828,13 +1176,19 @@ update_airgap_rules() {
   rsync -a $UPDATE_DIR/agrules/securityonion-resources/* /nsm/securityonion-resources/
 }
 
-update_airgap_repo() {
+update_airgap_repos() {
   # Update the files in the repo
-  echo "Syncing new updates to /nsm/repo"
-  rsync -a $AGREPO/* /nsm/repo/
-  echo "Creating repo"
+  echo "Syncing new updates to /nsm/repo & /nsm/kernelrepo"
+  # Airgap soup copies new files into the local repo, but doesn't remove old packages. Retaining the ability to rollback package updates
+  rsync -a "$AGREPO"/ /nsm/repo/
+  rsync -a "$AGUEKREPO"/ /nsm/kernelrepo/
+
   dnf -y install yum-utils createrepo_c
+
+  echo "Running createrepo for /nsm/repo"
   createrepo /nsm/repo
+  echo "Running createrepo for /nsm/kernelrepo"
+  createrepo /nsm/kernelrepo
 }
 
 update_salt_mine() {
@@ -861,8 +1215,20 @@ upgrade_check() {
   fi
   [[ -f /etc/sohotfix ]] && CURRENTHOTFIX=$(cat /etc/sohotfix)
   if [ "$INSTALLEDVERSION" == "$NEWVERSION" ]; then
+    # A leftover post-version marker means a previous upgrade to this version
+    # advanced /etc/soversion (the highstate stamps it from the pillar) but did not
+    # finish its post-upgrade steps. Resume the upgrade instead of reporting "latest".
+    if [ -f "$POSTVERSION_FILE" ] && [ "$(cat "$POSTVERSION_FILE")" != "$NEWVERSION" ]; then
+      echo "A previous upgrade to $NEWVERSION did not complete its post-upgrade steps; resuming."
+      is_hotfix=false
+      return 0
+    fi
     echo "Checking to see if there are hotfixes needed"
     if [ "$HOTFIXVERSION" == "$CURRENTHOTFIX" ]; then
+      # Reaching here means we are at the target version and NOT resuming (the resume
+      # check above returned otherwise). Clear any stale resume marker so a completed
+      # upgrade is never mistaken for a partial one and re-run on a later invocation.
+      rm -f "$POSTVERSION_FILE"
       echo "You are already running the latest version of Security Onion."
       exit 0
     else
@@ -941,7 +1307,7 @@ upgrade_salt() {
 
 verify_latest_update_script() {
   get_soup_script_hashes
-  if [[ "$CURRENTSOUP" == "$GITSOUP" && "$CURRENTCMN" == "$GITCMN" && "$CURRENTIMGCMN" == "$GITIMGCMN" && "$CURRENTSOFIREWALL" == "$GITSOFIREWALL" ]]; then
+  if [[ "$CURRENTSOUP" == "$GITSOUP" && "$CURRENTCMN" == "$GITCMN" && "$CURRENTIMGCMN" == "$GITIMGCMN" && "$CURRENTSOFIREWALL" == "$GITSOFIREWALL" && "$CURRENTSOYAML" == "$GITSOYAML" ]]; then
     echo "This version of the soup script is up to date. Proceeding."
   else
     echo "You are not running the latest soup version. Updating soup and its components. This might take multiple runs to complete."
@@ -950,7 +1316,7 @@ verify_latest_update_script() {
 
     # Verify that soup scripts updated as expected
     get_soup_script_hashes
-    if [[ "$CURRENTSOUP" == "$GITSOUP" && "$CURRENTCMN" == "$GITCMN" && "$CURRENTIMGCMN" == "$GITIMGCMN" && "$CURRENTSOFIREWALL" == "$GITSOFIREWALL" ]]; then
+    if [[ "$CURRENTSOUP" == "$GITSOUP" && "$CURRENTCMN" == "$GITCMN" && "$CURRENTIMGCMN" == "$GITIMGCMN" && "$CURRENTSOFIREWALL" == "$GITSOFIREWALL" && "$CURRENTSOYAML" == "$GITSOYAML" ]]; then
       echo "Succesfully updated soup scripts."
     else
       echo "There was a problem updating soup scripts. Trying to rerun script update."
@@ -971,7 +1337,11 @@ verify_es_version_compatibility() {
     local is_active_intermediate_upgrade=1
     # supported upgrade paths for SO-ES versions
     declare -A es_upgrade_map=(
-        ["9.0.8"]="9.3.3"
+        ["8.18.4"]="8.18.6 8.18.8 9.0.8"
+	    ["8.18.6"]="8.18.8 9.0.8"
+	    ["8.18.8"]="9.0.8"
+        ["9.0.8"]="9.3.3 9.3.7"
+        ["9.3.3"]="9.3.7"
     )
 
     # Elasticsearch MUST upgrade through these versions
@@ -994,6 +1364,171 @@ verify_es_version_compatibility() {
         exit 160
     fi
 
+    compatible_es_versions="$target_es_version"
+    for current_version in "${!es_upgrade_map[@]}"; do
+        # shellcheck disable=SC2076
+        if [[ " ${es_upgrade_map[$current_version]} " =~ " $target_es_version " ]]; then
+            compatible_es_versions+=" $current_version"
+        fi
+    done
+
+    # Check if the given ES version can directly upgrade to the target ES version. Used to assist with catching lagging nodes during the upgrade process
+    es_version_can_upgrade_to_target() {
+        local current_version="$1"
+        # shellcheck disable=SC2076
+        if [[ -n "$current_version" && " $compatible_es_versions " =~ " $current_version " ]]; then
+            return 0
+        fi
+
+        return 1
+    }
+
+    # Gather Elasticsearch cluster version info and verify that each node in the cluster is running a version compatible with the target ES version.
+    verify_searchnodes_es_target_compatibility() {
+        local retries=20
+        local retry_count=0
+        local delay=180
+        local expected_es_nodes searchnode_minions attempt
+        local searchnode_discovery_success=false
+        SEARCHNODE_ES_VERSIONS=""
+
+        for attempt in {1..3}; do
+            if searchnode_minions=$(set -o pipefail; salt-key --out=json --list=accepted 2> /dev/null | jq -r '.minions[]? | select(endswith("searchnode"))'); then
+                searchnode_discovery_success=true
+                break
+            fi
+
+            echo "Failed to retrieve grid searchnodes via salt-key... Retrying in 30 seconds. Attempt $attempt of 3."
+            sleep 30
+        done
+
+        if [[ "$searchnode_discovery_success" != "true" ]]; then
+            echo "Failed to retrieve grid searchnodes via salt-key."
+            return 1
+        fi
+
+        # Always add node running soup to expected es nodes
+        expected_es_nodes="${MINIONID%_*}"
+        while IFS= read -r searchnode_minion; do
+            [[ -z "$searchnode_minion" ]] && continue
+            expected_es_nodes+=$'\n'"${searchnode_minion%_searchnode}"
+        done <<< "$searchnode_minions"
+
+        while [[ $retry_count -lt $retries ]]; do
+            SEARCHNODE_ES_VERSIONS=$(so-elasticsearch-query _nodes/_all/version --retry 5 --retry-delay 10 --fail 2>&1)
+            local exit_status=$?
+
+            if [[ $exit_status -ne 0 ]]; then
+                echo "Failed to retrieve Elasticsearch versions from searchnodes... Retrying in $delay seconds. Attempt $((retry_count + 1)) of $retries."
+                ((retry_count++))
+                sleep $delay
+                continue
+            fi
+
+            local all_searchnodes_compatible=true
+            while IFS=$'\t' read -r node current_version; do
+                [[ -z "$node" ]] && continue
+                if ! es_version_can_upgrade_to_target "$current_version"; then
+                    echo "Searchnode $node is running Elasticsearch $current_version, which is not directly upgradable to Elasticsearch $target_es_version."
+                    all_searchnodes_compatible=false
+                fi
+            done < <(echo "$SEARCHNODE_ES_VERSIONS" | jq -r '.nodes | to_entries[] | [.value.name, .value.version] | @tsv')
+
+            while IFS= read -r expected_es_node; do
+                [[ -z "$expected_es_node" ]] && continue
+                if ! echo "$SEARCHNODE_ES_VERSIONS" | jq -e --arg node "$expected_es_node" '.nodes | to_entries | any(.value.name == $node)' > /dev/null; then
+                    echo "Searchnode $expected_es_node did not report an Elasticsearch version. It may be offline or still upgrading."
+                    all_searchnodes_compatible=false
+                fi
+            done <<< "$expected_es_nodes"
+
+            if [[ "$all_searchnodes_compatible" == true ]]; then
+                echo "All Searchnodes are upgradable to Elasticsearch $target_es_version."
+                return 0
+            fi
+
+            echo "One or more Searchnodes cannot upgrade directly to Elasticsearch $target_es_version. Rechecking in $delay seconds. Attempt $((retry_count + 1)) of $retries."
+            ((retry_count++))
+            sleep $delay
+        done
+
+        return 1
+    }
+
+    # Gather heavynode version info and verify that each node is running a version compatible with the target ES version.
+    verify_heavynodes_es_target_compatibility() {
+        local heavynode_minions attempt
+        local retries=20
+        local retry_count=0
+        local delay=180
+        local heavynode_discovery_success=false
+        HEAVYNODE_ES_VERSIONS=""
+
+        for attempt in {1..3}; do
+            if heavynode_minions=$(set -o pipefail; salt-key --out=json --list=accepted 2> /dev/null | jq -r '.minions[]? | select(endswith("heavynode"))'); then
+                heavynode_discovery_success=true
+                break
+            fi
+
+            echo "Failed to retrieve grid heavynodes via salt-key... Retrying in 30 seconds. Attempt $attempt of 3."
+            sleep 30
+        done
+
+        if [[ "$heavynode_discovery_success" != "true" ]]; then
+            echo "Failed to retrieve grid heavynodes via salt-key."
+            return 1
+        fi
+
+        if [[ -z "$heavynode_minions" ]]; then
+            echo "No heavynodes detected. Skipping heavynode Elasticsearch version compatibility check."
+            return 0
+        fi
+
+        while [[ $retry_count -lt $retries ]]; do
+            HEAVYNODE_ES_VERSIONS=$(salt -C 'G@role:so-heavynode' cmd.run 'set -o pipefail; so-elasticsearch-query / --retry 5 --retry-delay 10 | jq -er ".version.number"' shell=/bin/bash --out=json 2> /dev/null)
+            local exit_status=$?
+
+            if [[ $exit_status -ne 0 ]]; then
+                echo "Failed to retrieve Elasticsearch version from one or more heavynodes... Retrying in $delay seconds. Attempt $((retry_count + 1)) of $retries."
+                ((retry_count++))
+                sleep $delay
+                continue
+            fi
+
+            local all_heavynodes_compatible=true
+            while IFS=$'\t' read -r node current_version; do
+                [[ -z "$node" ]] && continue
+                if ! es_version_can_upgrade_to_target "$current_version"; then
+                    echo "Heavynode $node is running Elasticsearch $current_version, which is not directly upgradable to Elasticsearch $target_es_version."
+                    all_heavynodes_compatible=false
+                fi
+            done < <(echo "$HEAVYNODE_ES_VERSIONS" | jq -r 'to_entries[] | [.key, .value] | @tsv')
+
+            while IFS= read -r heavynode_minion; do
+                [[ -z "$heavynode_minion" ]] && continue
+                if ! echo "$HEAVYNODE_ES_VERSIONS" | jq -se --arg minion "$heavynode_minion" 'add | has($minion)' > /dev/null; then
+                    echo "Heavynode $heavynode_minion did not report an Elasticsearch version. It may be offline or still upgrading."
+                    all_heavynodes_compatible=false
+                fi
+            done <<< "$heavynode_minions"
+
+            if [[ "$all_heavynodes_compatible" == true ]]; then
+                echo -e "\nAll heavynodes can upgrade to Elasticsearch $target_es_version."
+                return 0
+            fi
+
+            echo "One or more heavynodes cannot upgrade directly to Elasticsearch $target_es_version. Rechecking in $delay seconds. Attempt $((retry_count + 1)) of $retries."
+            ((retry_count++))
+            sleep $delay
+        done
+
+        return 1
+    }
+
+    if [[ ! -f "$es_verification_script" ]]; then
+        create_intermediate_upgrade_verification_script "$es_verification_script"
+    fi
+
     for statefile in "${es_required_version_statefile_base}"-*; do
         [[ -f $statefile ]] || continue
 
@@ -1010,10 +1545,6 @@ verify_es_version_compatibility() {
         if [[ "$(printf '%s\n' "$es_required_version_statefile_value" "$es_version" | sort -V | head -n1)" == "$es_required_version_statefile_value" ]]; then
             rm -f "$statefile"
             continue
-        fi
-
-        if [[ ! -f "$es_verification_script" ]]; then
-            create_intermediate_upgrade_verification_script "$es_verification_script"
         fi
 
         echo -e "\n##############################################################################################################################\n"
@@ -1037,6 +1568,26 @@ verify_es_version_compatibility() {
 
     # shellcheck disable=SC2076 # Do not want a regex here eg usage " 8.18.8 9.0.8 " =~ " 9.0.8 "
     if [[ " ${es_upgrade_map[$es_version]} " =~ " $target_es_version " || "$es_version" == "$target_es_version" ]]; then
+        if ! verify_searchnodes_es_target_compatibility || ! verify_heavynodes_es_target_compatibility; then
+            echo -e "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
+
+            echo "One or more Searchnode(s)/Heavynode(s) cannot upgrade directly to Elasticsearch $target_es_version. This can happen with soups that include Elasticsearch upgrades being run in quick succession. Typically, this will resolve itself as the grid synchronizes. Please allow time for all Searchnodes/Heavynodes to have upgraded Elasticsearch to a compatible version with $target_es_version before running soup again to avoid potential data loss!"
+
+            if [[ -n "$HEAVYNODE_ES_VERSIONS" ]]; then
+                echo "Current heavynode Elasticsearch versions:"
+                echo "$HEAVYNODE_ES_VERSIONS" | jq '.'
+            fi
+
+            if [[ -n "$SEARCHNODE_ES_VERSIONS" ]]; then
+                echo "Current searchnode Elasticsearch versions:"
+                echo "$SEARCHNODE_ES_VERSIONS" | jq '.nodes | to_entries | map({(.value.name): .value.version}) | sort | add'
+            fi
+
+            echo -e "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
+
+            exit 161
+        fi
+
         # supported upgrade
         return 0
     else
@@ -1076,18 +1627,13 @@ verify_es_version_compatibility() {
 }
 
 wait_for_salt_minion_with_restart() {
-    local minion="$1"
-    local max_wait="${2:-60}"
-    local interval="${3:-3}"
-    local logfile="$4"
-    
-    wait_for_salt_minion "$minion" "$max_wait" "$interval" "$logfile"
+    /usr/sbin/so-salt-minion-wait
     local result=$?
     
     if [[ $result -ne 0 ]]; then
         echo "$(date '+%a %d %b %Y %H:%M:%S.%6N') - salt-minion not ready, attempting restart..."
         systemctl_func "restart" "salt-minion"
-        wait_for_salt_minion "$minion" "$max_wait" "$interval" "$logfile"
+        /usr/sbin/so-salt-minion-wait
         result=$?
     fi
     
@@ -1322,7 +1868,7 @@ EOF
 
 # Keeping this block in case we need to do a hotfix that requires salt update
 apply_hotfix() {
-   echo "No actions required. ($INSTALLEDVERSION/$HOTFIXVERSION)"
+    echo "No actions required. ($INSTALLEDVERSION/$HOTFIXVERSION)"
 }
 
 failed_soup_restore_items() {
@@ -1373,6 +1919,15 @@ main() {
   set_minionid
   MINION_ROLE=$(lookup_role)
   echo "Found that Security Onion $INSTALLEDVERSION is currently installed."
+  # /etc/soversion is stamped to the target version before the upgrade fully
+  # completes, so a lingering resume marker means this grid is only partially
+  # upgraded even though the line above shows the target version. Make that explicit
+  # so it is not mistaken for a finished upgrade.
+  if [ -f "$POSTVERSION_FILE" ] && [ "$(cat "$POSTVERSION_FILE")" != "$INSTALLEDVERSION" ]; then
+    echo ""
+    echo "NOTE: A previous upgrade to $INSTALLEDVERSION did not finish. This grid is"
+    echo "      partially upgraded and this soup run will resume and complete it."
+  fi
   echo ""
   check_minimum_version
 
@@ -1394,19 +1949,25 @@ main() {
   echo "Verifying we have the latest soup script."
   verify_latest_update_script
 
-  echo "Verifying Elasticsearch version compatibility before upgrading."
-  verify_es_version_compatibility
-
   echo "Let's see if we need to update Security Onion."
   upgrade_check
   upgrade_space
+
+  echo "Verifying Elasticsearch version compatibility across the grid before upgrading."
+  verify_es_version_compatibility
+
+  # Pre-flight health checks: confirm the grid is in a good state before we change
+  # anything. These run before any modifications, so a failure exits cleanly and the
+  # operator can fix the issue and re-run soup.
+  check_cluster_health
+  check_fleet_server
 
   echo "Checking for Salt Master and Minion updates."
   upgrade_check_salt
   set -e
 
   if [[ $is_airgap -eq 0 ]]; then
-    update_airgap_repo
+    update_airgap_repos
     dnf clean all
     check_os_updates
   elif [[ $OS == 'oracle' ]]; then
@@ -1417,19 +1978,30 @@ main() {
   fi
 
   if [ "$is_hotfix" == "true" ]; then
+    SOUP_UPGRADE_STARTED=true
     echo "Applying $HOTFIXVERSION hotfix"
     # since we don't run the backup.config_backup state on import we wont snapshot previous version states and pillars
     if [[ ! "$MINION_ROLE" == "import" ]]; then
-      backup_old_states_pillars
+        echo "Running so-config-backup script."
+        /sbin/so-config-backup
     fi
     copy_new_files
     create_local_directories "/opt/so/saltstack/default"
     apply_hotfix
     echo "Hotfix applied"
-    update_version
     enable_highstate
     highstate
+    # Record the hotfix only after the highstate succeeds. /etc/sohotfix is written
+    # solely by soup (no salt state manages it), so deferring the write means a failed
+    # hotfix highstate leaves the old hotfix value and re-running soup re-applies it,
+    # rather than reporting "already latest". The soversion/pillar writes in
+    # update_version are no-ops here since the version is unchanged for a hotfix.
+    update_version
+    # Push the hotfix out to the rest of the grid rather than waiting for the scheduled
+    # highstate. Hotfixes never upgrade Salt, so no --salt-upgraded pass is needed.
+    push_grid_highstate
   else
+    SOUP_UPGRADE_STARTED=true
     echo ""
     echo "Performing upgrade from Security Onion $INSTALLEDVERSION to Security Onion $NEWVERSION."
     echo ""
@@ -1476,8 +2048,8 @@ main() {
     # since we don't run the backup.config_backup state on import we wont snapshot previous version states and pillars
     if [[ ! "$MINION_ROLE" == "import" ]]; then
       echo ""
-      echo "Creating snapshots of default and local Salt states and pillars and saving to /nsm/backup/"
-      backup_old_states_pillars
+      echo "Running so-config-backup script."
+      /sbin/so-config-backup
     fi
 
     echo ""
@@ -1485,6 +2057,10 @@ main() {
     copy_new_files
     echo ""
     create_local_directories "/opt/so/saltstack/default"
+    # Seed the resume marker before the highstate stamps /etc/soversion to the new
+    # version, so an interrupted upgrade is detectable as "not finished" on re-run.
+    # POSTVERSION still holds the pre-upgrade (or prior resume) version here.
+    [ -f "$POSTVERSION_FILE" ] || echo "$POSTVERSION" > "$POSTVERSION_FILE"
     update_version
 
     echo ""
@@ -1496,11 +2072,11 @@ main() {
     # Testing that salt-master is up by checking that is it connected to itself
     check_saltmaster_status
 
-    # update the salt-minion configs here and start the minion
+    # update the salt-master and salt-minion configs here and start the minion
     # since highstate are disabled above, minion start should not trigger a highstate
     echo ""
-    echo "Ensuring salt-minion configs are up-to-date."
-    salt-call state.apply salt.minion -l info queue=True
+    echo "Ensuring salt-master and salt-minion configs are up-to-date."
+    salt-call state.apply salt.master -l info queue=True
     echo ""
 
     # ensure the mine is updated and populated before highstates run, following the salt-master restart
@@ -1514,9 +2090,9 @@ main() {
     enable_highstate
 
     echo ""
-    echo "Running a highstate. This could take several minutes."
+    echo "Running a highstate at $(date +"%T.%6N"). This could take several minutes."
     set +e
-    wait_for_salt_minion_with_restart "$MINIONID" "60" "3" "$SOUP_LOG" || fail "Salt minion was not running or ready."
+    wait_for_salt_minion_with_restart || fail "Salt minion was not running or ready."
     highstate
     set -e
 
@@ -1528,8 +2104,8 @@ main() {
 
     check_saltmaster_status
 
-    echo "Running a highstate to complete the Security Onion upgrade on this manager. This could take several minutes."
-    wait_for_salt_minion_with_restart "$MINIONID" "60" "3" "$SOUP_LOG" || fail "Salt minion was not running or ready."
+    echo "Running a highstate at $(date +"%T.%6N") to complete the Security Onion upgrade on this manager. This could take several minutes."
+    wait_for_salt_minion_with_restart || fail "Salt minion was not running or ready."
 
     # Stop long-running scripts to allow potentially updated scripts to load on the next execution.
     if pgrep salt-relay.sh > /dev/null 2>&1; then
@@ -1590,13 +2166,18 @@ main() {
 
     if [[ $NUM_MINIONS -gt 1 ]]; then
 
+      # Actively drive the rest of the grid to this version now. The scheduled highstate
+      # runs only every 120 minutes (salt:schedule:highstate_interval_minutes), so without
+      # this remote nodes could sit on the old version for a couple of hours after soup finishes.
+      push_grid_highstate
+
       cat << EOF
 
 
 
-This appears to be a distributed deployment. Other nodes should update themselves at the next Salt highstate (typically within 15 minutes). Do not manually restart anything until you know that all the search/heavy nodes in your deployment are updated. This is especially important if you are using true clustering for Elasticsearch.
+This appears to be a distributed deployment. soup has dispatched a batched, grid-wide highstate to update the other nodes now: Elasticsearch data nodes (search/heavynodes) first, then receivers, then sensors and the remaining nodes. Progress is logged to /opt/so/log/salt/so-soup-grid-highstate, and you can watch nodes update from the Grid section of SOC. Do not manually restart anything until you know that all the search/heavynodes in your deployment are updated. This is especially important if you are using true clustering for Elasticsearch.
 
-Each minion is on a random 15 minute check-in period and things like network bandwidth can be a factor in how long the actual upgrade takes. If you have a heavy node on a slow link, it is going to take a while to get the containers to it. Depending on what changes happened between the versions, Elasticsearch might not be able to talk to said heavy node until the update is complete.
+Nodes are updated in batches, and things like network bandwidth can be a factor in how long the actual upgrade takes. If you have a heavy node on a slow link, it is going to take a while to get the containers to it. Depending on what changes happened between the versions, Elasticsearch might not be able to talk to said heavy node until the update is complete. Any node that is offline or missed a batch will converge on its own scheduled highstate (every 120 minutes by default).
 
 If it looks like you’re missing data after the upgrade, please avoid restarting services and instead make sure at least one search node has completed its upgrade. The best way to do this is to run 'sudo salt-call state.highstate' from a search node and make sure there are no errors. Typically if it works on one node it will work on the rest. Sensor nodes are less complex and will update as they check in so you can monitor those from the Grid section of SOC.
 
@@ -1636,8 +2217,10 @@ while getopts ":b:f:y" opt; do
   case ${opt} in
     b )
       BATCHSIZE="$OPTARG"
-      if ! [[ "$BATCHSIZE" =~ ^[1-9][0-9]*$ ]]; then
-        echo "Batch size must be a number greater than 0."
+      # Accept either a plain count (e.g. 5) or a percentage (e.g. 25%); passed through
+      # to so-soup-grid-highstate --batch, which salt's batch/batch_wait accepts in both forms.
+      if ! [[ "$BATCHSIZE" =~ ^[1-9][0-9]*%?$ ]]; then
+        echo "Batch size must be a number greater than 0, optionally with a trailing % (e.g. 5 or 25%)."
         exit 1
       fi
     ;;
@@ -1689,4 +2272,20 @@ EOF
   read -r input
 fi
 
-main "$@" | tee -a $SOUP_LOG
+set -o errtrace
+trap on_err ERR
+
+if [[ $SOUP_DEBUG == 1 ]]; then
+  if [ -f $SOUP_DEBUG_LOG ]; then
+    current_time=$(date +%Y%m%d.%H%M%S)
+    mv $SOUP_DEBUG_LOG $SOUP_DEBUG_LOG.$INSTALLEDVERSION.$current_time
+  fi
+  exec {SOUP_XTRACE_FD}>>"$SOUP_DEBUG_LOG"
+  export SOUP_XTRACE_FD
+  BASH_XTRACEFD=$SOUP_XTRACE_FD
+  PS4='+ [${BASH_SOURCE##*/}:${LINENO} ${FUNCNAME[0]:-main}()] | '
+  set -x
+  export SOUP_DEBUG
+fi
+
+main "$@" 2>&1 | tee -a $SOUP_LOG

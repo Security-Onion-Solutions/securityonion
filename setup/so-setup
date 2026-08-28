@@ -9,14 +9,17 @@
 # Make sure you are root before doing anything
 uid="$(id -u)"
 if [ "$uid" -ne 0 ]; then
-	echo "This script must be run using sudo!"
-	fail_setup
+	echo "This script must be run using sudo!" >&2
+	exit 1
 fi
 
 # Save the original argument array since we modify it
 original_args=("$@")
 
-cd "$(dirname "$0")" || fail_setup
+cd "$(dirname "$0")" || {
+	echo "Unable to change to setup directory" >&2
+	exit 1
+}
 
 echo "Getting started..."
 
@@ -87,8 +90,7 @@ if [[ "$setup_type" == 'iso' ]]; then
 	if [[ $is_rpm ]]; then
 		is_iso=true
 	else
-		echo "Only use 'so-setup iso' for an ISO install on Security Onion ISO images. Please run 'so-setup network' instead."
-		fail_setup
+		fail_setup "Only use 'so-setup iso' for an ISO install on Security Onion ISO images. Please run 'so-setup network' instead."
 	fi
 fi
 
@@ -127,7 +129,7 @@ catch() {
 	info "Fatal error occurred at $1 in so-setup, failing setup."
 	grep --color=never "ERROR" "$setup_log" > "$error_log"
 	whiptail_setup_failed
-	fail_setup
+	fail_setup "Fatal error occurred at $1 in so-setup"
 }
 
 # Add the progress function for manager node type installs
@@ -223,6 +225,8 @@ if [ -n "$test_profile" ]; then
 	WEBPASSWD1=0n10nus3r
 	WEBPASSWD2=0n10nus3r
 	NODE_DESCRIPTION="${HOSTNAME} - ${install_type} - ${MSRVIP_OFFSET}"
+	# opt out of telemetry for automated testing
+	telemetry=1
 
 	update_sudoers_for_testing
 fi
@@ -233,8 +237,7 @@ case "$setup_type" in
 		info "Beginning Security Onion $setup_type install"
 		;;
 	*)
-		error "Invalid install type, must be 'iso', 'network' or 'desktop'."
-		fail_setup
+		fail_setup "Invalid install type, must be 'iso', 'network' or 'desktop'."
 		;;
 esac
 
@@ -767,7 +770,9 @@ if ! [[ -f $install_opt_file ]]; then
 		title "Applying the registry state"
 		logCmd "salt-call state.apply -l info registry"
 		title "Seeding the docker registry"
-		docker_seed_registry
+		if ! docker_seed_registry; then
+			fail_setup "Failed to seed the docker registry"
+		fi
 		title "Applying the manager state"
 		logCmd "salt-call state.apply -l info manager"
 		logCmd "salt-call state.apply influxdb -l info"
@@ -788,11 +793,10 @@ if ! [[ -f $install_opt_file ]]; then
 		logCmd "so-soc-restart"
 		title "Setting up Elastic Fleet"
 		logCmd "salt-call state.apply elasticfleet.config"	
-		if ! logCmd so-elastic-fleet-setup; then
-			error "Failed to run so-elastic-fleet-setup"
-			fail_setup
+		if ! so-elastic-fleet-setup; then
+			fail_setup "Failed to run so-elastic-fleet-setup"
 		fi
-		checkin_at_boot
+		mark_setup_complete
 		set_initial_firewall_access
         initialize_elasticsearch_indices "so-case so-casehistory so-assistant-session so-assistant-chat"
 		# run a final highstate before enabling scheduled highstates. 
@@ -829,6 +833,7 @@ if ! [[ -f $install_opt_file ]]; then
 		check_sos_appliance
 		drop_install_options
 		hypervisor_local_states
+		mark_setup_complete
 		verify_setup
 	fi
 

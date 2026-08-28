@@ -173,7 +173,7 @@ eaoptionalintegrationsdir:
 
 {% for minion in node_data %}
 {% set role = node_data[minion]["role"] %}
-{% if role in [ "eval","fleet","heavynode","import","manager", "managerhype", "managersearch","standalone" ] %}
+{% if role in [ "eval","fleet","import","manager", "managerhype", "managersearch","standalone" ] %}
 {% set optional_integrations = ELASTICFLEETMERGED.optional_integrations %}
 {% set integration_keys = optional_integrations.keys() %}
 fleet_server_integrations_{{ minion }}:

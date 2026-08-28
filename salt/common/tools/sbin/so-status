@@ -74,13 +74,13 @@ def output(options, console, code, data):
     summary = { "status_code": code, "containers": data }
     print(json.dumps(summary))
   elif "-q" not in options:
-    if code == 2:
-      console.print(" [bold yellow]:hourglass: [bold white]System appears to be starting. No highstate has completed since the system was restarted.")
-    elif code == 99:
+    if code == 99:
       console.print(" [bold red]:exclamation: [bold white]Installation does not appear to be complete. A highstate has not fully completed.")
     elif code == 100:
       console.print(" [bold red]:exclamation: [bold white]Installation encountered errors.")
     else:
+      if code == 2:
+        console.print(" [bold yellow]:hourglass: [bold white]System appears to be starting. No highstate has completed since the system was restarted. Container status is shown below.")
       table = Table(title = "Security Onion Status", show_edge = False, safe_box = True, box = box.MINIMAL)
       table.add_column("Container", justify="right", style="white", no_wrap=True)
       table.add_column("Status", justify="left", style="green", no_wrap=True)
@@ -154,8 +154,14 @@ def check_status(options, console):
   code = check_installation_status(options, console)
   if code == 0:
     code = check_system_status(options, console)
-  if code == 0:
-    code, container_list = check_container_status(options, console)
+  # Containers now start on boot without a highstate, so gather/display their
+  # status even when the system is still "starting" (code 2). Keep the starting
+  # code as the exit/status_code so SOC keeps showing the "restarting" message
+  # on the Grid until a highstate completes.
+  if code == 0 or code == 2:
+    container_code, container_list = check_container_status(options, console)
+    if code == 0:
+      code = container_code
   output(options, console, code, container_list)
   return code
 
@@ -180,4 +186,3 @@ def main():
 
 if __name__ == "__main__":
   main()
-

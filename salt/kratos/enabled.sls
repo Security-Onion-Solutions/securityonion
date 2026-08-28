@@ -15,6 +15,7 @@ include:
 so-kratos:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-kratos:{{ GLOBALS.so_version }}
+    - restart_policy: unless-stopped
     - hostname: kratos
     - name: so-kratos
     - networks:
@@ -51,7 +52,6 @@ so-kratos:
       - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
     {%   endfor %}
     {% endif %}
-    - restart_policy: unless-stopped
     - watch:
       - file: kratosschema
       - file: kratosconfig

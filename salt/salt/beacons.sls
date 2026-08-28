@@ -3,7 +3,7 @@
 {% set SCHEDULE = salt['pillar.get']('healthcheck:schedule', 30) %}
 
 include:
-  - salt
+  - salt.minion
 
 {% if CHECKS and ENABLED %}
 salt_beacons:
@@ -14,12 +14,13 @@ salt_beacons:
     - defaults:
         CHECKS: {{ CHECKS }}
         SCHEDULE: {{ SCHEDULE }}
-    - watch_in: 
+    - watch_in:
       - service: salt_minion_service
 {% else %}
 salt_beacons:
   file.absent:
     - name: /etc/salt/minion.d/beacons.conf
-    - watch_in: 
+    - watch_in:
       - service: salt_minion_service
 {% endif %}
+

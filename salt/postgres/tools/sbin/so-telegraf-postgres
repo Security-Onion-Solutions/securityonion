@@ -5,11 +5,18 @@ set -e
 # Usage: so-telegraf-postgres <subcommand>
 #   create_db    Ensure the so_telegraf database exists.
 #   group_role   Provision the so_telegraf group role, telegraf/partman schemas,
-#                pg_partman, pg_cron, and the hourly partman maintenance job.
+#                pg_partman, the so_admin maintenance routines, and the hourly
+#                pg_cron maintenance job.
 #   user         Create or update a per-minion login role granted to so_telegraf.
 #                Env: ROLE_USER, ROLE_PASS.
-#   retention    Reconcile partman retention on telegraf parents.
+#   retention    Reconcile partman retention and premake on telegraf parents.
 #                Env: RETENTION_DAYS.
+#   maintenance  Drain default partitions and run partman maintenance.
+#   check        Report partition health. Non-zero if any parent is unhealthy.
+#
+# A default partition holding rows for a day blocks creating that day's child,
+# so maintenance drains defaults before calling partman. Use so-telegraf-repair
+# on a grid already stuck in that state.
 
 cmd="${1:?subcommand required}"
 
@@ -36,7 +43,6 @@ CREATE SCHEMA IF NOT EXISTS telegraf AUTHORIZATION so_telegraf;
 GRANT USAGE, CREATE ON SCHEMA telegraf TO so_telegraf;
 CREATE SCHEMA IF NOT EXISTS partman;
 CREATE EXTENSION IF NOT EXISTS pg_partman SCHEMA partman;
-CREATE EXTENSION IF NOT EXISTS pg_cron;
 -- Telegraf (running as so_telegraf) calls partman.create_parent()
 -- on first write of each metric, which needs USAGE on the partman
 -- schema, EXECUTE on its functions/procedures, and write access to
@@ -51,12 +57,141 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA partman
     GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO so_telegraf;
 ALTER DEFAULT PRIVILEGES IN SCHEMA partman
     GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO so_telegraf;
--- Hourly partman maintenance. cron.schedule is idempotent by jobname.
-SELECT cron.schedule(
+
+-- pg_cron runs these as postgres, so they must not sit in a schema any
+-- Telegraf role can create objects in.
+CREATE SCHEMA IF NOT EXISTS so_admin AUTHORIZATION postgres;
+REVOKE ALL ON SCHEMA so_admin FROM PUBLIC;
+
+CREATE OR REPLACE PROCEDURE so_admin.telegraf_maintenance()
+LANGUAGE plpgsql
+AS $proc$
+DECLARE
+    r          record;
+    v_default  text;
+    v_rows     bigint;
+BEGIN
+    -- No per-parent EXCEPTION handler: partition_data_proc commits internally,
+    -- and COMMIT is illegal while a subtransaction is active. A failing parent
+    -- aborts the run and the next pass retries.
+    FOR r IN
+        SELECT parent_table, retention
+        FROM partman.part_config
+        WHERE parent_table LIKE 'telegraf.%'
+        ORDER BY parent_table
+    LOOP
+        v_default := format('%I.%I',
+                            split_part(r.parent_table, '.', 1),
+                            split_part(r.parent_table, '.', 2) || '_default');
+
+        CONTINUE WHEN to_regclass(v_default) IS NULL;
+
+        EXECUTE format('SELECT count(*) FROM %s', v_default) INTO v_rows;
+        CONTINUE WHEN v_rows = 0;
+
+        RAISE WARNING 'so_admin.telegraf_maintenance: % rows stranded in %, draining',
+                      v_rows, v_default;
+
+        -- Cheaper to delete expired rows than to repartition and then drop them.
+        IF r.retention IS NOT NULL THEN
+            EXECUTE format('DELETE FROM %s WHERE "time" < now() - %L::interval',
+                           v_default, r.retention);
+            COMMIT;
+        END IF;
+
+        -- Bounded so a large backlog drains across several runs.
+        CALL partman.partition_data_proc(
+            p_parent_table := r.parent_table,
+            p_loop_count   := 200,
+            p_source_table := v_default
+        );
+        COMMIT;
+    END LOOP;
+
+    CALL partman.run_maintenance_proc();
+END;
+$proc$;
+
+CREATE OR REPLACE FUNCTION so_admin.telegraf_partition_status()
+RETURNS TABLE (
+    parent_table  text,
+    oldest_child  date,
+    newest_child  date,
+    days_ahead    int,
+    retention     text,
+    default_rows  bigint,
+    default_size  text
+)
+LANGUAGE plpgsql
+AS $func$
+DECLARE
+    r          record;
+    v_default  regclass;
+BEGIN
+    FOR r IN
+        SELECT pc.parent_table AS pt, pc.retention AS ret
+        FROM partman.part_config pc
+        WHERE pc.parent_table LIKE 'telegraf.%'
+        ORDER BY pc.parent_table
+    LOOP
+        parent_table := r.pt;
+        retention    := r.ret;
+
+        SELECT min(d), max(d) INTO oldest_child, newest_child
+        FROM (
+            SELECT to_date(substring(c.relname FROM '_p(\d{8})$'), 'YYYYMMDD') AS d
+            FROM pg_inherits i
+            JOIN pg_class c ON c.oid = i.inhrelid
+            WHERE i.inhparent = r.pt::regclass
+              AND pg_get_expr(c.relpartbound, c.oid) <> 'DEFAULT'
+        ) s;
+
+        days_ahead := newest_child - current_date;
+
+        v_default := to_regclass(format('%I.%I',
+                                        split_part(r.pt, '.', 1),
+                                        split_part(r.pt, '.', 2) || '_default'));
+        IF v_default IS NULL THEN
+            default_rows := NULL;
+            default_size := NULL;
+        ELSE
+            EXECUTE format('SELECT count(*) FROM %s', v_default::text) INTO default_rows;
+            default_size := pg_size_pretty(pg_total_relation_size(v_default));
+        END IF;
+
+        RETURN NEXT;
+    END LOOP;
+END;
+$func$;
+
+-- Drop the registration older releases left in so_telegraf.
+SELECT CASE
+         WHEN current_setting('cron.database_name', true) IS DISTINCT FROM current_database()
+              AND EXISTS (SELECT 1 FROM pg_catalog.pg_extension WHERE extname = 'pg_cron')
+         THEN 'true' ELSE 'false'
+       END AS drop_stale_cron \gset
+\if :drop_stale_cron
+DROP EXTENSION pg_cron CASCADE;
+\endif
+EOSQL
+
+    # Guarded on the live GUC so applying this before the postgresql.conf change
+    # has restarted the container skips rather than failing.
+    docker exec -i so-postgres psql -v ON_ERROR_STOP=1 -U postgres -d postgres <<'EOSQL'
+SELECT CASE WHEN current_setting('cron.database_name', true) = current_database()
+            THEN 'true' ELSE 'false' END AS cron_here \gset
+\if :cron_here
+CREATE EXTENSION IF NOT EXISTS pg_cron;
+-- cron.schedule_in_database is idempotent by jobname.
+SELECT cron.schedule_in_database(
   'telegraf-partman-maintenance',
   '17 * * * *',
-  'CALL partman.run_maintenance_proc()'
+  'CALL so_admin.telegraf_maintenance()',
+  'so_telegraf'
 );
+\else
+\echo 'pg_cron metadata database is not `postgres` yet; skipping job registration.'
+\endif
 EOSQL
     ;;
 
@@ -71,6 +206,8 @@ EOSQL
       -v role_user="$ROLE_USER" \
       -v role_pass="$ROLE_PASS" \
       -U postgres -d so_telegraf <<'EOSQL'
+-- Keep the password out of postgres.log if this DDL errors.
+SET log_min_error_statement = panic;
 SELECT format(
   CASE WHEN EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = :'role_user')
        THEN 'ALTER ROLE %I WITH LOGIN PASSWORD %L'
@@ -88,6 +225,8 @@ EOSQL
     : "${RETENTION_DAYS:?RETENTION_DAYS is required}"
     # \gset + \if guards against a missing pg_partman without using a DO
     # block (psql :var substitution doesn't reach into dollar-quoted code).
+    # premake is reconciled here because telegraf.conf only applies it to
+    # parents created from now on.
     docker exec -i so-postgres psql \
       -v ON_ERROR_STOP=1 \
       -v retention_days="$RETENTION_DAYS" \
@@ -95,12 +234,58 @@ EOSQL
 SELECT CASE WHEN EXISTS (SELECT 1 FROM pg_catalog.pg_extension WHERE extname = 'pg_partman')
             THEN 'true' ELSE 'false' END AS has_partman \gset
 \if :has_partman
+-- infinite_time_partitions so a gap in metrics does not stop partman from
+-- premaking forward, which is what leaves everything in the default.
 UPDATE partman.part_config
 SET retention = :'retention_days' || ' days',
-    retention_keep_table = false
+    retention_keep_table = false,
+    premake = 7,
+    infinite_time_partitions = true
 WHERE parent_table LIKE 'telegraf.%';
 \endif
 EOSQL
+    ;;
+
+  maintenance)
+    docker exec -i so-postgres psql -v ON_ERROR_STOP=1 -U postgres -d so_telegraf <<'EOSQL'
+SELECT CASE WHEN to_regproc('so_admin.telegraf_maintenance') IS NOT NULL
+            THEN 'true' ELSE 'false' END AS has_proc \gset
+\if :has_proc
+CALL so_admin.telegraf_maintenance();
+\else
+\echo 'so_admin.telegraf_maintenance() is missing; run so-telegraf-postgres group_role first.'
+\endif
+EOSQL
+    ;;
+
+  check)
+    docker exec -i so-postgres psql -U postgres -d so_telegraf <<'EOSQL'
+\pset border 2
+SELECT * FROM so_admin.telegraf_partition_status();
+EOSQL
+    docker exec -i so-postgres psql -U postgres -d postgres <<'EOSQL'
+\pset border 2
+SELECT CASE WHEN to_regclass('cron.job_run_details') IS NOT NULL
+            THEN 'true' ELSE 'false' END AS has_cron \gset
+\if :has_cron
+SELECT d.status, d.return_message, d.start_time
+FROM cron.job_run_details d
+JOIN cron.job j ON j.jobid = d.jobid
+WHERE j.jobname = 'telegraf-partman-maintenance'
+ORDER BY d.start_time DESC
+LIMIT 5;
+\else
+\echo 'pg_cron is not installed in this database.'
+\endif
+EOSQL
+    unhealthy=$(docker exec so-postgres psql -U postgres -d so_telegraf -tAc \
+      "SELECT count(*) FROM so_admin.telegraf_partition_status()
+       WHERE coalesce(default_rows, 0) > 0 OR coalesce(days_ahead, -1) < 1")
+    if [ "${unhealthy:-1}" != "0" ]; then
+      echo "so-telegraf-postgres check: $unhealthy telegraf parent(s) unhealthy" >&2
+      exit 1
+    fi
+    echo "so-telegraf-postgres check: all telegraf parents healthy"
     ;;
 
   *)

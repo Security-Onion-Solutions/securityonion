@@ -130,6 +130,31 @@ common_sbin:
       - so-pcap-import
 {% endif %}
 
+# Pin physical NIC names by MAC (run-once) so a kernel upgrade can't renumber the
+# interfaces SO binds by name. The marker keeps it a one-time setup; an admin can
+# pre-create the marker to opt out.
+pin_nic_names:
+  cmd.run:
+    - name: /usr/sbin/so-nic-pin
+    - unless: 'test -e /opt/so/state/nic_names_pinned'
+    - require:
+      - file: common_sbin
+      - file: statedir
+
+# Once a node is actually running UEK8, the stock EL9 (RHCK) kernel packages are dead weight.
+# They can't be removed any earlier -- dnf protects the running kernel -- so the cleanup waits
+# for the reboot, which makes the highstate the natural place to catch it: fresh installs
+# reboot at the end of setup, and upgraded nodes reboot whenever the admin schedules it.
+# so-kernel-upgrade --cleanup checks rpm before touching dnf, so this costs an rpm query on
+# every highstate after the first pass. The package list lives in the script only, so there
+# is nothing here to drift out of sync with it.
+remove_stock_kernel:
+  cmd.run:
+    - name: /usr/sbin/so-kernel-upgrade --cleanup
+    - onlyif: 'uname -r | grep -qE "^6\.[0-9]+.*uek"'
+    - require:
+      - file: common_sbin
+
 common_sbin_jinja:
   file.recurse:
     - name: /usr/sbin

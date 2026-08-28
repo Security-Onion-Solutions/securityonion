@@ -28,12 +28,13 @@ include:
 so-logstash:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-logstash:{{ GLOBALS.so_version }}
+    - restart_policy: unless-stopped
     - hostname: so-logstash
     - name: so-logstash
     - networks:
       - sobridge:
         - ipv4_address: {{ DOCKERMERGED.containers['so-logstash'].ip }}
-    - user: logstash
+    - user: "931:0"
     - extra_hosts:
     {% for node in LOGSTASH_NODES %}
     {%   for hostname, ip in node.items() %}
@@ -104,6 +105,8 @@ so-logstash:
     {% endif %}
     - watch:
       - file: lsetcsync
+      - file: lslog4j2
+      - file: lspipelinesyml
       - file: trusttheca
       {% if GLOBALS.is_manager %}
       - file: elasticsearch_cacerts

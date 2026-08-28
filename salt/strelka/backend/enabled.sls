@@ -15,6 +15,7 @@ include:
 strelka_backend:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-strelka-backend:{{ GLOBALS.so_version }}
+    - restart_policy: unless-stopped
     - binds:
       - /opt/so/conf/strelka/backend/:/etc/strelka/:ro
       - /opt/so/conf/strelka/rules/compiled/:/etc/yara/:ro
@@ -47,7 +48,6 @@ strelka_backend:
       - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
     {%   endfor %}
     {% endif %}
-    - restart_policy: on-failure
     - watch:
       - file: strelkasensorcompiledrules
       - file: backend_backend_config

@@ -16,6 +16,7 @@ include:
 so-zeek:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-zeek:{{ GLOBALS.so_version }}
+    - restart_policy: unless-stopped
     - start: True
     - privileged: True
     {% if DOCKERMERGED.containers['so-zeek'].ulimits %}
@@ -81,6 +82,21 @@ zeekpacketlosscron:
     - identifier: zeekpacketlosscron
     - user: root
     - minute: '*/10'
+    - hour: '*'
+    - daymonth: '*'
+    - month: '*'
+    - dayweek: '*'
+
+# LogExpireInterval, StatsLogExpireInterval and CrashExpireInterval are only acted on by
+# 'zeekctl cron', so run it on the interval upstream recommends. This also restarts any
+# node that died unexpectedly. Runs as root because the script needs the docker socket;
+# it drops to the zeek user inside the container.
+zeekctlcron:
+  cron.present:
+    - name: /usr/sbin/so-zeek-cron > /dev/null 2>&1
+    - identifier: zeekctlcron
+    - user: root
+    - minute: '*/5'
     - hour: '*'
     - daymonth: '*'
     - month: '*'
