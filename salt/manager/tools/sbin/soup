@@ -459,13 +459,13 @@ upgrade_searchnode_elasticsearch() {
   # Run the elasticsearch state across the true elastic cluster (non-heavy) with a retry attempt
   #   Excludes the manager, so that kibana & elasticfleet are not upgraded until searchnodes are upgraded.
   echo "Getting ready to upgrade Elasticsearch across the grid. This may take a while..."
-  if salt -C "I@elasticsearch:enabled and not G@role:so-heavynode and not G@id:${MINIONID}" state.apply elasticsearch queue=True batch=10%; then
+  if salt -b 10% -C "I@elasticsearch:enabled and not G@role:so-heavynode and not G@id:${MINIONID}" state.apply elasticsearch queue=True; then
     return 0
   fi
   
   echo "Initial elasticsearch state attempt had a problem; retrying in 30 seconds."
   sleep 30
-  salt -C "I@elasticsearch:enabled and not G@role:so-heavynode and not G@id:${MINIONID}" state.apply elasticsearch queue=True batch=10%
+  salt -b 10% -C "I@elasticsearch:enabled and not G@role:so-heavynode and not G@id:${MINIONID}" state.apply elasticsearch queue=True
 }
 
 push_grid_highstate() {
