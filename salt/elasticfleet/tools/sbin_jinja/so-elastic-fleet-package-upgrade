@@ -10,6 +10,7 @@
 
 PKG_LOAD_FAILURES=0
 PKG_LOAD_FAILURES_NAMES=()
+PKG_UPGRADED=0
 
 cleanup_elasticsearch_fleet_transforms() {
     local transforms transform_id attempt
@@ -49,6 +50,7 @@ if INSTALLED_VERSION=$(elastic_fleet_package_version_check "{{ PACKAGE }}") && L
             PKG_LOAD_FAILURES_NAMES+=("{{ PACKAGE }}")
         elif INSTALLED_VERSION=$(elastic_fleet_package_version_check "{{ PACKAGE }}") && [ "$INSTALLED_VERSION" == "$LATEST_VERSION" ]; then
             echo "{{ PACKAGE }} integration upgraded to version $LATEST_VERSION."
+            PKG_UPGRADED=$((PKG_UPGRADED + 1))
         else
             echo "ERROR: {{ PACKAGE }} integration still at ${INSTALLED_VERSION:-unknown}; expected $LATEST_VERSION"
             PKG_LOAD_FAILURES=$((PKG_LOAD_FAILURES + 1))
@@ -61,6 +63,11 @@ else
     PKG_LOAD_FAILURES_NAMES+=("{{ PACKAGE }}")
 fi
 {%- endfor %}
+
+if [ $PKG_UPGRADED -gt 0 ]; then
+    echo "Elasticsearch template statefiles cleared after $PKG_UPGRADED package upgrade(s), so templates can reload."
+    rm -f /opt/so/state/estemplates.txt /opt/so/state/addon_estemplates.txt
+fi
 
 if [ $PKG_LOAD_FAILURES -gt 0 ]; then
     echo "ERROR: Failed to upgrade $PKG_LOAD_FAILURES package(s):"
