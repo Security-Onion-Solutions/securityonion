@@ -455,6 +455,19 @@ highstate() {
   salt-call state.highstate -l info queue=True
 }
 
+upgrade_searchnode_elasticsearch() {
+  # Run the elasticsearch state across the true elastic cluster (non-heavy) with a retry attempt
+  #   Excludes the manager, so that kibana & elasticfleet are not upgraded until searchnodes are upgraded.
+  echo "Getting ready to upgrade Elasticsearch across the grid. This may take a while..."
+  if salt -C "I@elasticsearch:enabled and not G@role:so-heavynode and not G@id:${MINIONID}" state.apply elasticsearch queue=True batch=10%; then
+    return 0
+  fi
+  
+  echo "Initial elasticsearch state attempt had a problem; retrying in 30 seconds."
+  sleep 30
+  salt -C "I@elasticsearch:enabled and not G@role:so-heavynode and not G@id:${MINIONID}" state.apply elasticsearch queue=True batch=10%
+}
+
 push_grid_highstate() {
   # Drive a batched, role-tiered highstate across the rest of the grid so remote minions
   # pick up this upgrade now instead of waiting up to ~2.5 hours for their own scheduled
@@ -2117,7 +2130,17 @@ main() {
 
     # ensure the mine is updated and populated before highstates run, following the salt-master restart
     update_salt_mine
-
+    
+    # kick off a searchnode elasticsearch upgrade
+    set +e
+    if [[ "$es_version" != "$target_es_version" ]]; then
+      if salt-key -L accepted | grep -q "_searchnode$" 2>/dev/null; then
+        # only run if there is atleast 1 searchnode
+        upgrade_searchnode_elasticsearch
+      fi
+    fi
+    set -e
+    
     highstate
     check_saltmaster_status
     postupgrade_changes

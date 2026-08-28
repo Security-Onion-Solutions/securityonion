@@ -134,6 +134,7 @@ if [[ $EXCLUDE_STARTUP_ERRORS == 'Y' ]]; then
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|Redis may have been restarted" # Redis likely restarted by salt
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|file already closed"          # Go logging race condition during container restart
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|relation \"audit_settings\" does not exist" # salt checking for changes before SOC starts
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|Error in plugin: elasticsearch: Unable to retrieve master node information" # expected error while ES is upgrading/electing a master 
 fi
 
 if [[ $EXCLUDE_FALSE_POSITIVE_ERRORS == 'Y' ]]; then
@@ -240,6 +241,7 @@ if [[ $EXCLUDE_KNOWN_ERRORS == 'Y' ]]; then
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|tcp 127.0.0.1:6791: bind: address already in use" # so-elastic-fleet agent restarting. Seen starting w/ 8.18.8 https://github.com/elastic/kibana/issues/201459
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|TransformTask\] \[logs-.*user so_kibana lacks the required permissions" # Known issue with integrations starting transform jobs that are explicitly not allowed to start as a system user
     EXCLUDED_ERRORS="$EXCLUDED_ERRORS|manifest unknown"             # appears in so-dockerregistry log for so-tcpreplay following docker upgrade to 29.2.1-1
+    EXCLUDED_ERRORS="$EXCLUDED_ERRORS|Could not index event to Elasticsearch.*\"version\" => \"9.0.8\"" # Expected during Elastic upgrade temporarily, as policies referencing older pipelines are updated
 fi
 
 RESULT=0
