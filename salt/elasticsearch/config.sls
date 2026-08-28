@@ -42,6 +42,16 @@ elasticsearch_sbin:
     - file_mode: 755
     - exclude_pat:
       - so-elasticsearch-pipelines # exclude this because we need to watch it for changes, we sync it in another state
+      - so-elasticsearch-system-indices-patch
+    - show_changes: False
+
+so-elasticsearch-system-indices-patch-script:
+  file.managed:
+    - name: /usr/sbin/so-elasticsearch-system-indices-patch
+    - source: salt://elasticsearch/tools/sbin/so-elasticsearch-system-indices-patch
+    - user: 930
+    - group: 939
+    - mode: 755
     - show_changes: False
 
 elasticsearch_sbin_jinja:

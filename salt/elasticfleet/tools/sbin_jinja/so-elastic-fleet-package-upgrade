@@ -10,6 +10,25 @@
 
 PKG_LOAD_FAILURES=0
 PKG_LOAD_FAILURES_NAMES=()
+PKG_UPGRADED=0
+
+cleanup_elasticsearch_fleet_transforms() {
+    local transforms transform_id attempt
+    
+    if ! transforms=$(so-elasticsearch-query "_transform/logs-elasticsearch.index_pivot-default-*" --retry 1 --retry-delay 5); then
+        return 0
+    fi
+
+    while IFS= read -r transform_id; do
+        [ -n "$transform_id" ] || continue
+        for attempt in {1..3}; do
+            if so-elasticsearch-query "_transform/$transform_id?force=true" -XDELETE --fail --retry 1 --retry-delay 5; then
+                break
+            fi
+            sleep 5
+        done
+    done < <(jq -r '.transforms[]?.id' <<< "$transforms")
+}
 
 {%- for PACKAGE in SUPPORTED_PACKAGES %}
 if INSTALLED_VERSION=$(elastic_fleet_package_version_check "{{ PACKAGE }}") && LATEST_VERSION=$(elastic_fleet_package_latest_version_check "{{ PACKAGE }}"); then
@@ -17,8 +36,23 @@ if INSTALLED_VERSION=$(elastic_fleet_package_version_check "{{ PACKAGE }}") && L
     if [ "$INSTALLED_VERSION" == "$LATEST_VERSION" ]; then
         echo "{{ PACKAGE }} integration version $INSTALLED_VERSION is already at the reported latest version $LATEST_VERSION, skipping upgrade."
     else
+{%- if PACKAGE == 'elasticsearch' %}
+        cleanup_elasticsearch_fleet_transforms
+{%- endif %}
         echo "Upgrading {{ PACKAGE }} package from $INSTALLED_VERSION to version $LATEST_VERSION..."
         if ! elastic_fleet_package_install "{{ PACKAGE }}" "$LATEST_VERSION"; then
+            PKG_LOAD_FAILURES=$((PKG_LOAD_FAILURES + 1))
+            PKG_LOAD_FAILURES_NAMES+=("{{ PACKAGE }}")
+        # check that package has upgraded to the expected version after install command
+        elif ! LATEST_VERSION=$(elastic_fleet_package_latest_version_check "{{ PACKAGE }}"); then
+            echo "ERROR: Failed to get latest version information for integration {{ PACKAGE }} after upgrade attempt"
+            PKG_LOAD_FAILURES=$((PKG_LOAD_FAILURES + 1))
+            PKG_LOAD_FAILURES_NAMES+=("{{ PACKAGE }}")
+        elif INSTALLED_VERSION=$(elastic_fleet_package_version_check "{{ PACKAGE }}") && [ "$INSTALLED_VERSION" == "$LATEST_VERSION" ]; then
+            echo "{{ PACKAGE }} integration upgraded to version $LATEST_VERSION."
+            PKG_UPGRADED=$((PKG_UPGRADED + 1))
+        else
+            echo "ERROR: {{ PACKAGE }} integration still at ${INSTALLED_VERSION:-unknown}; expected $LATEST_VERSION"
             PKG_LOAD_FAILURES=$((PKG_LOAD_FAILURES + 1))
             PKG_LOAD_FAILURES_NAMES+=("{{ PACKAGE }}")
         fi
@@ -29,6 +63,11 @@ else
     PKG_LOAD_FAILURES_NAMES+=("{{ PACKAGE }}")
 fi
 {%- endfor %}
+
+if [ $PKG_UPGRADED -gt 0 ]; then
+    echo "Elasticsearch template statefiles cleared after $PKG_UPGRADED package upgrade(s), so templates can reload."
+    rm -f /opt/so/state/estemplates.txt /opt/so/state/addon_estemplates.txt
+fi
 
 if [ $PKG_LOAD_FAILURES -gt 0 ]; then
     echo "ERROR: Failed to upgrade $PKG_LOAD_FAILURES package(s):"
