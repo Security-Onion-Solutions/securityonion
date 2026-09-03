@@ -331,15 +331,20 @@ check_pillar_items() {
 }
 
 check_cluster_health() {
+  # Require a 'green' cluster before upgrading
   echo "Checking Elasticsearch cluster health."
-  # Require a 'green' cluster before upgrading; anything less (yellow, red, or
-  # unreachable) blocks. Modeled on the wait used in so-elasticsearch-roles-load.
   if so-elasticsearch-query "_cluster/health?wait_for_status=green&timeout=120s" --fail > /dev/null 2>&1; then
     printf "\nThe Elasticsearch cluster is healthy (green). We can proceed with SOUP.\n\n"
-  else
-    printf "\nThe Elasticsearch cluster is not green. Please resolve the cluster health issue so the cluster is green before running SOUP again.\n\n"
-    exit 0
+    return
   fi
+
+  if command -v so-elasticsearch-troubleshoot > /dev/null 2>&1; then
+    printf "\nRunning so-elasticsearch-troubleshoot for additional detail.\n"
+    so-elasticsearch-troubleshoot || true
+  fi
+
+  printf "\nThe Elasticsearch cluster is not green. Resolve the cluster health issue so the cluster is green before running SOUP again.\n\n"
+  exit 0
 }
 
 check_fleet_server() {
