@@ -1020,9 +1020,6 @@ update_kafka_metadata() {
 up_to_3.2.0() {
   ensure_salt_local_pillar
 
-  # download 9.3.7 elastic agent packages
-  determine_elastic_agent_upgrade
-
   fix_logstash_0013_lumberjack_pipeline_name
 
   pin_elasticsearch_data_retention_method
@@ -1041,10 +1038,6 @@ post_to_3.2.0() {
   # SOC database bootstrap is handled by the postgres.enabled highstate.
   scrub_postgres_log_passwords
 
-  # Generate 9.3.7 elastic agent installers
-  echo "Regenerating Elastic Agent Installers"
-  /sbin/so-elastic-agent-gen-installers
-
   kibana_backport_streams_index_template
 
   update_kafka_metadata "4.3"
@@ -1053,8 +1046,11 @@ post_to_3.2.0() {
 }
 ### 3.2.0 End ###
 
-### 3.2.0 Scripts ###
+### 3.3.0 Scripts ###
 up_to_3.3.0() {
+  # download 9.4.5 elastic agent packages
+  determine_elastic_agent_upgrade
+
   INSTALLEDVERSION=3.3.0
 }
 
@@ -1081,7 +1077,13 @@ post_to_3.3.0() {
   # Recollate again since some internal DBs were excluded during 3.2.0 soup
   recollate_postgres
 
+  # Generate 9.4.5 elastic agent installers
+  echo "Regenerating Elastic Agent Installers"
+  /sbin/so-elastic-agent-gen-installers
+
   telegraf_repair
+
+  set_postversion 3.3.0
 }
 ### 3.3.0 End ###
 
