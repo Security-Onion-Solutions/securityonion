@@ -5,10 +5,11 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 #
-# so-kernel-upgrade — install the UEK8 (6.x) kernel and make it the boot default.
+# so-kernel-upgrade — install the UEK8 (6.x) kernel, make it the boot default, and once the
+# node is running it, remove the stock EL9 kernel.
 #
 # Security Onion is moving off the EL9 stock kernel (RHCK, 5.14) and UEK7 (5.15) onto UEK8
-# (6.x). Three things have to happen, and the tool has to drive each one:
+# (6.x). Four things have to happen, and the tool has to drive each one:
 #
 #   1. Populate. The manager mirrors the UEK8 packages into /nsm/kernelrepo via so-repo-sync,
 #      and serves them to the grid over https://<manager>/kernelrepo. Until that sync runs the
@@ -26,9 +27,20 @@
 #        - From the stock EL9 kernel (RHCK, 5.14, no UEK) it is a flavor CROSS that is NOT
 #          auto-promoted, so the box keeps booting RHCK until grubby is told otherwise.
 #      This tool inspects the running kernel and only runs 'grubby --set-default' for RHCK.
+#   4. Clean up. Once the node is actually RUNNING UEK8 the stock kernel packages are dead
+#      weight -- disk in /boot and a stale GRUB entry. They cannot come off any earlier:
+#      dnf's protect_running_kernel refuses to erase the booted kernel-core, so the removal
+#      has to wait for the reboot. Waiting is also the safer sequencing on its own terms --
+#      the node has proven it comes up on UEK8 before its fallback is deleted. That is why
+#      the removal does not happen in the uek7 branch either, where dnf would allow it.
 #
 # Every one of those failure modes is silent by default. This tool handles each case and fails
 # loudly when it cannot, rather than reporting success while changing nothing.
+#
+# Invocation: with no arguments it drives the whole sequence for whatever kernel the node is
+# on. With --cleanup it does the step 4 removal ONLY, and no-ops on a node that isn't running
+# UEK8 yet -- that is the form the common highstate calls (remove_stock_kernel in
+# salt/common/init.sls) so the cleanup lands grid-wide after each node reboots.
 #
 # Manager vs minion: only the manager owns /nsm/kernelrepo, so only the manager can populate
 # it. If the repo is empty here, a manager runs so-repo-sync itself; a minion has no way to
@@ -48,6 +60,11 @@ KERNEL_PKG="kernel-uek"
 KERNEL_REPO_DIR="/nsm/kernelrepo"
 REPOSYNC_CONF="/opt/so/conf/reposync/repodownload.conf"
 GLOBAL_PILLAR="/opt/so/saltstack/local/pillar/global/soc_global.sls"
+
+# Stock EL9 (RHCK) kernel packages, removed only once the node is running UEK8 (see step 4
+# in the header). Left deliberately narrow: UEK7 kernel-uek builds age out on their own via
+# installonly_limit=3, and kernel-devel/kernel-headers are not touched.
+RHCK_PKGS="kernel kernel-core kernel-modules kernel-modules-core kernel-tools kernel-tools-libs"
 
 log() { echo "[so-kernel-upgrade] $*"; }
 die() { echo "[so-kernel-upgrade] ERROR: $*" >&2; exit 1; }
@@ -149,8 +166,13 @@ ensure_kernel_repo() {
 }
 
 reboot_notice() {
-    [ "$(uname -r)" = "$(basename "$1" | sed 's/^vmlinuz-//')" ] \
-        || log "REBOOT REQUIRED to start using the UEK8 kernel (currently running $(uname -r))."
+    [ "$(uname -r)" = "$(basename "$1" | sed 's/^vmlinuz-//')" ] && return 0
+    log "REBOOT REQUIRED to start using the UEK8 kernel (currently running $(uname -r))."
+    # The stock kernel can't be removed until it stops being the running one, so say when
+    # that will happen rather than leaving the admin to wonder if it was missed.
+    [ -n "$(rhck_installed)" ] \
+        && log "The stock EL9 kernel is left in place until then; it is removed by the next highstate after the reboot."
+    return 0
 }
 
 # Keep future kernel updates on the UEK line rather than falling back to RHCK. Oracle ships
@@ -160,6 +182,32 @@ set_default_kernel_conf() {
         log "setting DEFAULTKERNEL=kernel-uek-core in /etc/sysconfig/kernel"
         sed -i 's/^DEFAULTKERNEL=.*/DEFAULTKERNEL=kernel-uek-core/' /etc/sysconfig/kernel
     fi
+}
+
+# Which of RHCK_PKGS are actually installed, one per line. rpm -qa treats each argument as a
+# name glob and prints only what it finds, so a package that was never installed (or is
+# already gone) simply doesn't appear -- no "not installed" noise and no non-zero exit.
+rhck_installed() {
+    rpm -qa $RHCK_PKGS 2>/dev/null
+}
+
+# Remove the stock EL9 kernel. Only ever called once the running kernel is UEK8. The rpm
+# check above is the idempotency guard, so this is a cheap no-op on every highstate after
+# the first one -- it costs an rpm query, not a dnf transaction.
+remove_rhck() {
+    local installed; installed="$(rhck_installed)"
+    if [ -z "$installed" ]; then
+        log "no stock EL9 (RHCK) kernel packages installed; nothing to remove."
+        return 0
+    fi
+
+    log "running UEK8; removing the stock EL9 (RHCK) kernel packages:"
+    echo "$installed" | sed 's/^/[so-kernel-upgrade]   /'
+    dnf -y remove $RHCK_PKGS || die "failed to remove the stock EL9 kernel packages"
+
+    installed="$(rhck_installed)"
+    [ -z "$installed" ] || die "dnf reported success but these remain: $(echo $installed)"
+    log "stock EL9 kernel packages removed."
 }
 
 # Make sure a UEK8 kernel is installed, leaving its boot entry in INSTALLED_UEK8. If one is
@@ -184,12 +232,38 @@ ensure_uek8_installed() {
     log "installed UEK8 kernel: $INSTALLED_UEK8"
 }
 
+# --cleanup does step 4 and nothing else. It exits 0 rather than failing on a node that
+# isn't on UEK8 yet: the highstate gates on 'uname -r' before calling this, and a state that
+# fails whenever that gate races would be worse than one that says what it's waiting for.
+case "$1" in
+"")
+    ;;
+--cleanup)
+    if [ "$(running_flavor)" != uek8 ]; then
+        log "not running a UEK8 kernel yet (currently $(uname -r)); leaving the stock EL9 kernel in place."
+        log "Run so-kernel-upgrade with no arguments to install UEK8, then reboot."
+        exit 0
+    fi
+    set_default_kernel_conf
+    remove_rhck
+    exit 0
+    ;;
+*)
+    echo "Usage: so-kernel-upgrade [--cleanup]" >&2
+    echo "  (no arguments)  install UEK8, make it the boot default, clean up once it's running" >&2
+    echo "  --cleanup       remove the stock EL9 kernel; no-op unless already running UEK8" >&2
+    exit 1
+    ;;
+esac
+
 case "$(running_flavor)" in
 uek8)
     # Already on the 6.x UEK line. A plain 'dnf update' keeps this node current within the
-    # lineage and auto-promotes newer builds, so there is nothing for this tool to do.
-    log "already running a UEK8 kernel ($(uname -r)); nothing to do."
-    exit 0
+    # lineage and auto-promotes newer builds, so there is no install or grubby work left --
+    # only the step 4 cleanup, which this is the first point in the sequence that can run it.
+    log "already running a UEK8 kernel ($(uname -r)); no kernel install needed."
+    set_default_kernel_conf
+    remove_rhck
     ;;
 
 uek7)

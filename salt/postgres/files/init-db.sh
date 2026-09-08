@@ -29,6 +29,8 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
     -- revoking CONNECT closes the soft edge entirely.
     REVOKE CONNECT ON DATABASE "$POSTGRES_DB" FROM PUBLIC;
     GRANT CONNECT ON DATABASE "$POSTGRES_DB" TO "$SO_POSTGRES_USER";
+
+    CREATE EXTENSION IF NOT EXISTS vector;
 EOSQL
 
 # Bootstrap the Telegraf metrics database. Per-minion roles + schemas are

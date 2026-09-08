@@ -418,6 +418,19 @@ is_single_node_grid() {
 	grep "role: so-" /etc/salt/grains | grep -E "eval|standalone|import" &> /dev/null
 }
 
+remove_elasticsearch_index_template() {
+  local template_name=$1
+  local reason=${2:-"Removing index template for upgrade"}
+
+  # check if template exists
+  if so-elasticsearch-query "_index_template/$template_name" --fail --retry 3 --retry-delay 5 >/dev/null 2>&1; then
+    echo "Removing Elasticsearch index template: $template_name ($reason)"
+    if ! so-elasticsearch-query "_index_template/$template_name" -XDELETE --fail --retry 3 --retry-delay 5; then
+      return 1
+    fi
+  fi
+}
+
 initialize_elasticsearch_indices() {
     local index_names=$1
     local default_entry=${2:-'{"@timestamp":"0"}'}

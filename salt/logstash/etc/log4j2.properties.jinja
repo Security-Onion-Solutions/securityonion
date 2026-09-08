@@ -1,3 +1,4 @@
+{%- from 'logstash/map.jinja' import LOGSTASH_MERGED -%}
 status = error
 name = LogstashPropertiesConfig
 
@@ -16,8 +17,14 @@ name = LogstashPropertiesConfig
 appender.rolling.type = RollingFile
 appender.rolling.name = rolling
 appender.rolling.fileName = /var/log/logstash/logstash.log
+{%- if LOGSTASH_MERGED.config.get('log_x_format', 'plain') == 'json' %}
+appender.rolling.layout.type = JSONLayout
+appender.rolling.layout.compact = true
+appender.rolling.layout.eventEol = true
+{%- else %}
 appender.rolling.layout.type = PatternLayout
 appender.rolling.layout.pattern = [%d{ISO8601}][%-5p][%-25c] %.10000m%n
+{%- endif %}
 appender.rolling.filePattern = /var/log/logstash/logstash-%d{yyyy-MM-dd}.log.gz
 appender.rolling.policies.type = Policies
 appender.rolling.policies.time.type = TimeBasedTriggeringPolicy
@@ -32,7 +39,5 @@ appender.rolling.strategy.action.condition.type = IfFileName
 appender.rolling.strategy.action.condition.glob = *.gz
 appender.rolling.strategy.action.condition.nested_condition.type = IfLastModified
 appender.rolling.strategy.action.condition.nested_condition.age = 7D
-rootLogger.level = info
+rootLogger.level = ${sys:ls.log.level}
 rootLogger.appenderRef.rolling.ref = rolling
-#rootLogger.level = ${sys:ls.log.level}
-#rootLogger.appenderRef.console.ref = ${sys:ls.log.format}_console

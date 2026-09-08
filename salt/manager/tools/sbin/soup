@@ -24,7 +24,10 @@ else
   POSTVERSION=$INSTALLEDVERSION
 fi
 INSTALLEDSALTVERSION=$(salt --versions-report | grep Salt: | awk '{print $2}')
-BATCHSIZE=5
+# Optional -b override for the grid highstate batch size (a count like "5" or a
+# percentage like "25%"). Empty means so-soup-grid-highstate uses the salt:auto_apply:batch
+# pillar default.
+BATCHSIZE=
 SOUP_LOG=/root/soup.log
 SOUP_DEBUG_LOG=/root/soup-debug.log
 WHATWOULDYOUSAYYAHDOHERE=soup
@@ -328,15 +331,20 @@ check_pillar_items() {
 }
 
 check_cluster_health() {
+  # Require a 'green' cluster before upgrading
   echo "Checking Elasticsearch cluster health."
-  # Require a 'green' cluster before upgrading; anything less (yellow, red, or
-  # unreachable) blocks. Modeled on the wait used in so-elasticsearch-roles-load.
   if so-elasticsearch-query "_cluster/health?wait_for_status=green&timeout=120s" --fail > /dev/null 2>&1; then
     printf "\nThe Elasticsearch cluster is healthy (green). We can proceed with SOUP.\n\n"
-  else
-    printf "\nThe Elasticsearch cluster is not green. Please resolve the cluster health issue so the cluster is green before running SOUP again.\n\n"
-    exit 0
+    return
   fi
+
+  if command -v so-elasticsearch-troubleshoot > /dev/null 2>&1; then
+    printf "\nRunning so-elasticsearch-troubleshoot for additional detail.\n"
+    so-elasticsearch-troubleshoot || true
+  fi
+
+  printf "\nThe Elasticsearch cluster is not green. Resolve the cluster health issue so the cluster is green before running SOUP again.\n\n"
+  exit 0
 }
 
 check_fleet_server() {
@@ -452,14 +460,51 @@ highstate() {
   salt-call state.highstate -l info queue=True
 }
 
+upgrade_searchnode_elasticsearch() {
+  # Run the elasticsearch state across the true elastic cluster (non-heavy) with a retry attempt
+  #   Excludes the manager, so that kibana & elasticfleet are not upgraded until searchnodes are upgraded.
+  echo "Getting ready to upgrade Elasticsearch across the grid. This may take a while..."
+  if salt -b 10% -C "I@elasticsearch:enabled and not G@role:so-heavynode and not G@id:${MINIONID}" state.apply elasticsearch queue=True; then
+    return 0
+  fi
+  
+  echo "Initial elasticsearch state attempt had a problem; retrying in 30 seconds."
+  sleep 30
+  salt -b 10% -C "I@elasticsearch:enabled and not G@role:so-heavynode and not G@id:${MINIONID}" state.apply elasticsearch queue=True
+}
+
+push_grid_highstate() {
+  # Drive a batched, role-tiered highstate across the rest of the grid so remote minions
+  # pick up this upgrade now instead of waiting up to ~2.5 hours for their own scheduled
+  # highstate (the schedule moved from 15 to 120 minutes). so-soup-grid-highstate does the work
+  # via orch.push_batch; it only exists once the manager highstate has deployed this
+  # version's sbin files, so guard on it. Launch fully detached (setsid) so it survives an
+  # SSH drop, and never let it affect soup's exit status -- it is best-effort with the
+  # scheduled highstate as backstop.
+  if [[ ! -x /usr/sbin/so-soup-grid-highstate ]]; then
+    echo "so-soup-grid-highstate not present; remote nodes will converge on their scheduled highstate."
+    return 0
+  fi
+
+  local extra_args=()
+  if [[ $SALTUPGRADED == true || $UPGRADESALT -eq 1 ]]; then
+    extra_args+=(--salt-upgraded)
+  fi
+  if [[ -n "$BATCHSIZE" ]]; then
+    extra_args+=(--batch "$BATCHSIZE")
+  fi
+
+  echo "Dispatching a grid-wide highstate to remote nodes. Progress: /opt/so/log/salt/so-soup-grid-highstate"
+  setsid nohup /usr/sbin/so-soup-grid-highstate --reason soup "${extra_args[@]}" >/dev/null 2>&1 &
+}
+
 masterlock() {
   echo "Locking Salt Master"
   mv -v $TOPFILE $BACKUPTOPFILE
-  # Render the real top file only for the host running soup; every other
-  # minion gets an empty top (no states) while the master is upgrading.
-  echo "{% if grains['id'] == '$MINIONID' %}" > $TOPFILE
-  cat $BACKUPTOPFILE >> $TOPFILE
-  echo "{% endif %}" >> $TOPFILE
+  echo "base:" > $TOPFILE
+  echo "  $MINIONID:" >> $TOPFILE
+  echo "    - ca" >> $TOPFILE
+  echo "    - elasticsearch" >> $TOPFILE
 }
 
 masterunlock() {
@@ -479,6 +524,7 @@ preupgrade_changes() {
     [[ "$INSTALLEDVERSION" =~ ^2\.4\.21[0-9]+$ ]] && up_to_3.0.0
     [[ "$INSTALLEDVERSION" == "3.0.0" ]] && up_to_3.1.0
     [[ "$INSTALLEDVERSION" == "3.1.0" ]] && up_to_3.2.0
+    [[ "$INSTALLEDVERSION" == "3.2.0" ]] && up_to_3.3.0
     true
 }
 
@@ -496,6 +542,7 @@ postupgrade_changes() {
     [[ "$POSTVERSION" =~ ^2\.4\.21[0-9]+$ ]] && post_to_3.0.0
     [[ "$POSTVERSION" == "3.0.0" ]] && post_to_3.1.0
     [[ "$POSTVERSION" == "3.1.0" ]] && post_to_3.2.0
+    [[ "$POSTVERSION" == "3.2.0" ]] && post_to_3.3.0
     # All applicable post-upgrade steps completed; clear the resume marker.
     rm -f "$POSTVERSION_FILE"
     true
@@ -878,7 +925,7 @@ post_to_3.1.0() {
 recollate_postgres() {
   echo ""
   echo "Recollating PostgreSQL databases. The following output may contain warnings about a version mismatch, followed by a note indicating that the collation version has been changed."
-  for db in postgres securityonion so_telegraf; do
+  for db in template1 postgres securityonion so_telegraf; do
     docker exec so-postgres psql -U postgres $db -c "reindex database $db"
     docker exec so-postgres psql -U postgres $db -c "alter database $db refresh collation version"
   done
@@ -973,9 +1020,6 @@ update_kafka_metadata() {
 up_to_3.2.0() {
   ensure_salt_local_pillar
 
-  # download 9.3.7 elastic agent packages
-  determine_elastic_agent_upgrade
-
   fix_logstash_0013_lumberjack_pipeline_name
 
   pin_elasticsearch_data_retention_method
@@ -994,18 +1038,60 @@ post_to_3.2.0() {
   # SOC database bootstrap is handled by the postgres.enabled highstate.
   scrub_postgres_log_passwords
 
-  # Generate 9.3.7 elastic agent installers
-  echo "Regenerating Elastic Agent Installers"
-  /sbin/so-elastic-agent-gen-installers
-
   kibana_backport_streams_index_template
 
   update_kafka_metadata "4.3"
 
   set_postversion 3.2.0
 }
-
 ### 3.2.0 End ###
+
+### 3.3.0 Scripts ###
+up_to_3.3.0() {
+  # download 9.4.5 elastic agent packages
+  determine_elastic_agent_upgrade
+  
+  # remove existing (patched) elasticsearch index template to match integration naming change
+  if ! remove_elasticsearch_index_template "so-logs-sentinel_one_cloud_funnel.login" "sentinel_one_cloud_funnel.login changed to sentinel_one_cloud_funnel.logins"; then
+    FINAL_MESSAGE_QUEUE+=("WARNING: Unable to automatically remove the so-logs-sentinel_one_cloud_funnel.login index template. This step can be performed manually using the following command:")
+    FINAL_MESSAGE_QUEUE+=("    - sudo so-elasticsearch-query _index_template/so-logs-sentinel_one_cloud_funnel.login -XDELETE && so-checkin")
+  fi
+
+  INSTALLEDVERSION=3.3.0
+}
+
+telegraf_repair() {
+  # Only grids whose Telegraf partitions stalled need this; --check exits 1
+  # when there is something to repair, so everyone else is left alone.
+  local repair=/usr/sbin/so-telegraf-repair
+  [[ -x "$repair" ]] || return 0
+  docker ps --format '{{.Names}}' | grep -qx so-postgres || return 0
+
+  echo "Checking Telegraf metric partitions."
+  local status=0
+  "$repair" --check >> "$SOUP_LOG" 2>&1 || status=$?
+  case "$status" in
+    0) echo "  Telegraf partitions are healthy; nothing to repair." ;;
+    1) echo "  Repairing stalled Telegraf partitions."
+       "$repair" --yes \
+         || echo "  warning: so-telegraf-repair failed; run it manually" >&2 ;;
+    *) echo "  Skipping; Telegraf is not storing metrics in Postgres on this host." ;;
+  esac
+}
+
+post_to_3.3.0() {
+  # Recollate again since some internal DBs were excluded during 3.2.0 soup
+  recollate_postgres
+
+  # Generate 9.4.5 elastic agent installers
+  echo "Regenerating Elastic Agent Installers"
+  /sbin/so-elastic-agent-gen-installers
+
+  telegraf_repair
+
+  set_postversion 3.3.0
+}
+### 3.3.0 End ###
 
 
 repo_sync() {
@@ -1276,11 +1362,12 @@ verify_es_version_compatibility() {
     local is_active_intermediate_upgrade=1
     # supported upgrade paths for SO-ES versions
     declare -A es_upgrade_map=(
-        ["8.18.4"]="8.18.6 8.18.8 9.0.8"
+      ["8.18.4"]="8.18.6 8.18.8 9.0.8"
 	    ["8.18.6"]="8.18.8 9.0.8"
 	    ["8.18.8"]="9.0.8"
-        ["9.0.8"]="9.3.3 9.3.7"
-        ["9.3.3"]="9.3.7"
+      ["9.0.8"]="9.3.3 9.3.7 9.4.5"
+      ["9.3.3"]="9.3.7 9.4.5"
+      ["9.3.7"]="9.4.5"
     )
 
     # Elasticsearch MUST upgrade through these versions
@@ -1936,6 +2023,9 @@ main() {
     # rather than reporting "already latest". The soversion/pillar writes in
     # update_version are no-ops here since the version is unchanged for a hotfix.
     update_version
+    # Push the hotfix out to the rest of the grid rather than waiting for the scheduled
+    # highstate. Hotfixes never upgrade Salt, so no --salt-upgraded pass is needed.
+    push_grid_highstate
   else
     SOUP_UPGRADE_STARTED=true
     echo ""
@@ -2053,12 +2143,28 @@ main() {
 
     # ensure the mine is updated and populated before highstates run, following the salt-master restart
     update_salt_mine
-
+    
+    # kick off a searchnode elasticsearch upgrade
+    set +e
+    if [[ "$es_version" != "$target_es_version" ]]; then
+      if salt-key -L accepted | grep -q "_searchnode$" 2>/dev/null; then
+        # only run if there is atleast 1 searchnode
+        upgrade_searchnode_elasticsearch
+      fi
+    fi
+    set -e
+    
     highstate
     check_saltmaster_status
     postupgrade_changes
     [[ $is_airgap -eq 0 ]] && unmount_update
-
+    
+    if [[ "$es_version" != "$target_es_version" ]]; then
+      # Run final elasticsearch / fleet state on manager to ensure addon index templates are created/regenerated and loaded
+      echo "Running final Elastic states at $(date +"%T.%6N"), after upgrade to $NEWVERSION"
+      salt-call state.apply elasticsearch,elasticfleet queue=True
+    fi
+    
     echo ""
     echo "Upgrade to $NEWVERSION complete."
 
@@ -2102,13 +2208,18 @@ main() {
 
     if [[ $NUM_MINIONS -gt 1 ]]; then
 
+      # Actively drive the rest of the grid to this version now. The scheduled highstate
+      # runs only every 120 minutes (salt:schedule:highstate_interval_minutes), so without
+      # this remote nodes could sit on the old version for a couple of hours after soup finishes.
+      push_grid_highstate
+
       cat << EOF
 
 
 
-This appears to be a distributed deployment. Other nodes should update themselves at the next Salt highstate (typically within 15 minutes). Do not manually restart anything until you know that all the search/heavy nodes in your deployment are updated. This is especially important if you are using true clustering for Elasticsearch.
+This appears to be a distributed deployment. soup has dispatched a batched, grid-wide highstate to update the other nodes now: Elasticsearch data nodes (search/heavynodes) first, then receivers, then sensors and the remaining nodes. Progress is logged to /opt/so/log/salt/so-soup-grid-highstate, and you can watch nodes update from the Grid section of SOC. Do not manually restart anything until you know that all the search/heavynodes in your deployment are updated. This is especially important if you are using true clustering for Elasticsearch.
 
-Each minion is on a random 15 minute check-in period and things like network bandwidth can be a factor in how long the actual upgrade takes. If you have a heavy node on a slow link, it is going to take a while to get the containers to it. Depending on what changes happened between the versions, Elasticsearch might not be able to talk to said heavy node until the update is complete.
+Nodes are updated in batches, and things like network bandwidth can be a factor in how long the actual upgrade takes. If you have a heavy node on a slow link, it is going to take a while to get the containers to it. Depending on what changes happened between the versions, Elasticsearch might not be able to talk to said heavy node until the update is complete. Any node that is offline or missed a batch will converge on its own scheduled highstate (every 120 minutes by default).
 
 If it looks like you’re missing data after the upgrade, please avoid restarting services and instead make sure at least one search node has completed its upgrade. The best way to do this is to run 'sudo salt-call state.highstate' from a search node and make sure there are no errors. Typically if it works on one node it will work on the rest. Sensor nodes are less complex and will update as they check in so you can monitor those from the Grid section of SOC.
 
@@ -2148,8 +2259,10 @@ while getopts ":b:f:y" opt; do
   case ${opt} in
     b )
       BATCHSIZE="$OPTARG"
-      if ! [[ "$BATCHSIZE" =~ ^[1-9][0-9]*$ ]]; then
-        echo "Batch size must be a number greater than 0."
+      # Accept either a plain count (e.g. 5) or a percentage (e.g. 25%); passed through
+      # to so-soup-grid-highstate --batch, which salt's batch/batch_wait accepts in both forms.
+      if ! [[ "$BATCHSIZE" =~ ^[1-9][0-9]*%?$ ]]; then
+        echo "Batch size must be a number greater than 0, optionally with a trailing % (e.g. 5 or 25%)."
         exit 1
       fi
     ;;

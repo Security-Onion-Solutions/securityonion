@@ -47,7 +47,12 @@ trap 'rm -f "$TMPFILE"' EXIT
 
 # Dump all databases and roles, compress. Write to a temp file so the final
 # filename only ever appears for a complete, verified backup.
-if ! docker exec so-postgres pg_dumpall -U postgres | gzip > "$TMPFILE"; then
+#
+# so_telegraf is excluded: it is transient metrics on a short retention window,
+# it dominates the dump size, and it is rebuilt automatically after a restore --
+# init-db.sh recreates the database and Telegraf recreates its tables on first
+# write. Roles are globals, so the per-minion telegraf logins are still dumped.
+if ! docker exec so-postgres pg_dumpall -U postgres --exclude-database=so_telegraf | gzip > "$TMPFILE"; then
   log "ERROR: pg_dumpall/gzip failed; backup aborted"
   exit 1
 fi

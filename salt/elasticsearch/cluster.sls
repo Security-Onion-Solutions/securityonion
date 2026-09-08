@@ -98,6 +98,13 @@ so-es-cluster-settings:
       - docker_container: so-elasticsearch
       - file: elasticsearch_sbin_jinja
       - http: wait_for_so-elasticsearch
+
+so-elasticsearch-system-indices-patch:
+  cmd.run:
+    - name: /usr/sbin/so-elasticsearch-system-indices-patch
+    - require:
+      - http: wait_for_so-elasticsearch
+      - file: so-elasticsearch-system-indices-patch-script
 {%  endif %}
 
 # heavynodes will only load ILM policies for SO managed indices. (Indicies defined in elasticsearch/defaults.yaml)

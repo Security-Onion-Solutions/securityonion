@@ -68,6 +68,24 @@ so-elastic-fleet-package-upgrade:
     - require:
       - http: wait_for_so-kibana
 
+# initial so-elasticsearch-templates run is earlier, but it can skip over templates that have component templates not yet installed to avoid elasticsearch rejecting the template.
+so-elasticsearch-templates-after-fleet-packages:
+  cmd.run:
+    - name: /usr/sbin/so-elasticsearch-templates-load
+    - cwd: /opt/so
+    - unless: test -f /opt/so/state/estemplates.txt
+    - require:
+      - cmd: so-elastic-fleet-package-upgrade
+
+so-elastic-fleet-integration-upgrade:
+  cmd.run:
+    - name: /usr/sbin/so-elastic-fleet-integration-upgrade
+    - retry:
+        attempts: 3
+        interval: 10
+    - require:
+      - cmd: so-elastic-fleet-package-upgrade
+
 so-elastic-fleet-integrations:
   cmd.run:
     - name: /usr/sbin/so-elastic-fleet-integration-policy-load
@@ -86,21 +104,13 @@ so-elastic-agent-grid-upgrade:
     - require:
       - http: wait_for_so-kibana
 
-so-elastic-fleet-integration-upgrade:
-  cmd.run:
-    - name: /usr/sbin/so-elastic-fleet-integration-upgrade
-    - retry:
-        attempts: 3
-        interval: 10
-    - require:
-      - http: wait_for_so-kibana
-
 {# Optional integrations script doesn't need the retries like so-elastic-fleet-integration-upgrade which loads the default integrations #}
 so-elastic-fleet-addon-integrations:
   cmd.run:
     - name: /usr/sbin/so-elastic-fleet-optional-integrations-load
     - require:
       - http: wait_for_so-kibana
+      - cmd: so-elasticsearch-templates-after-fleet-packages
 
 {% if ELASTICFLEETMERGED.config.defend_filters.enable_auto_configuration %}
 so-elastic-defend-manage-filters-file-watch:

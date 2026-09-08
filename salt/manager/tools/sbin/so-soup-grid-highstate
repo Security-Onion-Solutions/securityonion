@@ -1,0 +1,219 @@
+#!/bin/bash
+#
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+
+# so-soup-grid-highstate
+# ======================
+# Drives a batched, role-tiered highstate across every non-manager minion in the
+# grid. soup fires this (detached) after it finishes upgrading the manager so the
+# rest of the grid converges immediately instead of waiting for its own scheduled
+# highstate -- which, since the schedule moved from 15 minutes to 120 minutes
+# (salt:schedule:highstate_interval_minutes), could otherwise leave nodes on the
+# old version for up to ~2.5 hours (interval + splay) while the manager runs new code.
+#
+# Work is done by the existing orch.push_batch orchestration (salt/orch/push_batch.sls),
+# the same runner the active-push drainer uses, so batching/queueing behavior matches.
+# Tiers are dispatched in declaration order: searchnodes/heavynodes (Elasticsearch data
+# nodes) first, then receivers, then everything else -- so the data tier converges before
+# the ingest tier before sensors/fleet/idh/etc.
+#
+# When soup also upgraded Salt itself, remote minions must first highstate onto the new
+# salt-minion package (top.sls gates every real state on G@saltversion, so a stale-version
+# minion only gets salt.minion until it upgrades and reconnects). --salt-upgraded runs that
+# preliminary pass and waits for the fleet to settle before the tiered pass.
+#
+# This is best-effort: soup has already completed by the time this runs, and the 120-minute
+# scheduled highstate remains the backstop for any node that is offline or missed a batch.
+
+LOG_FILE=/opt/so/log/salt/so-soup-grid-highstate
+LOCK_FILE=/opt/so/state/so-soup-grid-highstate.lock
+SETTLE_MAX_WAIT=${GRID_HIGHSTATE_SETTLE_WAIT:-900}   # backstop for the post-salt-upgrade settle loop
+SETTLE_INTERVAL=15
+SETTLE_STABLE_CHECKS=3
+# salt-minion on an upgraded node restarts ~30s after the upgrade state runs
+# (salt/salt/minion/init.sls start_minion_post_upgrade); wait past that before sampling
+# so the settle loop sees the drop-off instead of settling on the pre-restart set.
+SETTLE_INITIAL_WAIT=${GRID_HIGHSTATE_SETTLE_INITIAL_WAIT:-45}
+
+BATCH=""
+BATCH_WAIT=""
+SALT_UPGRADED=false
+REASON="manual"
+
+log() {
+  echo "$(date '+%Y-%m-%d %H:%M:%S') | $*" | tee -a "$LOG_FILE"
+}
+
+usage() {
+  echo "Usage: so-soup-grid-highstate [--batch <spec>] [--batch-wait <sec>] [--salt-upgraded] [--reason <text>]"
+  exit 1
+}
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --batch)        BATCH="$2"; shift 2 ;;
+    --batch-wait)   BATCH_WAIT="$2"; shift 2 ;;
+    --salt-upgraded) SALT_UPGRADED=true; shift ;;
+    --reason)       REASON="$2"; shift 2 ;;
+    -h|--help)      usage ;;
+    *)              echo "Unknown option: $1"; usage ;;
+  esac
+done
+
+mkdir -p "$(dirname "$LOG_FILE")" "$(dirname "$LOCK_FILE")"
+
+# Serialize: a second invocation (e.g. two soups, or a manual run overlapping soup's)
+# should not dispatch a competing set of batches.
+exec 9>"$LOCK_FILE"
+if ! flock -n 9; then
+  log "another so-soup-grid-highstate is already running (lock $LOCK_FILE held); exiting"
+  exit 0
+fi
+
+# Resolve batch settings from the salt:auto_apply pillar when not overridden on the
+# command line, falling back to the same defaults orch.push_batch/salt.defaults use.
+if [ -z "$BATCH" ]; then
+  BATCH=$(salt-call --out=newline_values_only pillar.get salt:auto_apply:batch 2>/dev/null)
+  [ -z "$BATCH" ] && BATCH='10%'
+fi
+if [ -z "$BATCH_WAIT" ]; then
+  BATCH_WAIT=$(salt-call --out=newline_values_only pillar.get salt:auto_apply:batch_wait 2>/dev/null)
+  [ -z "$BATCH_WAIT" ] && BATCH_WAIT=15
+fi
+
+MINIONID=$(salt-call --local --out=newline_values_only grains.get id 2>/dev/null)
+[ -z "$MINIONID" ] && MINIONID=$(cat /etc/salt/minion_id 2>/dev/null)
+if [ -z "$MINIONID" ]; then
+  log "could not determine this minion's id; aborting"
+  exit 1
+fi
+
+# Single-node grids (eval/standalone/import with no other accepted keys) have nothing
+# remote to push -- the manager already highstated during soup.
+NUM_ACCEPTED=$(salt-key --out=json --list=accepted 2>/dev/null | jq -r '.minions | length' 2>/dev/null)
+NUM_ACCEPTED=${NUM_ACCEPTED:-0}
+if [ "$NUM_ACCEPTED" -le 1 ]; then
+  log "single node grid ($NUM_ACCEPTED accepted minion(s)); nothing to push (reason=$REASON)"
+  exit 0
+fi
+
+log "starting grid highstate: reason=$REASON minion=$MINIONID accepted=$NUM_ACCEPTED batch=$BATCH batch_wait=$BATCH_WAIT salt_upgraded=$SALT_UPGRADED"
+
+# Count minions currently responsive on the bus (includes this manager).
+count_up() {
+  salt-run manage.up --out=json 2>/dev/null \
+    | python3 -c 'import sys,json; print(len(json.load(sys.stdin)))' 2>/dev/null
+}
+
+# Dispatch a single synchronous orch.push_batch run for the given actions JSON.
+# Synchronous is fine: soup launched us detached, so blocking here does not hold soup up.
+# expect_restart=true marks a dispatch (the salt-upgrade pass) where a non-zero rc is normal
+# because targets restart salt-minion mid-run -- so we don't log a misleading failure warning.
+dispatch() {
+  local desc="$1"
+  local actions="$2"
+  local expect_restart="${3:-false}"
+  local rc
+  log "dispatching $desc"
+  salt-run state.orchestrate orch.push_batch pillar="{\"actions\": $actions}" >>"$LOG_FILE" 2>&1
+  rc=$?
+  if [ "$rc" -eq 0 ]; then
+    log "$desc dispatch completed (rc=0)"
+  elif [ "$expect_restart" = "true" ]; then
+    log "$desc returned rc=$rc; this is expected during a salt upgrade (targets restart salt-minion mid-run). Waiting for them to reconnect before the tiered pass."
+  else
+    log "WARNING: $desc dispatch returned rc=$rc; nodes it missed will converge on the scheduled highstate"
+  fi
+}
+
+# Wait for the reachable minion set to recover to its pre-upgrade size and hold steady.
+# Used after the salt-upgrade pass, where targets restart salt-minion (~30s delayed, see
+# salt/salt/minion/init.sls) and drop off the bus before reconnecting on the new version.
+# target = how many minions were reachable just before the pass; requiring up >= target keeps
+# us from releasing the tiered pass while nodes are still down for their restart (settling on
+# the not-yet-restarted subset). We deliberately compare against the pre-upgrade reachable
+# count, not accepted keys, so a node an operator intentionally powered off never stalls us.
+# Bounded by SETTLE_MAX_WAIT.
+wait_for_settle() {
+  local target="$1"
+  local elapsed=0 prev=-1 stable=0 up=0
+  # Let the delayed salt-minion restart begin before we start counting stability, otherwise
+  # we could see the pre-restart set as "stable" and settle before the drop-off even happens.
+  sleep "$SETTLE_INITIAL_WAIT"
+  elapsed=$SETTLE_INITIAL_WAIT
+  while [ "$elapsed" -lt "$SETTLE_MAX_WAIT" ]; do
+    up=$(count_up); up=${up:-0}
+    if [ "$up" -ge "$target" ] && [ "$up" -eq "$prev" ]; then
+      stable=$((stable + 1))
+      [ "$stable" -ge "$SETTLE_STABLE_CHECKS" ] && break
+    else
+      stable=0
+    fi
+    prev=$up
+    sleep "$SETTLE_INTERVAL"
+    elapsed=$((elapsed + SETTLE_INTERVAL))
+  done
+  if [ "$up" -ge "$target" ]; then
+    log "fleet recovered to ${up} minions up (>= pre-upgrade ${target}) after ${elapsed}s"
+  else
+    log "WARNING: ${SETTLE_MAX_WAIT}s settle backstop hit; only ${up}/${target} pre-upgrade minions back up; proceeding (stragglers converge on the scheduled highstate)"
+  fi
+}
+
+# Pass 0: when Salt itself was upgraded, remote minions still on the old version only match
+# top.sls's 'not G@saltversion' block (salt.minion, which performs the package upgrade). Push
+# an untiered highstate so they upgrade+reconnect, then wait for them to come back before the
+# real tiered pass applies the new version's states.
+if [ "$SALT_UPGRADED" = "true" ]; then
+  PRE_UP=$(count_up); PRE_UP=${PRE_UP:-1}
+  log "pre-upgrade reachable minions (incl. this manager): $PRE_UP"
+  dispatch "salt-upgrade pass (all remote minions)" \
+    "[{\"highstate\": true, \"tgt\": \"not $MINIONID\", \"tgt_type\": \"compound\", \"batch\": \"$BATCH\", \"batch_wait\": $BATCH_WAIT}]" \
+    true
+  log "waiting for minions to reconnect on the new salt version"
+  wait_for_settle "$PRE_UP"
+fi
+
+# Tiered pass: Elasticsearch data nodes first, then receivers, then the remainder. The last
+# tier is defined as the complement of the earlier tiers (and of this manager) so coverage is
+# exhaustive -- sensors, fleet, idh, desktop, hypervisor, and any future role are all included.
+TIER_TGTS=(
+  "( *_searchnode or *_heavynode ) and not $MINIONID"
+  "*_receiver and not $MINIONID"
+  "not $MINIONID and not *_searchnode and not *_heavynode and not *_receiver"
+)
+
+# Count minions a compound target matches, using the master's key/cache data (no execution).
+tier_count() {
+  salt --out=json -C "$1" --preview-target 2>/dev/null | jq 'length' 2>/dev/null
+}
+
+# Build the actions JSON, including only tiers that actually match minions. An empty target
+# would make orch.push_batch's salt.state step return "No minions returned" -- a failure --
+# even though nothing needed to run, and grids commonly lack a tier (no receiver, etc.).
+# Keep the JSON on a single line: salt parses `pillar=<value>` kwargs with a non-DOTALL
+# regex, so an embedded newline makes it treat the whole token as a positional saltenv
+# instead ("No matching salt environment for environment 'pillar=...'").
+actions=""
+for tgt in "${TIER_TGTS[@]}"; do
+  n=$(tier_count "$tgt"); n=${n:-0}
+  if [ "$n" -ge 1 ]; then
+    [ -n "$actions" ] && actions="$actions, "
+    actions="$actions{\"highstate\": true, \"tgt\": \"$tgt\", \"tgt_type\": \"compound\", \"batch\": \"$BATCH\", \"batch_wait\": $BATCH_WAIT}"
+    log "tier matched $n minion(s): $tgt"
+  else
+    log "tier matched 0 minions, skipping: $tgt"
+  fi
+done
+
+if [ -z "$actions" ]; then
+  log "no remote minions matched any tier; nothing to push (reason=$REASON)"
+  exit 0
+fi
+dispatch "tiered pass (searchnodes/heavynodes -> receivers -> remainder)" "[$actions]"
+
+log "grid highstate complete (reason=$REASON)"
+exit 0

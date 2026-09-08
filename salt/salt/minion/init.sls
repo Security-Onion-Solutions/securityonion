@@ -87,27 +87,15 @@ set_log_levels:
 # so-boot-highstate.service (managed in salt.minion.boot_highstate), which
 # runs once per system boot only. Strip the line from /etc/salt/minion on
 # upgrade; both the commented and uncommented forms historically existed.
+# Ordered after mark_setup_complete (salt.minion.boot_highstate); the manager
+# gate there greps for this line, so it must run before we delete it.
 remove_startup_states:
   file.line:
     - name: /etc/salt/minion
     - match: 'startup_states: highstate'
     - mode: delete
-
-# Upgrade-path bridge: systems that already passed setup under the old gate
-# (`grep -x 'startup_states: highstate' /etc/salt/minion`) get a /opt/so/state/setup-complete
-# marker so so-boot-highstate.service can be enabled and the so-user_sync cron
-# in sync_es_users.sls keeps installing. Setup-in-progress systems instead get
-# the marker from `mark_setup_complete` in setup/so-functions at the right
-# moment. `replace: false` means we never overwrite a marker once written.
-mark_setup_complete_for_upgrades:
-  file.managed:
-    - name: /opt/so/state/setup-complete
-    - replace: false
-    - makedirs: True
-    - onlyif: "grep -qx 'startup_states: highstate' /etc/salt/minion"
-    - require_in:
-      - file: remove_startup_states
-      - service: so_boot_highstate_service
+    - require:
+      - file: mark_setup_complete
 
 {% endif %}
 

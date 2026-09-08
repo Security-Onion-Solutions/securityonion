@@ -138,6 +138,8 @@ function getinstallinfo() {
 		log "ERROR" "Failed to source install variables"
 		return 1
 	fi
+
+	log "INFO" "Fetched install info for $MINION_ID (node type: ${NODETYPE:-unset})"
 }
 
 function pcapspace() {
@@ -483,6 +485,7 @@ function add_sensoroni_with_analyze_to_minion() {
 
 # Sensor settings for the minion pillar
 function add_sensor_to_minion() {
+	log "INFO" "Writing sensor configuration for $MINION_ID (interface: ${INTERFACE:-unset})"
     {
         echo "sensor:"
         echo "  interface: '$INTERFACE'"
@@ -509,6 +512,8 @@ function add_sensor_to_minion() {
         log "ERROR" "Failed to add sensor configuration to $PILLARFILE"
         return 1
     fi
+
+	log "INFO" "Wrote sensor configuration for $MINION_ID"
 }
 
 function add_elastalert_to_minion() {
@@ -581,11 +586,14 @@ function add_telegraf_to_minion() {
     # generates a password on first add and is a no-op on re-add so the cred
     # is stable across repeated so-minion runs. postgres.telegraf_users on the
     # manager creates/updates the DB role from the same pillar.
-    so-telegraf-cred add "$MINION_ID"
-    if [ $? -ne 0 ]; then
-        log "ERROR" "Failed to provision postgres telegraf cred for $MINION_ID"
-        return 1
-    fi
+	log "INFO" "Provisioning postgres telegraf credential for $MINION_ID"
+	so-telegraf-cred add "$MINION_ID"
+	local result=$?
+	if [ $result -ne 0 ]; then
+		log "ERROR" "Failed to provision postgres telegraf cred for $MINION_ID (exit code: $result)"
+		return 1
+	fi
+	log "INFO" "Provisioned postgres telegraf credential for $MINION_ID"
 }
 
 function add_influxdb_to_minion() {
@@ -1043,7 +1051,7 @@ function updateMineAndApplyStates() {
 }
 
 function setupMinionFiles() {
-	log "INFO" "Setting up minion files for $MINION_ID"
+	log "INFO" "Setting up minion files for $MINION_ID (pillar: $PILLARFILE)"
 	
 	# Check to see if nodetype is set
 	if [ -z $NODETYPE ]; then
@@ -1069,7 +1077,10 @@ function setupMinionFiles() {
 	fi
 
 	# Create node-specific configuration
-	create$NODETYPE || return 1
+	create$NODETYPE || {
+		log "ERROR" "Failed to create $NODETYPE configuration for $MINION_ID"
+		return 1
+	}
 	
 	# Ensure proper ownership after all content is written
 	ensure_socore_ownership || return 1
