@@ -1,4 +1,4 @@
-### 3.3.0-20260908 ISO image released on 2026/07/29
+### 3.3.0-20260908 ISO image released on 2026/09/08
 
 
 ### Download and Verify
