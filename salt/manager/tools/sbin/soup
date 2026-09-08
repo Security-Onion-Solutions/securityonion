@@ -1050,6 +1050,12 @@ post_to_3.2.0() {
 up_to_3.3.0() {
   # download 9.4.5 elastic agent packages
   determine_elastic_agent_upgrade
+  
+  # remove existing (patched) elasticsearch index template to match integration naming change
+  if ! remove_elasticsearch_index_template "so-logs-sentinel_one_cloud_funnel.login" "sentinel_one_cloud_funnel.login changed to sentinel_one_cloud_funnel.logins"; then
+    FINAL_MESSAGE_QUEUE+=("WARNING: Unable to automatically remove the so-logs-sentinel_one_cloud_funnel.login index template. This step can be performed manually using the following command:")
+    FINAL_MESSAGE_QUEUE+=("    - sudo so-elasticsearch-query _index_template/so-logs-sentinel_one_cloud_funnel.login -XDELETE && so-checkin")
+  fi
 
   INSTALLEDVERSION=3.3.0
 }
