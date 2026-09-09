@@ -1,8 +1,26 @@
 {% import_yaml 'docker/defaults.yaml' as DOCKERDEFAULTS %}
 {% set DOCKERMERGED = salt['pillar.get']('docker', DOCKERDEFAULTS.docker, merge=True) %}
-{% set RANGESPLIT = DOCKERMERGED.range.split('.') %}
-{% set FIRSTTHREE = RANGESPLIT[0] ~ '.' ~ RANGESPLIT[1] ~ '.' ~ RANGESPLIT[2] ~ '.' %}
+
+{% if DOCKERMERGED.networks.sobridge is not mapping %}
+{%   do DOCKERMERGED.networks.update({'sobridge': {}}) %}
+{% endif %}
+{% do DOCKERMERGED.networks['sobridge'].update({'range': DOCKERMERGED.range, 'gateway': DOCKERMERGED.gateway}) %}
+
+{% for netname, net in DOCKERMERGED.networks.items() %}
+{%   set RANGESPLIT = net.range.split('.') %}
+{%   do net.update({'prefix': RANGESPLIT[0] ~ '.' ~ RANGESPLIT[1] ~ '.' ~ RANGESPLIT[2] ~ '.'}) %}
+{% endfor %}
 
 {% for container, vals in DOCKERMERGED.containers.items() %}
-{%   do DOCKERMERGED.containers[container].update({'ip': FIRSTTHREE ~ DOCKERMERGED.containers[container].final_octet}) %}
+{%   set CONTAINER_NETS = vals.get('networks', ['sobridge']) %}
+{%   set IPS = {} %}
+{%   for netname in CONTAINER_NETS %}
+{%     do IPS.update({netname: DOCKERMERGED.networks[netname].prefix ~ vals.final_octet}) %}
+{%   endfor %}
+{%   do DOCKERMERGED.containers[container].update({
+         'networks': CONTAINER_NETS,
+         'ips': IPS,
+         'network': CONTAINER_NETS[0],
+         'ip': IPS[CONTAINER_NETS[0]]
+       }) %}
 {% endfor %}

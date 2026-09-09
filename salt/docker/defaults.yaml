@@ -1,6 +1,12 @@
 docker:
   range: '172.17.1.0/24'
   gateway: '172.17.1.1'
+  networks:
+    sobridge: {}
+    soauth:
+      range: '172.17.2.0/24'
+      gateway: '172.17.2.1'
+      manager_only: True
   ulimits:
     - name: nofile
       soft: 1048576
@@ -58,9 +64,9 @@ docker:
       ulimits: []
     'so-kratos':
       final_octet: 28
+      networks: ['soauth']
       port_bindings:
         - 0.0.0.0:4433:4433
-        - 0.0.0.0:4434:4434
       custom_bind_mounts: []
       extra_hosts: []
       extra_env: []
@@ -128,6 +134,7 @@ docker:
       ulimits: []
     'so-soc':
       final_octet: 34
+      networks: ['sobridge', 'soauth']
       port_bindings:
         - 0.0.0.0:9822:9822
       custom_bind_mounts: []

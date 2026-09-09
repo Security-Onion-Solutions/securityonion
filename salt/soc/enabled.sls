@@ -23,7 +23,9 @@ so-soc:
     - name: so-soc
     - networks:
       - sobridge:
-        - ipv4_address: {{ DOCKERMERGED.containers['so-soc'].ip }}
+        - ipv4_address: {{ DOCKERMERGED.containers['so-soc'].ips['sobridge'] }}
+      - soauth:
+        - ipv4_address: {{ DOCKERMERGED.containers['so-soc'].ips['soauth'] }}
     - binds:
       - /nsm/rules:/nsm/rules:rw
       - /opt/so/conf/strelka:/opt/sensoroni/yara:rw
