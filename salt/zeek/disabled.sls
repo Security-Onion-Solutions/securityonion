@@ -9,9 +9,19 @@
 include:
   - zeek.sostatus
   
+# Stop first so the entrypoint's SIGTERM trap can archive the final logs; docker_container.absent
+# with force is a 'docker rm -f', which never delivers SIGTERM. force stays so the state still
+# converges if the stop overruns.
+so-zeek_stopped:
+  docker_container.stopped:
+    - name: so-zeek
+    - error_on_absent: False
+
 so-zeek:
   docker_container.absent:
     - force: True
+    - require:
+      - docker_container: so-zeek_stopped
 
 so-zeek_so-status.disabled:
   file.comment:
