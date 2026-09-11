@@ -3,7 +3,7 @@
 
 ### Download and Verify
 
-3.3.0-20260911ISO image:  
+3.3.0-20260911 ISO image:  
 https://download.securityonion.net/file/securityonion/securityonion-3.3.0-20260911.iso
  
 MD5: 12B18433D3A2198A185892FF79CF638F  
