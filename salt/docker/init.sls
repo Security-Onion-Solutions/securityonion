@@ -71,15 +71,19 @@ dockerreserveports:
     - source: salt://common/files/99-reserved-ports.conf
     - name: /etc/sysctl.d/99-reserved-ports.conf
 
-sos_docker_net:
+{% for NETNAME, NETWORK in DOCKERMERGED.networks.items() %}
+{% if not NETWORK.get('manager_only') or GLOBALS.get('is_manager', False) %}
+sos_docker_net_{{ NETNAME }}:
   docker_network.present:
-    - name: sobridge
-    - subnet: {{ DOCKERMERGED.range }}
-    - gateway: {{ DOCKERMERGED.gateway }}
+    - name: {{ NETNAME }}
+    - subnet: {{ NETWORK.range }}
+    - gateway: {{ NETWORK.gateway }}
     - options:
-        com.docker.network.bridge.name: 'sobridge'
+        com.docker.network.bridge.name: '{{ NETNAME }}'
         com.docker.network.driver.mtu: '1500'
         com.docker.network.bridge.enable_ip_masquerade: 'true'
         com.docker.network.bridge.enable_icc: 'true'
         com.docker.network.bridge.host_binding_ipv4: '0.0.0.0'
-    - unless: ip l | grep sobridge
+    - unless: ip l | grep {{ NETNAME }}
+{% endif %}
+{% endfor %}

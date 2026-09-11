@@ -28,6 +28,7 @@ INSTALLEDSALTVERSION=$(salt --versions-report | grep Salt: | awk '{print $2}')
 # percentage like "25%"). Empty means so-soup-grid-highstate uses the salt:auto_apply:batch
 # pillar default.
 BATCHSIZE=
+DEFAULT_DOCKER_RANGE='172.17.1.0/24'
 SOUP_LOG=/root/soup.log
 SOUP_DEBUG_LOG=/root/soup-debug.log
 WHATWOULDYOUSAYYAHDOHERE=soup
@@ -605,6 +606,7 @@ preupgrade_changes() {
     [[ "$INSTALLEDVERSION" == "3.0.0" ]] && up_to_3.1.0
     [[ "$INSTALLEDVERSION" == "3.1.0" ]] && up_to_3.2.0
     [[ "$INSTALLEDVERSION" == "3.2.0" ]] && up_to_3.3.0
+    [[ "$INSTALLEDVERSION" == "3.3.0" ]] && up_to_3.4.0
     true
 }
 
@@ -623,6 +625,7 @@ postupgrade_changes() {
     [[ "$POSTVERSION" == "3.0.0" ]] && post_to_3.1.0
     [[ "$POSTVERSION" == "3.1.0" ]] && post_to_3.2.0
     [[ "$POSTVERSION" == "3.2.0" ]] && post_to_3.3.0
+    [[ "$POSTVERSION" == "3.3.0" ]] && post_to_3.4.0
     # All applicable post-upgrade steps completed; clear the resume marker.
     rm -f "$POSTVERSION_FILE"
     true
@@ -1172,6 +1175,82 @@ post_to_3.3.0() {
   set_postversion 3.3.0
 }
 ### 3.3.0 End ###
+
+### 3.4.0 Scripts ###
+up_to_3.4.0() {
+  set_soauth_range
+
+  echo "Removing so-kratos and so-soc so they are recreated on the soauth network."
+  docker rm -f so-kratos so-soc >> $SOUP_LOG 2>&1
+
+  INSTALLEDVERSION=3.4.0
+}
+
+set_soauth_range() {
+  local pillar_file=/opt/so/saltstack/local/pillar/docker/soc_docker.sls
+  local current_range suggested authnet authgw input
+
+  [[ -f "$pillar_file" ]] || return 0
+
+  current_range=$(so-yaml.py get -r "$pillar_file" docker.range 2>/dev/null) || return 0
+
+  # A default range gets the 172.17.2.0/24 from docker/defaults.yaml, same as a fresh
+  # install, so there is nothing to ask about.
+  [[ -n "$current_range" && "$current_range" != "$DEFAULT_DOCKER_RANGE" ]] || return 0
+
+  if so-yaml.py get -r "$pillar_file" docker.networks.soauth.range >/dev/null 2>&1; then
+    return 0
+  fi
+
+  suggested=$(echo "${current_range%%/*}" | awk -F'.' '{ printf "%s.%s.%s.%s", $1, $2, ($3 + 1) % 256, $4 }')
+
+  if [[ -z $UNATTENDED ]]; then
+    echo ""
+    echo "This grid uses a custom Docker range ($current_range). The authentication"
+    echo "services are moving to their own isolated network, which needs a second /24"
+    echo "that does not overlap it."
+    echo ""
+    while :; do
+      read -rp "Enter the network without the /24 suffix, or press Enter for ${suggested}: " input
+      [[ -z "$input" ]] && input="$suggested"
+      if valid_soauth_range "$input" "$current_range"; then
+        authnet="$input"
+        break
+      fi
+      echo "That range must be a valid IPv4 network, must not be within 172.17.0.0/24, and must not overlap ${current_range}."
+    done
+  else
+    if ! valid_soauth_range "$suggested" "$current_range"; then
+      FINAL_MESSAGE_QUEUE+=("WARNING: Unable to pick a range for the authentication network alongside $current_range. Set it manually before the next highstate:")
+      FINAL_MESSAGE_QUEUE+=("    - so-yaml.py add $pillar_file docker.networks.soauth.range <network>/24")
+      FINAL_MESSAGE_QUEUE+=("    - so-yaml.py add $pillar_file docker.networks.soauth.gateway <gateway>")
+      return 0
+    fi
+    authnet="$suggested"
+    FINAL_MESSAGE_QUEUE+=("NOTE: The authentication services moved to an isolated Docker network and were assigned ${authnet}/24.")
+    FINAL_MESSAGE_QUEUE+=("    - If that conflicts with your environment, update docker.networks.soauth in $pillar_file and run so-checkin.")
+  fi
+
+  authgw=$(echo "$authnet" | awk -F'.' '{print $1,$2,$3,1}' OFS='.')
+
+  echo "Assigning the authentication network the range ${authnet}/24."
+  so-yaml.py add "$pillar_file" docker.networks.soauth.range "${authnet}/24" >> $SOUP_LOG 2>&1
+  so-yaml.py add "$pillar_file" docker.networks.soauth.gateway "$authgw" >> $SOUP_LOG 2>&1
+}
+
+valid_soauth_range() {
+  local candidate=$1 docker_range=$2
+
+  valid_ip4 "$candidate" || return 1
+  [[ $candidate =~ ^172\.17\.0\. ]] && return 1
+  [[ "${candidate}/24" == "$docker_range" ]] && return 1
+  return 0
+}
+
+post_to_3.4.0() {
+  set_postversion 3.4.0
+}
+### 3.4.0 End ###
 
 
 repo_sync() {
