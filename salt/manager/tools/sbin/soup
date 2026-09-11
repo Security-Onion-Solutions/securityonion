@@ -120,6 +120,9 @@ check_err() {
       161)
         echo 'Required intermediate Elasticsearch upgrade not complete'
       ;;
+      162)
+        echo 'One or more Elastic Agent nodes do not support the x86-64-v3 CPU instruction set'
+      ;;
       170)
         echo "Intermediate upgrade completed successfully to $next_step_so_version, but next soup to Security Onion $originally_requested_so_version could not be started automatically."
         echo "Start soup again manually to continue the upgrade to Security Onion $originally_requested_so_version."
@@ -345,6 +348,83 @@ check_cluster_health() {
 
   printf "\nThe Elasticsearch cluster is not green. Resolve the cluster health issue so the cluster is green before running SOUP again.\n\n"
   exit 0
+}
+
+no_soup_for_you() {
+  echo ""
+  echo "No soup for you!"
+  exit 162
+}
+
+check_cpu_compatibility() {
+  # Roles running a container built from the so-elastic-agent image; mirrors the
+  # elasticagent and elasticfleet entries in salt/reactor/pillar_push_map.yaml.
+  local cpu_target='G@role:so-heavynode or G@role:so-eval or G@role:so-fleet or G@role:so-import or G@role:so-manager or G@role:so-managerhype or G@role:so-managersearch or G@role:so-standalone'
+  local expected_nodes cpu_results node result confirm
+  local -a unsupported=() offline=()
+
+  echo "Checking that Elastic Agent nodes support the x86-64-v3 CPU instruction set now required by Elastic."
+
+  if [[ "$SKIP_CPU_CHECK" == "true" ]]; then
+    printf "\nSkipping the x86-64-v3 CPU check because --skip-cpu-check was specified.\n\n"
+    return
+  fi
+
+  # Nodes that never answer are absent from the results, so diff against who should have.
+  expected_nodes=$(salt -C "$cpu_target" --preview-target --out=json 2>/dev/null | jq -r '.[]?') || true
+  if [[ -z "$expected_nodes" ]]; then
+    printf "\nCould not determine which nodes run the Elastic Agent, so the x86-64-v3 CPU check cannot run.\n"
+    no_soup_for_you
+  fi
+
+  cpu_results=$(salt -t 30 -C "$cpu_target" cmd.run "/lib64/ld-linux-x86-64.so.2 --help | grep x86-64-v3" --out=json 2>/dev/null) || true
+
+  while IFS= read -r node; do
+    [[ -z "$node" ]] && continue
+    result=$(jq -r --arg node "$node" '.[$node] // empty' <<< "$cpu_results" 2>/dev/null)
+    if [[ -z "$result" || "$result" == *"did not return"* ]]; then
+      offline+=("$node")
+    elif [[ "$result" != *"x86-64-v3 (supported"* ]]; then
+      # glibc appends "(supported, searched)" only when supported; the open paren keeps
+      # this from matching a future "(unsupported".
+      unsupported+=("$node")
+    fi
+  done <<< "$expected_nodes"
+
+  if [[ ${#unsupported[@]} -eq 0 && ${#offline[@]} -eq 0 ]]; then
+    printf "\nAll Elastic Agent nodes support x86-64-v3. We can proceed with SOUP.\n\n"
+    return
+  fi
+
+  echo ""
+  if [[ ${#unsupported[@]} -gt 0 ]]; then
+    echo "The following node(s) do NOT support the x86-64-v3 CPU instruction set:"
+    printf '  %s\n' "${unsupported[@]}"
+    echo ""
+    echo "Upstream Elastic now builds its binaries for x86-64-v3, so these nodes can no"
+    echo "longer run Elastic. Upgrading them WILL BREAK them."
+    echo ""
+  fi
+  if [[ ${#offline[@]} -gt 0 ]]; then
+    echo "The following node(s) did not respond and could not be checked:"
+    printf '  %s\n' "${offline[@]}"
+    echo ""
+    echo "These nodes are offline, so we cannot confirm they support x86-64-v3, which"
+    echo "upstream Elastic now requires."
+    echo ""
+  fi
+
+  if [[ -n $UNATTENDED ]]; then
+    echo "Unattended mode cannot prompt for an override. Re-run soup interactively, or pass --skip-cpu-check to bypass this check."
+    no_soup_for_you
+  fi
+
+  read -rp "Type 'override' to continue anyway, or press Enter to exit: " confirm
+  if [[ "${confirm,,}" == "override" ]]; then
+    printf "\nOverride accepted. Continuing at your own risk.\n\n"
+  else
+    no_soup_for_you
+  fi
 }
 
 check_fleet_server() {
@@ -1977,6 +2057,9 @@ main() {
 
   echo "Let's see if we need to update Security Onion."
   upgrade_check
+
+  check_cpu_compatibility
+
   upgrade_space
 
   echo "Verifying Elasticsearch version compatibility across the grid before upgrading."
@@ -2255,6 +2338,17 @@ fi
   echo "### soup has been served at $(date) ###"
 }
 
+SKIP_CPU_CHECK=false
+declare -a SOUP_ARGS=()
+for arg in "$@"; do
+  if [[ "$arg" == "--skip-cpu-check" ]]; then
+    SKIP_CPU_CHECK=true
+  else
+    SOUP_ARGS+=("$arg")
+  fi
+done
+set -- "${SOUP_ARGS[@]}"
+
 while getopts ":b:f:y" opt; do
   case ${opt} in
     b )
@@ -2278,7 +2372,7 @@ while getopts ":b:f:y" opt; do
       ISOLOC="$OPTARG"
     ;;
     \? )
-      echo "Usage: soup [-b] [-y] [-f <iso location>]"
+      echo "Usage: soup [-b] [-y] [-f <iso location>] [--skip-cpu-check]"
       exit 1
     ;;
     : )
