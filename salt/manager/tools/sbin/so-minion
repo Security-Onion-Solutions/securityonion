@@ -1078,6 +1078,9 @@ function updateMineAndApplyStates() {
 # Values end up in a Jinja-rendered pillar and in bash, and may come from the minion
 function validate_minion_vars() {
 	local error_msg=""
+	# Inline rather than valid_ip4: so-common is not installed yet when setup runs -o=setup
+	local octet='(25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])'
+	local ip4_re="^($octet\.){3}$octet$"
 
 	case "$NODETYPE" in
 		EVAL|STANDALONE|MANAGER|MANAGERSEARCH|MANAGERHYPE|IMPORT)
@@ -1092,7 +1095,7 @@ function validate_minion_vars() {
 	esac
 
 	if [[ -z "$error_msg" ]]; then
-		if ! valid_ip4 "$MAINIP"; then
+		if [[ ! "$MAINIP" =~ $ip4_re ]]; then
 			error_msg="Invalid MAINIP: ${MAINIP:0:64}"
 		elif [[ ! "$MNIC" =~ ^[A-Za-z0-9._-]*$ ]]; then
 			error_msg="Invalid MNIC: ${MNIC:0:64}"
