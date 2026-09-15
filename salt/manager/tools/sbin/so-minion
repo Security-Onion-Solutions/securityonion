@@ -121,8 +121,14 @@ for i in "$@"; do
 	esac
 done
 
-PILLARFILE=/opt/so/saltstack/local/pillar/minions/$MINION_ID.sls
-ADVPILLARFILE=/opt/so/saltstack/local/pillar/minions/adv_$MINION_ID.sls
+if [[ -n "$MINION_ID" && ! "$MINION_ID" =~ ^[A-Za-z0-9._-]{1,253}$ ]]; then
+	echo "Invalid minion id: $MINION_ID"
+	log "ERROR" "Invalid minion id: $MINION_ID"
+	exit 1
+fi
+
+readonly PILLARFILE=/opt/so/saltstack/local/pillar/minions/$MINION_ID.sls
+readonly ADVPILLARFILE=/opt/so/saltstack/local/pillar/minions/adv_$MINION_ID.sls
 
 function getinstallinfo() {
 	log "INFO" "Getting install info for minion $MINION_ID"
@@ -133,10 +139,23 @@ function getinstallinfo() {
 		return 1
 	fi
 
-	while read -r var; do export "$var"; done <<< "$INSTALLVARS"
-	if [ $? -ne 0 ]; then
-		log "ERROR" "Failed to source install variables"
-		return 1
+	# install.txt is controlled by the minion; only accept known keys and never eval or export them
+	local line key
+	while IFS= read -r line; do
+		[[ "$line" == *=* ]] || continue
+		key=${line%%=*}
+		case "$key" in
+			MAINIP|MNIC|NODE_DESCRIPTION|ES_HEAP_SIZE|PATCHSCHEDULENAME|INTERFACE|NODETYPE|CORECOUNT|LSHOSTNAME|LSHEAP|CPUCORES|IDH_MGTRESTRICT|IDH_SERVICES)
+				printf -v "$key" '%s' "${line#*=}"
+				;;
+			*)
+				log "WARN" "Ignoring unexpected install var from $MINION_ID: ${key:0:64}"
+				;;
+		esac
+	done <<< "$INSTALLVARS"
+
+	if [[ "$NODE_DESCRIPTION" == \'*\' ]]; then
+		NODE_DESCRIPTION=${NODE_DESCRIPTION:1:-1}
 	fi
 
 	log "INFO" "Fetched install info for $MINION_ID (node type: ${NODETYPE:-unset})"
@@ -174,6 +193,12 @@ function pcapspace() {
 		else
 			local SPACESIZE=$NSMSIZE
 		fi
+	fi
+
+	# Must be checked before arithmetic expansion, which evaluates array subscripts
+	if [[ ! "$SPACESIZE" =~ ^[0-9]+$ ]]; then
+		log "ERROR" "Invalid disk size for $MINION_ID: ${SPACESIZE:0:64}"
+		return 1
 	fi
 
 	local s=$(( $SPACESIZE / 1000000 ))
@@ -1050,6 +1075,54 @@ function updateMineAndApplyStates() {
 	fi
 }
 
+# Values end up in a Jinja-rendered pillar and in bash, and may come from the minion
+function validate_minion_vars() {
+	local error_msg=""
+
+	case "$NODETYPE" in
+		EVAL|STANDALONE|MANAGER|MANAGERSEARCH|MANAGERHYPE|IMPORT)
+			# Manager pillars also rewrite the CA pillar, so never accept them from a remote node
+			[[ "$OPERATION" == "setup" ]] || error_msg="Node type $NODETYPE can only be configured during setup"
+			;;
+		FLEET|IDH|HEAVYNODE|SENSOR|SEARCHNODE|RECEIVER|HYPERVISOR|DESKTOP)
+			;;
+		*)
+			error_msg="Invalid node type: ${NODETYPE:0:64}"
+			;;
+	esac
+
+	if [[ -z "$error_msg" ]]; then
+		if ! valid_ip4 "$MAINIP"; then
+			error_msg="Invalid MAINIP: ${MAINIP:0:64}"
+		elif [[ ! "$MNIC" =~ ^[A-Za-z0-9._-]*$ ]]; then
+			error_msg="Invalid MNIC: ${MNIC:0:64}"
+		elif [[ ! "$INTERFACE" =~ ^[A-Za-z0-9._-]*$ ]]; then
+			error_msg="Invalid INTERFACE: ${INTERFACE:0:64}"
+		elif [[ ! "$LSHOSTNAME" =~ ^[A-Za-z0-9._-]*$ ]]; then
+			error_msg="Invalid LSHOSTNAME: ${LSHOSTNAME:0:64}"
+		elif [[ ! "$ES_HEAP_SIZE" =~ ^([0-9]+[kKmMgG]?)?$ ]]; then
+			error_msg="Invalid ES_HEAP_SIZE: ${ES_HEAP_SIZE:0:64}"
+		elif [[ ! "$LSHEAP" =~ ^([0-9]+[kKmMgG]?)?$ ]]; then
+			error_msg="Invalid LSHEAP: ${LSHEAP:0:64}"
+		elif [[ ! "$CORECOUNT" =~ ^[0-9]*$ ]]; then
+			error_msg="Invalid CORECOUNT: ${CORECOUNT:0:64}"
+		elif [[ ! "$CPUCORES" =~ ^[0-9]*$ ]]; then
+			error_msg="Invalid CPUCORES: ${CPUCORES:0:64}"
+		elif [[ ! "$IDH_MGTRESTRICT" =~ ^(True|False)?$ ]]; then
+			error_msg="Invalid IDH_MGTRESTRICT: ${IDH_MGTRESTRICT:0:64}"
+		fi
+	fi
+
+	if [[ -n "$error_msg" ]]; then
+		log "ERROR" "$error_msg"
+		echo "$error_msg"
+		return 1
+	fi
+
+	# Free text; removing braces is enough to prevent any Jinja delimiter
+	NODE_DESCRIPTION=${NODE_DESCRIPTION//[\{\}[:cntrl:]]/}
+}
+
 function setupMinionFiles() {
 	log "INFO" "Setting up minion files for $MINION_ID (pillar: $PILLARFILE)"
 	
@@ -1060,6 +1133,8 @@ function setupMinionFiles() {
 		echo "$error_msg"
 		return 1
 	fi
+
+	validate_minion_vars || return 1
 
 	# Create the base minion files
 	create_minion_files || return 1
