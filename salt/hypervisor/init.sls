@@ -21,12 +21,16 @@ hypervisor_sbin:
   file.recurse:
     - name: /usr/sbin
     - source: salt://hypervisor/tools/sbin
+    - user: root
+    - group: root
     - file_mode: 744
 
 hypervisor_sbin_jinja:
   file.recurse:
     - name: /usr/sbin
     - source: salt://hypervisor/tools/sbin_jinja
+    - user: root
+    - group: root
     - template: jinja
     - file_mode: 744
 

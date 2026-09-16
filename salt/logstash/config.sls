@@ -40,8 +40,8 @@ logstash_sbin:
   file.recurse:
     - name: /usr/sbin
     - source: salt://logstash/tools/sbin
-    - user: 931
-    - group: 939
+    - user: root
+    - group: root
     - file_mode: 755
 
 #logstash_sbin_jinja:

@@ -117,14 +117,25 @@ elastic_curl_config:
 {% endif %}
 
 
+# A non-root owner here can chmod the directory and replace any script in it, including
+# the root-owned ones. 555 is the mode the filesystem RPM ships; root ignores it anyway.
+usr_sbin_perms:
+  file.directory:
+    - name: /usr/sbin
+    - user: root
+    - group: root
+    - mode: 555
+
 common_sbin:
   file.recurse:
     - name: /usr/sbin
     - source: salt://common/tools/sbin
-    - user: 939
-    - group: 939
+    - user: root
+    - group: root
     - file_mode: 755
     - show_changes: False
+    - require:
+      - file: usr_sbin_perms
 {% if GLOBALS.role == 'so-heavynode' %}
     - exclude_pat:
       - so-pcap-import
@@ -159,8 +170,8 @@ common_sbin_jinja:
   file.recurse:
     - name: /usr/sbin
     - source: salt://common/tools/sbin_jinja
-    - user: 939
-    - group: 939 
+    - user: root
+    - group: root
     - file_mode: 755
     - template: jinja
     - show_changes: False
@@ -173,6 +184,8 @@ so-status_script:
   file.managed:
     - name: /usr/sbin/so-status
     - source: salt://common/tools/sbin/so-status
+    - user: root
+    - group: root
     - mode: 755
 
 {% if GLOBALS.is_sensor %}

@@ -31,8 +31,8 @@ elasticfleet_sbin:
   file.recurse:
     - name: /usr/sbin
     - source: salt://elasticfleet/tools/sbin
-    - user: 947
-    - group: 939
+    - user: root
+    - group: root
     - file_mode: 755
     - show_changes: False
 
@@ -40,8 +40,8 @@ elasticfleet_sbin_jinja:
   file.recurse:
     - name: /usr/sbin
     - source: salt://elasticfleet/tools/sbin_jinja
-    - user: 947
-    - group: 939 
+    - user: root
+    - group: root
     - file_mode: 755
     - template: jinja
     - exclude_pat:
@@ -81,8 +81,8 @@ eapackageupgrade:
   file.managed:
     - name: /usr/sbin/so-elastic-fleet-package-upgrade
     - source: salt://elasticfleet/tools/sbin_jinja/so-elastic-fleet-package-upgrade
-    - user: 947
-    - group: 939
+    - user: root
+    - group: root
     - mode: 755
     - template: jinja
 

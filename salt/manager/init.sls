@@ -113,8 +113,8 @@ manager_sbin:
   file.recurse:
     - name: /usr/sbin
     - source: salt://manager/tools/sbin
-    - user: 939
-    - group: 939
+    - user: root
+    - group: root
     - file_mode: 755
     - exclude_pat:
       - "*_test.py"
@@ -124,8 +124,8 @@ manager_sbin_jinja:
   file.recurse:
     - name: /usr/sbin/
     - source: salt://manager/tools/sbin_jinja/
-    - user: socore
-    - group: socore
+    - user: root
+    - group: root
     - file_mode: 755
     - template: jinja
     - show_changes: False

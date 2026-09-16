@@ -37,8 +37,8 @@ elasticsearch_sbin:
   file.recurse:
     - name: /usr/sbin
     - source: salt://elasticsearch/tools/sbin
-    - user: 930
-    - group: 939
+    - user: root
+    - group: root
     - file_mode: 755
     - exclude_pat:
       - so-elasticsearch-pipelines # exclude this because we need to watch it for changes, we sync it in another state
@@ -49,8 +49,8 @@ so-elasticsearch-system-indices-patch-script:
   file.managed:
     - name: /usr/sbin/so-elasticsearch-system-indices-patch
     - source: salt://elasticsearch/tools/sbin/so-elasticsearch-system-indices-patch
-    - user: 930
-    - group: 939
+    - user: root
+    - group: root
     - mode: 755
     - show_changes: False
 
@@ -58,8 +58,8 @@ elasticsearch_sbin_jinja:
   file.recurse:
     - name: /usr/sbin
     - source: salt://elasticsearch/tools/sbin_jinja
-    - user: 939
-    - group: 939 
+    - user: root
+    - group: root
     - file_mode: 755
     - template: jinja
     - exclude_pat:
@@ -72,8 +72,8 @@ so-elasticsearch-ilm-policy-load-script:
   file.managed:
     - name: /usr/sbin/so-elasticsearch-ilm-policy-load
     - source: salt://elasticsearch/tools/sbin_jinja/so-elasticsearch-ilm-policy-load
-    - user: 930
-    - group: 939
+    - user: root
+    - group: root
     - mode: 754
     - template: jinja
     - defaults:
@@ -84,8 +84,8 @@ so-elasticsearch-pipelines-script:
   file.managed:
     - name: /usr/sbin/so-elasticsearch-pipelines
     - source: salt://elasticsearch/tools/sbin/so-elasticsearch-pipelines
-    - user: 930
-    - group: 939
+    - user: root
+    - group: root
     - mode: 754
     - show_changes: False
 
