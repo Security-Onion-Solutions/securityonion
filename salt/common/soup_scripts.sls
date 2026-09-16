@@ -18,47 +18,61 @@ copy_so-common_common_tools_sbin:
     - name: /opt/so/saltstack/default/salt/common/tools/sbin/so-common
     - source: {{UPDATE_DIR}}/salt/common/tools/sbin/so-common
     - force: True
-    - preserve: True
+    - user: root
+    - group: root
+    - mode: 755
 
 copy_so-image-common_common_tools_sbin:
   file.copy:
     - name: /opt/so/saltstack/default/salt/common/tools/sbin/so-image-common
     - source: {{UPDATE_DIR}}/salt/common/tools/sbin/so-image-common
     - force: True
-    - preserve: True
+    - user: root
+    - group: root
+    - mode: 755
 
 copy_soup_manager_tools_sbin:
   file.copy:
     - name: /opt/so/saltstack/default/salt/manager/tools/sbin/soup
     - source: {{UPDATE_DIR}}/salt/manager/tools/sbin/soup
     - force: True
-    - preserve: True
+    - user: root
+    - group: root
+    - mode: 755
 
 copy_so-firewall_manager_tools_sbin:
   file.copy:
     - name: /opt/so/saltstack/default/salt/manager/tools/sbin/so-firewall
     - source: {{UPDATE_DIR}}/salt/manager/tools/sbin/so-firewall
     - force: True
-    - preserve: True
+    - user: root
+    - group: root
+    - mode: 755
 
 copy_so-yaml_manager_tools_sbin:
   file.copy:
     - name: /opt/so/saltstack/default/salt/manager/tools/sbin/so-yaml.py
     - source: {{UPDATE_DIR}}/salt/manager/tools/sbin/so-yaml.py
     - force: True
-    - preserve: True
+    - user: root
+    - group: root
+    - mode: 755
 
 copy_so-repo-sync_manager_tools_sbin:
   file.copy:
     - name: /opt/so/saltstack/default/salt/manager/tools/sbin/so-repo-sync
     - source: {{UPDATE_DIR}}/salt/manager/tools/sbin/so-repo-sync
-    - preserve: True
+    - user: root
+    - group: root
+    - mode: 755
 
 copy_bootstrap-salt_manager_tools_sbin:
   file.copy:
     - name: /opt/so/saltstack/default/salt/salt/scripts/bootstrap-salt.sh
     - source: {{UPDATE_DIR}}/salt/salt/scripts/bootstrap-salt.sh
-    - preserve: True
+    - user: root
+    - group: root
+    - mode: 644
 
 # This section is used to put the new script in place so that it can be called during soup.
 # It is faster than calling the states that normally manage them to put them in place.
@@ -67,46 +81,60 @@ copy_so-common_sbin:
     - name: /usr/sbin/so-common
     - source: {{UPDATE_DIR}}/salt/common/tools/sbin/so-common
     - force: True
-    - preserve: True
+    - user: root
+    - group: root
+    - mode: 755
 
 copy_so-image-common_sbin:
   file.copy:
     - name: /usr/sbin/so-image-common
     - source: {{UPDATE_DIR}}/salt/common/tools/sbin/so-image-common
     - force: True
-    - preserve: True
+    - user: root
+    - group: root
+    - mode: 755
 
 copy_soup_sbin:
   file.copy:
     - name: /usr/sbin/soup
     - source: {{UPDATE_DIR}}/salt/manager/tools/sbin/soup
     - force: True
-    - preserve: True
+    - user: root
+    - group: root
+    - mode: 755
 
 copy_so-firewall_sbin:
   file.copy:
     - name: /usr/sbin/so-firewall
     - source: {{UPDATE_DIR}}/salt/manager/tools/sbin/so-firewall
     - force: True
-    - preserve: True
+    - user: root
+    - group: root
+    - mode: 755
 
 copy_so-yaml_sbin:
   file.copy:
     - name: /usr/sbin/so-yaml.py
     - source: {{UPDATE_DIR}}/salt/manager/tools/sbin/so-yaml.py
     - force: True
-    - preserve: True
+    - user: root
+    - group: root
+    - mode: 755
 
 copy_so-repo-sync_sbin:
   file.copy:
     - name: /usr/sbin/so-repo-sync
     - source: {{UPDATE_DIR}}/salt/manager/tools/sbin/so-repo-sync
     - force: True
-    - preserve: True
+    - user: root
+    - group: root
+    - mode: 755
 
 copy_bootstrap-salt_sbin:
   file.copy:
     - name: /usr/sbin/bootstrap-salt.sh
     - source: {{UPDATE_DIR}}/salt/salt/scripts/bootstrap-salt.sh
     - force: True
-    - preserve: True
+    - user: root
+    - group: root
+    - mode: 755

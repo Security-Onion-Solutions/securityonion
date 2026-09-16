@@ -190,11 +190,15 @@ so_fleetagent_monitor:
   - month: '*'
   - dayweek: '*'
 
-socore_own_saltstack_default:
+# This tree is the source of every root-executed script (/usr/sbin, reactors, _runners,
+# engines, salt-relay.sh). SOC mounts /opt/so/saltstack rw as uid 939 but only writes
+# under local/. Do not add dir_mode/file_mode here -- SOC reads default/ and 750/640
+# would break its config load.
+root_own_saltstack_default:
   file.directory:
     - name: /opt/so/saltstack/default
-    - user: socore
-    - group: socore
+    - user: root
+    - group: root
     - recurse:
       - user
       - group
