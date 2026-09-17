@@ -1,6 +1,31 @@
 name: Security Onion Baseline Pipeline
 priority: 90
 transformations:
+    # ES|QL scalar == returns null on multivalued fields; the
+    # backend reads this key and emits MV_INTERSECTS instead.
+    - id: declare_multivalue_fields
+      type: set_state
+      key: multivalue_fields
+      val:
+        - event.type
+        - event.action
+        - event.category
+        - tags
+        - process.args
+        - related.ip
+        - dns.resolved_ip
+    - id: esql_default_index
+      type: set_state
+      key: index
+      val: .ds-logs-*
+    - id: esql_source_metadata
+      type: set_state
+      key: metadata
+      val: "_id, _index, _source"
+    - id: esql_source_keep
+      type: set_state
+      key: keep
+      val: "_id, _index, _source"
     - id: baseline_field_name_mapping
       type: field_name_mapping
       mapping:
