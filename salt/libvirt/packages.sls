@@ -29,16 +29,27 @@ install_libvirt-libs:
   pkg.installed:
     - name: libvirt-libs
 
+# Root pip-installs these below, so they cannot live under /opt/so/conf (939:939 mode 770):
+# write permission on that directory lets uid 939 swap the tree between this state and the
+# install. /opt/saltstack is root-owned, so the same trick does not work there.
 libvirt_python_wheel:
   file.recurse:
-    - name: /opt/so/conf/libvirt/source-packages/libvirt-python
+    - name: /opt/saltstack/source-packages/libvirt-python
     - source: salt://libvirt/source-packages/libvirt-python
+    - user: root
+    - group: root
+    - dir_mode: 755
+    - file_mode: 644
     - makedirs: True
     - clean: True
 
+old_libvirt_python_wheel:
+  file.absent:
+    - name: /opt/so/conf/libvirt/source-packages
+
 libvirt_python_module:
   cmd.run:
-    - name: /opt/saltstack/salt/bin/python3 -m pip install --no-index --find-links=/opt/so/conf/libvirt/source-packages/libvirt-python libvirt-python
+    - name: /opt/saltstack/salt/bin/python3 -m pip install --no-index --find-links=/opt/saltstack/source-packages/libvirt-python libvirt-python
     - onchanges:
       - file: libvirt_python_wheel
 
