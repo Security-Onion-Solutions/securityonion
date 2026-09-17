@@ -106,7 +106,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-hydraUrl=${HYDRA_URL:-http://127.0.0.1:4445}
+hydraContainer=${HYDRA_CONTAINER:-so-hydra}
+hydraUrl=${HYDRA_URL:-http://localhost:4445}
 socRolesFile=${SOC_ROLES_FILE:-/opt/so/conf/soc/soc_clients_roles}
 soUID=${SOCORE_UID:-939}
 soGID=${SOCORE_GID:-939}
@@ -124,6 +125,10 @@ function fail() {
   exit 1
 }
 
+function hydraCurl() {
+  docker exec -i "$hydraContainer" curl "$@"
+}
+
 function require() {
   cmd=$1
   which "$1" 2>&1 > /dev/null
@@ -133,8 +138,8 @@ function require() {
 # Verify this environment is capable of running this script
 function verifyEnvironment() {
   require "jq"
-  require "curl"
-  response=$(curl -Ss -L ${hydraUrl}/health/alive)
+  require "docker"
+  response=$(hydraCurl -Ss -L ${hydraUrl}/health/alive)
   [[ "$response" != '{"status":"ok"}' ]] && fail "Unable to communicate with Hydra; specify URL via HYDRA_URL environment variable"
 }
 
@@ -164,7 +169,7 @@ function ensureRoleFileExists() {
 }
 
 function listClients() {
-  response=$(curl -Ss -L -f ${hydraUrl}/admin/clients)
+  response=$(hydraCurl -Ss -L -f ${hydraUrl}/admin/clients)
   [[ $? != 0 ]] && fail "Unable to communicate with Hydra"
 
   clientIds=$(echo "${response}" | jq -r ".[] | .client_id" | sort)
@@ -251,7 +256,7 @@ function createClient() {
 EOF
   )
   
-  response=$(curl -Ss -L --fail-with-body -X POST ${hydraUrl}/admin/clients -d "$body")
+  response=$(hydraCurl -Ss -L --fail-with-body -X POST ${hydraUrl}/admin/clients -d "$body")
   if [[ $? != 0 ]]; then
     error=$(echo $response | jq .error)
     fail "Failed to submit request to Hydra: $error"
@@ -283,7 +288,7 @@ function update() {
 EOF
   )
   
-  response=$(curl -Ss -L --fail-with-body -X PATCH ${hydraUrl}/admin/clients/$id -d "$body")
+  response=$(hydraCurl -Ss -L --fail-with-body -X PATCH ${hydraUrl}/admin/clients/$id -d "$body")
   if [[ $? != 0 ]]; then
     error=$(echo $response | jq .error)
     fail "Failed to submit request to Hydra: $error"
@@ -305,7 +310,7 @@ function generateSecret() {
 EOF
   )
   
-  response=$(curl -Ss -L --fail-with-body -X PATCH ${hydraUrl}/admin/clients/$id -d "$body")
+  response=$(hydraCurl -Ss -L --fail-with-body -X PATCH ${hydraUrl}/admin/clients/$id -d "$body")
   if [[ $? != 0 ]]; then
     error=$(echo $response | jq .error)
     fail "Failed to submit request to Hydra: $error"
@@ -317,7 +322,7 @@ function deleteClient() {
 
   [[ ${identityId} == "" ]] && fail "Client not found"
 
-  response=$(curl -Ss -XDELETE -L --fail-with-body "${hydraUrl}/admin/clients/$identityId")
+  response=$(hydraCurl -Ss -XDELETE -L --fail-with-body "${hydraUrl}/admin/clients/$identityId")
   if [[ $? != 0 ]]; then
     error=$(echo $response | jq .error)
     fail "Failed to submit request to Hydra: $error"
