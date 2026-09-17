@@ -171,8 +171,8 @@ soc_sbin:
   file.recurse:
     - name: /usr/sbin
     - source: salt://soc/tools/sbin
-    - user: 939
-    - group: 939
+    - user: root
+    - group: root
     - file_mode: 755
 
 #soc_sbin_jinja:

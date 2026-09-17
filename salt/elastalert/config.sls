@@ -33,8 +33,8 @@ elastalert_sbin:
   file.recurse:
     - name: /usr/sbin
     - source: salt://elastalert/tools/sbin
-    - user: 933
-    - group: 939
+    - user: root
+    - group: root
     - file_mode: 755
 
 #elastalert_sbin_jinja:

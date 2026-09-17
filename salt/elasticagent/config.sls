@@ -39,8 +39,8 @@ elasticagent_sbin_jinja:
   file.recurse:
     - name: /usr/sbin
     - source: salt://elasticagent/tools/sbin_jinja
-    - user: 949
-    - group: 939
+    - user: root
+    - group: root
     - file_mode: 755
     - template: jinja
 
