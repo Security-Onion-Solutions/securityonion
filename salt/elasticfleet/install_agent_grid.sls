@@ -14,8 +14,8 @@ so-elastic-agent-install:
   file.managed:
     - name: /usr/sbin/so-elastic-agent-install
     - source: salt://elasticfleet/tools/sbin/so-elastic-agent-install
-    - user: 947
-    - group: 939
+    - user: root
+    - group: root
     - mode: 755
     - show_changes: False
 

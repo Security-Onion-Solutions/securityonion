@@ -64,8 +64,8 @@ sensoroni_sbin:
   file.recurse:
     - name: /usr/sbin
     - source: salt://sensoroni/tools/sbin
-    - user: 939
-    - group: 939
+    - user: root
+    - group: root
     - file_mode: 755
 
 #sensoroni_sbin_jinja:

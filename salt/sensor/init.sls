@@ -35,6 +35,8 @@ combine_bond_script:
   file.managed:
     - name: /usr/sbin/so-combine-bond
     - source: salt://sensor/tools/sbin_jinja/so-combine-bond
+    - user: root
+    - group: root
     - mode: 755
     - template: jinja
     - defaults:

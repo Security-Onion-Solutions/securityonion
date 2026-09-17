@@ -57,8 +57,8 @@ nginx_sbin:
   file.recurse:
     - name: /usr/sbin
     - source: salt://nginx/tools/sbin
-    - user: 939
-    - group: 939
+    - user: root
+    - group: root
     - file_mode: 755
 
 #nginx_sbin_jinja:

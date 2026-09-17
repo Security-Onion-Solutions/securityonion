@@ -6,6 +6,8 @@ so-fix-salt-ldap_script:
   file.managed:
     - name: /usr/sbin/so-fix-salt-ldap.py
     - source: salt://libvirt/64962/scripts/so-fix-salt-ldap.py
+    - user: root
+    - group: root
     - mode: 744
 
 fix-salt-ldap:
