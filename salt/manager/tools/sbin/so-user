@@ -129,7 +129,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-kratosUrl=${KRATOS_URL:-http://127.0.0.1:4434/admin}
+kratosContainer=${KRATOS_CONTAINER:-so-kratos}
+kratosUrl=${KRATOS_URL:-http://localhost:4434/admin}
 databasePath=${KRATOS_DB_PATH:-/nsm/kratos/db/db.sqlite}
 databaseTimeout=${KRATOS_DB_TIMEOUT:-5000}
 bcryptRounds=${BCRYPT_ROUNDS:-12}
@@ -154,6 +155,10 @@ function fail() {
   exit 1
 }
 
+function kratosCurl() {
+  docker exec -i "$kratosContainer" curl "$@"
+}
+
 function require() {
   cmd=$1
   which "$1" 2>&1 > /dev/null
@@ -164,18 +169,18 @@ function require() {
 function verifyEnvironment() {
   require "htpasswd"
   require "jq"
-  require "curl"
+  require "docker"
   require "openssl"
   require "sqlite3"
   [[ ! -f $databasePath ]] && fail "Unable to find database file; specify path via KRATOS_DB_PATH environment variable"
-  response=$(curl -Ss -L ${kratosUrl}/)
+  response=$(kratosCurl -Ss -L ${kratosUrl}/)
   [[ "$response" != "404 page not found" ]] && fail "Unable to communicate with Kratos; specify URL via KRATOS_URL environment variable"
 }
 
 function findIdByEmail() {
   email=${1,,}
 
-  response=$(curl -Ss -L ${kratosUrl}/identities)
+  response=$(kratosCurl -Ss -L ${kratosUrl}/identities)
   identityId=$(echo "${response}" | jq -r ".[] | select(.verifiable_addresses[0].value == \"$email\") | .id")
   echo $identityId
 }
@@ -416,7 +421,7 @@ function syncAll() {
 }
 
 function listUsers() {
-  response=$(curl -Ss -L ${kratosUrl}/identities)
+  response=$(kratosCurl -Ss -L ${kratosUrl}/identities)
   [[ $? != 0 ]] && fail "Unable to communicate with Kratos"
 
   users=$(echo "${response}" | jq -r ".[] | .verifiable_addresses[0].value" | sort)
@@ -495,7 +500,7 @@ function createUser() {
 EOF
   )
   
-  response=$(curl -Ss -L ${kratosUrl}/identities -d "$addUserJson")
+  response=$(kratosCurl -Ss -L ${kratosUrl}/identities -d "$addUserJson")
   [[ $? != 0 ]] && fail "Unable to communicate with Kratos"
 
   identityId=$(echo "${response}" | jq -r ".id")
@@ -518,7 +523,7 @@ function updateStatus() {
   identityId=$(findIdByEmail "$email")
   [[ ${identityId} == "" ]] && fail "User not found"
 
-  response=$(curl -Ss -L "${kratosUrl}/identities/$identityId")
+  response=$(kratosCurl -Ss -L "${kratosUrl}/identities/$identityId")
   [[ $? != 0 ]] && fail "Unable to communicate with Kratos"
 
   schemaId=$(echo "$response" | jq -r .schema_id)
@@ -531,7 +536,7 @@ function updateStatus() {
     state="inactive"
   fi
   body="{ \"schema_id\": \"$schemaId\", \"state\": \"$state\", \"traits\": $traitBlock }"
-  response=$(curl -fSsL -XPUT -H "Content-Type: application/json" "${kratosUrl}/identities/$identityId" -d "$body")
+  response=$(kratosCurl -fSsL -XPUT -H "Content-Type: application/json" "${kratosUrl}/identities/$identityId" -d "$body")
   [[ $? != 0 ]] && fail "Unable to update user"
 }
 
@@ -550,7 +555,7 @@ function updateUserProfile() {
   identityId=$(findIdByEmail "$email")
   [[ ${identityId} == "" ]] && fail "User not found"
 
-  response=$(curl -Ss -L "${kratosUrl}/identities/$identityId")
+  response=$(kratosCurl -Ss -L "${kratosUrl}/identities/$identityId")
   [[ $? != 0 ]] && fail "Unable to communicate with Kratos"
 
   schemaId=$(echo "$response" | jq -r .schema_id)
@@ -559,7 +564,7 @@ function updateUserProfile() {
   traitBlock="{\"email\":\"$email\",\"firstName\":\"$firstName\",\"lastName\":\"$lastName\",\"note\":\"$note\"}"
 
   body="{ \"schema_id\": \"$schemaId\", \"state\": \"$state\", \"traits\": $traitBlock }"
-  response=$(curl -fSsL -XPUT -H "Content-Type: application/json" "${kratosUrl}/identities/$identityId" -d "$body")
+  response=$(kratosCurl -fSsL -XPUT -H "Content-Type: application/json" "${kratosUrl}/identities/$identityId" -d "$body")
   [[ $? != 0 ]] && fail "Unable to update user"
 }
 
@@ -569,7 +574,7 @@ function deleteUser() {
   identityId=$(findIdByEmail "$email")
   [[ ${identityId} == "" ]] && fail "User not found"
 
-  response=$(curl -Ss -XDELETE -L "${kratosUrl}/identities/$identityId")
+  response=$(kratosCurl -Ss -XDELETE -L "${kratosUrl}/identities/$identityId")
   [[ $? != 0 ]] && fail "Unable to communicate with Kratos"
 
   rolesTmpFile="${socRolesFile}.tmp"

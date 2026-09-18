@@ -276,7 +276,18 @@ collect_dockernet() {
 			whiptail_invalid_input
 			whiptail_dockernet_sosnet "$DOCKERNET"
 		done
+
+		whiptail_authnet_sosnet "$(adjacent_net "$DOCKERNET")"
+
+		while ! valid_ip4 "$AUTHNET" || [[ $AUTHNET =~ "172.17.0." ]] || [[ "$AUTHNET" == "$DOCKERNET" ]]; do
+			whiptail_invalid_input
+			whiptail_authnet_sosnet "$AUTHNET"
+		done
 	fi
+}
+
+adjacent_net() {
+	echo "$1" | awk -F'.' '{ printf "%s.%s.%s.%s", $1, $2, ($3 + 1) % 256, $4 }'
 }
 
 collect_gateway() {
@@ -1399,6 +1410,15 @@ docker_pillar() {
 			"docker:"\
 			"  range: '$DOCKERNET/24'"\
 			"  gateway: '$DOCKERGATEWAY'" > $docker_pillar_file
+
+		if [ ! -z "$AUTHNET" ]; then
+			AUTHGATEWAY=$(echo $AUTHNET | awk -F'.' '{print $1,$2,$3,1}' OFS='.')
+			printf '%s\n'\
+				"  networks:"\
+				"    soauth:"\
+				"      range: '$AUTHNET/24'"\
+				"      gateway: '$AUTHGATEWAY'" >> $docker_pillar_file
+		fi
 	fi
 }
 

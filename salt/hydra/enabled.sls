@@ -26,8 +26,8 @@ so-hydra:
     - hostname: hydra
     - name: so-hydra
     - networks:
-      - sobridge:
-        - ipv4_address: {{ DOCKERMERGED.containers['so-hydra'].ip }}
+      - soauth:
+        - ipv4_address: {{ DOCKERMERGED.containers['so-hydra'].ips['soauth'] }}
     - binds:
       - /opt/so/conf/hydra/:/hydra-conf:ro
       - /opt/so/log/hydra/:/hydra-log:rw
@@ -73,7 +73,7 @@ delete_so-hydra_so-status.disabled:
 
 wait_for_hydra:
   http.wait_for_successful_query:
-    - name: 'http://{{ GLOBALS.manager }}:4444/health/alive'
+    - name: 'http://{{ DOCKERMERGED.containers['so-hydra'].ips['soauth'] }}:4444/health/alive'
     - ssl: True
     - verify_ssl: False
     - status:
