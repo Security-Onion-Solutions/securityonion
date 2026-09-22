@@ -23,8 +23,15 @@ NUM_RUNNING=$(pgrep -cf "/bin/bash /sbin/so-elastic-agent-gen-installers")
 for i in {1..30}
 do
    ENROLLMENTOKEN=$(elastic_fleet_active_enrollment_token "endpoints-initial")
+   TOKEN_RC=$?
+   if [ "$TOKEN_RC" -eq 2 ]; then
+     exit 1
+   fi
    FLEETHOST=$(curl -K /opt/so/conf/elasticsearch/curl.config 'http://localhost:5601/api/fleet/fleet_server_hosts/grid-default' | jq -r  '.item.host_urls[]' | paste -sd ',')
-if [[ $FLEETHOST ]] && [[  $ENROLLMENTOKEN ]]; then break; else sleep 10; fi
+   if [[ -n "$FLEETHOST" ]] && [[ -n "$ENROLLMENTOKEN" ]]; then
+     break
+   fi
+   sleep 10
 done
 
 if [[ -z "$FLEETHOST" ]] || [[ -z "$ENROLLMENTOKEN" ]]; then

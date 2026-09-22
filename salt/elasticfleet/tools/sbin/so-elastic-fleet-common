@@ -43,6 +43,9 @@ elastic_fleet_require_agent_policy() {
     echo "$POLICY_JSON"
 }
 
+# Print the single active enrollment token for POLICY_ID.
+# Exit 1: retryable (API failure, invalid response, no active token)
+# Exit 2: multiple active tokens - Shouldn't get into this state without manual intervention
 elastic_fleet_active_enrollment_token() {
     local POLICY_ID=$1
     local RESP TOKEN_COUNT API_KEY
@@ -66,7 +69,7 @@ elastic_fleet_active_enrollment_token() {
 
     if [ "$TOKEN_COUNT" -gt 1 ]; then
         echo "Error: Found $TOKEN_COUNT active enrollment tokens for agent policy '$POLICY_ID'; expected exactly one." >&2
-        return 1
+        return 2
     fi
 
     API_KEY=$(jq -r --arg pid "$POLICY_ID" '.list[] | select(.policy_id == $pid and .active == true) | .api_key' <<<"$RESP")
@@ -189,7 +192,16 @@ elastic_fleet_integration_remove() {
 
     NAME=$2
 
-    INTEGRATION_ID=$(/usr/sbin/so-elastic-fleet-agent-policy-view "$AGENT_POLICY" | jq -r '.item.package_policies[] | select(.name=="'"$NAME"'") | .id')
+    local POLICY_JSON
+    if ! POLICY_JSON=$(elastic_fleet_require_agent_policy "$AGENT_POLICY"); then
+        return 1
+    fi
+
+    INTEGRATION_ID=$(jq -r --arg n "$NAME" '.item.package_policies[]? | select(.name==$n) | .id' <<<"$POLICY_JSON")
+    if [ -z "$INTEGRATION_ID" ]; then
+        echo "Error: Integration '$NAME' was not found in agent policy '$AGENT_POLICY'." >&2
+        return 1
+    fi
 
     JSON_STRING=$( jq -n \
                     --arg INTEGRATIONID "$INTEGRATION_ID" \
