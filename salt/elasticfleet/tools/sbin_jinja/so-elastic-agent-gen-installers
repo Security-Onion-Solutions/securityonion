@@ -22,12 +22,12 @@ NUM_RUNNING=$(pgrep -cf "/bin/bash /sbin/so-elastic-agent-gen-installers")
 
 for i in {1..30}
 do
-   ENROLLMENTOKEN=$(curl -K /opt/so/conf/elasticsearch/curl.config -L "localhost:5601/api/fleet/enrollment_api_keys?perPage=100" -H 'kbn-xsrf: true' -H 'Content-Type: application/json'  | jq .list | jq -r -c '.[] | select(.policy_id | contains("endpoints-initial")) | .api_key')
+   ENROLLMENTOKEN=$(elastic_fleet_active_enrollment_token "endpoints-initial")
    FLEETHOST=$(curl -K /opt/so/conf/elasticsearch/curl.config 'http://localhost:5601/api/fleet/fleet_server_hosts/grid-default' | jq -r  '.item.host_urls[]' | paste -sd ',')
 if [[ $FLEETHOST ]] && [[  $ENROLLMENTOKEN ]]; then break; else sleep 10; fi
 done
 
-if [[ -z $FLEETHOST ]] || [[ -z $ENROLLMENTOKEN ]]; then 
+if [[ -z "$FLEETHOST" ]] || [[ -z "$ENROLLMENTOKEN" ]]; then
   printf "\nFleet Host URL, Enrollment Token or Elastic Version empty - exiting..."
   printf "\nFleet Host: $FLEETHOST, Enrollment Token: $ENROLLMENTOKEN\n"
   exit 1
@@ -67,19 +67,25 @@ for GOOS in "${GOTARGETOS[@]}"; do
     GOARCH="amd64"
     if [[ $GOOS == 'darwin/arm64' ]]; then GOOS="darwin" && GOARCH="arm64"; fi
     printf "\n\n### Generating $GOOS/$GOARCH Installer...\n"
-    docker run -e CGO_ENABLED=0 -e GOOS=$GOOS -e GOARCH=$GOARCH \
+    if ! docker run -e CGO_ENABLED=0 -e GOOS=$GOOS -e GOARCH=$GOARCH \
     --mount type=bind,source=/etc/pki/tls/certs/,target=/workspace/files/cert/ \
     --mount type=bind,source=/nsm/elastic-agent-workspace/,target=/workspace/files/elastic-agent/ \
     --mount type=bind,source=/opt/so/saltstack/local/salt/elasticfleet/files/,target=/output/ \
-    {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elastic-agent-builder:{{ GLOBALS.so_version }} go build -ldflags "-X main.fleetHostURLsList=$FLEETHOST -X main.enrollmentToken=$ENROLLMENTOKEN"  -o /output/so-elastic-agent_${GOOS}_${GOARCH}
+    {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elastic-agent-builder:{{ GLOBALS.so_version }} go build -ldflags "-X main.fleetHostURLsList=$FLEETHOST -X main.enrollmentToken=$ENROLLMENTOKEN"  -o /output/so-elastic-agent_${GOOS}_${GOARCH}; then
+        printf "\n### ERROR: Failed to generate $GOOS/$GOARCH installer. Exiting...\n"
+        exit 1
+    fi
     printf "\n### $GOOS/$GOARCH Installer Generated...\n"
 done
 
 printf "\n\n### Generating MSI...\n"
 cp /opt/so/saltstack/local/salt/elasticfleet/files/so-elastic-agent_windows_amd64 /opt/so/saltstack/local/salt/elasticfleet/files/so-elastic-agent_windows_amd64.exe
-docker run \
+if ! docker run \
 --mount type=bind,source=/opt/so/saltstack/local/salt/elasticfleet/files/,target=/output/ -w /output \
-{{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elastic-agent-builder:{{ GLOBALS.so_version }} wixl -o so-elastic-agent_windows_amd64_msi --arch x64 /workspace/so-elastic-agent.wxs
+{{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-elastic-agent-builder:{{ GLOBALS.so_version }} wixl -o so-elastic-agent_windows_amd64_msi --arch x64 /workspace/so-elastic-agent.wxs; then
+    printf "\n### ERROR: Failed to generate MSI. Exiting...\n"
+    exit 1
+fi
 printf "\n### MSI Generated...\n"
 
 # Verify installers were created
