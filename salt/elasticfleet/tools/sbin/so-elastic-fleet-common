@@ -34,8 +34,12 @@ elastic_fleet_require_agent_policy() {
     local AGENT_POLICY=$1
     local POLICY_JSON
 
-    POLICY_JSON=$(fleet_api "agent_policies/$AGENT_POLICY")
-    if ! jq -e '.item.package_policies' <<<"$POLICY_JSON" >/dev/null 2>&1; then
+    if ! POLICY_JSON=$(fleet_api "agent_policies/$AGENT_POLICY") || [ -z "$POLICY_JSON" ]; then
+        echo "Error: Agent policy '$AGENT_POLICY' was not found or is not visible in the current Kibana space." >&2
+        return 1
+    fi
+
+    if ! jq -e '.item.package_policies | type == "array"' <<<"$POLICY_JSON" >/dev/null 2>&1; then
         echo "Error: Agent policy '$AGENT_POLICY' was not found or is not visible in the current Kibana space." >&2
         return 1
     fi
