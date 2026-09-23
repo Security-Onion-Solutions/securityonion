@@ -7,20 +7,35 @@
 . /usr/sbin/so-elastic-fleet-common
 
 # Get all the fleet policies
-json_output=$(curl -s -K /opt/so/conf/elasticsearch/curl.config -L -X GET "localhost:5601/api/fleet/agent_policies" -H 'kbn-xsrf: true')
+if ! json_output=$(fleet_api "agent_policies" -H 'kbn-xsrf: true'); then
+    echo "Error: Failed to retrieve Fleet agent policies." >&2
+    exit 1
+fi
+
+if ! jq -e '.items' <<<"$json_output" >/dev/null 2>&1; then
+    echo "Error: Invalid Fleet agent policies response." >&2
+    exit 1
+fi
 
 # Extract the IDs that start with "FleetServer_"
-POLICY=$(echo "$json_output" | jq -r '.items[] | select(.id | startswith("FleetServer_")) | .id')
+POLICY=$(jq -r '.items[] | select(.id | startswith("FleetServer_")) | .id' <<<"$json_output")
 
 # Iterate over each ID in the POLICY variable
 for POLICYNAME in $POLICY; do
     printf "\nUpdating Policy: $POLICYNAME\n"
 
-    # First get the Integration ID
-    INTEGRATION_ID=$(/usr/sbin/so-elastic-fleet-agent-policy-view "$POLICYNAME" | jq -r '.item.package_policies[] | select(.package.name == "fleet_server") | .id')  
+    if ! POLICY_JSON=$(elastic_fleet_require_agent_policy "$POLICYNAME"); then
+        exit 1
+    fi
+
+    INTEGRATION_ID=$(jq -r '.item.package_policies[]? | select(.package.name == "fleet_server") | .id' <<<"$POLICY_JSON")
+    if [ -z "$INTEGRATION_ID" ]; then
+        echo "Error: fleet_server integration was not found in agent policy '$POLICYNAME'." >&2
+        exit 1
+    fi
 
     # Modify the default integration policy to update the policy_id and an with the correct naming
-	UPDATED_INTEGRATION_POLICY=$(jq --arg policy_id "$POLICYNAME" --arg name "fleet_server-$POLICYNAME" '
+    UPDATED_INTEGRATION_POLICY=$(jq --arg policy_id "$POLICYNAME" --arg name "fleet_server-$POLICYNAME" '
     .policy_id = $policy_id |
     .name = $name' /opt/so/conf/elastic-fleet/integrations/fleet-server/fleet-server.json)
 

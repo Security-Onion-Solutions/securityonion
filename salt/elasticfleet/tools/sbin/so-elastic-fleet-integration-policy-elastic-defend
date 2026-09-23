@@ -13,7 +13,10 @@ ERROR=false
 for INTEGRATION in /opt/so/conf/elastic-fleet/integrations/elastic-defend/*.json
 do
   printf "\n\nInitial Endpoints Policy - Loading $INTEGRATION\n"
-  elastic_fleet_integration_check "endpoints-initial" "$INTEGRATION"
+  if ! elastic_fleet_integration_check "endpoints-initial" "$INTEGRATION"; then
+    ERROR=true
+    continue
+  fi
   if [ -n "$INTEGRATION_ID" ]; then
       printf "\n\nIntegration $NAME exists - Upgrading integration policy\n"
       if ! elastic_fleet_integration_policy_upgrade "$INTEGRATION_ID"; then

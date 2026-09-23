@@ -202,26 +202,9 @@ fi
 ### Finalization ###
 
 # Query for Enrollment Tokens for default policies
-if ENDPOINTSENROLLMENTOKEN_RAW=$(fleet_api "enrollment_api_keys" -H 'kbn-xsrf: true' -H 'Content-Type: application/json'); then
-    ENDPOINTSENROLLMENTOKEN=$(echo "$ENDPOINTSENROLLMENTOKEN_RAW" | jq .list | jq -r -c '.[] | select(.policy_id | contains("endpoints-initial")) | .api_key')
-else
-    echo -e "\nFailed to query for Endpoints enrollment token"
-    exit 1
-fi
-
-if GRIDNODESENROLLMENTOKENGENERAL_RAW=$(fleet_api "enrollment_api_keys" -H 'kbn-xsrf: true' -H 'Content-Type: application/json'); then
-    GRIDNODESENROLLMENTOKENGENERAL=$(echo "$GRIDNODESENROLLMENTOKENGENERAL_RAW" | jq .list | jq -r -c '.[] | select(.policy_id | contains("so-grid-nodes_general")) | .api_key')
-else
-    echo -e "\nFailed to query for Grid nodes - General enrollment token"
-    exit 1
-fi
-
-if GRIDNODESENROLLMENTOKENHEAVY_RAW=$(fleet_api "enrollment_api_keys" -H 'kbn-xsrf: true' -H 'Content-Type: application/json'); then
-    GRIDNODESENROLLMENTOKENHEAVY=$(echo "$GRIDNODESENROLLMENTOKENHEAVY_RAW" | jq .list | jq -r -c '.[] | select(.policy_id | contains("so-grid-nodes_heavy")) | .api_key')
-else
-    echo -e "\nFailed to query for Grid nodes - Heavy enrollment token"
-    exit 1
-fi
+ENDPOINTSENROLLMENTOKEN=$(elastic_fleet_active_enrollment_token "endpoints-initial") || exit 1
+GRIDNODESENROLLMENTOKENGENERAL=$(elastic_fleet_active_enrollment_token "so-grid-nodes_general") || exit 1
+GRIDNODESENROLLMENTOKENHEAVY=$(elastic_fleet_active_enrollment_token "so-grid-nodes_heavy") || exit 1
 
 # Store needed data in minion pillar
 pillar_file=/opt/so/saltstack/local/pillar/minions/{{ GLOBALS.minion_id }}.sls
