@@ -66,7 +66,7 @@ elastic_fleet_active_enrollment_token() {
 
     TOKEN_COUNT=$(jq --arg pid "$POLICY_ID" '[.list[] | select(.policy_id == $pid and .active == true)] | length' <<<"$RESP")
 
-    if [ "$TOKEN_COUNT" -eq 0 ]; then
+    if [ "${TOKEN_COUNT:-0}" -eq 0 ]; then
         echo "Error: No active enrollment token found for agent policy '$POLICY_ID'." >&2
         return 1
     fi
@@ -166,7 +166,7 @@ elastic_fleet_integration_check() {
 
     JSON_STRING=$2
 
-    NAME=$(jq -r .name $JSON_STRING)
+    NAME=$(jq -r .name "$JSON_STRING")
     INTEGRATION_ID=""
 
     local POLICY_JSON
