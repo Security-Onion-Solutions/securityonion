@@ -94,9 +94,11 @@ metrics_link_file:
       - docker_container: so-influxdb
 
 # Install cron job to determine size of influxdb for telegraf
+# telegraf reads this while the cron rewrites it, so write aside and rename rather than
+# truncating in place. tgraflogdir recurses ownership, so the temp file is chowned to match
 get_influxdb_size:
   cron.present:
-    - name: 'du -s -k /nsm/influxdb | cut -f1 > /opt/so/log/telegraf/influxdb_size.log 2>&1'
+    - name: 'du -s -k /nsm/influxdb | cut -f1 > /opt/so/log/telegraf/influxdb_size.log.tmp 2>&1; chown 939:939 /opt/so/log/telegraf/influxdb_size.log.tmp; mv -f /opt/so/log/telegraf/influxdb_size.log.tmp /opt/so/log/telegraf/influxdb_size.log'
     - identifier: get_influxdb_size
     - user: root
     - minute: '*/1'

@@ -6,6 +6,9 @@ on:
       - "salt/sensoroni/files/analyzers/**"
       - "salt/manager/tools/sbin/**"
       - "salt/_beacons/**"
+      - "salt/telegraf/tools/sbin_jinja/**"
+      - "salt/telegraf/defaults.yaml"
+      - "salt/telegraf/soc_telegraf.yaml"
 
 jobs:
   build:
@@ -34,3 +37,25 @@ jobs:
     - name: Test with pytest
       run: |
         PYTHONPATH=${{ matrix.python-code-path }} pytest ${{ matrix.python-code-path }} --cov=${{ matrix.python-code-path }} --doctest-modules --cov-report=term --cov-fail-under=100 --cov-config=pytest.ini
+
+  telegraf-collector:
+    # so-container-stats is a jinja template rather than an importable module, so it gets its
+    # own job: the test renders it the way salt does, then drives it with a faked docker engine
+    # and cgroup tree. No container runtime is needed.
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.14"
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install flake8 pytest jinja2 pyyaml
+    - name: Lint with flake8
+      run: |
+        flake8 salt/telegraf/tools/sbin_jinja/so-container-stats_test.py --config=pytest.ini
+    - name: Test with pytest
+      run: |
+        pytest salt/telegraf/tools/sbin_jinja/so-container-stats_test.py -v

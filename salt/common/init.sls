@@ -217,9 +217,11 @@ sostatus_log:
     - replace: False
 
 # Install sostatus check cron. This is used to populate Grid.
+# telegraf reads status.log on the same minute boundary this runs, so write aside and rename
+# rather than truncating the file it is reading
 so-status_check_cron:
   cron.present:
-    - name: '/usr/sbin/so-status -j > /opt/so/log/sostatus/status.log 2>&1'
+    - name: '/usr/sbin/so-status -j > /opt/so/log/sostatus/status.log.tmp 2>&1; mv -f /opt/so/log/sostatus/status.log.tmp /opt/so/log/sostatus/status.log'
     - identifier: so-status_check_cron
     - user: root
     - minute: '*/1'
