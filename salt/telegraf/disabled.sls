@@ -13,6 +13,11 @@ so-telegraf:
   docker_container.absent:
     - force: True
 
+so-container-stats_cron:
+  cron.absent:
+    - identifier: so-container-stats_cron
+    - user: somon
+
 so-telegraf_so-status.disabled:
   file.comment:
     - name: /opt/so/conf/so-status/so-status.conf
