@@ -20,6 +20,7 @@ elastic-agent:
     - gid: 949
     - home: /opt/so/conf/elastic-agent
     - createhome: False
+    - shell: /sbin/nologin
 
 elasticagentconfdir:
   file.directory:

@@ -26,6 +26,7 @@ elastic-fleet:
     - gid: 947
     - home: /opt/so/conf/elastic-fleet
     - createhome: False
+    - shell: /sbin/nologin
 
 elasticfleet_sbin:
   file.recurse:

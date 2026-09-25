@@ -35,6 +35,7 @@ logstash:
     - uid: 931
     - gid: 931
     - home: /opt/so/conf/logstash
+    - shell: /sbin/nologin
 
 logstash_sbin:
   file.recurse:

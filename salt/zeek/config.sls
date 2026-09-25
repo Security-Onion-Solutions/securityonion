@@ -23,6 +23,7 @@ zeek:
     - gid: 937
     - home: /opt/so/conf/zeek
     - createhome: False
+    - shell: /sbin/nologin
 
 # Create some directories
 zeekpolicydir:
