@@ -64,6 +64,7 @@ suricata:
     - gid: 940
     - home: /nsm/suricata
     - createhome: False
+    - shell: /sbin/nologin
 
 socoregroupwithsuricata:
   group.present:

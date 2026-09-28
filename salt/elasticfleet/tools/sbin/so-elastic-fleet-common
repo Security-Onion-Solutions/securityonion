@@ -30,6 +30,56 @@ fleet_api() {
     curl -sK /opt/so/conf/elasticsearch/curl.config -L "localhost:5601/api/fleet/${QUERYPATH}" "$@" --retry 3 --retry-delay 10 --fail 2>/dev/null
 }
 
+elastic_fleet_require_agent_policy() {
+    local AGENT_POLICY=$1
+    local POLICY_JSON
+
+    if ! POLICY_JSON=$(fleet_api "agent_policies/$AGENT_POLICY") || [ -z "$POLICY_JSON" ]; then
+        echo "Error: Agent policy '$AGENT_POLICY' was not found or is not visible in the current Kibana space." >&2
+        return 1
+    fi
+
+    if ! jq -e '.item.package_policies | type == "array"' <<<"$POLICY_JSON" >/dev/null 2>&1; then
+        echo "Error: Agent policy '$AGENT_POLICY' was not found or is not visible in the current Kibana space." >&2
+        return 1
+    fi
+
+    echo "$POLICY_JSON"
+}
+
+# Print the single active enrollment token for POLICY_ID.
+# Exit 1: retryable (API failure, invalid response, no active token)
+# Exit 2: multiple active tokens - Shouldn't get into this state without manual intervention
+elastic_fleet_active_enrollment_token() {
+    local POLICY_ID=$1
+    local RESP TOKEN_COUNT API_KEY
+
+    if ! RESP=$(fleet_api "enrollment_api_keys?perPage=100" -H 'kbn-xsrf: true' -H 'Content-Type: application/json'); then
+        echo "Error: Failed to retrieve enrollment tokens for agent policy '$POLICY_ID'." >&2
+        return 1
+    fi
+
+    if ! jq -e '.list' <<<"$RESP" >/dev/null 2>&1; then
+        echo "Error: Invalid enrollment token response for agent policy '$POLICY_ID'." >&2
+        return 1
+    fi
+
+    TOKEN_COUNT=$(jq --arg pid "$POLICY_ID" '[.list[] | select(.policy_id == $pid and .active == true)] | length' <<<"$RESP")
+
+    if [ "${TOKEN_COUNT:-0}" -eq 0 ]; then
+        echo "Error: No active enrollment token found for agent policy '$POLICY_ID'." >&2
+        return 1
+    fi
+
+    if [ "$TOKEN_COUNT" -gt 1 ]; then
+        echo "Error: Found $TOKEN_COUNT active enrollment tokens for agent policy '$POLICY_ID'; expected exactly one." >&2
+        return 2
+    fi
+
+    API_KEY=$(jq -r --arg pid "$POLICY_ID" '.list[] | select(.policy_id == $pid and .active == true) | .api_key' <<<"$RESP")
+    echo "$API_KEY"
+}
+
 # Max number of concurrent Fleet write jobs (create/update). Override via env if needed.
 MAX_FLEET_JOBS=${MAX_FLEET_JOBS:-10}
 
@@ -62,15 +112,7 @@ elastic_fleet_load_integrations_dir() {
     i=0
 
     # Fetch the agent policy a single time; we look up integration ids locally below.
-    if ! POLICY_JSON=$(fleet_api "agent_policies/$AGENT_POLICY"); then
-        echo "Error: Failed to retrieve agent policy '$AGENT_POLICY'."
-        rm -f "$FAIL_FILE"
-        rm -rf "$OUT_DIR"
-        return 1
-    fi
-
-    if ! jq -e '.item.package_policies' <<<"$POLICY_JSON" >/dev/null 2>&1; then
-        echo "Error: Invalid agent policy response for '$AGENT_POLICY'."
+    if ! POLICY_JSON=$(elastic_fleet_require_agent_policy "$AGENT_POLICY"); then
         rm -f "$FAIL_FILE"
         rm -rf "$OUT_DIR"
         return 1
@@ -124,9 +166,15 @@ elastic_fleet_integration_check() {
 
     JSON_STRING=$2
 
-    NAME=$(jq -r .name $JSON_STRING)
+    NAME=$(jq -r .name "$JSON_STRING")
+    INTEGRATION_ID=""
 
-    INTEGRATION_ID=$(/usr/sbin/so-elastic-fleet-agent-policy-view "$AGENT_POLICY" | jq -r '.item.package_policies[] | select(.name=="'"$NAME"'") | .id')
+    local POLICY_JSON
+    if ! POLICY_JSON=$(elastic_fleet_require_agent_policy "$AGENT_POLICY"); then
+        return 1
+    fi
+
+    INTEGRATION_ID=$(jq -r --arg n "$NAME" '.item.package_policies[]? | select(.name==$n) | .id' <<<"$POLICY_JSON")
 
 }
 
@@ -148,7 +196,16 @@ elastic_fleet_integration_remove() {
 
     NAME=$2
 
-    INTEGRATION_ID=$(/usr/sbin/so-elastic-fleet-agent-policy-view "$AGENT_POLICY" | jq -r '.item.package_policies[] | select(.name=="'"$NAME"'") | .id')
+    local POLICY_JSON
+    if ! POLICY_JSON=$(elastic_fleet_require_agent_policy "$AGENT_POLICY"); then
+        return 1
+    fi
+
+    INTEGRATION_ID=$(jq -r --arg n "$NAME" '.item.package_policies[]? | select(.name==$n) | .id' <<<"$POLICY_JSON")
+    if [ -z "$INTEGRATION_ID" ]; then
+        echo "Error: Integration '$NAME' was not found in agent policy '$AGENT_POLICY'." >&2
+        return 1
+    fi
 
     JSON_STRING=$( jq -n \
                     --arg INTEGRATIONID "$INTEGRATION_ID" \

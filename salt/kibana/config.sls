@@ -22,6 +22,7 @@ kibana:
     - gid: 932
     - home: /opt/so/conf/kibana
     - createhome: False
+    - shell: /sbin/nologin
 
 # Drop the correct nginx config based on role
 

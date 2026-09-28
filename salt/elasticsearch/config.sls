@@ -32,6 +32,7 @@ elasticsearch:
     - gid: 930
     - home: /opt/so/conf/elasticsearch
     - createhome: False
+    - shell: /sbin/nologin
 
 elasticsearch_sbin:
   file.recurse:
