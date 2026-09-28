@@ -21,6 +21,7 @@ elastalert:
     - gid: 933
     - home: /opt/so/conf/elastalert
     - createhome: False
+    - shell: /sbin/nologin
 
 elastalogdir:
   file.directory:

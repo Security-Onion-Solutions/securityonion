@@ -21,6 +21,7 @@ kafka_user:
     - gid: 960
     - home: /opt/so/conf/kafka
     - createhome: False
+    - shell: /sbin/nologin
 
 kafka_home_dir:
   file.absent:
