@@ -8,10 +8,12 @@
 # if this script isn't already running
 if [[ ! "`pidof -x $(basename $0) -o %PPID`" ]]; then
 
-    LAST_HIGHSTATE_END=$([ -e "/var/log/salt/lasthighstate" ] && date -r /var/log/salt/lasthighstate +%s || echo 0)
-    NOW=$(date +%s)
-    HIGHSTATE_AGE_SECONDS=$((NOW-LAST_HIGHSTATE_END))
-    echo "salt highstate_age_seconds=$HIGHSTATE_AGE_SECONDS"
+    if [ -r "/var/log/salt/lasthighstate" ]; then
+        LAST_HIGHSTATE_END=$(date -r /var/log/salt/lasthighstate +%s)
+        NOW=$(date +%s)
+        HIGHSTATE_AGE_SECONDS=$((NOW-LAST_HIGHSTATE_END))
+        echo "salt highstate_age_seconds=$HIGHSTATE_AGE_SECONDS"
+    fi
 
 fi
 
