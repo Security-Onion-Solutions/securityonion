@@ -861,6 +861,16 @@ soc:
             description: Indicates if the Assistant Module should operate in agentic mode or not. If true, agents can work together to solve tasks.
             global: True
             forcedType: bool
+          automations:
+            template:
+              description: Scheduled automations for the Onion AI assistant, managed from the Agent Studio. Each automation is stored under its own generated ID so its history and rollback are independent of every other automation.
+              global: True
+              advanced: False
+              readonlyUi: True
+              duplicates: True
+              forcedType: string
+              syntax: json
+              helpLink: onion-ai
           agents:
             description: Agent definitions for the Onion AI assistant, managed from the Agent Studio. An entry naming a system agent overrides only the fields an admin may change; everything else comes from the built-in definition.
             global: True
@@ -893,6 +903,9 @@ soc:
             - field: persona
               label: Persona
               multiline: True
+            - field: maxConcurrentInstances
+              label: Max Concurrent Instances
+              forcedType: int
           skills:
             description: Skill definitions for the Onion AI assistant, managed from the Agent Studio. An entry naming a system skill overrides only its enabled state and persona addendum; its tool set comes from the built-in definition.
             global: True
@@ -996,6 +1009,43 @@ soc:
             description: The number of times to retry extracting memories from a session if errors occur.
             global: True
             advanced: True
+          agentSessionMaxTurns:
+            description: Maximum number of model turns a headless agent session, such as one started by an automation, may take before it is stopped. Turns taken by delegated sub-agents count toward this limit. A session that reaches the limit is recorded as failed.
+            global: True
+            advanced: True
+            forcedType: int
+          agentStreamFlushIntervalMs:
+            description: Milliseconds between writes of a streaming headless agent turn to the database. Lower values show progress sooner in the Agent Studio at the cost of more frequent Elasticsearch updates.
+            global: True
+            advanced: True
+            forcedType: int
+          agentStreamIdleTimeoutSeconds:
+            description: Seconds a streaming headless agent turn may go without receiving any output before it is abandoned and the session is recorded as failed. Set to 0 to disable the timeout.
+            global: True
+            advanced: True
+            forcedType: int
+          automationSettings:
+            tickIntervalSeconds:
+              description: How often, in seconds, the automation scheduler checks for automations that are due to run. Must be greater than 0.
+              global: True
+              advanced: True
+              forcedType: int
+            maxConcurrentItems:
+              description: Maximum number of automation work items that may run at the same time. Additional work items wait in the queue until a running item finishes. User chat sessions count toward this limit but are never held back by it. Set to 0 to disable the limit.
+              global: True
+              advanced: True
+              forcedType: int
+            maxQueuedItems:
+              description: Maximum number of automation work items that may wait to start. Once the queue is full, no new work items are created until the backlog drains. Set to 0 to disable the limit.
+              global: True
+              advanced: True
+              forcedType: int
+            alertTriageEpoch:
+              description: The earliest alert time the Alert Triage automation will consider. Alerts before this time are never triaged, which keeps a first run on an existing deployment from working through old history. Must be in UTC format (2026-09-24T00:00:00Z).
+              regex: '^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z)?$'
+              regexFailureMessage: Expecting date in RFC3339 format (2026-09-24T00:00:00Z)
+              global: True
+              advanced: True
           tools:
             filterEventFields:
               description: A whitelist of fields to return when OnionAI uses the query_events tool. All other fields are removed. One field per line.
