@@ -166,6 +166,15 @@ class TestHelpers(DrainerTestCase):
         self.assertEqual(drainer._trim(None), 'null')
         self.assertEqual(drainer._trim('x' * 600), 'x' * drainer.TEXT_LIMIT + '...')
 
+    def test_trim_traceback(self):
+        comment = ('An exception occurred in this state: Traceback (most recent call last):\n'
+                   '  File "salt/client/__init__.py", line 1934, in pub\n'
+                   '    raise AuthenticationError(err_msg)\n'
+                   'salt.exceptions.AuthenticationError: Authentication error occurred.\n')
+        self.assertEqual(drainer._trim(comment), 'An exception occurred in this state: '
+                         'salt.exceptions.AuthenticationError: Authentication error occurred.')
+        self.assertEqual(drainer._trim('line one\n  line two\n'), 'line one line two')
+
     def test_unlink_missing_logs(self):
         drainer._unlink(os.path.join(self.tmpdir, 'missing'), self.log)
         self.log.exception.assert_called_once()

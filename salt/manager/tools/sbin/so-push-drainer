@@ -144,7 +144,11 @@ def _dispatch(actions, log):
 
 def _trim(value):
     text = value if isinstance(value, str) else json.dumps(value, default=str)
-    text = text.strip()
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if 'Traceback (most recent call last):' in text:
+        # Keep the lead-in and the raised exception; the frames are noise in a log line.
+        lines = [text.split('Traceback (most recent call last):', 1)[0].strip(), lines[-1]]
+    text = ' '.join(line for line in lines if line)
     return text if len(text) <= TEXT_LIMIT else text[:TEXT_LIMIT] + '...'
 
 
@@ -207,7 +211,7 @@ def _orch_failures(ret):
             for step in steps.values():
                 if not isinstance(step, dict) or step.get('result') is not False:
                     continue
-                failures.append('{}: {}'.format(step.get('__id__', step.get('name')), step.get('comment')))
+                failures.append('{}: {}'.format(step.get('__id__', step.get('name')), _trim(step.get('comment', ''))))
                 minion_rets = (step.get('changes') or {}).get('ret') or {}
                 for minion, minion_ret in minion_rets.items():
                     text = _minion_failure(minion_ret)
