@@ -42,7 +42,8 @@ def loadYaml(filename):
     try:
         with open(filename, "r") as file:
             content = file.read()
-            return yaml.safe_load(content)
+            loaded = yaml.safe_load(content)
+            return loaded if loaded is not None else {}
     except FileNotFoundError:
         print(f"File not found: {filename}", file=sys.stderr)
         sys.exit(1)

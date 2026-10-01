@@ -95,6 +95,21 @@ class TestRemove(unittest.TestCase):
         expected = "key1:\n  child1: 123\n  child2:\n    deep2: ab\nkey2: false\n"
         self.assertEqual(actual, expected)
 
+    def test_remove_empty_file(self):
+        filename = "/tmp/so-yaml_test-remove-empty.yaml"
+        file = open(filename, "w")
+        file.close()
+
+        code = soyaml.remove([filename, "key1"])
+        self.assertEqual(code, 0)
+
+        file = open(filename, "r")
+        actual = file.read()
+        file.close()
+
+        self.assertEqual(actual, "{}\n")
+
+
     def test_remove_missing_args(self):
         with patch('sys.exit', new=MagicMock()) as sysmock:
             with patch('sys.stderr', new=StringIO()) as mock_stderr:
@@ -294,6 +309,36 @@ class TestRemove(unittest.TestCase):
         expected = "key1:\n  child1: 123\n  child2:\n    deep1: 45\n    deep2: d\nkey2: false\nkey3:\n- e\n- f\n- g\n"
         self.assertEqual(actual, expected)
 
+    def test_add_empty_file(self):
+        filename = "/tmp/so-yaml_test-add-empty.yaml"
+        file = open(filename, "w")
+        file.close()
+
+        code = soyaml.add([filename, "telegraf.output", "BOTH"])
+        self.assertEqual(code, 0)
+
+        file = open(filename, "r")
+        actual = file.read()
+        file.close()
+
+        expected = "telegraf:\n  output: BOTH\n"
+        self.assertEqual(actual, expected)
+
+    def test_add_empty_file_simple(self):
+        filename = "/tmp/so-yaml_test-add-empty-simple.yaml"
+        file = open(filename, "w")
+        file.close()
+
+        code = soyaml.add([filename, "telegraf", "BOTH"])
+        self.assertEqual(code, 0)
+
+        file = open(filename, "r")
+        actual = file.read()
+        file.close()
+
+        expected = "telegraf: BOTH\n"
+        self.assertEqual(actual, expected)
+
     def test_replace_missing_arg(self):
         with patch('sys.exit', new=MagicMock()) as sysmock:
             with patch('sys.stderr', new=StringIO()) as mock_stderr:
@@ -344,6 +389,21 @@ class TestRemove(unittest.TestCase):
         file.close()
 
         expected = "key1:\n  child1: 123\n  child2:\n    deep1: 46\nkey2: false\nkey3:\n- e\n- f\n- g\n"
+        self.assertEqual(actual, expected)
+
+    def test_replace_empty_file(self):
+        filename = "/tmp/so-yaml_test-replace-empty.yaml"
+        file = open(filename, "w")
+        file.close()
+
+        code = soyaml.replace([filename, "telegraf.output", "BOTH"])
+        self.assertEqual(code, 0)
+
+        file = open(filename, "r")
+        actual = file.read()
+        file.close()
+
+        expected = "telegraf:\n  output: BOTH\n"
         self.assertEqual(actual, expected)
 
     def test_convert(self):
@@ -505,6 +565,18 @@ class TestRemove(unittest.TestCase):
             result = soyaml.get([filename, "key1.child3.deep3"])
             self.assertEqual(result, 2)
             self.assertEqual("", mock_stdout.getvalue())
+
+    def test_get_empty_file(self):
+        with patch('sys.stdout', new=StringIO()) as mock_stdout:
+            with patch('sys.stderr', new=StringIO()) as mock_stderr:
+                filename = "/tmp/so-yaml_test-get-empty.yaml"
+                file = open(filename, "w")
+                file.close()
+
+                result = soyaml.get([filename, "telegraf.output"])
+                self.assertEqual(result, 2)
+                self.assertEqual("", mock_stdout.getvalue())
+                self.assertIn("Key 'telegraf.output' not found by so-yaml.py", mock_stderr.getvalue())
 
     def test_get_usage(self):
         with patch('sys.exit', new=MagicMock()) as sysmock:
@@ -991,3 +1063,30 @@ class TestLoadYaml(unittest.TestCase):
                     soyaml.loadYaml("/tmp/so-yaml_test-unreadable.yaml")
                     sysmock.assert_called_with(1)
                     self.assertIn("Error reading file", mock_stderr.getvalue())
+
+    def test_load_yaml_empty_file(self):
+        filename = "/tmp/so-yaml_test-load-empty.yaml"
+        file = open(filename, "w")
+        file.close()
+
+        result = soyaml.loadYaml(filename)
+        self.assertEqual(result, {})
+
+    def test_load_yaml_whitespace_only(self):
+        filename = "/tmp/so-yaml_test-load-whitespace.yaml"
+        file = open(filename, "w")
+        file.write("   \n\n  \n")
+        file.close()
+
+        result = soyaml.loadYaml(filename)
+        self.assertEqual(result, {})
+
+    def test_load_yaml_comments_only(self):
+        filename = "/tmp/so-yaml_test-load-comments.yaml"
+        file = open(filename, "w")
+        file.write("# Just a comment\n# Another comment\n")
+        file.close()
+
+        result = soyaml.loadYaml(filename)
+        self.assertEqual(result, {})
+
