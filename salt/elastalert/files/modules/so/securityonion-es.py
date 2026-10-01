@@ -9,6 +9,7 @@
 from datetime import datetime
 from time import gmtime, strftime
 import hashlib
+import ipaddress
 import re
 import requests,json
 from elastalert.alerts import Alerter, DateTimeEncoder
@@ -35,6 +36,9 @@ class SecurityOnionESAlerter(Alerter):
         'value_median': 'median %count%',
     }
     placeholder = re.compile(r'%([^%\s]+)%')
+    # group-by fields copied into ECS related.*
+    related_users = {'user.name', 'winlog.event_data.TargetUserName', 'winlog.event_data.SubjectUserName'}
+    related_hosts = {'host.name', 'host.hostname', 'winlog.computer_name'}
 
     @staticmethod
     def lookup(doc, dotted):
@@ -60,6 +64,47 @@ class SecurityOnionESAlerter(Alerter):
             key = f"{self.rule['detection_public_id']}|{match.get('_id')}"
 
         return hashlib.sha256(key.encode('utf-8')).hexdigest()
+
+    def group(self, match):
+        """ Group-by values joined as ElastAlert joins them for the realert silence key. """
+        return ', '.join(str(self.lookup(match, k)) for k in self.query_keys())
+
+    def related_bucket(self, key):
+        if key == 'ip' or key.endswith('.ip'):
+            return 'ip'
+        if key in self.related_users or key.endswith('.user.name'):
+            return 'user'
+        if key in self.related_hosts:
+            return 'hosts'
+        return None
+
+    @staticmethod
+    def valid_ip(value):
+        try:
+            ipaddress.ip_address(value)
+            return True
+        except ValueError:
+            return False
+
+    def related(self, match):
+        """ ECS related.* from group-by values; invalid IPs are skipped, as they fail the ip mapping. """
+        related = {}
+        for key in self.query_keys():
+            bucket = self.related_bucket(key)
+            if not bucket:
+                continue
+            value = self.lookup(match, key)
+            for v in value if isinstance(value, list) else [value]:
+                if v is None or (bucket == 'ip' and not self.valid_ip(str(v))):
+                    continue
+                related.setdefault(bucket, {})[str(v)] = None
+        return {bucket: list(values) for bucket, values in related.items()}
+
+    def event_data(self, match):
+        """ The match without the compound query_key field, which ES would map by its last part (e.g. .ip). """
+        if not self.rule.get('compound_query_key'):
+            return match
+        return {k: v for k, v in match.items() if k != self.rule['query_key']}
 
     @staticmethod
     def format_value(value):
@@ -120,12 +165,6 @@ class SecurityOnionESAlerter(Alerter):
     def alert(self, matches):
         for match in matches:
             timestamp = strftime("%Y-%m-%d"'T'"%H:%M:%S"'.000Z', gmtime())
-            headers = {"Content-Type": "application/json"}
-
-            creds = None
-            if 'es_username' in self.rule and 'es_password' in self.rule:
-                creds = (self.rule['es_username'], self.rule['es_password'])
-
             # Start building the rule dict
             rule_info = {
                 "name": self.rule['detection_title'],
@@ -138,39 +177,74 @@ class SecurityOnionESAlerter(Alerter):
                 if field in self.rule:
                     rule_info[rule_key] = self.rule[field]
 
-            summary = self.summary(match)
-            if summary:
-                rule_info["summary"] = summary
+            event_info = {
+                "kind": "alert",
+                "severity": self.rule['event.severity'],
+                "module": self.rule['event.module'],
+                "dataset": self.rule['event.dataset'],
+                "severity_label": self.rule['sigma_level']
+            }
+
+            reason = self.summary(match)
+            if reason:
+                event_info["reason"] = reason
 
             # Construct the payload with the conditional rule_info
             payload = {
-                "tags": "alert",
+                "tags": ["alert"],
                 "rule": rule_info,
-                "event": {
-                    "severity": self.rule['event.severity'],
-                    "module": self.rule['event.module'],
-                    "dataset": self.rule['event.dataset'],
-                    "severity_label": self.rule['sigma_level']
-                },
+                "event": event_info,
                 "sigma_level": self.rule['sigma_level'],
-                "event_data": match,
+                "event_data": self.event_data(match),
                 "@timestamp": timestamp
             }
+
+            keys = self.query_keys()
+            if keys:
+                payload["labels"] = {
+                    "correlation_group_by": ', '.join(keys),
+                    "correlation_group": self.group(match),
+                }
+                related = self.related(match)
+                if related:
+                    payload["related"] = related
             alert_id = self.alert_id(match)
             # _create returns 409 on a repeat id; EAException makes ElastAlert retry
             url = (f"https://{self.rule['es_host']}:{self.rule['es_port']}"
                    f"/logs-detections.alerts-so/_create/{alert_id}")
-            try:
-                response = requests.put(url, data=json.dumps(payload, cls=DateTimeEncoder), headers=headers, verify=False, auth=creds)
-            except requests.RequestException as e:
-                raise EAException(f"Unable to write alert: {e}")
+            response = self.put_alert(url, payload)
             if response.status_code == 400:
-                # mapping rejections fail the same way on retry, so drop them
-                elastalert_logger.error("Dropping alert %s for rule %s, rejected by Elasticsearch: %s",
-                                        alert_id, self.rule['detection_public_id'], response.text[:500])
-                continue
+                # mapping rejections come from event_data; retry with it as unindexed text
+                rejection = response.text[:500]
+                payload = self.without_event_data(payload, rejection)
+                response = self.put_alert(url, payload)
+                if response.status_code == 400:
+                    elastalert_logger.error("Dropping alert %s for rule %s, rejected by Elasticsearch even without its event data: %s; first rejection: %s",
+                                            alert_id, self.rule['detection_public_id'], response.text[:500], rejection)
+                    continue
+                elastalert_logger.warning("Stored alert %s for rule %s with its event data as text, rejected by Elasticsearch: %s",
+                                          alert_id, self.rule['detection_public_id'], rejection)
             if response.status_code != 409 and not response.ok:
                 raise EAException(f"Unable to write alert: {response.status_code} {response.text[:500]}")
+
+    def put_alert(self, url, payload):
+        creds = None
+        if 'es_username' in self.rule and 'es_password' in self.rule:
+            creds = (self.rule['es_username'], self.rule['es_password'])
+        try:
+            return requests.put(url, data=json.dumps(payload, cls=DateTimeEncoder),
+                                headers={"Content-Type": "application/json"}, verify=False, auth=creds)
+        except requests.RequestException as e:
+            raise EAException(f"Unable to write alert: {e}")
+
+    @staticmethod
+    def without_event_data(payload, rejection):
+        """ event_data moved to event.original; the tag keeps Fleet's final pipeline from removing it. """
+        fallback = {k: v for k, v in payload.items() if k != 'event_data'}
+        fallback['event'] = dict(payload['event'], original=json.dumps(payload['event_data'], cls=DateTimeEncoder))
+        fallback['error'] = {'message': f"event_data rejected by Elasticsearch: {rejection}"}
+        fallback['tags'] = payload['tags'] + ['preserve_original_event']
+        return fallback
 
     def get_info(self):
         return {'type': 'SecurityOnionESAlerter'}
