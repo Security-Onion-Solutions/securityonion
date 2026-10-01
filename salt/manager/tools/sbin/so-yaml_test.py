@@ -109,7 +109,6 @@ class TestRemove(unittest.TestCase):
 
         self.assertEqual(actual, "{}\n")
 
-
     def test_remove_missing_args(self):
         with patch('sys.exit', new=MagicMock()) as sysmock:
             with patch('sys.stderr', new=StringIO()) as mock_stderr:
@@ -1089,4 +1088,3 @@ class TestLoadYaml(unittest.TestCase):
 
         result = soyaml.loadYaml(filename)
         self.assertEqual(result, {})
-
