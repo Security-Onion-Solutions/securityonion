@@ -52,7 +52,7 @@ RESULT_MAX_AGE = 7200
 RESULT_CHECKS_PER_PASS = 5
 TEXT_LIMIT = 500
 
-# salt-run --async reports the jid only in a log line on stderr.
+# salt-run --async reports the jid only in a log line (stderr by default).
 JID_RE = re.compile(r'salt/run/(\d{20})')
 
 
@@ -133,7 +133,7 @@ def _dispatch(actions, log):
     except Exception:
         log.exception('dispatch raised')
         return None
-    match = JID_RE.search(result.stderr or '')
+    match = JID_RE.search('{}\n{}'.format(result.stderr or '', result.stdout or ''))
     if not match:
         log.warning('dispatch accepted but no jid found, result will not be tracked: stderr=%s',
                     _trim(result.stderr))
@@ -197,26 +197,39 @@ def _minion_failure(minion_ret):
     return ''
 
 
+def _step_failures(step):
+    if not isinstance(step, dict) or step.get('result') is not False:
+        return []
+    failures = ['{}: {}'.format(step.get('__id__', step.get('name')), _trim(step.get('comment', '')))]
+    changes = step.get('changes')
+    minion_rets = changes.get('ret') if isinstance(changes, dict) else None
+    if isinstance(minion_rets, dict):
+        for minion, minion_ret in minion_rets.items():
+            text = _minion_failure(minion_ret)
+            if text:
+                failures.append('{}: {}'.format(minion, text))
+    return failures
+
+
 def _orch_failures(ret):
+    if not isinstance(ret, dict):
+        return [_trim(ret)]
     failures = []
     for job in ret.values():
         if not isinstance(job, dict):
             continue
         job_ret = job.get('return')
-        data = (job_ret.get('data') or {}) if isinstance(job_ret, dict) else {}
+        data = job_ret.get('data') if isinstance(job_ret, dict) else {}
+        if not isinstance(data, dict):
+            if data:
+                failures.append(_trim(data))
+            data = {}
         for steps in data.values():
             if not isinstance(steps, dict):
                 failures.append(_trim(steps))
                 continue
             for step in steps.values():
-                if not isinstance(step, dict) or step.get('result') is not False:
-                    continue
-                failures.append('{}: {}'.format(step.get('__id__', step.get('name')), _trim(step.get('comment', ''))))
-                minion_rets = (step.get('changes') or {}).get('ret') or {}
-                for minion, minion_ret in minion_rets.items():
-                    text = _minion_failure(minion_ret)
-                    if text:
-                        failures.append('{}: {}'.format(minion, text))
+                failures.extend(_step_failures(step))
         if job.get('success') is False and not failures:
             failures.append('orchestration reported failure: {}'.format(_trim(job.get('return'))))
     return failures
@@ -236,20 +249,32 @@ def _check_dispatched(log, now):
             continue
         checked += 1
         jid = record['jid']
-        paths = record.get('paths', [])
-        ret = _lookup_jid(jid, log)
-        if not ret:
-            if age > RESULT_MAX_AGE:
-                log.warning('no result for jid=%s after %ds, no longer tracking; paths=%s', jid, age, paths)
+        try:
+            if _report_result(record, age, log):
                 _unlink(path, log)
-            continue
-        failures = _orch_failures(ret)
-        if failures:
-            log.error('push failed jid=%s paths=%s; change will be applied at the next scheduled highstate: %s',
-                      jid, paths, ' | '.join(failures))
-        else:
-            log.info('push succeeded jid=%s paths=%s', jid, paths)
-        _unlink(path, log)
+        except Exception:
+            # Drop the record so one unreadable result can't fail every pass ahead of the drain.
+            log.exception('cannot evaluate result for jid=%s; no longer tracking', jid)
+            _unlink(path, log)
+
+
+def _report_result(record, age, log):
+    """Logs the outcome of a dispatched push. Returns True once the record is finished with."""
+    jid = record['jid']
+    paths = record.get('paths', [])
+    ret = _lookup_jid(jid, log)
+    if not ret:
+        if age > RESULT_MAX_AGE:
+            log.warning('no result for jid=%s after %ds, no longer tracking; paths=%s', jid, age, paths)
+            return True
+        return False
+    failures = _orch_failures(ret)
+    if failures:
+        log.error('push failed jid=%s paths=%s; change will be applied at the next scheduled highstate: %s',
+                  jid, paths, ' | '.join(failures))
+    else:
+        log.info('push succeeded jid=%s paths=%s', jid, paths)
+    return True
 
 
 def main():

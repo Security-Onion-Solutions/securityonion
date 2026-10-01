@@ -126,7 +126,13 @@ class TestHelpers(DrainerTestCase):
 
     def test_make_logger_adds_handler_once(self):
         logger = logging.getLogger('so-push-drainer')
-        self.addCleanup(logger.handlers.clear)
+
+        def close_handlers():
+            for handler in logger.handlers:
+                handler.close()
+            logger.handlers.clear()
+
+        self.addCleanup(close_handlers)
         logger.handlers.clear()
         self.assertIs(drainer._make_logger(), logger)
         drainer._make_logger()
@@ -194,6 +200,10 @@ class TestDispatch(DrainerTestCase):
         self.assertEqual(cmd[:3], ['salt-run', 'state.orchestrate', 'orch.push_batch'])
         self.assertIn('--async', cmd)
 
+    def test_jid_parsed_from_stdout(self):
+        jid, _ = self.run_dispatch(return_value=MagicMock(stdout=ASYNC_STDERR, stderr=None))
+        self.assertEqual(jid, JID)
+
     def test_no_jid(self):
         jid, _ = self.run_dispatch(return_value=MagicMock(stdout='', stderr=None))
         self.assertEqual(jid, '')
@@ -260,6 +270,21 @@ class TestResults(DrainerTestCase):
         ret = {MASTER: {'return': {'data': {MASTER: ['Rendering SLS failed']}}, 'success': False}}
         self.assertEqual(drainer._orch_failures(ret), ['["Rendering SLS failed"]'])
 
+    def test_orch_failures_not_a_dict(self):
+        self.assertEqual(drainer._orch_failures(['No minions matched']), ['["No minions matched"]'])
+        self.assertEqual(drainer._orch_failures('Runner error'), ['Runner error'])
+
+    def test_orch_failures_data_not_a_dict(self):
+        ret = {MASTER: {'return': {'data': ["Rendering SLS 'orch.push_batch' failed"]}, 'success': False}}
+        self.assertEqual(drainer._orch_failures(ret), ['["Rendering SLS \'orch.push_batch\' failed"]'])
+
+    def test_orch_failures_odd_changes(self):
+        for changes in ('Run failed', {'ret': ['manager_standalone']}):
+            ret = _orch_ret({'salt_|-apply_soc_1_|-apply_soc_1_|-state': {
+                '__id__': 'apply_soc_1', 'result': False, 'changes': changes, 'comment': 'Run failed on minions',
+            }}, success=False)
+            self.assertEqual(drainer._orch_failures(ret), ['apply_soc_1: Run failed on minions'])
+
     def test_orch_failures_unparsed(self):
         self.assertEqual(drainer._orch_failures({MASTER: 'odd'}), [])
         ret = {MASTER: {'return': 'Exception occurred', 'success': False}}
@@ -294,6 +319,25 @@ class TestResults(DrainerTestCase):
         self.assertIn('is running as PID 372218', self.logged('error'))
         self.assertIn('push succeeded jid=2_ok', self.logged('info'))
         self.assertIn('no result for jid=4_expired', self.logged('warning'))
+
+    def test_check_dispatched_survives_bad_result(self):
+        now = time.time()
+        bad = self.record('1_bad', 60, now)
+        good = self.record('2_ok', 60, now)
+
+        def orch_failures(ret):
+            if ret == 'boom':
+                raise ValueError('unexpected shape')
+            return []
+
+        with patch.object(drainer, '_lookup_jid', side_effect=lambda jid, log: 'boom' if jid == '1_bad' else SUCCESS_RET), \
+                patch.object(drainer, '_orch_failures', side_effect=orch_failures):
+            drainer._check_dispatched(self.log, now)
+        self.assertFalse(os.path.exists(bad))
+        self.assertFalse(os.path.exists(good))
+        self.log.exception.assert_called_once()
+        self.assertIn('jid=1_bad', self.log.exception.call_args[0][0] % self.log.exception.call_args[0][1:])
+        self.assertIn('push succeeded jid=2_ok', self.logged('info'))
 
     def test_check_dispatched_limit(self):
         now = time.time()
