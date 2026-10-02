@@ -19,8 +19,7 @@ so-telegraf:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-telegraf:{{ GLOBALS.so_version }}
     - restart_policy: unless-stopped
-    - user: 939
-    - group_add: 939,920
+    - user: 939:939
     - environment:
       - HOST_ETC=/host/etc
       - HOST_SYS=/host/sys
@@ -38,7 +37,6 @@ so-telegraf:
       - /opt/so/conf/telegraf/etc/telegraf.conf:/etc/telegraf/telegraf.conf:ro
       - /opt/so/conf/telegraf/node_config.json:/etc/telegraf/node_config.json:ro
       - /var/run/utmp:/var/run/utmp:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
       - /:/host:ro
       - /sys:/host/sys:ro
       - /proc:/host/proc:ro
@@ -51,7 +49,8 @@ so-telegraf:
       - /opt/so/log/suricata:/var/log/suricata:ro
       - /opt/so/log/raid:/var/log/raid:ro
       - /opt/so/log/sostatus:/var/log/sostatus:ro
-      - /opt/so/log/salt:/var/log/salt:ro
+      - /opt/so/log/somon:/var/log/somon:ro
+      - /opt/so/log/salt/lasthighstate:/var/log/salt/lasthighstate:ro
       - /opt/so/log/agents:/var/log/agents:ro
       {% if GLOBALS.is_manager or GLOBALS.role == 'so-heavynode' %}
       - /opt/so/conf/telegraf/etc/escurl.config:/etc/telegraf/elasticsearch.config:ro
@@ -74,6 +73,8 @@ so-telegraf:
     {%   endfor %}
     {% endif %}
     - watch:
+      - file: tgraf_sbin_jinja
+      - file: lasthighstate_placeholder
       - file: trusttheca
       - x509: telegraf_crt
       - x509: telegraf_key
@@ -83,6 +84,8 @@ so-telegraf:
       - file: tgraf_sync_script_{{script}}
     {% endfor %}
     - require:
+      - file: lasthighstate_placeholder
+      - file: somonlogdir
       - file: trusttheca
       - x509: telegraf_crt
       - x509: telegraf_key

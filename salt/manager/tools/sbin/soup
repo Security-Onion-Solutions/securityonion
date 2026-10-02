@@ -1188,6 +1188,13 @@ up_to_3.4.0() {
   echo "0" > /opt/so/conf/soc/migrations/elastalert-migration-3.4.0
   chown -R socore:socore /opt/so/conf/soc/migrations
 
+  for template in so-metrics-logstash.node so-metrics-logstash.stack_monitoring.node; do
+    if ! remove_elasticsearch_index_template "$template" "logstash node and node_cel index patterns reversed"; then
+      FINAL_MESSAGE_QUEUE+=("WARNING: Unable to automatically remove the $template index template. Addon integration templates may fail to load until it is removed:")
+      FINAL_MESSAGE_QUEUE+=("    - sudo so-elasticsearch-query _index_template/$template -XDELETE && so-checkin")
+    fi
+  done
+
   INSTALLEDVERSION=3.4.0
 }
 
@@ -1253,6 +1260,10 @@ valid_soauth_range() {
 }
 
 post_to_3.4.0() {
+  for idx in "metrics-logstash.node-default" "metrics-logstash.stack_monitoring.node-default"; do
+    rollover_index "$idx"
+  done
+
   set_postversion 3.4.0
 }
 ### 3.4.0 End ###

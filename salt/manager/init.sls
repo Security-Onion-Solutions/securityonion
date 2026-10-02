@@ -166,7 +166,7 @@ so-repo-sync:
 
 so_fleetagent_status:
   cron.present:
-    - name: /usr/sbin/so-elasticagent-status > /opt/so/log/agents/agentstatus.log 2>&1
+    - name: '/usr/sbin/so-elasticagent-status > /opt/so/log/agents/agentstatus.log.tmp 2>&1; mv -f /opt/so/log/agents/agentstatus.log.tmp /opt/so/log/agents/agentstatus.log'
     - identifier: so_fleetagent_status
     - user: root
     - minute: '*/5'

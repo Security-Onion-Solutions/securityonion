@@ -160,6 +160,7 @@ soc:
         description: Schedules that are shared across the Security Onion product. Modify via one of the SOC Schedules view.
         readonlyUi: True
         global: True
+        advanced: True
         forcedType: string
         syntax: json
         storage: db
@@ -507,12 +508,17 @@ soc:
             description: JSON list of notifications. Modify via the SOC Notifications view.
             readonlyUi: True
             global: True
+            advanced: True
             forcedType: string
             syntax: json
             storage: db
           dismissedPruneDays:
             title: Dismissed Retention Days
             description: The number of days to retain dismissed notifications. When a notification is dismissed, it will be pruned after this many days. Only one user need dismiss a notification for it to be pruned.
+            forcedType: int
+            global: True
+          maxListLimit:
+            description: Maximum number of notifications to display.
             forcedType: int
             global: True
           enabled:
@@ -545,6 +551,48 @@ soc:
             global: True
             sensitive: True
             advanced: True
+        postgresmetrics:
+          host:
+            description: Hostname or IP address of the PostgreSQL server used by Telegraf. Defaults to the manager hostname.
+            global: True
+            advanced: True
+          port:
+            description: Port of the PostgreSQL server used by Telegraf.
+            global: True
+            advanced: True
+          sslMode:
+            description: "Use encrypted connections to the PostgreSQL server used by Telegraf. Must be one of the following values: disable, allow, prefer, require, verify-ca, verify-full."
+            global: True
+            advanced: True
+          database:
+            description: Database to authenticate to on the PostgreSQL server.
+            global: True
+            advanced: True
+          user:
+            description: Username to authenticate to the PostgreSQL server used by Telegraf.
+            global: True
+            advanced: True
+          password:
+            description: Password used to authenticate to the PostgreSQL server used by Telegraf.
+            global: True
+            sensitive: True
+            advanced: True
+          cacheExpirationMs:
+            description: The interval (in milliseconds) to wait before querying the DB for updated metrics.
+            global: True
+            advanced: True
+          maxMetricAgeSeconds:
+            description: The maximum age (in seconds) of metrics to display in the SOC Grid Metrics view. Metrics older than this value will not be displayed.
+            global: True
+            advanced: True
+          alarms:
+            description: JSON list of metric alarms. Modify via the SOC Grid Alarms view.
+            readonlyUi: True
+            advanced: True
+            global: True
+            forcedType: string
+            syntax: json
+            storage: db
         salt:
           longRelayTimeoutMs:
             description: Duration (in milliseconds) to wait for a response from the Salt API when executing tasks known for being long running before giving up and showing an error on the SOC UI.
@@ -825,6 +873,15 @@ soc:
             description: Indicates if the Assistant Module should operate in agentic mode or not. If true, agents can work together to solve tasks.
             global: True
             forcedType: bool
+          automations:
+            description: Scheduled automations for the Onion AI assistant, managed from the Agent Studio.
+            global: True
+            advanced: True
+            readonlyUi: True
+            storage: db
+            forcedType: string
+            syntax: json
+            helpLink: onion-ai
           agents:
             description: Agent definitions for the Onion AI assistant, managed from the Agent Studio. An entry naming a system agent overrides only the fields an admin may change; everything else comes from the built-in definition.
             global: True
@@ -857,6 +914,9 @@ soc:
             - field: persona
               label: Persona
               multiline: True
+            - field: maxConcurrentInstances
+              label: Max Concurrent Instances
+              forcedType: int
           skills:
             description: Skill definitions for the Onion AI assistant, managed from the Agent Studio. An entry naming a system skill overrides only its enabled state and persona addendum; its tool set comes from the built-in definition.
             global: True
@@ -960,6 +1020,43 @@ soc:
             description: The number of times to retry extracting memories from a session if errors occur.
             global: True
             advanced: True
+          agentSessionMaxTurns:
+            description: Maximum number of model turns a headless agent session, such as one started by an automation, may take before it is stopped. Turns taken by delegated sub-agents count toward this limit. A session that reaches the limit is recorded as failed.
+            global: True
+            advanced: True
+            forcedType: int
+          agentStreamFlushIntervalMs:
+            description: Milliseconds between writes of a streaming headless agent turn to the database. Lower values show progress sooner in the Agent Studio at the cost of more frequent Elasticsearch updates.
+            global: True
+            advanced: True
+            forcedType: int
+          agentStreamIdleTimeoutSeconds:
+            description: Seconds a streaming headless agent turn may go without receiving any output before it is abandoned and the session is recorded as failed. Set to 0 to disable the timeout.
+            global: True
+            advanced: True
+            forcedType: int
+          automationSettings:
+            tickIntervalSeconds:
+              description: How often, in seconds, the automation scheduler checks for automations that are due to run. Must be greater than 0.
+              global: True
+              advanced: True
+              forcedType: int
+            maxConcurrentItems:
+              description: Maximum number of automation work items that may run at the same time. Additional work items wait in the queue until a running item finishes. User chat sessions count toward this limit but are never held back by it. Set to 0 to disable the limit.
+              global: True
+              advanced: True
+              forcedType: int
+            maxQueuedItems:
+              description: Maximum number of automation work items that may wait to start. Once the queue is full, no new work items are created until the backlog drains. Set to 0 to disable the limit.
+              global: True
+              advanced: True
+              forcedType: int
+            alertTriageEpoch:
+              description: The earliest alert time the Alert Triage automation will consider. Alerts before this time are never triaged, which keeps a first run on an existing deployment from working through old history. Must be in UTC format (2026-09-24T00:00:00Z).
+              regex: '^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z)?$'
+              regexFailureMessage: Expecting date in RFC3339 format (2026-09-24T00:00:00Z)
+              global: True
+              advanced: True
           tools:
             filterEventFields:
               description: A whitelist of fields to return when OnionAI uses the query_events tool. All other fields are removed. One field per line.
