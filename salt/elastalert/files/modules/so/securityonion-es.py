@@ -54,12 +54,17 @@ class SecurityOnionESAlerter(Alerter):
         """ compound_query_key holds the list; query_key is flattened to a string. """
         return self.rule.get('compound_query_key') or ([self.rule['query_key']] if self.rule.get('query_key') else [])
 
+    @staticmethod
+    def is_correlation(match):
+        """ Only correlation rows carry window_start, from the ES|QL stats. """
+        return 'window_start' in match
+
     def alert_id(self, match):
-        """ Stable id: window + group values for correlations, source _id otherwise. """
-        keys = self.query_keys()
-        if keys:
-            values = '|'.join(str(self.lookup(match, k)) for k in keys)
-            key = f"{self.rule['detection_public_id']}|{self.to_dt(match['@timestamp']).isoformat()}|{values}"
+        """ Stable id: window end + group values for correlations, source _id otherwise. """
+        if self.is_correlation(match):
+            # ungrouped rows have a hashed _id that changes with the count
+            values = ''.join(f"|{self.lookup(match, k)}" for k in self.query_keys())
+            key = f"{self.rule['detection_public_id']}|{self.to_dt(match['@timestamp']).isoformat()}{values}"
         else:
             key = f"{self.rule['detection_public_id']}|{match.get('_id')}"
 
@@ -135,7 +140,7 @@ class SecurityOnionESAlerter(Alerter):
 
     def summary(self, match):
         """ One-line correlation summary; None for single-event rules. """
-        if 'window_start' not in match:
+        if not self.is_correlation(match):
             return None
 
         start = self.to_dt(match['window_start'])
@@ -200,7 +205,7 @@ class SecurityOnionESAlerter(Alerter):
             }
 
             keys = self.query_keys()
-            if keys:
+            if keys and self.is_correlation(match):
                 payload["labels"] = {
                     "correlation_group_by": ', '.join(keys),
                     "correlation_group": self.group(match),
