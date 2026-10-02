@@ -19,6 +19,8 @@ is older than debounce_seconds, this script:
   * dispatches a single `salt-run state.orchestrate orch.push_batch --async`
     with the deduped actions list passed as pillar kwargs
   * deletes the contributed intent files on successful dispatch
+  * records the orchestration jid under /opt/so/state/push_dispatched and, on
+    later passes, looks up its result and logs success or per-minion failures
 
 Reactor sls files (push_files, push_pillar) write intents
 but never dispatch directly
@@ -30,6 +32,7 @@ import json
 import logging
 import logging.handlers
 import os
+import re
 import subprocess
 import sys
 import time
@@ -40,7 +43,18 @@ PENDING_DIR = '/opt/so/state/push_pending'
 LOCK_FILE = os.path.join(PENDING_DIR, '.lock')
 LOG_FILE = '/opt/so/log/salt/so-push-drainer.log'
 
+DISPATCHED_DIR = '/opt/so/state/push_dispatched'
+
 HIGHSTATE_SENTINEL = '__highstate__'
+
+RESULT_CHECK_DELAY = 30
+RESULT_RECHECK_MAX = 300
+RESULT_MAX_AGE = 7200
+RESULT_CHECKS_PER_PASS = 5
+TEXT_LIMIT = 500
+
+# salt-run --async reports the jid only in a log line (stderr by default).
+JID_RE = re.compile(r'salt/run/(\d{20})')
 
 
 def _make_logger():
@@ -113,14 +127,167 @@ def _dispatch(actions, log):
     except subprocess.CalledProcessError as exc:
         log.error('dispatch failed (rc=%s): stdout=%s stderr=%s',
                   exc.returncode, exc.stdout, exc.stderr)
-        return False
+        return None
     except subprocess.TimeoutExpired:
         log.error('dispatch timed out after 60s')
-        return False
+        return None
     except Exception:
         log.exception('dispatch raised')
+        return None
+    output = '{}\n{}'.format(result.stderr or '', result.stdout or '')
+    match = JID_RE.search(output)
+    if not match:
+        log.warning('dispatch accepted but no jid found, result will not be tracked: output=%s',
+                    _trim(output))
+        return ''
+    log.info('dispatch accepted: jid=%s', match.group(1))
+    return match.group(1)
+
+
+def _trim(value):
+    text = value if isinstance(value, str) else json.dumps(value, default=str)
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if 'Traceback (most recent call last):' in text:
+        # Keep the lead-in and the raised exception; the frames are noise in a log line.
+        lines = [text.split('Traceback (most recent call last):', 1)[0].strip(), lines[-1]]
+    text = ' '.join(line for line in lines if line)
+    return text if len(text) <= TEXT_LIMIT else text[:TEXT_LIMIT] + '...'
+
+
+def _unlink(path, log):
+    try:
+        os.unlink(path)
+    except FileNotFoundError:
+        pass
+    except OSError:
+        log.exception('failed to remove %s', path)
+
+
+def _write_record(path, record, log):
+    try:
+        os.makedirs(DISPATCHED_DIR, exist_ok=True)
+        tmp_path = path + '.tmp'
+        with open(tmp_path, 'w') as f:
+            json.dump(record, f)
+        os.rename(tmp_path, path)
+    except Exception:
+        log.exception('failed to record dispatch %s', record.get('jid'))
+
+
+def _record_dispatch(jid, actions, paths, log):
+    record = {'jid': jid, 'dispatched_at': time.time(), 'actions': actions, 'paths': paths}
+    _write_record(os.path.join(DISPATCHED_DIR, '{}.json'.format(jid)), record, log)
+
+
+def _lookup_jid(jid, log):
+    """Returns the job cache entry for jid, {} while it is still running, or None on error."""
+    cmd = ['salt-run', 'jobs.lookup_jid', jid, '--out=json']
+    try:
+        result = subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=60)
+        return json.loads(result.stdout or '{}')
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, ValueError) as exc:
+        log.warning('lookup of jid %s failed: %s', jid, exc)
+        return None
+
+
+def _minion_failure(minion_ret):
+    if isinstance(minion_ret, dict):
+        return '; '.join(
+            '{}: {}'.format(state.get('__id__', state_key), _trim(state.get('comment', '')))
+            for state_key, state in minion_ret.items()
+            if isinstance(state, dict) and state.get('result') is False
+        )
+    # A state run rejected before it starts (e.g. another state run is in
+    # progress) returns a list of error strings instead of state results.
+    if isinstance(minion_ret, (list, str)):
+        return _trim(minion_ret)
+    return ''
+
+
+def _step_failures(step):
+    if not isinstance(step, dict) or step.get('result') is not False:
+        return []
+    failures = ['{}: {}'.format(step.get('__id__', step.get('name')), _trim(step.get('comment', '')))]
+    changes = step.get('changes')
+    minion_rets = changes.get('ret') if isinstance(changes, dict) else None
+    if isinstance(minion_rets, dict):
+        for minion, minion_ret in minion_rets.items():
+            text = _minion_failure(minion_ret)
+            if text:
+                failures.append('{}: {}'.format(minion, text))
+    return failures
+
+
+def _orch_failures(ret):
+    if not isinstance(ret, dict):
+        return [_trim(ret)]
+    failures = []
+    for job in ret.values():
+        if not isinstance(job, dict):
+            continue
+        job_ret = job.get('return')
+        data = job_ret.get('data') if isinstance(job_ret, dict) else {}
+        if not isinstance(data, dict):
+            if data:
+                failures.append(_trim(data))
+            data = {}
+        for steps in data.values():
+            if not isinstance(steps, dict):
+                failures.append(_trim(steps))
+                continue
+            for step in steps.values():
+                failures.extend(_step_failures(step))
+        if job.get('success') is False and not failures:
+            failures.append('orchestration reported failure: {}'.format(_trim(job.get('return'))))
+    return failures
+
+
+def _recheck_delay(age):
+    return min(RESULT_RECHECK_MAX, max(RESULT_CHECK_DELAY, age / 4))
+
+
+def _check_dispatched(log, now):
+    due = []
+    for path in glob.glob(os.path.join(DISPATCHED_DIR, '*.json')):
+        record = _read_intent(path, log)
+        if not isinstance(record, dict) or not record.get('jid'):
+            _unlink(path, log)
+            continue
+        age = now - record.get('dispatched_at', 0)
+        last_check = record.get('checked_at', record.get('dispatched_at', 0))
+        if now - last_check >= _recheck_delay(age):
+            due.append((last_check, path, record, age))
+    # Least recently checked first, so pushes that are still running can't starve finished ones.
+    for _, path, record, age in sorted(due, key=lambda item: item[:2])[:RESULT_CHECKS_PER_PASS]:
+        jid = record['jid']
+        try:
+            if _report_result(record, age, log):
+                _unlink(path, log)
+            else:
+                record['checked_at'] = now
+                _write_record(path, record, log)
+        except Exception:
+            # Drop the record so one unreadable result can't fail every pass ahead of the drain.
+            log.exception('cannot evaluate result for jid=%s; no longer tracking', jid)
+            _unlink(path, log)
+
+
+def _report_result(record, age, log):
+    """Logs the outcome of a dispatched push. Returns True once the record is finished with."""
+    jid = record['jid']
+    paths = record.get('paths', [])
+    ret = _lookup_jid(jid, log)
+    if not ret:
+        if age > RESULT_MAX_AGE:
+            log.warning('no result for jid=%s after %ds, no longer tracking; paths=%s', jid, age, paths)
+            return True
         return False
-    log.info('dispatch accepted: %s', (result.stdout or '').strip())
+    failures = _orch_failures(ret)
+    if failures:
+        log.error('push failed jid=%s paths=%s; change will be applied at the next scheduled highstate: %s',
+                  jid, paths, ' | '.join(failures))
+    else:
+        log.info('push succeeded jid=%s paths=%s', jid, paths)
     return True
 
 
@@ -142,6 +309,9 @@ def main():
         return 0
 
     debounce_seconds = int(push.get('debounce_seconds', 30))
+
+    # Outside the lock: lookups are slow and the reactors take the same lock.
+    _check_dispatched(log, time.time())
 
     os.makedirs(PENDING_DIR, exist_ok=True)
     lock_fd = os.open(LOCK_FILE, os.O_CREAT | os.O_RDWR, 0o644)
@@ -208,10 +378,16 @@ def main():
             len(ready), len(deduped), len(combined_actions),
             debounce_duration, all_paths[:20],
         )
+        for action in deduped:
+            log.info('action: %s tgt=%s', 'highstate' if action.get('highstate') else action.get('state'),
+                     action.get('tgt'))
 
-        if not _dispatch(deduped, log):
+        jid = _dispatch(deduped, log)
+        if jid is None:
             log.warning('dispatch failed; leaving intent files in place for retry')
             return 1
+        if jid:
+            _record_dispatch(jid, deduped, all_paths[:20], log)
 
         for path, _ in ready:
             try:
