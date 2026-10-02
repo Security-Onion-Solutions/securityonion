@@ -1,0 +1,477 @@
+name: Security Onion ES|QL Pipeline
+# ES|QL query settings
+priority: 92
+transformations:
+    - id: esql_default_index
+      type: set_state
+      key: index
+      val: .ds-logs-*
+    - id: esql_source_metadata
+      type: set_state
+      key: metadata
+      val: "_id, _index, _source"
+    - id: esql_source_keep
+      type: set_state
+      key: keep
+      val: "_id, _index, _source"
+    # unmapped fields read as null instead of failing the query
+    - id: esql_unmapped_fields
+      type: set_state
+      key: unmapped_fields
+      val: nullify
+    # FROM targets per logsource, any namespace; later entries win, correlations get the union
+    - id: esql_index_process_creation
+      type: set_state
+      key: index
+      val:
+        - .ds-logs-endpoint.events.process-*
+        - .ds-logs-windows.sysmon_operational-*
+        - .ds-logs-system.security-*
+        - .ds-logs-windows.powershell-*
+        - .ds-logs-windows.forwarded-*
+        - .ds-logs-sysmon_linux.log-*
+        - .ds-logs-auditd_manager.auditd-*
+        - .ds-logs-import-so-*
+      rule_conditions:
+      - type: logsource
+        category: process_creation
+    - id: esql_index_process_creation_windows
+      type: set_state
+      key: index
+      val:
+        - .ds-logs-endpoint.events.process-*
+        - .ds-logs-windows.sysmon_operational-*
+        - .ds-logs-system.security-*
+        - .ds-logs-windows.powershell-*
+        - .ds-logs-windows.forwarded-*
+        - .ds-logs-import-so-*
+      rule_conditions:
+      - type: logsource
+        product: windows
+        category: process_creation
+    - id: esql_index_process_creation_linux
+      type: set_state
+      key: index
+      val:
+        - .ds-logs-endpoint.events.process-*
+        - .ds-logs-sysmon_linux.log-*
+        - .ds-logs-auditd_manager.auditd-*
+        - .ds-logs-import-so-*
+      rule_conditions:
+      - type: logsource
+        product: linux
+        category: process_creation
+    - id: esql_index_process_creation_macos
+      type: set_state
+      key: index
+      val:
+        - .ds-logs-endpoint.events.process-*
+        - .ds-logs-import-so-*
+      rule_conditions:
+      - type: logsource
+        product: macos
+        category: process_creation
+    - id: esql_index_file
+      type: set_state
+      key: index
+      val:
+        - .ds-logs-endpoint.events.file-*
+        - .ds-logs-windows.sysmon_operational-*
+        - .ds-logs-windows.forwarded-*
+        - .ds-logs-sysmon_linux.log-*
+        - .ds-logs-import-so-*
+      rule_cond_op: or
+      rule_conditions:
+      - type: logsource
+        category: file_event
+      - type: logsource
+        category: file_delete
+      - type: logsource
+        category: file_rename
+      - type: logsource
+        category: file_change
+      - type: logsource
+        category: file_access
+    - id: esql_index_file_windows
+      type: set_state
+      key: index
+      val:
+        - .ds-logs-endpoint.events.file-*
+        - .ds-logs-windows.sysmon_operational-*
+        - .ds-logs-windows.forwarded-*
+        - .ds-logs-import-so-*
+      rule_cond_op: or
+      rule_conditions:
+      - type: logsource
+        product: windows
+        category: file_event
+      - type: logsource
+        product: windows
+        category: file_delete
+      - type: logsource
+        product: windows
+        category: file_rename
+      - type: logsource
+        product: windows
+        category: file_change
+      - type: logsource
+        product: windows
+        category: file_access
+    - id: esql_index_file_linux
+      type: set_state
+      key: index
+      val:
+        - .ds-logs-endpoint.events.file-*
+        - .ds-logs-sysmon_linux.log-*
+        - .ds-logs-import-so-*
+      rule_cond_op: or
+      rule_conditions:
+      - type: logsource
+        product: linux
+        category: file_event
+      - type: logsource
+        product: linux
+        category: file_delete
+      - type: logsource
+        product: linux
+        category: file_rename
+      - type: logsource
+        product: linux
+        category: file_change
+      - type: logsource
+        product: linux
+        category: file_access
+    - id: esql_index_file_macos
+      type: set_state
+      key: index
+      val:
+        - .ds-logs-endpoint.events.file-*
+        - .ds-logs-import-so-*
+      rule_cond_op: or
+      rule_conditions:
+      - type: logsource
+        product: macos
+        category: file_event
+      - type: logsource
+        product: macos
+        category: file_delete
+      - type: logsource
+        product: macos
+        category: file_rename
+      - type: logsource
+        product: macos
+        category: file_change
+      - type: logsource
+        product: macos
+        category: file_access
+    - id: esql_index_registry
+      type: set_state
+      key: index
+      val:
+        - .ds-logs-endpoint.events.registry-*
+        - .ds-logs-windows.sysmon_operational-*
+        - .ds-logs-windows.forwarded-*
+        - .ds-logs-import-so-*
+      rule_cond_op: or
+      rule_conditions:
+      - type: logsource
+        category: registry_set
+      - type: logsource
+        category: registry_add
+      - type: logsource
+        category: registry_delete
+      - type: logsource
+        category: registry_event
+    - id: esql_index_library
+      type: set_state
+      key: index
+      val:
+        - .ds-logs-endpoint.events.library-*
+        - .ds-logs-windows.sysmon_operational-*
+        - .ds-logs-windows.forwarded-*
+        - .ds-logs-import-so-*
+      rule_cond_op: or
+      rule_conditions:
+      - type: logsource
+        category: image_load
+      - type: logsource
+        category: driver_load
+    - id: esql_index_endpoint_network
+      type: set_state
+      key: index
+      val:
+        - .ds-logs-endpoint.events.network-*
+        - .ds-logs-windows.sysmon_operational-*
+        - .ds-logs-windows.forwarded-*
+        - .ds-logs-sysmon_linux.log-*
+        - .ds-logs-import-so-*
+      rule_cond_op: or
+      rule_conditions:
+      - type: logsource
+        category: network_connection
+      - type: logsource
+        category: dns_query
+    - id: esql_index_endpoint_network_windows
+      type: set_state
+      key: index
+      val:
+        - .ds-logs-endpoint.events.network-*
+        - .ds-logs-windows.sysmon_operational-*
+        - .ds-logs-windows.forwarded-*
+        - .ds-logs-import-so-*
+      rule_cond_op: or
+      rule_conditions:
+      - type: logsource
+        product: windows
+        category: network_connection
+      - type: logsource
+        product: windows
+        category: dns_query
+    - id: esql_index_endpoint_network_linux
+      type: set_state
+      key: index
+      val:
+        - .ds-logs-endpoint.events.network-*
+        - .ds-logs-sysmon_linux.log-*
+        - .ds-logs-import-so-*
+      rule_cond_op: or
+      rule_conditions:
+      - type: logsource
+        product: linux
+        category: network_connection
+      - type: logsource
+        product: linux
+        category: dns_query
+    - id: esql_index_endpoint_network_macos
+      type: set_state
+      key: index
+      val:
+        - .ds-logs-endpoint.events.network-*
+        - .ds-logs-import-so-*
+      rule_cond_op: or
+      rule_conditions:
+      - type: logsource
+        product: macos
+        category: network_connection
+      - type: logsource
+        product: macos
+        category: dns_query
+    - id: esql_index_sysmon_only
+      type: set_state
+      key: index
+      val:
+        - .ds-logs-windows.sysmon_operational-*
+        - .ds-logs-windows.forwarded-*
+        - .ds-logs-import-so-*
+      rule_cond_op: or
+      rule_conditions:
+      - type: logsource
+        category: process_access
+      - type: logsource
+        category: create_remote_thread
+      - type: logsource
+        category: pipe_created
+      - type: logsource
+        category: create_stream_hash
+      - type: logsource
+        category: wmi_event
+      - type: logsource
+        category: raw_access_thread
+      - type: logsource
+        category: process_tampering
+      - type: logsource
+        category: sysmon_status
+      - type: logsource
+        category: sysmon_error
+      - type: logsource
+        category: file_executable_detected
+      - type: logsource
+        category: file_block_executable
+      - type: logsource
+        category: file_block_shredding
+      - type: logsource
+        category: clipboard_capture
+      - type: logsource
+        product: windows
+        service: sysmon
+    - id: esql_index_ps_operational
+      type: set_state
+      key: index
+      val:
+        - .ds-logs-windows.powershell_operational-*
+        - .ds-logs-windows.forwarded-*
+        - .ds-logs-import-so-*
+      rule_cond_op: or
+      rule_conditions:
+      - type: logsource
+        category: ps_script
+      - type: logsource
+        category: ps_module
+      - type: logsource
+        product: windows
+        service: powershell
+    - id: esql_index_ps_classic
+      type: set_state
+      key: index
+      val:
+        - .ds-logs-windows.powershell-*
+        - .ds-logs-windows.forwarded-*
+        - .ds-logs-import-so-*
+      rule_cond_op: or
+      rule_conditions:
+      - type: logsource
+        category: ps_classic_start
+      - type: logsource
+        category: ps_classic_provider_start
+      - type: logsource
+        category: ps_classic_script
+      - type: logsource
+        product: windows
+        service: powershell-classic
+    - id: esql_index_win_security
+      type: set_state
+      key: index
+      val:
+        - .ds-logs-system.security-*
+        - .ds-logs-windows.forwarded-*
+        - .ds-logs-import-so-*
+      rule_conditions:
+      - type: logsource
+        product: windows
+        service: security
+    - id: esql_index_win_system
+      type: set_state
+      key: index
+      val:
+        - .ds-logs-system.system-*
+        - .ds-logs-windows.forwarded-*
+        - .ds-logs-import-so-*
+      rule_conditions:
+      - type: logsource
+        product: windows
+        service: system
+    - id: esql_index_win_application
+      type: set_state
+      key: index
+      val:
+        - .ds-logs-system.application-*
+        - .ds-logs-windows.forwarded-*
+        - .ds-logs-import-so-*
+      rule_conditions:
+      - type: logsource
+        product: windows
+        service: application
+    - id: esql_index_linux_auth
+      type: set_state
+      key: index
+      val:
+        - .ds-logs-system.auth-*
+        - .ds-logs-import-so-*
+      rule_cond_op: or
+      rule_conditions:
+      - type: logsource
+        product: linux
+        service: auth
+      - type: logsource
+        product: linux
+        service: sshd
+      - type: logsource
+        product: linux
+        service: sudo
+    - id: esql_index_linux_syslog
+      type: set_state
+      key: index
+      val:
+        - .ds-logs-system.syslog-*
+        - .ds-logs-syslog-so-*
+        - .ds-logs-import-so-*
+      rule_conditions:
+      - type: logsource
+        product: linux
+        service: syslog
+    - id: esql_index_linux_auditd
+      type: set_state
+      key: index
+      val:
+        - .ds-logs-auditd_manager.auditd-*
+        - .ds-logs-auditd.log-*
+        - .ds-logs-import-so-*
+      rule_conditions:
+      - type: logsource
+        product: linux
+        service: auditd
+    - id: esql_index_network
+      type: set_state
+      key: index
+      val:
+        - .ds-logs-zeek-so-*
+        - .ds-logs-suricata-so-*
+        - .ds-logs-suricata.alerts-so-*
+        - .ds-logs-endpoint.events.network-*
+        - .ds-logs-windows.sysmon_operational-*
+        - .ds-logs-sysmon_linux.log-*
+        - .ds-logs-windows.forwarded-*
+        - .ds-logs-import-so-*
+      rule_conditions:
+      - type: logsource
+        category: network
+    - id: esql_index_so_network
+      type: set_state
+      key: index
+      val:
+        - .ds-logs-zeek-so-*
+        - .ds-logs-suricata-so-*
+        - .ds-logs-import-so-*
+      rule_cond_op: or
+      rule_conditions:
+      - type: logsource
+        category: network
+        service: connection
+      - type: logsource
+        category: network
+        service: dns
+      - type: logsource
+        category: network
+        service: http
+      - type: logsource
+        category: network
+        service: file
+      - type: logsource
+        category: network
+        service: x509
+      - type: logsource
+        category: network
+        service: ssl
+      - type: logsource
+        category: network
+        service: ssh
+      - type: logsource
+        category: dns
+    - id: esql_index_zeek
+      type: set_state
+      key: index
+      val:
+        - .ds-logs-zeek-so-*
+        - .ds-logs-import-so-*
+      rule_conditions:
+      - type: logsource
+        product: zeek
+    - id: esql_index_opencanary
+      type: set_state
+      key: index
+      val:
+        - .ds-logs-idh-so-*
+        - .ds-logs-import-so-*
+      rule_conditions:
+      - type: logsource
+        product: opencanary
+    - id: esql_index_kratos
+      type: set_state
+      key: index
+      val:
+        - .ds-logs-kratos-so-*
+        - .ds-logs-import-so-*
+      rule_conditions:
+      - type: logsource
+        product: kratos
+
