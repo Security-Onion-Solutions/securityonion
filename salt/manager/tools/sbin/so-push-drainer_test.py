@@ -16,17 +16,17 @@ import unittest
 from importlib.machinery import SourceFileLoader
 from unittest.mock import MagicMock, patch
 
-# salt is not installed where these tests run; the drainer only needs salt.client.Caller.
-_salt = MagicMock()
-sys.modules.setdefault('salt', _salt)
-sys.modules.setdefault('salt.client', _salt.client)
-
 HERE = os.path.dirname(os.path.abspath(__file__))
 SCRIPT = os.path.join(HERE, 'so-push-drainer')
 _loader = SourceFileLoader('so_push_drainer', SCRIPT)
 _spec = importlib.util.spec_from_loader('so_push_drainer', _loader)
 drainer = importlib.util.module_from_spec(_spec)
-_loader.exec_module(drainer)
+
+# salt is not installed where these tests run; the drainer only needs salt.client.Caller.
+# Mocked only while the drainer loads: run from the repo root, 'salt' is this repo's salt/ directory.
+_salt = MagicMock()
+with patch.dict(sys.modules, {'salt': _salt, 'salt.client': _salt.client}):
+    _loader.exec_module(drainer)
 
 MASTER = 'manager.localdomain_master'
 JID = '20260930171554259426'
@@ -181,8 +181,10 @@ class TestHelpers(DrainerTestCase):
                          'salt.exceptions.AuthenticationError: Authentication error occurred.')
         self.assertEqual(drainer._trim('line one\n  line two\n'), 'line one line two')
 
-    def test_unlink_missing_logs(self):
+    def test_unlink(self):
         drainer._unlink(os.path.join(self.tmpdir, 'missing'), self.log)
+        self.log.exception.assert_not_called()
+        drainer._unlink(self.tmpdir, self.log)
         self.log.exception.assert_called_once()
 
 
@@ -205,9 +207,9 @@ class TestDispatch(DrainerTestCase):
         self.assertEqual(jid, JID)
 
     def test_no_jid(self):
-        jid, _ = self.run_dispatch(return_value=MagicMock(stdout='', stderr=None))
+        jid, _ = self.run_dispatch(return_value=MagicMock(stdout='unexpected output', stderr=None))
         self.assertEqual(jid, '')
-        self.log.warning.assert_called_once()
+        self.assertIn('output=unexpected output', self.logged('warning'))
 
     def test_failures_return_none(self):
         for exc in (subprocess.CalledProcessError(1, 'salt-run', 'out', 'err'),
@@ -224,10 +226,12 @@ class TestDispatch(DrainerTestCase):
         self.assertEqual(record['paths'], ['audit:soc.config.licenseKey'])
         self.assertIn('dispatched_at', record)
 
-    def test_record_dispatch_oserror(self):
+    def test_record_dispatch_errors(self):
         with patch.object(drainer.os, 'makedirs', side_effect=OSError('ro')):
             drainer._record_dispatch(JID, [], [], self.log)
-        self.log.exception.assert_called_once()
+        drainer._record_dispatch(JID, [object()], [], self.log)
+        self.assertEqual(self.log.exception.call_count, 2)
+        self.assertFalse(os.path.exists(os.path.join(self.dispatched, JID + '.json')))
 
 
 class TestResults(DrainerTestCase):
@@ -311,7 +315,8 @@ class TestResults(DrainerTestCase):
             drainer._check_dispatched(self.log, now)
 
         self.assertTrue(os.path.exists(young))
-        self.assertTrue(os.path.exists(paths['3_pending']))
+        with open(paths['3_pending']) as f:
+            self.assertEqual(json.load(f)['checked_at'], now)
         for jid in ('1_failed', '2_ok', '4_expired'):
             self.assertFalse(os.path.exists(paths[jid]), jid)
         self.assertFalse(os.path.exists(bad))
@@ -339,13 +344,41 @@ class TestResults(DrainerTestCase):
         self.assertIn('jid=1_bad', self.log.exception.call_args[0][0] % self.log.exception.call_args[0][1:])
         self.assertIn('push succeeded jid=2_ok', self.logged('info'))
 
-    def test_check_dispatched_limit(self):
+    def test_recheck_delay(self):
+        self.assertEqual(drainer._recheck_delay(10), drainer.RESULT_CHECK_DELAY)
+        self.assertEqual(drainer._recheck_delay(400), 100)
+        self.assertEqual(drainer._recheck_delay(drainer.RESULT_MAX_AGE), drainer.RESULT_RECHECK_MAX)
+
+    def test_check_dispatched_limit_rotates(self):
         now = time.time()
-        for i in range(drainer.RESULT_CHECKS_PER_PASS + 2):
-            self.record('{:02d}'.format(i), 60, now)
+        limit = drainer.RESULT_CHECKS_PER_PASS
+        jids = ['{:02d}'.format(i) for i in range(limit + 2)]
+        for jid in jids:
+            self.record(jid, 60, now)
         with patch.object(drainer, '_lookup_jid', return_value={}) as lookup:
             drainer._check_dispatched(self.log, now)
-        self.assertEqual(lookup.call_count, drainer.RESULT_CHECKS_PER_PASS)
+            self.assertEqual([c.args[0] for c in lookup.call_args_list], jids[:limit])
+            lookup.reset_mock()
+            drainer._check_dispatched(self.log, now + 40)
+        self.assertEqual([c.args[0] for c in lookup.call_args_list], jids[limit:] + jids[:limit - 2])
+
+    def test_check_dispatched_not_blocked_by_running(self):
+        now = time.time()
+        for i in range(drainer.RESULT_CHECKS_PER_PASS):
+            self.record('1_running{}'.format(i), 600, now)
+        done = self.record('2_done', 60, now)
+
+        def lookup(jid, log):
+            return SUCCESS_RET if jid == '2_done' else {}
+
+        with patch.object(drainer, '_lookup_jid', side_effect=lookup) as lookup_jid:
+            drainer._check_dispatched(self.log, now)
+            self.assertTrue(os.path.exists(done))
+            lookup_jid.reset_mock()
+            drainer._check_dispatched(self.log, now + 15)
+        self.assertEqual([c.args[0] for c in lookup_jid.call_args_list], ['2_done'])
+        self.assertFalse(os.path.exists(done))
+        self.assertIn('push succeeded jid=2_done', self.logged('info'))
 
 
 class TestMain(DrainerTestCase):

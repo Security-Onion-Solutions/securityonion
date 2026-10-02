@@ -48,6 +48,7 @@ DISPATCHED_DIR = '/opt/so/state/push_dispatched'
 HIGHSTATE_SENTINEL = '__highstate__'
 
 RESULT_CHECK_DELAY = 30
+RESULT_RECHECK_MAX = 300
 RESULT_MAX_AGE = 7200
 RESULT_CHECKS_PER_PASS = 5
 TEXT_LIMIT = 500
@@ -133,10 +134,11 @@ def _dispatch(actions, log):
     except Exception:
         log.exception('dispatch raised')
         return None
-    match = JID_RE.search('{}\n{}'.format(result.stderr or '', result.stdout or ''))
+    output = '{}\n{}'.format(result.stderr or '', result.stdout or '')
+    match = JID_RE.search(output)
     if not match:
-        log.warning('dispatch accepted but no jid found, result will not be tracked: stderr=%s',
-                    _trim(result.stderr))
+        log.warning('dispatch accepted but no jid found, result will not be tracked: output=%s',
+                    _trim(output))
         return ''
     log.info('dispatch accepted: jid=%s', match.group(1))
     return match.group(1)
@@ -155,21 +157,26 @@ def _trim(value):
 def _unlink(path, log):
     try:
         os.unlink(path)
+    except FileNotFoundError:
+        pass
     except OSError:
         log.exception('failed to remove %s', path)
 
 
-def _record_dispatch(jid, actions, paths, log):
-    record = {'jid': jid, 'dispatched_at': time.time(), 'actions': actions, 'paths': paths}
-    path = os.path.join(DISPATCHED_DIR, '{}.json'.format(jid))
+def _write_record(path, record, log):
     try:
         os.makedirs(DISPATCHED_DIR, exist_ok=True)
         tmp_path = path + '.tmp'
         with open(tmp_path, 'w') as f:
             json.dump(record, f)
         os.rename(tmp_path, path)
-    except OSError:
-        log.exception('failed to record dispatch %s', jid)
+    except Exception:
+        log.exception('failed to record dispatch %s', record.get('jid'))
+
+
+def _record_dispatch(jid, actions, paths, log):
+    record = {'jid': jid, 'dispatched_at': time.time(), 'actions': actions, 'paths': paths}
+    _write_record(os.path.join(DISPATCHED_DIR, '{}.json'.format(jid)), record, log)
 
 
 def _lookup_jid(jid, log):
@@ -235,23 +242,30 @@ def _orch_failures(ret):
     return failures
 
 
+def _recheck_delay(age):
+    return min(RESULT_RECHECK_MAX, max(RESULT_CHECK_DELAY, age / 4))
+
+
 def _check_dispatched(log, now):
-    checked = 0
-    for path in sorted(glob.glob(os.path.join(DISPATCHED_DIR, '*.json'))):
-        if checked >= RESULT_CHECKS_PER_PASS:
-            break
+    due = []
+    for path in glob.glob(os.path.join(DISPATCHED_DIR, '*.json')):
         record = _read_intent(path, log)
         if not isinstance(record, dict) or not record.get('jid'):
             _unlink(path, log)
             continue
         age = now - record.get('dispatched_at', 0)
-        if age < RESULT_CHECK_DELAY:
-            continue
-        checked += 1
+        last_check = record.get('checked_at', record.get('dispatched_at', 0))
+        if now - last_check >= _recheck_delay(age):
+            due.append((last_check, path, record, age))
+    # Least recently checked first, so pushes that are still running can't starve finished ones.
+    for _, path, record, age in sorted(due, key=lambda item: item[:2])[:RESULT_CHECKS_PER_PASS]:
         jid = record['jid']
         try:
             if _report_result(record, age, log):
                 _unlink(path, log)
+            else:
+                record['checked_at'] = now
+                _write_record(path, record, log)
         except Exception:
             # Drop the record so one unreadable result can't fail every pass ahead of the drain.
             log.exception('cannot evaluate result for jid=%s; no longer tracking', jid)
