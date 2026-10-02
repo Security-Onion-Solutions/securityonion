@@ -85,6 +85,18 @@
 {%   do SOCMERGED.config.server.update({'airgapEnabled': false}) %}
 {% endif %}
 
+{# Sigma correlations require ES|QL: load the community correlations and offer correlation authoring only when it is on #}
+{% set use_esql = SOCMERGED.config.server.modules.elastalertengine.useEsql %}
+{% for repo in SOCMERGED.config.server.modules.elastalertengine.rulesRepos %}
+{%   if repo.get('rulesetName') == 'securityonion-resources' and repo.get('folder') in ['sigma', 'sigma/stable'] %}
+{%     do repo.update({'folder': 'sigma' if use_esql else 'sigma/stable'}) %}
+{%   endif %}
+{% endfor %}
+{% if not use_esql %}
+{%   do SOCMERGED.config.server.client.detection.templateDetections.pop('elastalert_correlation', None) %}
+{%   do SOCMERGED.config.server.client.detections.update({'queries': SOCMERGED.config.server.client.detections.queries | rejectattr('name', 'equalto', 'Detection Type - Sigma (Elastalert) - Correlations') | list}) %}
+{% endif %}
+
 {# Define the postgresmetrics module if telegraf is setup to only use Postgres #}
 {% if TELEGRAFMERGED.output != 'INFLUXDB' and PG_USER and PG_PASS %}
 {%   do SOCMERGED.config.server.modules.update({
