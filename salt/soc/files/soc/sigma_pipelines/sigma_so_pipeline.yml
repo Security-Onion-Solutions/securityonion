@@ -14,18 +14,15 @@ transformations:
         - process.args
         - related.ip
         - dns.resolved_ip
-    - id: esql_default_index
+    # Always lowercase, so matched exactly; the backend can then use the indexed ':' operator.
+    - id: case_sensitive_categorization_fields
       type: set_state
-      key: index
-      val: .ds-logs-*
-    - id: esql_source_metadata
-      type: set_state
-      key: metadata
-      val: "_id, _index, _source"
-    - id: esql_source_keep
-      type: set_state
-      key: keep
-      val: "_id, _index, _source"
+      key: case_insensitive_exempt_fields
+      val:
+        - tags
+        - event.category
+        - event.type
+        - event.kind
     # Not every source maps .caseless; EQL/ES|QL already match case-insensitively.
     - id: caseless_to_parent_fields
       type: field_name_mapping
@@ -130,6 +127,9 @@ transformations:
       valid_hash_algos: ["MD5", "SHA1", "SHA256", "SHA512", "IMPHASH"]
       field_prefix: "file"
       drop_algo_prefix: False
+      # ecs_windows has already renamed Hashes; pySigma 1.5+ only parses the fields listed here
+      field_to_parse:
+        - winlog.event_data.Hashes
       field_name_conditions:
         - type: include_fields
           fields:

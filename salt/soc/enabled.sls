@@ -47,9 +47,8 @@ so-soc:
 {% endif %}
       - /opt/so/conf/soc/motd.md:/opt/sensoroni/html/motd.md:ro
       - /opt/so/conf/soc/banner.md:/opt/sensoroni/html/login/banner.md:ro
-      - /opt/so/conf/soc/sigma_so_pipeline.yaml:/opt/sensoroni/sigma_so_pipeline.yaml:ro
+      - /opt/so/conf/soc/sigma_pipelines:/opt/sensoroni/sigma_pipelines:ro
       - /opt/so/conf/soc/sigma_playbook_pipeline.yaml:/opt/sensoroni/sigma_playbook_pipeline.yaml:ro
-      - /opt/so/conf/soc/sigma_final_pipeline.yaml:/opt/sensoroni/sigma_final_pipeline.yaml:ro
       - /opt/so/conf/soc/playbook_placeholder_map.yaml:/opt/sensoroni/playbook_placeholder_map.yaml:ro
       - /opt/so/conf/soc/playbook_placeholder_map_custom.yaml:/opt/sensoroni/playbook_placeholder_map_custom.yaml:ro
       - /opt/so/conf/soc/custom.js:/opt/sensoroni/html/js/custom.js:ro
@@ -107,6 +106,7 @@ so-soc:
       - file: socclientsroles
       - file: socplaybookplaceholdermap
       - file: socplaybookplaceholdermapcustom
+      - file: socsigmapipelines
 
 delete_so-soc_so-status.disabled:
   file.uncomment:
