@@ -118,6 +118,7 @@ crondetectionsbackup:
     - month: '*'
     - dayweek: '*'
 
+# sigma-cli only loads *.yml from the pipelines dir
 socsigmafinalpipeline:
   file.managed:
     - name: /opt/so/conf/soc/sigma_pipelines/sigma_final_pipeline.yml
