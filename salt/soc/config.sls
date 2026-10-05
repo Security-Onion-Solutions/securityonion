@@ -118,21 +118,33 @@ crondetectionsbackup:
     - month: '*'
     - dayweek: '*'
 
+# sigma-cli only loads *.yml from the pipelines dir
 socsigmafinalpipeline:
   file.managed:
-    - name: /opt/so/conf/soc/sigma_final_pipeline.yaml
+    - name: /opt/so/conf/soc/sigma_pipelines/sigma_final_pipeline.yml
     - source: salt://soc/files/soc/sigma_final_pipeline.yaml
     - user: 939
     - group: 939
     - mode: 600
+    - makedirs: True
 
-socsigmasopipeline:
-  file.managed:
-    - name: /opt/so/conf/soc/sigma_so_pipeline.yaml
-    - source: salt://soc/files/soc/sigma_so_pipeline.yaml
+# sigma-cli loads every *.yml here; clean removes anything else
+socsigmapipelines:
+  file.recurse:
+    - name: /opt/so/conf/soc/sigma_pipelines
+    - source: salt://soc/files/soc/sigma_pipelines
     - user: 939
     - group: 939
-    - mode: 600
+    - file_mode: 600
+    - clean: True
+    - require:
+      - file: socsigmafinalpipeline
+
+socsigmapipelinesold:
+  file.absent:
+    - names:
+      - /opt/so/conf/soc/sigma_final_pipeline.yaml
+      - /opt/so/conf/soc/sigma_so_pipeline.yaml
 
 socsigmaplaybookpipeline:
   file.managed:
