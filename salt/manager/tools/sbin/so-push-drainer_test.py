@@ -76,6 +76,17 @@ STATE_FAIL_RET = _orch_ret({
     },
 }, success=False)
 
+RAISED = ('An exception occurred in this state: Traceback (most recent call last):\n'
+          '  File "salt/client/__init__.py", line 1934, in pub\n'
+          '    raise AuthenticationError(err_msg)\n'
+          'salt.exceptions.AuthenticationError: Authentication error occurred.\n')
+
+RAISED_RET = _orch_ret(dict(REFRESH_STEP, **{
+    'salt_|-apply_hydra_1_|-apply_hydra_1_|-state': {
+        '__id__': 'apply_hydra_1', 'result': False, 'changes': {}, 'comment': RAISED,
+    },
+}), success=False)
+
 SUCCESS_RET = _orch_ret(dict(REFRESH_STEP, **{
     'salt_|-apply_telegraf_1_|-apply_telegraf_1_|-state': {
         '__id__': 'apply_telegraf_1', 'result': True,
@@ -294,6 +305,15 @@ class TestResults(DrainerTestCase):
         ret = {MASTER: {'return': 'Exception occurred', 'success': False}}
         self.assertEqual(drainer._orch_failures(ret), ['orchestration reported failure: Exception occurred'])
 
+    def test_result_unknown(self):
+        self.assertTrue(drainer._result_unknown(RAISED_RET))
+        for ret in (CONFLICT_RET, STATE_FAIL_RET, SUCCESS_RET, ['No minions matched'], {MASTER: 'odd'},
+                    {MASTER: {'return': {'data': {MASTER: ['Rendering SLS failed']}}, 'success': False}}):
+            self.assertFalse(drainer._result_unknown(ret), ret)
+        mixed = _orch_ret(dict(RAISED_RET[MASTER]['return']['data'][MASTER],
+                               **CONFLICT_RET[MASTER]['return']['data'][MASTER]), success=False)
+        self.assertFalse(drainer._result_unknown(mixed))
+
     def record(self, jid, age, now):
         return self.write_json(self.dispatched, jid + '.json', {
             'jid': jid, 'dispatched_at': now - age, 'actions': [], 'paths': ['audit:' + jid],
@@ -306,6 +326,7 @@ class TestResults(DrainerTestCase):
             '2_ok': SUCCESS_RET,
             '3_pending': {},
             '4_expired': None,
+            '6_unknown': RAISED_RET,
         }
         young = self.record('0_young', 5, now)
         paths = {jid: self.record(jid, 60, now) for jid in results}
@@ -317,13 +338,16 @@ class TestResults(DrainerTestCase):
         self.assertTrue(os.path.exists(young))
         with open(paths['3_pending']) as f:
             self.assertEqual(json.load(f)['checked_at'], now)
-        for jid in ('1_failed', '2_ok', '4_expired'):
+        for jid in ('1_failed', '2_ok', '4_expired', '6_unknown'):
             self.assertFalse(os.path.exists(paths[jid]), jid)
         self.assertFalse(os.path.exists(bad))
         self.assertIn('push failed jid=1_failed', self.logged('error'))
         self.assertIn('is running as PID 372218', self.logged('error'))
         self.assertIn('push succeeded jid=2_ok', self.logged('info'))
         self.assertIn('no result for jid=4_expired', self.logged('warning'))
+        self.assertIn('push result unknown jid=6_unknown', self.logged('warning'))
+        self.assertIn('AuthenticationError: Authentication error occurred.', self.logged('warning'))
+        self.assertNotIn('6_unknown', self.logged('error'))
 
     def test_check_dispatched_survives_bad_result(self):
         now = time.time()

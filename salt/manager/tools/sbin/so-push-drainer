@@ -53,6 +53,9 @@ RESULT_MAX_AGE = 7200
 RESULT_CHECKS_PER_PASS = 5
 TEXT_LIMIT = 500
 
+# Lead-in salt puts on the comment of an orchestration step that raised.
+STEP_RAISED = 'An exception occurred in this state:'
+
 # salt-run --async reports the jid only in a log line (stderr by default).
 JID_RE = re.compile(r'salt/run/(\d{20})')
 
@@ -242,6 +245,24 @@ def _orch_failures(ret):
     return failures
 
 
+def _failed_steps(ret):
+    steps = []
+    for job in ret.values() if isinstance(ret, dict) else []:
+        job_ret = job.get('return') if isinstance(job, dict) else None
+        data = job_ret.get('data') if isinstance(job_ret, dict) else None
+        for group in data.values() if isinstance(data, dict) else []:
+            if isinstance(group, dict):
+                steps.extend(step for step in group.values() if isinstance(step, dict) and step.get('result') is False)
+    return steps
+
+
+def _result_unknown(ret):
+    # A step that raised (e.g. salt-master restarted while it waited on a queued state run)
+    # never collected the minion's return, so the state run may still have completed.
+    steps = _failed_steps(ret)
+    return bool(steps) and all(str(step.get('comment', '')).startswith(STEP_RAISED) for step in steps)
+
+
 def _recheck_delay(age):
     return min(RESULT_RECHECK_MAX, max(RESULT_CHECK_DELAY, age / 4))
 
@@ -283,7 +304,11 @@ def _report_result(record, age, log):
             return True
         return False
     failures = _orch_failures(ret)
-    if failures:
+    if failures and _result_unknown(ret):
+        log.warning('push result unknown jid=%s paths=%s; the orchestration lost track of the state run, which may '
+                    'still have completed (if not, the change will be applied at the next scheduled highstate): %s',
+                    jid, paths, ' | '.join(failures))
+    elif failures:
         log.error('push failed jid=%s paths=%s; change will be applied at the next scheduled highstate: %s',
                   jid, paths, ' | '.join(failures))
     else:
