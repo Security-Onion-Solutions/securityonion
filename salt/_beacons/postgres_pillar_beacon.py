@@ -131,8 +131,6 @@ def beacon(config):  # noqa: C901
             'setting_id': setting_id,
             'node_id': node_id,
         })
-        log.info('postgres_pillar_beacon: audit_settings id=%d setting_id=%s node_id=%s',
-                 row_id, setting_id, node_id)
         if row_id > max_id:
             max_id = row_id
 
