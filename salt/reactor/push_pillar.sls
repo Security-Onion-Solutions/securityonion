@@ -138,7 +138,6 @@ def run():
     # top level so the reactor is robust to either shape.
     event = data.get('data', data)  # noqa: F821 -- data provided by reactor
     setting_id = event.get('setting_id', '')
-    audit_id = event.get('id')
     node_id = (event.get('node_id') or '').strip()
 
     app = _app_from_setting(setting_id)
@@ -151,8 +150,8 @@ def run():
     if not entry:
         LOG.warning(
             'push_pillar: app "%s" is not in pillar_push_map.yaml; change will be '
-            'picked up at the next scheduled highstate (setting_id=%s audit_id=%s)',
-            app, setting_id, audit_id,
+            'picked up at the next scheduled highstate (setting_id=%s)',
+            app, setting_id,
         )
         return {}
 
@@ -166,12 +165,12 @@ def run():
             'node_{}_{}'.format(node_id, app), actions,
             'audit:{}@{}'.format(setting_id, node_id),
         )
-        LOG.info('push_pillar: per-node intent updated for %s on %s (setting_id=%s audit_id=%s)',
-                 app, node_id, setting_id, audit_id)
+        LOG.info('push_pillar: per-node intent updated for %s on %s (setting_id=%s)',
+                 app, node_id, setting_id)
         return {}
 
     # Branch B: grid-wide app change -> use the map entry's actions as-is.
     actions = list(entry)  # copy to avoid mutating the cache
     _write_intent('pillar_{}'.format(app), actions, 'audit:{}'.format(setting_id))
-    LOG.info('push_pillar: app intent updated for %s (setting_id=%s audit_id=%s)', app, setting_id, audit_id)
+    LOG.info('push_pillar: app intent updated for %s (setting_id=%s)', app, setting_id)
     return {}
