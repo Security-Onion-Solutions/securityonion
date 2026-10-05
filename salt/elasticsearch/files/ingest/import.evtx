@@ -1,0 +1,31 @@
+{
+  "description" : "import.evtx: normalize imported EVTX and reroute to logs-<dataset>-import",
+  "processors" : [
+    { "script":  {
+        "description": "Host from the event, not the importing node",
+        "lang": "painless",
+        "source": "Map host = ['os': ['type': 'windows', 'family': 'windows', 'platform': 'windows']]; def cn = ctx.winlog?.computer_name; if (cn != null && cn.toString().length() > 0) { String name = cn.toString(); int dot = name.indexOf('.'); if (dot > 0) { name = name.substring(0, dot); } host.put('hostname', name); host.put('name', name.toLowerCase()); } ctx.host = host;"
+    } },
+    { "script":  {
+        "description": "String event IDs, as Winlogbeat sends",
+        "lang": "painless",
+        "source": "if (ctx.winlog?.event_id != null) { ctx.winlog.event_id = ctx.winlog.event_id.toString(); } if (ctx.event?.code != null) { ctx.event.code = ctx.event.code.toString(); }"
+    } },
+    { "script":  {
+        "description": "Unnamed <Data> to param1..N, as Winlogbeat",
+        "lang": "painless",
+        "if": "ctx.winlog?.event_data?.Data instanceof Map && ctx.winlog.event_data.Data['#text'] != null",
+        "source": "def t = ctx.winlog.event_data.Data['#text']; List vals = t instanceof List ? t : [t]; for (int i = 0; i < vals.size(); i++) { ctx.winlog.event_data['param' + (i + 1)] = vals.get(i); } ctx.winlog.event_data.remove('Data');"
+    } },
+    { "script":  {
+        "description": "String values and LF line endings, as Winlogbeat",
+        "lang": "painless",
+        "if": "ctx.winlog?.event_data instanceof Map || ctx.winlog?.user_data instanceof Map",
+        "source": "String lf = String.valueOf((char) 10); String crlf = String.valueOf((char) 13) + lf; for (def key : ['event_data', 'user_data']) { def m = ctx.winlog[key]; if (!(m instanceof Map)) { continue; } for (def e : m.entrySet()) { def v = e.getValue(); if (v instanceof String) { e.setValue(v.replace(crlf, lf)); } else if (v instanceof Number || v instanceof Boolean) { e.setValue(v.toString()); } } }"
+    } },
+    { "set":     { "description": "event.kind, as Winlogbeat", "field": "event.kind", "value": "event", "override": false } },
+    { "set":     { "field": "data_stream.dataset", "copy_from": "event.dataset", "override": true, "ignore_empty_value": true } },
+    { "set":     { "field": "data_stream.namespace", "value": "import", "override": true } },
+    { "reroute": { "dataset": "{{data_stream.dataset}}", "namespace": "{{data_stream.namespace}}" } }
+  ]
+}
