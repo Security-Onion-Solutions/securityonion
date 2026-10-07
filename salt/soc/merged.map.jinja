@@ -8,6 +8,7 @@
 {% from 'elasticsearch/config.map.jinja' import ELASTICSEARCH_NODES %}
 {% from 'manager/map.jinja' import MANAGERMERGED %}
 {% from 'telegraf/map.jinja' import TELEGRAFMERGED %}
+{% from 'elastalert/map.jinja' import ELASTALERTMERGED %}
 {%- set PG_ENTRY = salt['pillar.get']('telegraf:postgres_creds:' ~ grains.id, {}) %}
 {%- set PG_USER = PG_ENTRY.get('user', '') %}
 {%- set PG_PASS = PG_ENTRY.get('pass', '') %}
@@ -63,6 +64,10 @@
 {%   do SOCMERGED.config.server.modules.elastalertengine.update({'enabledSigmaRules': SOCMERGED.config.server.modules.elastalertengine.enabledSigmaRules.default}) %}
 {% endif %}
 
+{# correlation schedules follow ElastAlert's run_every #}
+{% set run_every = ELASTALERTMERGED.config.run_every %}
+{% do SOCMERGED.config.server.modules.elastalertengine.update({'elastAlertRunEverySeconds': run_every.get('minutes', 0) * 60 + run_every.get('seconds', 0)}) %}
+
 {# set elastalertengine.rulesRepos, strelkaengine.rulesRepos, and suricataengine.rulesetSources based on airgap or not #}
 {% if GLOBALS.airgap %}
 {%   do SOCMERGED.config.server.modules.elastalertengine.update({'rulesRepos': SOCMERGED.config.server.modules.elastalertengine.rulesRepos.airgap}) %}
@@ -78,6 +83,12 @@
 {%     do SOCMERGED.config.server.modules.suricataengine.update({'rulesetSources': SOCMERGED.config.server.modules.suricataengine.rulesetSources.default}) %}
 {#%   endif %#}
 {%   do SOCMERGED.config.server.update({'airgapEnabled': false}) %}
+{% endif %}
+
+{# correlation authoring requires ES|QL #}
+{% if not SOCMERGED.config.server.modules.elastalertengine.useEsql %}
+{%   do SOCMERGED.config.server.client.detection.templateDetections.pop('elastalert_correlation', None) %}
+{%   do SOCMERGED.config.server.client.detections.update({'queries': SOCMERGED.config.server.client.detections.queries | rejectattr('name', 'equalto', 'Detection Type - Sigma (Elastalert) - Correlations') | list}) %}
 {% endif %}
 
 {# Define the postgresmetrics module if telegraf is setup to only use Postgres #}
