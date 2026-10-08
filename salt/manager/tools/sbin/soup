@@ -1131,9 +1131,6 @@ post_to_3.2.0() {
 
 ### 3.3.0 Scripts ###
 up_to_3.3.0() {
-  # download 9.4.5 elastic agent packages
-  determine_elastic_agent_upgrade
-  
   # remove existing (patched) elasticsearch index template to match integration naming change
   if ! remove_elasticsearch_index_template "so-logs-sentinel_one_cloud_funnel.login" "sentinel_one_cloud_funnel.login changed to sentinel_one_cloud_funnel.logins"; then
     FINAL_MESSAGE_QUEUE+=("WARNING: Unable to automatically remove the so-logs-sentinel_one_cloud_funnel.login index template. This step can be performed manually using the following command:")
@@ -1165,11 +1162,7 @@ telegraf_repair() {
 post_to_3.3.0() {
   # Recollate again since some internal DBs were excluded during 3.2.0 soup
   recollate_postgres
-
-  # Generate 9.4.5 elastic agent installers
-  echo "Regenerating Elastic Agent Installers"
-  /sbin/so-elastic-agent-gen-installers
-
+  
   telegraf_repair
 
   set_postversion 3.3.0
@@ -1178,6 +1171,9 @@ post_to_3.3.0() {
 
 ### 3.4.0 Scripts ###
 up_to_3.4.0() {
+  # download 9.4.8 elastic agent packages
+  determine_elastic_agent_upgrade
+  
   set_soauth_range
 
   echo "Removing so-kratos, so-hydra and so-soc so they are recreated on the soauth network."
@@ -1255,6 +1251,10 @@ valid_soauth_range() {
 }
 
 post_to_3.4.0() {
+  # Generate 9.4.8 elastic agent installers
+  echo "Regenerating Elastic Agent Installers"
+  /sbin/so-elastic-agent-gen-installers
+  
   for idx in "metrics-logstash.node-default" "metrics-logstash.stack_monitoring.node-default"; do
     rollover_index "$idx"
   done
