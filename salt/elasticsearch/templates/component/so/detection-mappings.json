@@ -50,18 +50,6 @@
               "ignore_above": 1024,
               "type": "keyword"
             },
-            "ruleType": {
-              "ignore_above": 1024,
-              "type": "keyword"
-            },
-            "correlationType": {
-              "ignore_above": 1024,
-              "type": "keyword"
-            },
-            "correlationTimespan": {
-              "ignore_above": 1024,
-              "type": "keyword"
-            },
             "content": {
               "type": "text"
             },
@@ -164,6 +152,20 @@
               "ignore_above": 1024,
               "type": "keyword"
             }
+          }
+        }
+      },
+      "runtime": {
+        "so_detection.sigmaKind": {
+          "type": "keyword",
+          "script": {
+            "source": "if (doc['so_detection.language'].size() == 0 || doc['so_detection.language'].value != 'sigma') { return; } def d = params._source.so_detection; if (d == null || d.content == null) { return; } String c = d.content; String NL = String.valueOf((char) 10); emit(c.startsWith('correlation:') || c.contains(NL + 'correlation:') ? 'correlation' : 'single');"
+          }
+        },
+        "so_detection.sigmaCorrelationType": {
+          "type": "keyword",
+          "script": {
+            "source": "if (doc['so_detection.language'].size() == 0 || doc['so_detection.language'].value != 'sigma') { return; } def d = params._source.so_detection; if (d == null || d.content == null) { return; } String c = d.content; String NL = String.valueOf((char) 10); int i = c.startsWith('correlation:') ? 0 : c.indexOf(NL + 'correlation:'); if (i < 0) { return; } i = c.indexOf(NL, i + 1); while (i >= 0 && i + 1 < c.length()) { int e = c.indexOf(NL, i + 1); String line = e < 0 ? c.substring(i + 1) : c.substring(i + 1, e); if (line.length() > 0 && !Character.isWhitespace(line.charAt(0)) && line.charAt(0) != (char) 35) { return; } String t = line.trim(); if (t.startsWith('type:')) { String v = t.substring(5).trim(); int h = v.indexOf(' ' + String.valueOf((char) 35)); if (h >= 0) { v = v.substring(0, h).trim(); } if (v.length() > 1 && (v.charAt(0) == (char) 39 || v.charAt(0) == (char) 34)) { v = v.substring(1, v.length() - 1); } emit(v); return; } i = e; }"
           }
         }
       }
