@@ -1445,7 +1445,7 @@ soc:
             default:
               - repo: https://github.com/Security-Onion-Solutions/securityonion-resources
                 license: Elastic-2.0
-                folder: sigma/stable
+                folder: sigma
                 community: true
                 rulesetName: securityonion-resources
               - repo: file:///nsm/rules/custom-local-repos/local-sigma
@@ -1455,7 +1455,7 @@ soc:
             airgap:
               - repo: file:///nsm/rules/detect-sigma/repos/securityonion-resources
                 license: Elastic-2.0
-                folder: sigma/stable
+                folder: sigma
                 community: true
                 rulesetName: securityonion-resources
               - repo: file:///nsm/rules/custom-local-repos/local-sigma
@@ -1467,6 +1467,8 @@ soc:
             - emerging_threats_addon
           useEsql: false
           esqlCaseInsensitive: true
+          esqlQueryDelaySeconds: 30
+          esqlCorrelationAllowanceSeconds: 600
         elastic:
           hostUrl:
           remoteHostUrls: []
@@ -2682,8 +2684,11 @@ soc:
               query: "so_detection.language:suricata | groupby so_detection.ruleset so_detection.isEnabled | groupby so_detection.category"
               description: Show all NIDS Detections, which are run with Suricata
             - name: "Detection Type - Sigma (Elastalert) - All"
-              query: "so_detection.language:sigma | groupby so_detection.ruleset so_detection.isEnabled | groupby so_detection.category | groupby so_detection.product"
+              query: "so_detection.language:sigma | groupby so_detection.sigmaKind | groupby so_detection.ruleset so_detection.isEnabled | groupby so_detection.category | groupby so_detection.product"
               description: Show all Sigma Detections, which are run with Elastalert
+            - name: "Detection Type - Sigma (Elastalert) - Correlations"
+              query: "so_detection.sigmaKind:correlation | groupby so_detection.sigmaCorrelationType so_detection.isEnabled | groupby so_detection.ruleset"
+              description: Show Sigma correlation Detections
             - name: "Detection Type - YARA (Strelka)"
               query: "so_detection.language:yara | groupby so_detection.ruleset so_detection.isEnabled"
               description: Show all YARA detections, which are used by Strelka
@@ -2767,7 +2772,7 @@ soc:
             elastalert: |
               # This is a Sigma rule template, which uses YAML. Replace all template values with your own values.
               # The id (UUIDv4) is pregenerated and can safely be used.
-              # Click "Convert" to convert the Sigma rule to use Security Onion field mappings within an EQL query
+              # Click "Convert" to convert the Sigma rule to use Security Onion field mappings within a backend query
               #
               # Rule Creation Guide: https://github.com/SigmaHQ/sigma/wiki/Rule-Creation-High%E2%80%90Level-Guide
               # Logsources: https://sigmahq.io/docs/basics/log-sources.html
@@ -2797,6 +2802,58 @@ soc:
                           - ' -priv'
                   condition: all of selection_*
               level: 'high'  # info | low | medium | high | critical
+            elastalert_correlation: |
+              # Sigma correlation rule; requires ES|QL (useEsql).
+              # First document: the correlation. Following documents: the rules it references.
+              #
+              # Types: event_count, value_count, temporal, value_sum, value_avg, value_median, value_percentile.
+              # Correlation Guide: https://sigmahq.io/docs/meta/correlations.html
+              # Logsources: https://sigmahq.io/docs/basics/log-sources.html
+
+              title: 'A Short Capitalized Title With Less Than 50 Characters'
+              id: [publicId]
+              status: 'experimental'
+              description: |
+                  Describe what the correlation finds and, importantly, why relating these
+                  events is more meaningful than either of them alone.
+              references:
+                - 'https://local.invalid'
+              author: '@SecurityOnion'
+              date: '[today]'
+              tags:
+                - detection.threat_hunting
+                - attack.technique_id
+              correlation:
+                  type: value_count
+                  rules:
+                      - example_base_rule  # the 'name' of the rule below
+                  group-by:
+                      - source.ip
+                  # Xs, Xm, Xh, Xd or Xw.
+                  timespan: 10m
+                  condition:
+                      field: dns.query.name
+                      gte: 40
+              falsepositives:
+                - 'Describe the benign activity that also produces this pattern'
+              # Placeholders: %count%, %start%, %end%, %duration%, or any field.
+              summary: '%count% distinct names queried by %source.ip% in %duration%'
+              level: 'medium'  # info | low | medium | high | critical
+              ---
+              title: 'Base Event'
+              # referenced by 'name' (or 'id')
+              name: example_base_rule
+              description: 'The single event that the correlation aggregates.'
+              logsource:
+                category: network
+                service: dns
+              detection:
+                  selection:
+                      dns.query.name|exists: true
+                  condition: selection
+              # Carried into the alert.
+              fields:
+                - dns.query.name
         assistant:
           enabled: false
           investigationPrompt: Investigate Alert ID {socId}

@@ -1,5 +1,5 @@
 {
-    "version": 3,
+    "version": 4,
     "_meta": {
         "managed_by": "securityonion",
         "managed": true
@@ -175,6 +175,32 @@
                 "if": "ctx?.event?.module == 'endpoint' && ctx?.host?.ip != null",
                 "ignore_missing": true,
                 "description": "Extract IPs from Elastic Agent events (host.ip) and adds them to related.ip"
+            }
+        },
+        {
+            "trim": {
+                "if": "ctx.event?.dataset == 'system.auth'",
+                "description": "Grok leaves a leading space on 'invalid user' names (elastic/integrations#12174) and, before 2.23.2, sudo padding",
+                "field": "user.name",
+                "ignore_missing": true,
+                "ignore_failure": true
+            }
+        },
+        {
+            "trim": {
+                "if": "ctx.event?.dataset == 'system.auth'",
+                "description": "Appended from the untrimmed user.name",
+                "field": "related.user",
+                "ignore_missing": true,
+                "ignore_failure": true
+            }
+        },
+        {
+            "script": {
+                "if": "ctx.event?.dataset == 'system.auth' && ctx.related?.user instanceof List",
+                "description": "Dedupe after trimming",
+                "source": "ctx.related.user = new ArrayList(new LinkedHashSet(ctx.related.user));",
+                "ignore_failure": true
             }
         },
         {

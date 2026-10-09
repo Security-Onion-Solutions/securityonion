@@ -1259,7 +1259,20 @@ post_to_3.4.0() {
     rollover_index "$idx"
   done
 
+  add_detection_runtime_fields
+
   set_postversion 3.4.0
+}
+
+add_detection_runtime_fields() {
+  local template=$DEFAULT_SALT_DIR/salt/elasticsearch/templates/component/so/detection-mappings.json
+  local runtime
+
+  runtime=$(jq -c '{runtime: .template.mappings.runtime}' "$template")
+  if ! so-elasticsearch-query so-detection/_mapping -XPUT -d "$runtime" --retry 3 --retry-delay 5 --fail >> $SOUP_LOG 2>&1; then
+    FINAL_MESSAGE_QUEUE+=("WARNING: Unable to add the Sigma search fields to the so-detection index. Searches on so_detection.sigmaKind will match nothing until they are added:")
+    FINAL_MESSAGE_QUEUE+=("    - sudo so-elasticsearch-query so-detection/_mapping -XPUT -d \"\$(jq -c '{runtime: .template.mappings.runtime}' $template)\"")
+  fi
 }
 ### 3.4.0 End ###
 
