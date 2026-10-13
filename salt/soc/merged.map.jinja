@@ -22,6 +22,25 @@
 {% do SOCMERGED.config.server.update({'additionalCA': MANAGERMERGED.additionalCA}) %}
 {% do SOCMERGED.config.server.update({'insecureSkipVerify': MANAGERMERGED.insecureSkipVerify}) %}
 
+{# pillar.get replaces lists instead of merging them, so combine availableModels by id #}
+{% set default_models = {} %}
+{% for m in SOCDEFAULTS.config.server.client.assistant.availableModels %}
+{%   do default_models.setdefault(m.id, m) %}
+{% endfor %}
+{% set merged_models = [] %}
+{% set merged_ids = [] %}
+{% for m in SOCMERGED.config.server.client.assistant.availableModels or [] %}
+{%   set model = {} %}
+{%   do model.update(default_models.get(m.get('id'), {})) %}
+{%   do model.update(m) %}
+{%   do merged_models.append(model) %}
+{%   do merged_ids.append(m.get('id')) %}
+{% endfor %}
+{% for id, m in default_models.items() if id not in merged_ids %}
+{%   do merged_models.append(m) %}
+{% endfor %}
+{% do SOCMERGED.config.server.client.assistant.update({'availableModels': merged_models}) %}
+
 {% if not SOCMERGED.config.server.modules.postgres.host %}
 {%   do SOCMERGED.config.server.modules.postgres.update({'host': GLOBALS.manager}) %}
 {% endif %}
