@@ -22,7 +22,7 @@
 {% do SOCMERGED.config.server.update({'additionalCA': MANAGERMERGED.additionalCA}) %}
 {% do SOCMERGED.config.server.update({'insecureSkipVerify': MANAGERMERGED.insecureSkipVerify}) %}
 
-{# pillar.get replaces lists instead of merging them, so combine availableModels by id #}
+{# pillar.get replaces lists instead of merging them, so combine availableModels by id and alerts queries by name #}
 {% set default_models = {} %}
 {% for m in SOCDEFAULTS.config.server.client.assistant.availableModels %}
 {%   do default_models.setdefault(m.id, m) %}
@@ -40,6 +40,24 @@
 {%   do merged_models.append(m) %}
 {% endfor %}
 {% do SOCMERGED.config.server.client.assistant.update({'availableModels': merged_models}) %}
+
+{% set default_queries = {} %}
+{% for q in SOCDEFAULTS.config.server.client.alerts.queries %}
+{%   do default_queries.setdefault(q.name, q) %}
+{% endfor %}
+{% set merged_queries = [] %}
+{% set merged_names = [] %}
+{% for q in SOCMERGED.config.server.client.alerts.queries or [] %}
+{%   set query = {} %}
+{%   do query.update(default_queries.get(q.get('name'), {})) %}
+{%   do query.update(q) %}
+{%   do merged_queries.append(query) %}
+{%   do merged_names.append(q.get('name')) %}
+{% endfor %}
+{% for name, q in default_queries.items() if name not in merged_names %}
+{%   do merged_queries.append(q) %}
+{% endfor %}
+{% do SOCMERGED.config.server.client.alerts.update({'queries': merged_queries}) %}
 
 {% if not SOCMERGED.config.server.modules.postgres.host %}
 {%   do SOCMERGED.config.server.modules.postgres.update({'host': GLOBALS.manager}) %}
