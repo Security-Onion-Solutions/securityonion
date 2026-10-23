@@ -5,7 +5,8 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
-
+# Force HTTP/1.1 for Go HTTP clients to prevent HTTP/2 stream PROTOCOL_ERROR on large image transfers
+export GODEBUG=http2client=0
 
 # NOTE: This script depends on so-common
 IMAGEREPO=security-onion-solutions
@@ -205,7 +206,8 @@ update_docker_containers() {
           echo "Unable to determine verified digest for $image" >> "$LOG_FILE" 2>&1
           exit 1
         fi
-        docker buildx imagetools create --tag $HOSTNAME:5000/$IMAGEREPO/$image "$VERIFIED_REF" >> "$LOG_FILE" 2>&1 || {
+        docker buildx imagetools create --tag $HOSTNAME:5000/$IMAGEREPO/$image "$VERIFIED_REF" >> "$LOG_FILE" 2>&1 || \
+        docker push $HOSTNAME:5000/$IMAGEREPO/$image >> "$LOG_FILE" 2>&1 || {
           echo "Unable to copy $image to embedded registry" >> "$LOG_FILE" 2>&1
           exit 1
         }
