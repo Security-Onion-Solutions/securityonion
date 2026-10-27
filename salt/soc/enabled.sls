@@ -62,6 +62,11 @@ so-soc:
       - /nsm/backup/detections-migration:/nsm/backup/detections-migration:ro
       - /opt/so/state:/opt/so/state:rw
       - /etc/pki/tls/certs/intca.crt:/opt/sensoroni/html/so-ca.crt:ro
+      {% if DOCKERMERGED.containers['so-soc'].custom_bind_mounts %}
+        {% for BIND in DOCKERMERGED.containers['so-soc'].custom_bind_mounts %}
+      - {{ BIND }}
+        {% endfor %}
+      {% endif %}
     - extra_hosts:
     {% for node in DOCKER_EXTRA_HOSTS %}
     {%   for hostname, ip in node.items() %}
