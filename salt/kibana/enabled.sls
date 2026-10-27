@@ -8,8 +8,10 @@
 {%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   from 'elasticsearch/config.map.jinja' import ELASTICSEARCHMERGED %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
+{%   from 'ca/trust.map.jinja' import CATRUST %}
 
 include:
+  - ca.trust
   - kibana.config
   - kibana.sostatus
 
@@ -27,6 +29,7 @@ so-kibana:
       - ELASTICSEARCH_HOST={{ GLOBALS.manager }}
       - ELASTICSEARCH_PORT=9200
       - MANAGER={{ GLOBALS.manager }}
+      - NODE_OPTIONS=--use-openssl-ca
       {% if DOCKERMERGED.containers['so-kibana'].extra_env %}
         {% for XTRAENV in DOCKERMERGED.containers['so-kibana'].extra_env %}
       - {{ XTRAENV }}
@@ -40,6 +43,7 @@ so-kibana:
       {% endfor %}
     {% endif %}
     - binds:
+      - {{ CATRUST.dir }}
       - /opt/so/conf/kibana/etc:/usr/share/kibana/config:rw
       - /opt/so/log/kibana:/var/log/kibana:rw
       - /opt/so/conf/kibana/customdashboards:/usr/share/kibana/custdashboards:ro
@@ -60,6 +64,7 @@ so-kibana:
     {%   endfor %}
     {% endif %}
     - watch:
+      - cmd: ca_trust_extract
       - file: kibanaconfig
 
 wait_for_so-kibana:

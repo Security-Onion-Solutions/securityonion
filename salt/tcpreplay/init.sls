@@ -2,6 +2,10 @@
 {% if sls in allowed_states %}
 
 {% from 'vars/globals.map.jinja' import GLOBALS %}
+{% from 'ca/trust.map.jinja' import CATRUST %}
+
+include:
+  - ca.trust
 
 so-tcpreplay:
   docker_container.running:
@@ -13,7 +17,10 @@ so-tcpreplay:
     - interactive: True
     - tty: True
     - binds:
+      - {{ CATRUST.dir }}
       - /opt/so/samples:/opt/so/samples:ro
+    - watch:
+      - cmd: ca_trust_extract
 
 
 {% else %}

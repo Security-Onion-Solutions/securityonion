@@ -6,6 +6,7 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
+{%   from 'ca/trust.map.jinja' import CATRUST %}
 {%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 
 include:
@@ -37,6 +38,7 @@ so-elastic-agent:
       - {{ BINDING }}
       {% endfor %}
     - binds:
+      - {{ CATRUST.dir }}
       - /opt/so/conf/elastic-agent/elastic-agent.yml:/usr/share/elastic-agent/elastic-agent.yml:ro
       - /opt/so/log/elasticagent:/usr/share/elastic-agent/logs
       - /etc/pki/tls/certs/intca.crt:/etc/pki/tls/certs/intca.crt:ro 
@@ -65,6 +67,7 @@ so-elastic-agent:
       - file: create-elastic-agent-config
       - file: trusttheca
     - watch:
+      - cmd: ca_trust_extract
       - file: create-elastic-agent-config
       - file: trusttheca
 
