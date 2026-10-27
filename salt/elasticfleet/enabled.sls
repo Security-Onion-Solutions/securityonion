@@ -6,6 +6,7 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
+{%   from 'ca/trust.map.jinja' import CATRUST %}
 {%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   from 'elasticfleet/map.jinja' import ELASTICFLEETMERGED %}
 
@@ -63,6 +64,7 @@ so-elastic-fleet:
       - {{ BINDING }}
       {% endfor %}
     - binds:
+      - {{ CATRUST.dir }}
       - /etc/pki/elasticfleet-server.crt:/etc/pki/elasticfleet-server.crt:ro
       - /etc/pki/elasticfleet-server.key:/etc/pki/elasticfleet-server.key:ro
       - /etc/pki/tls/certs/intca.crt:/etc/pki/tls/certs/intca.crt:ro
@@ -95,6 +97,7 @@ so-elastic-fleet:
     {%   endfor %}
     {% endif %}
     - watch:
+      - cmd: ca_trust_extract
       - file: trusttheca
       - x509: etc_elasticfleet_key
       - x509: etc_elasticfleet_crt

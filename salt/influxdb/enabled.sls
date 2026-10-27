@@ -6,11 +6,13 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
+{%   from 'ca/trust.map.jinja' import CATRUST %}
 {%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   set PASSWORD = salt['pillar.get']('secrets:influx_pass') %}
 {%   set TOKEN = salt['pillar.get']('influxdb:token') %}
 
 include:
+  - ca.trust
   - influxdb.ssl
   - influxdb.config
   - influxdb.sostatus
@@ -38,6 +40,7 @@ so-influxdb:
         {% endfor %}
       {% endif %}
     - binds:
+      - {{ CATRUST.pem }}:/etc/ssl/certs/ca-certificates.crt:ro
       - /opt/so/log/influxdb/:/log:rw
       - /opt/so/conf/influxdb/config.yaml:/conf/config.yaml:ro
       - /opt/so/conf/influxdb/etc:/etc/influxdb2:rw
@@ -66,6 +69,7 @@ so-influxdb:
     {%   endfor %}
     {% endif %}
     - watch:
+      - cmd: ca_trust_extract
       - file: influxdbconf
       - x509: influxdb_key
       - x509: influxdb_crt

@@ -6,10 +6,12 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
+{%   from 'ca/trust.map.jinja' import CATRUST %}
 {%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   set SO_POSTGRES_USER = salt['pillar.get']('postgres:auth:users:so_postgres_user:user', 'so_postgres') %}
 
 include:
+  - ca.trust
   - postgres.auth
   - postgres.ssl
   - postgres.config
@@ -42,6 +44,7 @@ so-postgres:
         {% endfor %}
       {% endif %}
     - binds:
+      - {{ CATRUST.dir }}
       - /opt/so/log/postgres/:/log:rw
       - /nsm/postgres:/var/lib/postgresql/data:rw
       - /opt/so/conf/postgres/postgresql.conf:/conf/postgresql.conf:ro
@@ -69,6 +72,7 @@ so-postgres:
     {%   endfor %}
     {% endif %}
     - watch:
+      - cmd: ca_trust_extract
       - file: postgresconf
       - file: postgreshba
       - file: postgresinitdb

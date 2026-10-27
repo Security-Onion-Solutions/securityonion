@@ -12,12 +12,14 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
+{%   from 'ca/trust.map.jinja' import CATRUST %}
 {%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   set KAFKANODES = salt['pillar.get']('kafka:nodes') %}
 {%   set KAFKA_EXTERNAL_ACCESS = salt['pillar.get']('kafka:config:external_access:enabled', default=False) %}
 {%   if 'gmd' in salt['pillar.get']('features', []) %}
 
 include:
+  - ca.trust
   - kafka.ca
   - kafka.config
   - kafka.ssl
@@ -51,6 +53,7 @@ so-kafka:
       - {{ BINDING }}
       {% endfor %}
     - binds:
+      - {{ CATRUST.java }}:/opt/java/openjdk/lib/security/cacerts:ro
       - /etc/pki/kafka.p12:/etc/pki/kafka.p12:ro
       - /opt/so/conf/kafka/kafka-truststore.jks:/etc/pki/kafka-truststore.jks:ro
       - /nsm/kafka/data/:/nsm/kafka/data/:rw
@@ -73,6 +76,7 @@ so-kafka:
     {%   endfor %}
     {% endif %}
     - watch:
+      - cmd: ca_trust_extract
       {% for sc in ['server', 'client'] %}
       - file: kafka_kraft_{{sc}}_properties
       {% endfor %}
