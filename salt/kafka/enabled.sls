@@ -61,6 +61,11 @@ so-kafka:
       {% if KAFKA_EXTERNAL_ACCESS %}
       - /opt/so/conf/kafka/kafka_server_jaas.conf:/opt/kafka/config/kafka_server_jaas.conf:ro
       {% endif %}
+      {% if DOCKERMERGED.containers['so-kafka'].custom_bind_mounts %}
+        {% for BIND in DOCKERMERGED.containers['so-kafka'].custom_bind_mounts %}
+      - {{ BIND }}
+        {% endfor %}
+      {% endif %}
     {% if DOCKERMERGED.containers['so-kafka'].ulimits %}
     - ulimits:
     {%   for ULIMIT in DOCKERMERGED.containers['so-kafka'].ulimits %}
