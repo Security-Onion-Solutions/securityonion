@@ -6,6 +6,7 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
+{%   from 'ca/trust.map.jinja' import CATRUST %}
 {%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   from 'telegraf/map.jinja' import TELEGRAFMERGED %}
 
@@ -33,6 +34,7 @@ so-telegraf:
     - network_mode: host
     - init: True
     - binds:
+      - {{ CATRUST.pem }}:/etc/ssl/certs/ca-certificates.crt:ro
       - /opt/so/log/telegraf:/var/log/telegraf:rw
       - /opt/so/conf/telegraf/etc/telegraf.conf:/etc/telegraf/telegraf.conf:ro
       - /opt/so/conf/telegraf/node_config.json:/etc/telegraf/node_config.json:ro
@@ -73,6 +75,7 @@ so-telegraf:
     {%   endfor %}
     {% endif %}
     - watch:
+      - cmd: ca_trust_extract
       - file: tgraf_sbin_jinja
       - file: lasthighstate_placeholder
       - file: trusttheca

@@ -6,6 +6,7 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
+{%   from 'ca/trust.map.jinja' import CATRUST %}
 {%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   from 'elasticsearch/config.map.jinja' import ELASTICSEARCH_NODES %}
 {%   from 'elasticsearch/config.map.jinja' import ELASTICSEARCH_SEED_HOSTS %}
@@ -13,7 +14,6 @@
 
 include:
   - ca
-  - elasticsearch.ca
   - elasticsearch.ssl
   - elasticsearch.config
   - elasticsearch.sostatus
@@ -63,11 +63,11 @@ so-elasticsearch:
       - {{ BINDING }}
       {% endfor %}
     - binds:
+      - {{ CATRUST.dir }}
       - /opt/so/conf/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
       - /opt/so/conf/elasticsearch/log4j2.properties:/usr/share/elasticsearch/config/log4j2.properties:ro
       - /nsm/elasticsearch:/usr/share/elasticsearch/data:rw
       - /opt/so/log/elasticsearch:/var/log/elasticsearch:rw
-      - /opt/so/conf/ca/cacerts:/usr/share/elasticsearch/jdk/lib/security/cacerts:ro
       - /etc/pki/tls/certs/intca.crt:/usr/share/elasticsearch/config/ca.crt:ro
       - /etc/pki/elasticsearch.crt:/usr/share/elasticsearch/config/elasticsearch.crt:ro
       - /etc/pki/elasticsearch.key:/usr/share/elasticsearch/config/elasticsearch.key:ro
@@ -84,16 +84,15 @@ so-elasticsearch:
         {% endfor %}
       {% endif %}
     - watch:
+      - cmd: ca_trust_extract
       - file: trusttheca
       - x509: elasticsearch_crt
       - x509: elasticsearch_key
-      - file: elasticsearch_cacerts
       - file: esyml
     - require:
       - file: trusttheca
       - x509: elasticsearch_crt
       - x509: elasticsearch_key
-      - file: elasticsearch_cacerts
       - file: esyml
       - file: eslog4jfile
       - file: nsmesdir

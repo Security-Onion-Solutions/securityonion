@@ -6,6 +6,7 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
+{%   from 'ca/trust.map.jinja' import CATRUST %}
 {%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   from 'soc/merged.map.jinja' import DOCKER_EXTRA_HOSTS %}
 {%   from 'soc/merged.map.jinja' import SOCMERGED %}
@@ -27,6 +28,7 @@ so-soc:
       - soauth:
         - ipv4_address: {{ DOCKERMERGED.containers['so-soc'].ips['soauth'] }}
     - binds:
+      - {{ CATRUST.dir }}
       - /nsm/rules:/nsm/rules:rw
       - /opt/so/conf/strelka:/opt/sensoroni/yara:rw
       - /opt/so/conf/sigma:/opt/sensoroni/sigma:rw
@@ -90,6 +92,7 @@ so-soc:
     {%   endfor %}
     {% endif %}
     - watch:
+      - cmd: ca_trust_extract
       - file: trusttheca
       - file: /opt/so/conf/soc/*
     - require:

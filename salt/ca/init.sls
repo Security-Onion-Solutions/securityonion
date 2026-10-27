@@ -10,3 +10,4 @@ include:
   - ca.server
 {% endif %}
   - ca.trustca
+  - ca.trust
