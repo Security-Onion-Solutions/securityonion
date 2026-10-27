@@ -71,7 +71,6 @@ so-elasticsearch:
       - /etc/pki/tls/certs/intca.crt:/usr/share/elasticsearch/config/ca.crt:ro
       - /etc/pki/elasticsearch.crt:/usr/share/elasticsearch/config/elasticsearch.crt:ro
       - /etc/pki/elasticsearch.key:/usr/share/elasticsearch/config/elasticsearch.key:ro
-      - /etc/pki/elasticsearch.p12:/usr/share/elasticsearch/config/elasticsearch.p12:ro
       - /opt/so/conf/elasticsearch/users_roles:/usr/share/elasticsearch/config/users_roles:ro
       - /opt/so/conf/elasticsearch/users:/usr/share/elasticsearch/config/users:ro
       {% if ELASTICSEARCHMERGED.config.path.get('repo', False) %}
@@ -99,7 +98,6 @@ so-elasticsearch:
       - file: eslog4jfile
       - file: nsmesdir
       - file: eslogdir
-      - file: elasticp12perms
       - cmd: auth_users_roles_inode
       - cmd: auth_users_inode
 
