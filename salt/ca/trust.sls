@@ -14,6 +14,10 @@ ca_trust_legacy_anchor:
   file.absent:
     - name: /etc/pki/ca-trust/source/anchors/ca.crt
 
+ca_trust_legacy_bundles:
+  file.absent:
+    - name: /opt/so/conf/ca
+
 # clean removes blocklist entries that are no longer shipped
 ca_trust_blocklist:
   file.recurse:

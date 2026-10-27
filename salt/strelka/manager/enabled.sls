@@ -7,8 +7,10 @@
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
+{%   from 'ca/trust.map.jinja' import CATRUST %}
 
 include:
+  - ca.trust
   - strelka.manager.config
   - strelka.manager.sostatus
 
@@ -17,6 +19,7 @@ strelka_manager:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-strelka-manager:{{ GLOBALS.so_version }}
     - restart_policy: unless-stopped
     - binds:
+      - {{ CATRUST.pem }}:/etc/ssl/certs/ca-certificates.crt:ro
       - /opt/so/conf/strelka/manager/:/etc/strelka/:ro
       {% if DOCKERMERGED.containers['so-strelka-manager'].custom_bind_mounts %}
         {% for BIND in DOCKERMERGED.containers['so-strelka-manager'].custom_bind_mounts %}
@@ -48,6 +51,7 @@ strelka_manager:
     {%   endfor %}
     {% endif %}
     - watch:
+      - cmd: ca_trust_extract
       - file: manager_config
 
 delete_so-strelka-manager_so-status.disabled:
