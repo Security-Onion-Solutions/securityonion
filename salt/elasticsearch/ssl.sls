@@ -38,10 +38,6 @@ elasticsearch_crt:
     - retry:
         attempts: 5
         interval: 30
-  cmd.run:
-    - name: "/usr/bin/openssl pkcs12 -inkey /etc/pki/elasticsearch.key -in /etc/pki/elasticsearch.crt -export -out /etc/pki/elasticsearch.p12 -nodes -passout pass:"
-    - onchanges:
-      - x509: /etc/pki/elasticsearch.key
 
 elastickeyperms:
   file.managed:
@@ -50,13 +46,6 @@ elastickeyperms:
     - mode: 640
     - group: 930
     
-elasticp12perms:
-  file.managed:
-    - replace: False
-    - name: /etc/pki/elasticsearch.p12
-    - mode: 640
-    - group: 930
-
 {% else %}
 
 {{sls}}_state_not_allowed:

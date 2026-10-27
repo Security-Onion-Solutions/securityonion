@@ -7,8 +7,10 @@
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
+{%   from 'ca/trust.map.jinja' import CATRUST %}
 
 include:
+  - ca.trust
   - strelka.filestream.config
   - strelka.filestream.sostatus
 
@@ -17,6 +19,7 @@ strelka_filestream:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-strelka-manager:{{ GLOBALS.so_version }}
     - restart_policy: unless-stopped
     - binds:
+      - {{ CATRUST.pem }}:/etc/ssl/certs/ca-certificates.crt:ro
       - /opt/so/conf/strelka/filestream/:/etc/strelka/:ro
       - /nsm/strelka:/nsm/strelka
       {% if DOCKERMERGED.containers['so-strelka-filestream'].custom_bind_mounts %}
@@ -49,6 +52,7 @@ strelka_filestream:
     {%   endfor %}
     {% endif %}
     - watch:
+      - cmd: ca_trust_extract
       - file: filestream_config
 
 delete_so-strelka-filestream_so-status.disabled:

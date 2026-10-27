@@ -6,10 +6,12 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
+{%   from 'ca/trust.map.jinja' import CATRUST %}
 {%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   from 'nginx/map.jinja' import NGINXMERGED %}
 
 include:
+  - ca.trust
   - nginx.ssl
   - nginx.config
   - nginx.sostatus
@@ -47,6 +49,7 @@ so-nginx:
       {% endfor %}
     {% endif %}
     - binds:
+      - {{ CATRUST.pem }}:/etc/ssl/certs/ca-certificates.crt:ro
       - /opt/so/conf/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - /opt/so/log/nginx/:/var/log/nginx:rw
       - /opt/so/tmp/nginx/:/var/lib/nginx:rw
@@ -89,6 +92,7 @@ so-nginx:
       - {{ BINDING }}
       {% endfor %}
     - watch:
+      - cmd: ca_trust_extract
       - file: nginxconf
       - file: nginxconfdir
       {% if GLOBALS.is_manager %}

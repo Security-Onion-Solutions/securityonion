@@ -13,9 +13,11 @@
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
+{%   from 'ca/trust.map.jinja' import CATRUST %}
 {%   if 'api' in salt['pillar.get']('features', []) %}
 
 include:
+  - ca.trust
   - hydra.config
   - hydra.sostatus
 
@@ -29,6 +31,7 @@ so-hydra:
       - soauth:
         - ipv4_address: {{ DOCKERMERGED.containers['so-hydra'].ips['soauth'] }}
     - binds:
+      - {{ CATRUST.dir }}
       - /opt/so/conf/hydra/:/hydra-conf:ro
       - /opt/so/log/hydra/:/hydra-log:rw
       - /nsm/hydra/db:/hydra-data:rw
@@ -60,6 +63,7 @@ so-hydra:
     {%   endfor %}
     {% endif %}
     - watch:
+      - cmd: ca_trust_extract
       - file: hydraconfig
     - require:
       - file: hydraconfig
