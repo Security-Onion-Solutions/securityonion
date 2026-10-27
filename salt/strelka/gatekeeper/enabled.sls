@@ -7,8 +7,10 @@
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
+{%   from 'ca/trust.map.jinja' import CATRUST %}
 
 include:
+  - ca.trust
   - strelka.gatekeeper.config
   - strelka.gatekeeper.sostatus
 
@@ -33,6 +35,7 @@ strelka_gatekeeper:
       - {{ BINDING }}
       {% endfor %}
     - binds:
+      - {{ CATRUST.pem }}:/etc/ssl/certs/ca-certificates.crt:ro
       - /nsm/strelka/gk-redis-data:/data:rw
       {% if DOCKERMERGED.containers['so-strelka-gatekeeper'].custom_bind_mounts %}
         {% for BIND in DOCKERMERGED.containers['so-strelka-gatekeeper'].custom_bind_mounts %}
@@ -51,6 +54,8 @@ strelka_gatekeeper:
       - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
     {%   endfor %}
     {% endif %}
+    - watch:
+      - cmd: ca_trust_extract
 
 delete_so-strelka-gatekeeper_so-status.disabled:
   file.uncomment:

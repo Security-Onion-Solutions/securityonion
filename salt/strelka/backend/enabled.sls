@@ -7,8 +7,10 @@
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
+{%   from 'ca/trust.map.jinja' import CATRUST %}
 
 include:
+  - ca.trust
   - strelka.backend.config
   - strelka.backend.sostatus
 
@@ -17,6 +19,7 @@ strelka_backend:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-strelka-backend:{{ GLOBALS.so_version }}
     - restart_policy: unless-stopped
     - binds:
+      - {{ CATRUST.dir }}
       - /opt/so/conf/strelka/backend/:/etc/strelka/:ro
       - /opt/so/conf/strelka/rules/compiled/:/etc/yara/:ro
       {% if DOCKERMERGED.containers['so-strelka-backend'].custom_bind_mounts %}
@@ -36,12 +39,14 @@ strelka_backend:
       - {{ XTRAHOST }}
         {% endfor %}
       {% endif %}
-    {% if DOCKERMERGED.containers['so-strelka-backend'].extra_env %}
     - environment:
-      {% for XTRAENV in DOCKERMERGED.containers['so-strelka-backend'].extra_env %}
+      - REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt
+      - SSL_CERT_FILE=/etc/pki/tls/certs/ca-bundle.crt
+      {% if DOCKERMERGED.containers['so-strelka-backend'].extra_env %}
+        {% for XTRAENV in DOCKERMERGED.containers['so-strelka-backend'].extra_env %}
       - {{ XTRAENV }}
-      {% endfor %}
-    {% endif %}
+        {% endfor %}
+      {% endif %}
     {% if DOCKERMERGED.containers['so-strelka-backend'].ulimits %}
     - ulimits:
     {%   for ULIMIT in DOCKERMERGED.containers['so-strelka-backend'].ulimits %}
@@ -49,6 +54,7 @@ strelka_backend:
     {%   endfor %}
     {% endif %}
     - watch:
+      - cmd: ca_trust_extract
       - file: strelkasensorcompiledrules
       - file: backend_backend_config
       - file: backend_logging_config
