@@ -1,4 +1,4 @@
-### 3.4.0-20261101 ISO image released on 2026/11/01
+### 3.4.0-20261101 ISO image released on 2026/11/02
 
 
 ### Download and Verify
