@@ -117,14 +117,25 @@ elastic_curl_config:
 {% endif %}
 
 
+# A non-root owner here can chmod the directory and replace any script in it, including
+# the root-owned ones. 555 is the mode the filesystem RPM ships; root ignores it anyway.
+usr_sbin_perms:
+  file.directory:
+    - name: /usr/sbin
+    - user: root
+    - group: root
+    - mode: 555
+
 common_sbin:
   file.recurse:
     - name: /usr/sbin
     - source: salt://common/tools/sbin
-    - user: 939
-    - group: 939
+    - user: root
+    - group: root
     - file_mode: 755
     - show_changes: False
+    - require:
+      - file: usr_sbin_perms
 {% if GLOBALS.role == 'so-heavynode' %}
     - exclude_pat:
       - so-pcap-import
@@ -159,8 +170,8 @@ common_sbin_jinja:
   file.recurse:
     - name: /usr/sbin
     - source: salt://common/tools/sbin_jinja
-    - user: 939
-    - group: 939 
+    - user: root
+    - group: root
     - file_mode: 755
     - template: jinja
     - show_changes: False
@@ -173,6 +184,8 @@ so-status_script:
   file.managed:
     - name: /usr/sbin/so-status
     - source: salt://common/tools/sbin/so-status
+    - user: root
+    - group: root
     - mode: 755
 
 {% if GLOBALS.is_sensor %}
@@ -204,9 +217,11 @@ sostatus_log:
     - replace: False
 
 # Install sostatus check cron. This is used to populate Grid.
+# telegraf reads status.log on the same minute boundary this runs, so write aside and rename
+# rather than truncating the file it is reading
 so-status_check_cron:
   cron.present:
-    - name: '/usr/sbin/so-status -j > /opt/so/log/sostatus/status.log 2>&1'
+    - name: '/usr/sbin/so-status -j > /opt/so/log/sostatus/status.log.tmp 2>&1; mv -f /opt/so/log/sostatus/status.log.tmp /opt/so/log/sostatus/status.log'
     - identifier: so-status_check_cron
     - user: root
     - minute: '*/1'

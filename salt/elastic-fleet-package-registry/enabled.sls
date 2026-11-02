@@ -6,9 +6,11 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
+{%   from 'ca/trust.map.jinja' import CATRUST %}
 {%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 
 include:
+  - ca.trust
   - elastic-fleet-package-registry.config
   - elastic-fleet-package-registry.sostatus
 
@@ -34,8 +36,9 @@ so-elastic-fleet-package-registry:
       {% for BINDING in DOCKERMERGED.containers['so-elastic-fleet-package-registry'].port_bindings %}
       - {{ BINDING }}
       {% endfor %}
-    {% if DOCKERMERGED.containers['so-elastic-fleet-package-registry'].custom_bind_mounts %}
     - binds:
+      - {{ CATRUST.pem }}:/etc/ssl/certs/ca-certificates.crt:ro
+    {% if DOCKERMERGED.containers['so-elastic-fleet-package-registry'].custom_bind_mounts %}
         {% for BIND in DOCKERMERGED.containers['so-elastic-fleet-package-registry'].custom_bind_mounts %}
       - {{ BIND }}
         {% endfor %}
@@ -52,6 +55,8 @@ so-elastic-fleet-package-registry:
       - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
     {%   endfor %}
     {% endif %}
+    - watch:
+      - cmd: ca_trust_extract
 
 wait_for_so-elastic-fleet-package-registry:
   http.wait_for_successful_query:

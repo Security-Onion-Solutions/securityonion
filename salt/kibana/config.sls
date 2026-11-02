@@ -22,6 +22,7 @@ kibana:
     - gid: 932
     - home: /opt/so/conf/kibana
     - createhome: False
+    - shell: /sbin/nologin
 
 # Drop the correct nginx config based on role
 
@@ -36,16 +37,16 @@ kibana_sbin:
   file.recurse:
     - name: /usr/sbin
     - source: salt://kibana/tools/sbin
-    - user: 932
-    - group: 939
+    - user: root
+    - group: root
     - file_mode: 755
 
 kibana_sbin_jinja:
   file.recurse:
     - name: /usr/sbin
     - source: salt://kibana/tools/sbin_jinja
-    - user: 932
-    - group: 939 
+    - user: root
+    - group: root
     - file_mode: 755
     - template: jinja
     - defaults:

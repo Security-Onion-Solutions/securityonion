@@ -7,8 +7,10 @@
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
+{%   from 'ca/trust.map.jinja' import CATRUST %}
 
 include:
+  - ca.trust
   - strelka.frontend.config
   - strelka.frontend.sostatus
 
@@ -17,6 +19,7 @@ strelka_frontend:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-strelka-manager:{{ GLOBALS.so_version }}
     - restart_policy: unless-stopped
     - binds:
+      - {{ CATRUST.pem }}:/etc/ssl/certs/ca-certificates.crt:ro
       - /opt/so/conf/strelka/frontend/:/etc/strelka/:ro
       - /nsm/strelka/log/:/var/log/strelka/:rw
       {% if DOCKERMERGED.containers['so-strelka-frontend'].custom_bind_mounts %}
@@ -54,6 +57,7 @@ strelka_frontend:
     {%   endfor %}
     {% endif %}
     - watch:
+      - cmd: ca_trust_extract
       - file: frontend_config
 
 delete_so-strelka-frontend_so-status.disabled:

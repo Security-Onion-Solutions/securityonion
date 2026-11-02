@@ -21,6 +21,7 @@ kafka_user:
     - gid: 960
     - home: /opt/so/conf/kafka
     - createhome: False
+    - shell: /sbin/nologin
 
 kafka_home_dir:
   file.absent:
@@ -30,16 +31,16 @@ kafka_sbin_tools:
   file.recurse:
     - name: /usr/sbin
     - source: salt://kafka/tools/sbin
-    - user: 960
-    - group: 960
+    - user: root
+    - group: root
     - file_mode: 755
 
 kafka_sbin_jinja_tools:
   file.recurse:
     - name: /usr/sbin
     - source: salt://kafka/tools/sbin_jinja
-    - user: 960
-    - group: 960
+    - user: root
+    - group: root
     - file_mode: 755
     - template: jinja
     - defaults:

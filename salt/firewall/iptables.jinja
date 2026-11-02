@@ -4,11 +4,19 @@
 {%- set role = GLOBALS.role.split('-')[1] %}
 {%- from 'firewall/containers.map.jinja' import NODE_CONTAINERS %}
 
+{%- set NODE_NETWORKS = [] %}
+{%- for NETNAME, NETWORK in DOCKERMERGED.networks.items() %}
+{%-   if not NETWORK.get('manager_only') or GLOBALS.get('is_manager', False) %}
+{%-     do NODE_NETWORKS.append(NETNAME) %}
+{%-   endif %}
+{%- endfor %}
+
 {%- set PR = [] %}
 {%- set D1 = [] %}
 {%- set D2 = [] %}
 {%- for container in NODE_CONTAINERS %}
 {%-   set IP = DOCKERMERGED.containers[container].ip %}
+{%-   set BRIDGE = DOCKERMERGED.containers[container].network %}
 {%-   if DOCKERMERGED.containers[container].port_bindings is defined %}
 {%-     for binding in DOCKERMERGED.containers[container].port_bindings %}
 {#-       cant split int so we convert to string #}
@@ -35,11 +43,11 @@
 {%-         endif %}
 {%-         do PR.append("-A POSTROUTING -s " ~ DOCKERMERGED.containers[container].ip ~ "/32 -d " ~ DOCKERMERGED.containers[container].ip ~ "/32 -p " ~  proto ~ " -m " ~ proto  ~ " --dport " ~ containerPort ~ " -j MASQUERADE") %}
 {%-         if bindip | length and bindip != '0.0.0.0' %}
-{%-           do D1.append("-A DOCKER -d " ~ bindip ~ "/32 ! -i sobridge -p " ~ proto ~ " -m " ~ proto ~ " --dport " ~ hostPort ~ " -j DNAT --to-destination " ~ DOCKERMERGED.containers[container].ip ~ ":" ~ containerPort) %}
+{%-           do D1.append("-A DOCKER -d " ~ bindip ~ "/32 ! -i " ~ BRIDGE ~ " -p " ~ proto ~ " -m " ~ proto ~ " --dport " ~ hostPort ~ " -j DNAT --to-destination " ~ DOCKERMERGED.containers[container].ip ~ ":" ~ containerPort) %}
 {%-         else %}
-{%-           do D1.append("-A DOCKER ! -i sobridge -p " ~ proto ~ " -m " ~ proto ~ " --dport " ~ hostPort ~ " -j DNAT --to-destination " ~ DOCKERMERGED.containers[container].ip ~ ":" ~ containerPort) %}
+{%-           do D1.append("-A DOCKER ! -i " ~ BRIDGE ~ " -p " ~ proto ~ " -m " ~ proto ~ " --dport " ~ hostPort ~ " -j DNAT --to-destination " ~ DOCKERMERGED.containers[container].ip ~ ":" ~ containerPort) %}
 {%-         endif %}
-{%-         do D2.append("-A DOCKER -d " ~ DOCKERMERGED.containers[container].ip ~ "/32 ! -i sobridge -o sobridge -p " ~ proto ~ " -m " ~ proto ~ " --dport " ~ containerPort ~ " -j ACCEPT") %}
+{%-         do D2.append("-A DOCKER -d " ~ DOCKERMERGED.containers[container].ip ~ "/32 ! -i " ~ BRIDGE ~ " -o " ~ BRIDGE ~ " -p " ~ proto ~ " -m " ~ proto ~ " --dport " ~ containerPort ~ " -j ACCEPT") %}
 {%-     endfor %}
 {%-   endif %}
 {%- endfor %}
@@ -52,11 +60,15 @@
 :DOCKER - [0:0]
 -A PREROUTING -m addrtype --dst-type LOCAL -j DOCKER
 -A OUTPUT ! -d 127.0.0.0/8 -m addrtype --dst-type LOCAL -j DOCKER
--A POSTROUTING -s {{DOCKERMERGED.range}} ! -o sobridge -j MASQUERADE
+{%- for NETNAME in NODE_NETWORKS %}
+-A POSTROUTING -s {{ DOCKERMERGED.networks[NETNAME].range }} ! -o {{ NETNAME }} -j MASQUERADE
+{%- endfor %}
 {%- for rule in PR %}
 {{ rule }}
 {%- endfor %}
--A DOCKER -i sobridge -j RETURN
+{%- for NETNAME in NODE_NETWORKS %}
+-A DOCKER -i {{ NETNAME }} -j RETURN
+{%- endfor %}
 {%- for rule in D1 %}
 {{ rule }}
 {%- endfor %}
@@ -97,10 +109,12 @@ COMMIT
 {%- endif %}
 -A FORWARD -j DOCKER-USER
 -A FORWARD -j DOCKER-ISOLATION-STAGE-1
--A FORWARD -o sobridge -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
--A FORWARD -o sobridge -j DOCKER
--A FORWARD -i sobridge ! -o sobridge -j ACCEPT
--A FORWARD -i sobridge -o sobridge -j ACCEPT
+{%- for NETNAME in NODE_NETWORKS %}
+-A FORWARD -o {{ NETNAME }} -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A FORWARD -o {{ NETNAME }} -j DOCKER
+-A FORWARD -i {{ NETNAME }} ! -o {{ NETNAME }} -j ACCEPT
+-A FORWARD -i {{ NETNAME }} -o {{ NETNAME }} -j ACCEPT
+{%- endfor %}
 -A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
 -A FORWARD -i lo -j ACCEPT
 -A FORWARD -m conntrack --ctstate INVALID -j DROP
@@ -112,13 +126,18 @@ COMMIT
 {%- for rule in D2 %}
 {{ rule }}
 {%- endfor %}
-
--A DOCKER-ISOLATION-STAGE-1 -i sobridge ! -o sobridge -j DOCKER-ISOLATION-STAGE-2
+{% for NETNAME in NODE_NETWORKS %}
+-A DOCKER-ISOLATION-STAGE-1 -i {{ NETNAME }} ! -o {{ NETNAME }} -j DOCKER-ISOLATION-STAGE-2
+{%- endfor %}
 -A DOCKER-ISOLATION-STAGE-1 -j RETURN
--A DOCKER-ISOLATION-STAGE-2 -o sobridge -j DROP
+{%- for NETNAME in NODE_NETWORKS %}
+-A DOCKER-ISOLATION-STAGE-2 -o {{ NETNAME }} -j DROP
+{%- endfor %}
 -A DOCKER-ISOLATION-STAGE-2 -j RETURN
--A DOCKER-USER ! -i sobridge -o sobridge -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
--A DOCKER-USER ! -i sobridge -o sobridge -j LOGGING
+{%- for NETNAME in NODE_NETWORKS %}
+-A DOCKER-USER ! -i {{ NETNAME }} -o {{ NETNAME }} -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A DOCKER-USER ! -i {{ NETNAME }} -o {{ NETNAME }} -j LOGGING
+{%- endfor %}
 -A DOCKER-USER -j RETURN
 -A LOGGING -m limit --limit 2/min -j LOG --log-prefix "IPTables-dropped: "
 -A LOGGING -j DROP

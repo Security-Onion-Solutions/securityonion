@@ -27,6 +27,7 @@ kratos:
     - uid: 928
     - gid: 928
     - home: /opt/so/conf/kratos
+    - shell: /sbin/nologin
 
 kratosdir:
   file.directory:

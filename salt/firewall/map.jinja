@@ -4,8 +4,12 @@
 
 {# add our ip to self #}
 {% do FIREWALL_DEFAULT.firewall.hostgroups.self.append(GLOBALS.node_ip) %}
-{# add dockernet range #}
-{% do FIREWALL_DEFAULT.firewall.hostgroups.dockernet.append(DOCKERMERGED.range) %}
+{# add dockernet ranges #}
+{% for NETNAME, NETWORK in DOCKERMERGED.networks.items() %}
+{%   if not NETWORK.get('manager_only') or GLOBALS.get('is_manager', False) %}
+{%     do FIREWALL_DEFAULT.firewall.hostgroups.dockernet.append(NETWORK.range) %}
+{%   endif %}
+{% endfor %}
 
 {% if GLOBALS.role == 'so-idh' %}
 {%   from 'idh/opencanary_config.map.jinja' import IDH_PORTGROUPS %}

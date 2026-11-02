@@ -7,8 +7,10 @@
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
+{%   from 'ca/trust.map.jinja' import CATRUST %}
 
 include:
+  - ca.trust
   - kratos.config
   - kratos.sostatus
 
@@ -19,9 +21,10 @@ so-kratos:
     - hostname: kratos
     - name: so-kratos
     - networks:
-      - sobridge:
-        - ipv4_address: {{ DOCKERMERGED.containers['so-kratos'].ip }}
+      - soauth:
+        - ipv4_address: {{ DOCKERMERGED.containers['so-kratos'].ips['soauth'] }}
     - binds:
+      - {{ CATRUST.dir }}
       - /opt/so/conf/kratos/:/kratos-conf:ro
       - /opt/so/log/kratos/:/kratos-log:rw
       - /nsm/kratos/db:/kratos-data:rw
@@ -53,6 +56,7 @@ so-kratos:
     {%   endfor %}
     {% endif %}
     - watch:
+      - cmd: ca_trust_extract
       - file: kratosschema
       - file: kratosconfig
     - require:
@@ -71,7 +75,7 @@ delete_so-kratos_so-status.disabled:
 
 wait_for_kratos:
   http.wait_for_successful_query:
-    - name: 'http://{{ GLOBALS.manager }}:4434/'
+    - name: 'http://{{ DOCKERMERGED.containers['so-kratos'].ips['soauth'] }}:4434/'
     - ssl: True
     - verify_ssl: False
     - status:

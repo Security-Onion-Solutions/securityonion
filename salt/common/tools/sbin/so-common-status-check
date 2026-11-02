@@ -9,6 +9,7 @@ import sys
 import subprocess
 import os
 import json
+import tempfile
 
 sys.path.append('/opt/saltstack/salt/lib/python3.10/site-packages/')
 import salt.config
@@ -16,6 +17,21 @@ import salt.loader
 
 __opts__ = salt.config.minion_config('/etc/salt/minion')
 __grains__ = salt.loader.grains(__opts__)
+
+def write_atomic(path, value):
+  # telegraf reads these files on its own schedule; replacing them by rename means it never
+  # reads a truncated file and reports an empty value as if it were real
+  directory = os.path.dirname(path)
+  handle, temp = tempfile.mkstemp(dir=directory)
+  try:
+    with os.fdopen(handle, 'w') as f:
+      f.write(str(value))
+    os.chmod(temp, 0o644)
+    os.replace(temp, path)
+  except Exception:
+    os.path.exists(temp) and os.unlink(temp)
+    raise
+
 
 def check_needs_restarted():
   osfam = __grains__['os_family']
@@ -34,8 +50,7 @@ def check_needs_restarted():
   else:
     fail("Unsupported OS")
 
-  with open(outfile, 'w') as f:
-    f.write(val)
+  write_atomic(outfile, val)
 
 def check_for_fps():
     feat = 'fps'
@@ -56,8 +71,7 @@ def check_for_fps():
           # Unknown, so assume 0
           fps = 0
 
-    with open('/opt/so/log/sostatus/fps_enabled', 'w') as f:
-       f.write(str(fps))
+    write_atomic('/opt/so/log/sostatus/fps_enabled', fps)
 
 def check_for_lks():
     feat = 'Lks'
@@ -80,8 +94,7 @@ def check_for_lks():
                                 lks = 1
         if lks:
             break
-    with open('/opt/so/log/sostatus/lks_enabled', 'w') as f:
-       f.write(str(lks))
+    write_atomic('/opt/so/log/sostatus/lks_enabled', lks)
 
 def fail(msg):
   print(msg, file=sys.stderr)

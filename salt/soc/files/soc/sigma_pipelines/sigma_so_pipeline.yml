@@ -1,0 +1,680 @@
+name: Security Onion Baseline Pipeline
+priority: 90
+transformations:
+    # ES|QL scalar == returns null on multivalued fields; the
+    # backend reads this key and emits MV_INTERSECTS instead.
+    - id: declare_multivalue_fields
+      type: set_state
+      key: multivalue_fields
+      val:
+        - event.type
+        - event.action
+        - event.category
+        - tags
+        - process.args
+        - related.ip
+        - dns.resolved_ip
+    # always lowercase: matched exactly with the indexed ':' operator
+    - id: case_sensitive_categorization_fields
+      type: set_state
+      key: case_insensitive_exempt_fields
+      val:
+        - tags
+        - event.category
+        - event.type
+        - event.kind
+    # Not every source maps .caseless; EQL/ES|QL already match case-insensitively.
+    - id: caseless_to_parent_fields
+      type: field_name_mapping
+      mapping:
+        process.executable.caseless: process.executable
+        process.name.caseless: process.name
+        process.parent.executable.caseless: process.parent.executable
+        process.parent.name.caseless: process.parent.name
+        target.process.executable.caseless: target.process.executable
+        target.process.name.caseless: target.process.name
+    - id: baseline_field_name_mapping
+      type: field_name_mapping
+      mapping:
+        cs-method: http.method
+        c-uri: http.uri
+        c-useragent: http.useragent
+        cs-version: http.version
+        uid: user.uid
+        sid: rule.uuid
+        answer: answers
+        query: dns.query.name
+        src_ip: source.ip
+        src_port: source.port
+        dst_ip: destination.ip
+        dst_port: destination.port
+        winlog.event_data.User: user.name
+        logtype: event.code # OpenCanary
+      ## Start Temp Linux Mappings ##
+        ProcessGuid: process.entity_id
+        ProcessId: process.pid
+        Image: process.executable
+        CommandLine: process.command_line
+        CurrentDirectory: process.working_directory
+        ParentProcessGuid: process.parent.entity_id
+        ParentProcessId: process.parent.pid
+        ParentImage: process.parent.executable
+        ParentCommandLine: process.parent.command_line
+        User: user.name
+     ## End Temp Linux Mappings ##
+        document_id: _id
+        rule.type: event.module
+        related_ip: related.ip
+        community_id: network.community_id
+        event_dataset: event.dataset
+        hostname: host.name
+    # Maps "opencanary" product to SO IDH logs
+    - id: opencanary_idh_add-fields
+      type: add_condition
+      conditions:
+        event.module: 'opencanary'
+        event.dataset: 'opencanary.idh'
+      rule_conditions:
+      - type: logsource
+        product: opencanary
+    # Maps "antivirus" category to Windows Defender logs shipped by Elastic Agent Winlog Integration
+    # and to Elastic Defend malware alerts
+    # winlog.event_data.threat_name has to be renamed prior to ingestion, it is originally winlog.event_data.Threat Name
+    - id: antivirus_field-mappings
+      type: field_name_mapping
+      mapping:
+        Signature:
+          - winlog.event_data.threat_name
+          - rule.name
+      rule_conditions:
+      - type: logsource
+        category: antivirus
+    - id: antivirus_add-fields
+      type: add_condition
+      conditions:
+        event.code:
+          - "1116"
+          - "malicious_file"
+          - "memory_signature"
+      rule_conditions:
+      - type: logsource
+        category: antivirus
+    # OS-agnostic process_creation scoping for product-less (NIDS/host-pivot) rules.
+    # pySigma: rule_cond_expr requires rule_conditions as a mapping, not a list.
+    - id: process_creation_os_agnostic
+      type: add_condition
+      conditions:
+        event.category: process
+      rule_conditions:
+        pc_cat:
+          type: logsource
+          category: process_creation
+        pc_win:
+          type: logsource
+          product: windows
+        pc_mac:
+          type: logsource
+          product: macos
+        pc_lin:
+          type: logsource
+          product: linux
+      rule_cond_expr: "pc_cat and not (pc_win or pc_mac or pc_lin)"
+    # Transforms the `Hashes` field to ECS fields
+    # ECS fields are used by the hash fields emitted by Elastic Defend
+    # If shipped with Elastic Agent, sysmon logs will also have hashes mapped to ECS fields    
+    - id: hashes_break_out_field
+      type: hashes_fields
+      valid_hash_algos: ["MD5", "SHA1", "SHA256", "SHA512", "IMPHASH"]
+      field_prefix: "file"
+      drop_algo_prefix: False
+      # ecs_windows renamed Hashes; pySigma 1.5+ parses only these
+      field_to_parse:
+        - winlog.event_data.Hashes
+      field_name_conditions:
+        - type: include_fields
+          fields:
+            - winlog.event_data.Hashes
+    - id: hashes_process-creation
+      type: field_name_mapping
+      mapping:
+        fileSHA256: process.hash.sha256
+        fileSHA1: process.hash.sha1
+        fileMD5: process.hash.md5
+        fileIMPHASH: process.pe.imphash
+      rule_conditions:
+      - type: logsource
+        product: windows
+        category: process_creation
+    - id: hashes_image-load
+      type: field_name_mapping
+      mapping:
+        fileSHA256: dll.hash.sha256
+        fileSHA1: dll.hash.sha1
+        fileMD5: dll.hash.md5
+        fileIMPHASH: dll.pe.imphash
+      rule_conditions:
+      - type: logsource
+        product: windows
+        category: image_load
+    - id: hashes_driver-load
+      type: field_name_mapping
+      mapping:
+        fileSHA256: dll.hash.sha256
+        fileSHA1: dll.hash.sha1
+        fileMD5: dll.hash.md5
+        fileIMPHASH: dll.pe.imphash
+      rule_conditions:
+      - type: logsource
+        product: windows
+        category: driver_load
+    - id: ecs_fix_process_creation
+      type: field_name_mapping
+      mapping:
+        # bare `Hashes` (the combined-string case is broken out above)
+        winlog.event_data.Hashes: process.hash.sha256
+        winlog.event_data.IntegrityLevel: process.Ext.token.integrity_level_name
+        winlog.event_data.ParentName: process.parent.name
+      rule_conditions:
+      - type: logsource
+        product: windows
+        category: process_creation
+    - id: ecs_fix_registry_set
+      type: field_name_mapping
+      mapping:
+        winlog.event_data.Details: registry.data.strings
+      rule_conditions:
+      - type: logsource
+        product: windows
+        category: registry_set
+    # ecs_windows renames Initiated -> network.direction without translating the value,
+    # so rules compile to network.direction:"true" and never match (field holds
+    # ingress/egress). network.initiated carries the boolean on both Defend and Sysmon.
+    # Keyed on network.direction because ecs_windows has already renamed by this layer.
+    - id: ecs_fix_network_connection_initiated
+      type: field_name_mapping
+      mapping:
+        network.direction: network.initiated
+      rule_conditions:
+      - type: logsource
+        product: windows
+        category: network_connection
+    - id: ecs_fix_image_load
+      type: field_name_mapping
+      mapping:
+        file.path: dll.path
+        file.code_signature.signed: dll.code_signature.exists
+        winlog.event_data.Signature: dll.code_signature.subject_name
+        file.code_signature.status: dll.code_signature.status
+        winlog.event_data.Hashes: dll.hash.sha256
+      rule_conditions:
+      - type: logsource
+        product: windows
+        category: image_load
+    # Defend reports the driver image in dll.path (file.path is null on driver events) —
+    # same renames as image_load.
+    - id: ecs_fix_driver_load
+      type: field_name_mapping
+      mapping:
+        file.path: dll.path
+        file.code_signature.signed: dll.code_signature.exists
+        winlog.event_data.Signature: dll.code_signature.subject_name
+        file.code_signature.status: dll.code_signature.status
+        winlog.event_data.Hashes: dll.hash.sha256
+      rule_conditions:
+      - type: logsource
+        product: windows
+        category: driver_load
+    - id: ecs_fix_file_rename
+      type: field_name_mapping
+      mapping:
+        # Defend records the pre-rename path in file.Ext.original.path; Sysmon's
+        # SourceFilename has no ECS equivalent.
+        winlog.event_data.SourceFilename: file.Ext.original.path
+      rule_conditions:
+      - type: logsource
+        product: windows
+        category: file_rename
+    - id: linux_security_add-fields
+      type: add_condition
+      conditions:
+        event.module: 'system'
+        event.dataset: 'system.auth'
+      rule_conditions:
+      - type: logsource
+        product: linux
+        service: auth
+    # Maps M365 audit rules to Elastic Agent O365 integration logs
+    - id: m365_audit_field_mappings
+      type: field_name_mapping
+      mapping:
+        Operation: event.action
+        ResultStatus: event.outcome
+        ApplicationId: o365.audit.ApplicationId
+        ObjectId: o365.audit.ObjectId
+        RequestType: o365.audit.RequestType
+      rule_conditions:
+      - type: logsource
+        product: m365
+        service: audit
+    - id: m365_audit_add-fields
+      type: add_condition
+      conditions:
+        event.dataset: 'o365.audit'
+        event.module: 'o365'
+      rule_conditions:
+      - type: logsource
+        product: m365
+        service: audit
+    # Maps M365 exchange rules to Elastic Agent O365 integration logs
+    - id: m365_exchange_field_mappings
+      type: field_name_mapping
+      mapping:
+        eventSource: event.provider
+        eventName: event.action
+        status: event.outcome
+      rule_conditions:
+      - type: logsource
+        product: m365
+        service: exchange
+    - id: m365_exchange_add-fields
+      type: add_condition
+      conditions:
+        event.dataset: 'o365.audit'
+        event.module: 'o365'
+      rule_conditions:
+      - type: logsource
+        product: m365
+        service: exchange
+    # Maps M365 threat_management rules to Elastic Agent O365 integration logs
+    - id: m365_threat_management_field_mappings
+      type: field_name_mapping
+      mapping:
+        eventSource: event.provider
+        eventName: event.action
+        status: event.outcome
+      rule_conditions:
+      - type: logsource
+        product: m365
+        service: threat_management
+    - id: m365_threat_management_add-fields
+      type: add_condition
+      conditions:
+        event.dataset: 'o365.audit'
+        event.module: 'o365'
+      rule_conditions:
+      - type: logsource
+        product: m365
+        service: threat_management
+    # Maps M365 threat_detection rules to Elastic Agent O365 integration logs
+    - id: m365_threat_detection_field_mappings
+      type: field_name_mapping
+      mapping:
+        eventSource: event.provider
+        eventName: event.action
+        status: event.outcome
+      rule_conditions:
+      - type: logsource
+        product: m365
+        service: threat_detection
+    - id: m365_threat_detection_add-fields
+      type: add_condition
+      conditions:
+        event.dataset: 'o365.audit'
+        event.module: 'o365'
+      rule_conditions:
+      - type: logsource
+        product: m365
+        service: threat_detection
+    # Maps FortiGate event rules to Elastic Agent Fortinet integration logs
+    - id: fortigate_event_field_mappings
+      type: field_name_mapping
+      mapping:
+        action: fortinet.firewall.action
+        cfgpath: fortinet.firewall.cfgpath
+        cfgobj: fortinet.firewall.cfgobj
+        cfgattr: fortinet.firewall.cfgattr
+        devname: observer.name
+        devid: observer.serial_number
+        logid: event.code
+        type: fortinet.firewall.type
+        subtype: fortinet.firewall.subtype
+        level: log.level
+        vd: fortinet.firewall.vd
+        logdesc: fortinet.firewall.desc
+        user: user.name
+        ui: fortinet.firewall.ui
+        cfgtid: fortinet.firewall.cfgtid
+        msg: message
+      rule_conditions:
+      - type: logsource
+        product: fortigate
+        service: event
+    - id: fortigate_event_add-fields
+      type: add_condition
+      conditions:
+        event.dataset: 'fortinet_fortigate.log'
+        event.module: 'fortinet_fortigate'
+      rule_conditions:
+      - type: logsource
+        product: fortigate
+        service: event
+    # event.code should always be a string
+    - id: convert_event_code_to_string
+      type: convert_type
+      target_type: 'str'
+      field_name_conditions:
+        - type: include_fields
+          fields:
+          - event.code
+    # Maps process_creation rules to endpoint process creation logs
+    - id: endpoint_process_create_windows_add-fields
+      type: add_condition
+      conditions:
+        event.category: 'process'
+        event.type: 'start'
+        host.os.type: 'windows'
+      rule_conditions:
+      - type: logsource
+        category: process_creation
+        product: windows
+    - id: endpoint_process_create_macos_add-fields
+      type: add_condition
+      conditions:
+        event.category: 'process'
+        event.type: 'start'
+        host.os.type: 'macos'
+      rule_conditions:
+      - type: logsource
+        category: process_creation
+        product: macos
+    - id: endpoint_process_create_linux_add-fields
+      type: add_condition
+      conditions:
+        event.category: 'process'
+        event.type: 'start'
+        host.os.type: 'linux'
+      rule_conditions:
+      - type: logsource
+        category: process_creation
+        product: linux
+    # Maps file_event rules to endpoint file creation logs
+    # This is an OS-agnostic mapping, to account for logs that don't specify source OS
+    - id: endpoint_file_create_add-fields
+      type: add_condition
+      conditions:
+        event.category: 'file'
+        event.type: 'creation'
+      rule_conditions:
+      - type: logsource
+        category: file_event
+    # Without event.type scoping, file_delete rules also match creations.
+    - id: endpoint_file_delete_add-fields
+      type: add_condition
+      conditions:
+        event.category: 'file'
+        event.type: 'deletion'
+      rule_conditions:
+      - type: logsource
+        category: file_delete
+    # Defend reports renames as event.action:rename with event.type:change.
+    - id: endpoint_file_rename_add-fields
+      type: add_condition
+      conditions:
+        event.category: 'file'
+        event.action: 'rename'
+      rule_conditions:
+      - type: logsource
+        category: file_rename
+    # event.type:change selects writes and excludes Defend's read-only registry events.
+    - id: endpoint_registry_set_add-fields
+      type: add_condition
+      conditions:
+        event.category: 'registry'
+        event.type: 'change'
+      rule_conditions:
+      - type: logsource
+        category: registry_set
+    # Scope image_load rules to Elastic Endpoint library events (event.category:library, dll.*
+    # populated).
+    - id: endpoint_image_load_add-fields
+      type: add_condition
+      conditions:
+        event.category: 'library'
+      rule_conditions:
+      - type: logsource
+        category: image_load
+    # Maps network rules to all network logs
+    # This targets all network logs, all services, generated from endpoints and network
+    - id: network_add-fields
+      type: add_condition
+      conditions:
+        event.category: 'network'
+      rule_conditions:
+      - type: logsource
+        category: network
+    # Maps network_connection rules to endpoint network creation logs
+    # This is an OS-agnostic mapping, to account for logs that don't specify source OS
+    - id: endpoint_network_connection_add-fields
+      type: add_condition
+      conditions:
+        event.category: 'network'
+        event.type: 'start'
+      rule_conditions:
+      - type: logsource
+        category: network_connection
+    # Scope on lookup actions, not network.protocol:dns (also matches Zeek port-53).
+    - id: endpoint_dns_query_add-fields
+      type: add_condition
+      conditions:
+        event.category: 'network'
+        event.action:
+          - 'lookup_requested'
+          - 'lookup_result'
+      rule_conditions:
+      - type: logsource
+        category: dns_query
+    # OS gates: without them a `product: windows` rule in these categories also matches
+    # Linux/macOS. Separate conditions (not `product:` on the mappings above) so the
+    # mappings keep scoping product-less rules.
+    - id: endpoint_file_create_windows_os-gate
+      type: add_condition
+      conditions:
+        host.os.type: 'windows'
+      rule_conditions:
+      - type: logsource
+        category: file_event
+        product: windows
+    - id: endpoint_file_create_linux_os-gate
+      type: add_condition
+      conditions:
+        host.os.type: 'linux'
+      rule_conditions:
+      - type: logsource
+        category: file_event
+        product: linux
+    - id: endpoint_file_create_macos_os-gate
+      type: add_condition
+      conditions:
+        host.os.type: 'macos'
+      rule_conditions:
+      - type: logsource
+        category: file_event
+        product: macos
+    - id: endpoint_file_delete_windows_os-gate
+      type: add_condition
+      conditions:
+        host.os.type: 'windows'
+      rule_conditions:
+      - type: logsource
+        category: file_delete
+        product: windows
+    - id: endpoint_file_delete_linux_os-gate
+      type: add_condition
+      conditions:
+        host.os.type: 'linux'
+      rule_conditions:
+      - type: logsource
+        category: file_delete
+        product: linux
+    - id: endpoint_file_delete_macos_os-gate
+      type: add_condition
+      conditions:
+        host.os.type: 'macos'
+      rule_conditions:
+      - type: logsource
+        category: file_delete
+        product: macos
+    - id: endpoint_file_rename_windows_os-gate
+      type: add_condition
+      conditions:
+        host.os.type: 'windows'
+      rule_conditions:
+      - type: logsource
+        category: file_rename
+        product: windows
+    - id: endpoint_file_rename_linux_os-gate
+      type: add_condition
+      conditions:
+        host.os.type: 'linux'
+      rule_conditions:
+      - type: logsource
+        category: file_rename
+        product: linux
+    - id: endpoint_file_rename_macos_os-gate
+      type: add_condition
+      conditions:
+        host.os.type: 'macos'
+      rule_conditions:
+      - type: logsource
+        category: file_rename
+        product: macos
+    - id: endpoint_network_connection_windows_os-gate
+      type: add_condition
+      conditions:
+        host.os.type: 'windows'
+      rule_conditions:
+      - type: logsource
+        category: network_connection
+        product: windows
+    - id: endpoint_network_connection_linux_os-gate
+      type: add_condition
+      conditions:
+        host.os.type: 'linux'
+      rule_conditions:
+      - type: logsource
+        category: network_connection
+        product: linux
+    - id: endpoint_network_connection_macos_os-gate
+      type: add_condition
+      conditions:
+        host.os.type: 'macos'
+      rule_conditions:
+      - type: logsource
+        category: network_connection
+        product: macos
+    - id: endpoint_dns_query_windows_os-gate
+      type: add_condition
+      conditions:
+        host.os.type: 'windows'
+      rule_conditions:
+      - type: logsource
+        category: dns_query
+        product: windows
+    - id: endpoint_dns_query_linux_os-gate
+      type: add_condition
+      conditions:
+        host.os.type: 'linux'
+      rule_conditions:
+      - type: logsource
+        category: dns_query
+        product: linux
+    - id: endpoint_dns_query_macos_os-gate
+      type: add_condition
+      conditions:
+        host.os.type: 'macos'
+      rule_conditions:
+      - type: logsource
+        category: dns_query
+        product: macos
+    # registry_set / image_load / driver_load are not gated — windows-only telemetry.
+    # wmi / wmi_event are not scoped here: their only handle is event.dataset
+    - id: endpoint_driver_load_add-fields
+      type: add_condition
+      conditions:
+        event.category: 'driver'
+      rule_conditions:
+      - type: logsource
+        category: driver_load
+    # Maps "alert" category to SO Alert events
+    - id: alert_so_add-fields
+      type: add_condition
+      conditions:
+        tags: 'alert'
+      rule_conditions:
+      - type: logsource
+        category: alert
+    # Maps "network + connection" to SO connection logs
+    - id: network_connection_so_add-fields
+      type: add_condition
+      conditions:
+        tags: 'conn'
+      rule_conditions:
+      - type: logsource
+        category: network
+        service: connection
+    # Maps "network + dns" to SO DNS logs
+    - id: network_dns_so_add-fields
+      type: add_condition
+      conditions:
+        tags: 'dns'
+      rule_conditions:
+      - type: logsource
+        category: network
+        service: dns
+    # Maps "network + http" to SO HTTP logs
+    - id: network_http_so_add-fields
+      type: add_condition
+      conditions:
+        tags: 'http'
+      rule_conditions:
+      - type: logsource
+        category: network
+        service: http
+    # Maps "network + file" to SO file logs
+    - id: network_file_so_add-fields
+      type: add_condition
+      conditions:
+        event.category: 'network'
+        tags: 'file'
+      rule_conditions:
+      - type: logsource
+        category: network
+        service: file
+    # Maps "network + x509" to SO x509 logs
+    - id: network_x509_so_add-fields
+      type: add_condition
+      conditions:
+        event.category: 'network'
+        tags: 'x509'
+      rule_conditions:
+      - type: logsource
+        category: network
+        service: x509
+    # Maps "network + ssl" to SO ssl logs
+    - id: network_ssl_so_add-fields
+      type: add_condition
+      conditions:
+        event.category: 'network'
+        tags: 'ssl'
+      rule_conditions:
+      - type: logsource
+        category: network
+        service: ssl
+    # Maps file to host or network file events
+    - id: file_so_add-fields
+      type: add_condition
+      conditions:
+        tags: '*file'
+      rule_conditions:
+      - type: logsource
+        category: file

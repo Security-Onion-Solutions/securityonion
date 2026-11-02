@@ -19,6 +19,7 @@ elastic-agent-pr:
     - gid: 948
     - home: /opt/so/conf/elastic-fleet-pr
     - createhome: False
+    - shell: /sbin/nologin
 
 {% else %}
 

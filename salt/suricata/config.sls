@@ -64,6 +64,7 @@ suricata:
     - gid: 940
     - home: /nsm/suricata
     - createhome: False
+    - shell: /sbin/nologin
 
 socoregroupwithsuricata:
   group.present:
@@ -76,16 +77,16 @@ suricata_sbin:
   file.recurse:
     - name: /usr/sbin
     - source: salt://suricata/tools/sbin
-    - user: 939
-    - group: 939
+    - user: root
+    - group: root
     - file_mode: 755
 
 suricata_sbin_jinja:
   file.recurse:
     - name: /usr/sbin
     - source: salt://suricata/tools/sbin_jinja
-    - user: 939
-    - group: 939 
+    - user: root
+    - group: root
     - file_mode: 755
     - template: jinja
 

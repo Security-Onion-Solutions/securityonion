@@ -6,10 +6,12 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
+{%   from 'ca/trust.map.jinja' import CATRUST %}
 {%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 
 
 include:
+  - ca.trust
   - zeek.config
   - zeek.sostatus
 
@@ -19,6 +21,10 @@ so-zeek:
     - restart_policy: unless-stopped
     - start: True
     - privileged: True
+    # Docker's default 10s grace is not enough for the entrypoint's SIGTERM trap to run
+    # 'zeekctl stop' and let StopWait archive the final logs. Overrunning it means SIGKILL,
+    # which strands those logs in spool/tmp and marks every node crashed on the next start.
+    - stop_timeout: 180
     {% if DOCKERMERGED.containers['so-zeek'].ulimits %}
     - ulimits:
     {%   for ULIMIT in DOCKERMERGED.containers['so-zeek'].ulimits %}
@@ -26,6 +32,7 @@ so-zeek:
     {%   endfor %}
     {% endif %}
     - binds:
+      - {{ CATRUST.dir }}
       - /nsm/zeek/logs:/nsm/zeek/logs:rw
       - /nsm/zeek/spool:/nsm/zeek/spool:rw
       - /nsm/zeek/extracted:/nsm/zeek/extracted:rw
@@ -59,6 +66,7 @@ so-zeek:
       {% endfor %}
     {% endif %}
     - watch:
+      - cmd: ca_trust_extract
       - file: /opt/so/conf/zeek/local.zeek
       - file: /opt/so/conf/zeek/node.cfg
       - file: /opt/so/conf/zeek/networks.cfg

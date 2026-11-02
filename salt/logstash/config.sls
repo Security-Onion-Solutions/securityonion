@@ -35,13 +35,14 @@ logstash:
     - uid: 931
     - gid: 931
     - home: /opt/so/conf/logstash
+    - shell: /sbin/nologin
 
 logstash_sbin:
   file.recurse:
     - name: /usr/sbin
     - source: salt://logstash/tools/sbin
-    - user: 931
-    - group: 939
+    - user: root
+    - group: root
     - file_mode: 755
 
 #logstash_sbin_jinja:

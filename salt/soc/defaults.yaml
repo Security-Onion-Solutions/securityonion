@@ -1380,6 +1380,7 @@ soc:
           retryFailureMaxAttempts: 5
         kratos:
           hostUrl:
+          publicHostUrl:
         hydra:
           hostUrl:
         elastalertengine:
@@ -1440,11 +1441,13 @@ soc:
           rulesFingerprintFile: /opt/sensoroni/fingerprints/sigma.fingerprint
           stateFilePath: /opt/sensoroni/fingerprints/elastalertengine.state
           integrityCheckFrequencySeconds: 1200
+          partialSyncTimeoutSeconds: 300
+          bulkSyncTimeoutSeconds: 1800
           rulesRepos:
             default:
               - repo: https://github.com/Security-Onion-Solutions/securityonion-resources
                 license: Elastic-2.0
-                folder: sigma/stable
+                folder: sigma
                 community: true
                 rulesetName: securityonion-resources
               - repo: file:///nsm/rules/custom-local-repos/local-sigma
@@ -1454,7 +1457,7 @@ soc:
             airgap:
               - repo: file:///nsm/rules/detect-sigma/repos/securityonion-resources
                 license: Elastic-2.0
-                folder: sigma/stable
+                folder: sigma
                 community: true
                 rulesetName: securityonion-resources
               - repo: file:///nsm/rules/custom-local-repos/local-sigma
@@ -1465,6 +1468,9 @@ soc:
             - core
             - emerging_threats_addon
           useEsql: false
+          esqlCaseInsensitive: true
+          esqlQueryDelaySeconds: 30
+          esqlCorrelationAllowanceSeconds: 600
         elastic:
           hostUrl:
           remoteHostUrls: []
@@ -1492,6 +1498,9 @@ soc:
           org: Security Onion
           bucket: telegraf/so_short_term
           verifyCert: false
+        notification:
+          dismissedPruneDays: 30
+          enabled: true
         playbook:
           autoUpdateEnabled: true
           playbookImportFrequencySeconds: 86400
@@ -1535,8 +1544,9 @@ soc:
           agentic: false
           agentMapping:
             Orchestrator: sonnet@SOAI
-            Investigator: gemma@SOAI
-            DetectionEngineer: gemma@SOAI
+            Investigator: haiku@SOAI
+            DetectionEngineer: haiku@SOAI
+            AlertTriage: haiku@SOAI
           useMemory: false
           useMemoryScanner: false
           dontScanBefore: ""
@@ -1556,6 +1566,78 @@ soc:
           reconcilePersona: ""
           toolUseTurnAttempts: 12
           toolUseTurnDelayMs: 175
+          agentSessionMaxTurns: 20
+          agentStreamFlushIntervalMs: 1000
+          agentStreamIdleTimeoutSeconds: 300
+          automationSettings:
+            tickIntervalSeconds: 60
+            maxConcurrentItems: 4
+            maxQueuedItems: 0
+            turnTimeoutSeconds: 300
+            alertTriageEpoch: "2026-09-24T00:00:00Z"
+          tools:
+            filterEventFields:
+              - "@timestamp"
+              - "client.name"
+              - "destination.ip"
+              - "destination.port"
+              - "destination.geo.country_name"
+              - "dns.query.name"
+              - "dns.query_name"
+              - "event.action"
+              - "event.category"
+              - "event.module"
+              - "event.dataset"
+              - "event.outcome"
+              - "event.severity"
+              - "event.severity_label"
+              - "event.type"
+              - "event_data.agent.name"
+              - "event_data.host.os.name"
+              - "file.mime_type"
+              - "file.name"
+              - "hash.md5"
+              - "hash.sha1"
+              - "host.mac"
+              - "host.name"
+              - "host.os.name"
+              - "http.method"
+              - "http.useragent"
+              - "http.virtual_host"
+              - "log.id.uid"
+              - "network.community_id"
+              - "network.protocol"
+              - "network.transport"
+              - "notice.message"
+              - "observer.name"
+              - "process.name"
+              - "process.executable"
+              - "process.entity_id"
+              - "process.command_line"
+              - "process.Ext.ancestry"
+              - "process.parent.entity_id"
+              - "process.parent.command_line"
+              - "rule.category"
+              - "rule.name"
+              - "rule.uuid"
+              - "software.name"
+              - "software.type"
+              - "software.version.unparsed"
+              - "source.ip"
+              - "source.port"
+              - "source.geo.country_name"
+              - "ssh.cypher_algorithm"
+              - "ssh.client"
+              - "ssh.server"
+              - "ssl.cipher"
+              - "ssl.server_name"
+              - "ssl.version"
+              - "system.auth.sudo.command"
+              - "user.name"
+              - "user.domain"
+              - "user.effective.name"
+              - "weird.name"
+              - "tags"
         onionconfig:
           saltstackDir: /opt/so/saltstack
           bypassEnabled: false
@@ -1620,6 +1702,8 @@ soc:
           yaraRulesFolder: /opt/sensoroni/yara/rules
           stateFilePath: /opt/sensoroni/fingerprints/strelkaengine.state
           integrityCheckFrequencySeconds: 1200
+          partialSyncTimeoutSeconds: 300
+          bulkSyncTimeoutSeconds: 1800
         suricataengine:
           aiRepoUrl: https://github.com/Security-Onion-Solutions/securityonion-resources
           aiRepoBranch: generated-summaries-published
@@ -1635,6 +1719,8 @@ soc:
           rulesFingerprintFile: /opt/sensoroni/fingerprints/emerging-all.fingerprint
           stateFilePath: /opt/sensoroni/fingerprints/suricataengine.state
           integrityCheckFrequencySeconds: 1200
+          partialSyncTimeoutSeconds: 300
+          bulkSyncTimeoutSeconds: 1800
           ignoredSidRanges:
             - '1100000-1101000'
           rulesetSources:
@@ -1745,6 +1831,7 @@ soc:
         cacheExpirationMs: 300000
         casesEnabled: true
         detectionsEnabled: true
+        allowExternalMarkdownImages: false
         inactiveTools: ['toolUnused']
         exportNodeId:
         tools:
@@ -2446,6 +2533,9 @@ soc:
           queries:
             - name: 'Group By Name, Module'
               query: '* | groupby rule.name event.module* event.severity_label rule.uuid'
+            - name: 'Group By Assessment, Name'
+              query: '* | groupby event.so_alerttriage.assessment rule.name event.severity_label rule.uuid'
+              license: oai
             - name: 'Group By Sensor, Source IP/Port, Destination IP/Port, Name'
               query: '* | groupby observer.name source.ip source.port destination.ip destination.port rule.name network.community_id event.severity_label rule.uuid'
             - name: 'Group By Source IP, Name'
@@ -2603,8 +2693,11 @@ soc:
               query: "so_detection.language:suricata | groupby so_detection.ruleset so_detection.isEnabled | groupby so_detection.category"
               description: Show all NIDS Detections, which are run with Suricata
             - name: "Detection Type - Sigma (Elastalert) - All"
-              query: "so_detection.language:sigma | groupby so_detection.ruleset so_detection.isEnabled | groupby so_detection.category | groupby so_detection.product"
+              query: "so_detection.language:sigma | groupby so_detection.sigmaKind | groupby so_detection.ruleset so_detection.isEnabled | groupby so_detection.category | groupby so_detection.product"
               description: Show all Sigma Detections, which are run with Elastalert
+            - name: "Detection Type - Sigma (Elastalert) - Correlations"
+              query: "so_detection.sigmaKind:correlation | groupby so_detection.sigmaCorrelationType so_detection.isEnabled | groupby so_detection.ruleset"
+              description: Show Sigma correlation Detections
             - name: "Detection Type - YARA (Strelka)"
               query: "so_detection.language:yara | groupby so_detection.ruleset so_detection.isEnabled"
               description: Show all YARA detections, which are used by Strelka
@@ -2688,7 +2781,7 @@ soc:
             elastalert: |
               # This is a Sigma rule template, which uses YAML. Replace all template values with your own values.
               # The id (UUIDv4) is pregenerated and can safely be used.
-              # Click "Convert" to convert the Sigma rule to use Security Onion field mappings within an EQL query
+              # Click "Convert" to convert the Sigma rule to use Security Onion field mappings within a backend query
               #
               # Rule Creation Guide: https://github.com/SigmaHQ/sigma/wiki/Rule-Creation-High%E2%80%90Level-Guide
               # Logsources: https://sigmahq.io/docs/basics/log-sources.html
@@ -2718,6 +2811,61 @@ soc:
                           - ' -priv'
                   condition: all of selection_*
               level: 'high'  # info | low | medium | high | critical
+            elastalert_correlation: |
+              # Sigma correlation rule; requires ES|QL (useEsql).
+              # First document: the correlation. Following documents: the rules it references.
+              #
+              # This example mirrors the shipped rule c448c9f6 (Repeated SOC Login Failures For One Account).
+              # Change it before enabling, or you will get two alerts for the same activity.
+              # To test: log out of SOC and enter a wrong password 5 times for one username.
+              #
+              # Types: event_count, value_count, temporal, value_sum, value_avg, value_median, value_percentile.
+              # Correlation Guide: https://sigmahq.io/docs/meta/correlations.html
+              # Logsources: https://sigmahq.io/docs/basics/log-sources.html
+
+              title: 'A Short Capitalized Title With Less Than 50 Characters'
+              id: [publicId]
+              status: 'experimental'
+              description: |
+                  Describe what the correlation finds and why relating these events is more
+                  meaningful than any one of them alone.
+                  Example: 5 or more failed SOC logins for one username in 10 minutes.
+              references:
+                - 'https://attack.mitre.org/techniques/T1110/001/'
+              author: '@SecurityOnion'
+              date: '[today]'
+              tags:
+                - attack.credential-access
+                - attack.t1110.001
+              correlation:
+                  type: event_count       # count the base rule's events...
+                  rules:
+                      - example_base_rule # ...by the 'name' of the rule below
+                  group-by:
+                      - user.name         # ...separately for each username
+                  timespan: 10m           # Xs, Xm, Xh
+                  condition:
+                      gte: 5
+              falsepositives:
+                - 'A user entering an old password after a password change'
+              # Placeholders: %count%, %start%, %end%, %duration%, or any field.
+              summary: '%count% failed SOC logins for %user.name% in %duration%, from %http.request.headers.x-real-ip%'
+              level: 'medium'  # info | low | medium | high | critical
+              ---
+              title: 'SOC Login Failure'
+              # referenced by 'name' (or 'id')
+              name: example_base_rule
+              description: 'One failed SOC login. Put filters here, not in the correlation.'
+              logsource:
+                product: kratos
+                service: application
+              detection:
+                  selection:
+                      msg: 'Encountered self-service login error.'
+                  condition: selection
+              # Carried into the alert.
+              fields:
+                - http.request.headers.x-real-ip
         assistant:
           enabled: false
           investigationPrompt: Investigate Alert ID {socId}
@@ -2731,7 +2879,16 @@ soc:
             - id: sonnet
               displayName: Claude Sonnet
               origin: USA
-              contextLimitSmall: 200000
+              contextLimitSmall: 1000000
+              contextLimitLarge: 1000000
+              lowBalanceColorAlert: 500000
+              enabled: true
+              adapter: SOAI
+              charsPerTokenEstimate: 4
+            - id: haiku
+              displayName: Claude Haiku
+              origin: USA
+              contextLimitSmall: 1000000
               contextLimitLarge: 1000000
               lowBalanceColorAlert: 500000
               enabled: true

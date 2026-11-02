@@ -6,9 +6,11 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
+{%   from 'ca/trust.map.jinja' import CATRUST %}
 {%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 
 include:
+  - ca.trust
   - registry.ssl
   - registry.config
   - registry.sostatus
@@ -29,6 +31,7 @@ so-dockerregistry:
       - {{ BINDING }}
       {% endfor %}
     - binds:
+      - {{ CATRUST.pem }}:/etc/ssl/certs/ca-certificates.crt:ro
       - /opt/so/conf/docker-registry/etc/config.yml:/etc/distribution/config.yml:ro
       - /opt/so/conf/docker-registry:/var/lib/registry:rw
       - /nsm/docker-registry/docker:/var/lib/registry/docker:rw
@@ -63,6 +66,7 @@ so-dockerregistry:
         attempts: 5
         interval: 30
     - watch:
+      - cmd: ca_trust_extract
       - x509: registry_crt
       - x509: registry_key
     - require:

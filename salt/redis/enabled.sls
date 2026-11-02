@@ -7,6 +7,7 @@
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
+{%   from 'ca/trust.map.jinja' import CATRUST %}
 
 include:
   - ca
@@ -28,6 +29,7 @@ so-redis:
       - {{ BINDING }}
       {% endfor %}
     - binds:
+      - {{ CATRUST.pem }}:/etc/ssl/certs/ca-certificates.crt:ro
       - /opt/so/log/redis:/var/log/redis:rw
       - /opt/so/conf/redis/etc/redis.conf:/usr/local/etc/redis/redis.conf:ro
       - /opt/so/conf/redis/working:/redis:rw
@@ -60,6 +62,7 @@ so-redis:
     {% endif %}
     - entrypoint: "redis-server /usr/local/etc/redis/redis.conf"
     - watch:
+      - cmd: ca_trust_extract
       - file: trusttheca
       - x509: redis_crt
       - x509: redis_key

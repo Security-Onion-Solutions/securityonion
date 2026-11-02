@@ -7,8 +7,10 @@
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
+{%   from 'ca/trust.map.jinja' import CATRUST %}
 
 include:
+  - ca.trust
   - strelka.coordinator.config
   - strelka.coordinator.sostatus
 
@@ -39,6 +41,7 @@ strelka_coordinator:
       {% endfor %}
     {% endif %}
     - binds:
+      - {{ CATRUST.pem }}:/etc/ssl/certs/ca-certificates.crt:ro
       - /nsm/strelka/coord-redis-data:/data:rw
       {% if DOCKERMERGED.containers['so-strelka-coordinator'].custom_bind_mounts %}
         {% for BIND in DOCKERMERGED.containers['so-strelka-coordinator'].custom_bind_mounts %}
@@ -51,6 +54,9 @@ strelka_coordinator:
       - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
     {%   endfor %}
     {% endif %}
+    - watch:
+      - cmd: ca_trust_extract
+
 delete_so-strelka-coordinator_so-status.disabled:
   file.uncomment:
     - name: /opt/so/conf/so-status/so-status.conf

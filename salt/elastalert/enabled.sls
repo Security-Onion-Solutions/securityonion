@@ -6,9 +6,11 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
+{%   from 'ca/trust.map.jinja' import CATRUST %}
 {%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 
 include:
+  - ca.trust
   - elastalert.config
   - elastalert.sostatus
 
@@ -28,6 +30,7 @@ so-elastalert:
         - ipv4_address: {{ DOCKERMERGED.containers['so-elastalert'].ip }}
     - detach: True
     - binds:
+      - {{ CATRUST.dir }}
       - /opt/so/rules/elastalert:/opt/elastalert/rules/:ro
       - /opt/so/log/elastalert:/var/log/elastalert:rw
       - /opt/so/conf/elastalert/modules/:/opt/elastalert/modules/:ro
@@ -46,8 +49,9 @@ so-elastalert:
       - {{ XTRAHOST }}
         {% endfor %}
       {% endif %}
-      {% if DOCKERMERGED.containers['so-elastalert'].extra_env %}
     - environment:
+      - REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt
+      {% if DOCKERMERGED.containers['so-elastalert'].extra_env %}
         {% for XTRAENV in DOCKERMERGED.containers['so-elastalert'].extra_env %}
       - {{ XTRAENV }}
         {% endfor %}
@@ -65,6 +69,7 @@ so-elastalert:
       - file: elastacustmodulesdir
       - file: elastaconf
     - watch:
+      - cmd: ca_trust_extract
       - file: elastaconf
     - onlyif:
       - "so-elasticsearch-query / | jq -r '.version.number[0:1]' | grep -q 9" {# only run this state if elasticsearch is version 9 #}

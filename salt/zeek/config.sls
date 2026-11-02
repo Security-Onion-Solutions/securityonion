@@ -23,6 +23,7 @@ zeek:
     - gid: 937
     - home: /opt/so/conf/zeek
     - createhome: False
+    - shell: /sbin/nologin
 
 # Create some directories
 zeekpolicydir:
@@ -101,8 +102,8 @@ zeek_sbin:
   file.recurse:
     - name: /usr/sbin
     - source: salt://zeek/tools/sbin
-    - user: 939
-    - group: 939
+    - user: root
+    - group: root
     - file_mode: 755
 
 #zeek_sbin_jinja:
