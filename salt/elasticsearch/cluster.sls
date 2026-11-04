@@ -115,6 +115,7 @@ so-elasticsearch-ilm-policy-load:
     - require:
       - docker_container: so-elasticsearch
       - file: so-elasticsearch-ilm-policy-load-script
+      - http: wait_for_so-elasticsearch
     - onchanges:
       - file: so-elasticsearch-ilm-policy-load-script
 
