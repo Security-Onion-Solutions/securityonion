@@ -1,0 +1,225 @@
+#!/bin/bash
+#
+# Copyright Security Onion Solutions LLC and/or licensed to Security Onion Solutions LLC under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0 as shown at
+# https://securityonion.net/license; you may not use this file except in compliance with the
+# Elastic License 2.0.
+#
+# 1. List transforms (source/dest come from the transform config).
+# 2. List enabled Fleet package policies.
+# 3. Unused packages: count only those source/dest indices, then stop and
+#    delete empty dests. --after-install skips the counts and stops unused.
+
+. /usr/sbin/so-common
+. /usr/sbin/so-elastic-fleet-common
+
+PIVOT_PREFIX='logs-elasticsearch.index_pivot-default-'
+STATE_FILE=/opt/so/state/esfleet_stopped_transforms.json
+DRY_RUN=false
+AFTER_INSTALL=false
+
+usage() {
+    echo "Usage: $0 [--dry-run] [--after-install]" >&2
+    exit 1
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --dry-run) DRY_RUN=true ;;
+        --after-install) AFTER_INSTALL=true ;;
+        -h|--help) usage ;;
+        *) usage ;;
+    esac
+    shift
+done
+
+es() {
+    so-elasticsearch-query "$@" --fail --retry 2 --retry-delay 3
+}
+
+skip() {
+    echo "Warning: $1; skipping transform cleanup." >&2
+    exit 0
+}
+
+run() {
+    local desc=$1
+    shift
+    if [[ "$DRY_RUN" == true ]]; then
+        echo "[dry-run] $desc"
+        return 0
+    fi
+    echo "$desc"
+    es "$@" >/dev/null
+}
+
+uri() {
+    jq -rn --arg id "$1" '$id|@uri'
+}
+
+in_use_packages() {
+    local page=1 collected=0 count total resp packages='[]'
+    while true; do
+        resp=$(fleet_api "package_policies?perPage=100&page=$page") || return 1
+        jq -e '(.items | type == "array") and (.total | type == "number")' <<<"$resp" >/dev/null || return 1
+        packages=$(jq -c --argjson acc "$packages" '
+            $acc + [.items[]
+              | select(.enabled == true)
+              | select(([.policy_ids[]?, .policy_id] | map(select(. != null and . != "")) | length) > 0)
+              | .package.name
+              | select(. != null and . != "")]' <<<"$resp")
+        count=$(jq '.items | length' <<<"$resp")
+        total=$(jq '.total' <<<"$resp")
+        collected=$((collected + count))
+        [[ "$count" -eq 0 || "$collected" -ge "$total" ]] && break
+        page=$((page + 1))
+        [[ "$page" -gt 100 ]] && return 1
+    done
+    [[ "$collected" -eq "$total" ]] || return 1
+    jq -c 'unique' <<<"$packages"
+}
+
+# Page into files: a full transform list exceeds ARG_MAX.
+page_es() {
+    local path=$1 outfile=$2 from=0 size=1000 count got page_len
+    echo '[]' > "$outfile"
+    while true; do
+        es "${path}?from=${from}&size=${size}" > "$WORKDIR/page.json" || return 1
+        jq -e '(.count | type == "number") and (.transforms | type == "array")' "$WORKDIR/page.json" >/dev/null || return 1
+        count=$(jq -r '.count' "$WORKDIR/page.json")
+        jq -c --slurpfile page "$WORKDIR/page.json" '. + ($page[0].transforms // [])' "$outfile" > "$WORKDIR/next.json" || return 1
+        mv "$WORKDIR/next.json" "$outfile"
+        got=$(jq 'length' "$outfile")
+        page_len=$(jq '.transforms | length' "$WORKDIR/page.json")
+        [[ "$page_len" -eq 0 || "$got" -ge "$count" ]] && break
+        from=$((from + size))
+        [[ "$from" -gt 100000 ]] && return 1
+    done
+    [[ "$got" -eq "$count" ]]
+}
+
+load_transforms() {
+    page_es "_transform" "$WORKDIR/tf-configs.json" || return 1
+    page_es "_transform/_stats" "$WORKDIR/tf-stats.json" || return 1
+    jq -c --slurpfile stats "$WORKDIR/tf-stats.json" --arg pivot "$PIVOT_PREFIX" '
+        ($stats[0] | map({key: .id, value: .state}) | from_entries) as $states
+        | [.[] | {
+            id,
+            package: (._meta.package.name // null),
+            state: ($states[.id] // "unknown"),
+            dest: (.dest.index // null),
+            create_time: (.create_time // null),
+            source: (.source.index | if type == "array" then . elif type == "string" then [.] else [] end),
+            pivot: (.id | startswith($pivot)),
+            latest: ((.latest != null) or ((.dest.index // "") | contains("_latest")))
+          }
+          | select(.pivot or .latest)
+        ]' "$WORKDIR/tf-configs.json" > "$WORKDIR/transforms.json"
+}
+
+doc_count() {
+    local pattern=$1 count
+    count=$(es "${pattern}/_count?ignore_unavailable=true" | jq -er '.count') || return 1
+    [[ "$count" =~ ^[0-9]+$ ]] || return 1
+    echo "$count"
+}
+
+status "Elastic Fleet transform cleanup (after_install=$AFTER_INSTALL dry_run=$DRY_RUN)"
+
+WORKDIR=$(mktemp -d)
+trap 'rm -rf "$WORKDIR"' EXIT
+
+load_transforms || skip "Elasticsearch transforms could not be retrieved in full"
+IN_USE=$(in_use_packages) || skip "Fleet package policies could not be retrieved in full"
+jq -e 'length > 0' <<<"$IN_USE" >/dev/null || skip "no enabled Fleet package policies are assigned to an agent policy"
+
+STATE=$(jq -c '{stopped: ((.stopped | objects) // {}), user_started: ((.user_started | arrays) // [])}' "$STATE_FILE" 2>/dev/null)
+jq -e '.stopped and .user_started' <<<"$STATE" >/dev/null 2>&1 || STATE='{"stopped":{},"user_started":[]}'
+
+# Same create_time but running again: operator started it after we stopped it.
+STATE=$(jq -c --slurpfile t "$WORKDIR/transforms.json" '
+    ($t[0] | map({key: .id, value: .}) | from_entries) as $cur
+    | (.stopped | to_entries | map(select($cur[.key] != null and $cur[.key].create_time == .value))) as $tracked
+    | {
+        stopped: ($tracked | map(select($cur[.key].state == "stopped")) | from_entries),
+        user_started: ((.user_started + [$tracked[] | select($cur[.key].state | IN("started", "indexing")) | .key])
+                       | unique | map(select($cur[.] != null and ($cur[.].state | IN("stopped", "failed") | not))))
+      }' <<<"$STATE")
+
+# Unused = latest/pivot with a package, not on a policy, not operator-started.
+# Pivot is always unused (see so-elastic-fleet-package-upgrade).
+jq -c --argjson inuse "$IN_USE" --argjson state "$STATE" '
+    def unused:
+      if .pivot then true
+      elif .package == null then false
+      elif (.id | IN($state.user_started[]?)) then false
+      elif (.package | IN($inuse[]?)) then false
+      else true
+      end;
+    {
+      unused: [.[] | select(unused)],
+      start: [.[] | select(.package != null and (.state | IN("stopped", "failed"))
+                           and ($state.stopped[.id] != null) and (.pivot | not)
+                           and (.package | IN($inuse[]?)))]
+    }' "$WORKDIR/transforms.json" > "$WORKDIR/split.json"
+
+jq -c '.unused' "$WORKDIR/split.json" > "$WORKDIR/unused.json"
+
+if [[ "$AFTER_INSTALL" == true ]]; then
+    jq -c '[.[] | select(.state | IN("started", "indexing", "failed"))]' "$WORKDIR/unused.json" > "$WORKDIR/stop.json"
+else
+    echo '{}' > "$WORKDIR/counts.json"
+    while IFS= read -r pattern; do
+        [[ -n "$pattern" ]] || continue
+        n=$(doc_count "$pattern") || skip "could not count documents in $pattern"
+        jq -c --arg p "$pattern" --argjson n "$n" '. + {($p): $n}' "$WORKDIR/counts.json" > "$WORKDIR/counts-next.json"
+        mv "$WORKDIR/counts-next.json" "$WORKDIR/counts.json"
+    done < <(jq -r '[.[].dest | select(. != null and . != "")] + [.[].source[]?] | unique | .[]' "$WORKDIR/unused.json")
+
+    jq -c --slurpfile c "$WORKDIR/counts.json" '
+        ($c[0] // {}) as $n
+        | [.[] | select(.state | IN("started", "indexing", "failed"))
+             | select((if .dest == null or .dest == "" then 0 else ($n[.dest] // 0) end) == 0)
+             | select(([.source[]? | $n[.] // 0] | add // 0) == 0)]' \
+        "$WORKDIR/unused.json" > "$WORKDIR/stop.json"
+fi
+
+echo "in_use=$(jq -r 'join(",")' <<<"$IN_USE") unused=$(jq 'length' "$WORKDIR/unused.json") stop=$(jq 'length' "$WORKDIR/stop.json") start=$(jq '.start | length' "$WORKDIR/split.json") dry_run=$DRY_RUN"
+
+while IFS= read -r id; do
+    [[ -n "$id" ]] || continue
+    force=
+    jq -e --arg id "$id" '.[] | select(.id == $id and .state == "failed")' "$WORKDIR/stop.json" >/dev/null && force='&force=true'
+    if run "stop transform $id" "_transform/$(uri "$id")/_stop?wait_for_completion=true&timeout=60s${force}" -XPOST; then
+        [[ "$DRY_RUN" == true ]] && continue
+        ct=$(jq -c --arg id "$id" '.[] | select(.id == $id) | .create_time' "$WORKDIR/stop.json")
+        STATE=$(jq -c --arg id "$id" --argjson ct "$ct" '.stopped[$id] = $ct | .user_started -= [$id]' <<<"$STATE")
+    fi
+done < <(jq -r '.[].id' "$WORKDIR/stop.json")
+
+while IFS= read -r id; do
+    [[ -n "$id" ]] || continue
+    if run "start transform $id" "_transform/$(uri "$id")/_start" -XPOST; then
+        [[ "$DRY_RUN" == false ]] && STATE=$(jq -c --arg id "$id" 'del(.stopped[$id])' <<<"$STATE")
+    fi
+done < <(jq -r '.start[].id' "$WORKDIR/split.json")
+
+if [[ "$DRY_RUN" == false ]]; then
+    mkdir -p "$(dirname "$STATE_FILE")"
+    tmp=$(mktemp "${STATE_FILE}.XXXXXX") && printf '%s\n' "$STATE" > "$tmp" && mv -f "$tmp" "$STATE_FILE"
+fi
+
+DELETED=0
+while IFS= read -r dest; do
+    [[ -n "$dest" ]] || continue
+    if [[ "$DRY_RUN" == true ]]; then
+        echo "[dry-run] delete empty transform destination $dest"
+        DELETED=$((DELETED + 1))
+        continue
+    fi
+    n=$(doc_count "$dest") || continue
+    [[ "$n" -eq 0 ]] || continue
+    run "delete empty transform destination $dest" "$(uri "$dest")" -XDELETE && DELETED=$((DELETED + 1))
+done < <(jq -r '.[].dest | select(. != null and . != "")' "$WORKDIR/stop.json" | sort -u)
+
+echo "stopped=$(jq -r '.stopped | length' <<<"$STATE") user_started=$(jq -r '.user_started | length' <<<"$STATE") dests_removed=$DELETED"

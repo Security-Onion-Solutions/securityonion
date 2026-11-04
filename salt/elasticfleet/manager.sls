@@ -112,6 +112,17 @@ so-elastic-fleet-addon-integrations:
       - http: wait_for_so-kibana
       - cmd: so-elasticsearch-templates-after-fleet-packages
 
+so-elastic-fleet-transforms-manage:
+  cmd.run:
+    - name: /usr/sbin/so-elastic-fleet-transforms-manage
+    - require:
+      - http: wait_for_so-kibana
+      - file: elasticfleet_sbin
+      - cmd: so-elastic-fleet-package-upgrade
+      - cmd: so-elastic-fleet-integration-upgrade
+      - cmd: so-elastic-fleet-integrations
+      - cmd: so-elastic-fleet-addon-integrations
+
 {% if ELASTICFLEETMERGED.config.defend_filters.enable_auto_configuration %}
 so-elastic-defend-manage-filters-file-watch:
   cmd.run:
