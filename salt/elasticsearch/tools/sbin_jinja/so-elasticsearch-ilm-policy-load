@@ -8,10 +8,14 @@
 
 MAX_JOBS=${MAX_ILM_JOBS:-10}
 
+check_elasticsearch_responsive
+
+ILM_TMP_DIR=$(mktemp -d)
+trap 'rm -rf "$ILM_TMP_DIR"' EXIT
 # Lock used to serialize block writes so concurrent jobs never interleave their output.
-ILM_OUTPUT_LOCK=$(mktemp)
-ILM_FAIL_FILE=$(mktemp)
-trap 'rm -f "$ILM_OUTPUT_LOCK" "$ILM_FAIL_FILE"' EXIT
+ILM_OUTPUT_LOCK="$ILM_TMP_DIR/output.lock"
+ILM_FAIL_FILE="$ILM_TMP_DIR/failed"
+touch "$ILM_FAIL_FILE"
 
 # Policies are loaded concurrently (up to MAX_JOBS at a time) for speed. Each policy's block is
 # printed the moment its curl returns, so output appears in COMPLETION ORDER, not the order
@@ -21,11 +25,13 @@ echo
 
 put_policy() {
   local desc="$1" policyname="$2" data="$3" result rc=0
-  if ! result=$(curl -K /opt/so/conf/elasticsearch/curl.config -s -k -L --fail \
-    -X PUT "https://localhost:9200/_ilm/policy/${policyname}" \
-    -H 'Content-Type: application/json' -d"${data}" 2>&1); then
-    rc=1
-  elif ! jq -e '.acknowledged == true' <<<"$result" >/dev/null 2>&1; then
+  # retry evals and echoes its command, so pass the body by file rather than inline.
+  local tmpdata="$ILM_TMP_DIR/${policyname}.json"
+  printf '%s' "$data" >"$tmpdata"
+
+  if result=$(retry 3 3 "so-elasticsearch-query _ilm/policy/${policyname} -d@${tmpdata} -XPUT" "{\"acknowledged\":true}" 2>&1); then
+    result='{"acknowledged":true}'
+  else
     rc=1
   fi
 
