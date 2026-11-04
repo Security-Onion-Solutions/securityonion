@@ -438,6 +438,10 @@ install_networkminer:
   pkg.latest:
     - name: securityonion-networkminer
 
+install_so_crates:
+  pkg.latest:
+    - name: securityonion-so-crates
+
 {% else %}
 
 desktop_packages_os_fail:
