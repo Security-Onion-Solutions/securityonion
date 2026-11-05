@@ -205,7 +205,13 @@ update_docker_containers() {
           echo "Unable to determine verified digest for $image" >> "$LOG_FILE" 2>&1
           exit 1
         fi
-        docker buildx imagetools create --tag $HOSTNAME:5000/$IMAGEREPO/$image "$VERIFIED_REF" >> "$LOG_FILE" 2>&1 || {
+        # Force HTTP/1.1 for Go runtime clients (docker buildx) to prevent HTTP/2
+        # stream multiplexing drops (PROTOCOL_ERROR) on large image layer uploads
+        # to the local embedded registry.
+        export GODEBUG="http2client=0${GODEBUG:+,${GODEBUG}}"
+
+        docker buildx imagetools create --tag $HOSTNAME:5000/$IMAGEREPO/$image "$VERIFIED_REF" >> "$LOG_FILE" 2>&1 || \
+        docker push $HOSTNAME:5000/$IMAGEREPO/$image >> "$LOG_FILE" 2>&1 || {
           echo "Unable to copy $image to embedded registry" >> "$LOG_FILE" 2>&1
           exit 1
         }
