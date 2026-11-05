@@ -107,6 +107,12 @@ so-elasticsearch-system-indices-patch:
       - file: so-elasticsearch-system-indices-patch-script
 {%  endif %}
 
+so-elasticsearch-ilm-policy-reload:
+  file.absent:
+    - name: /opt/so/state/esilm.txt
+    - onchanges:
+      - file: so-elasticsearch-ilm-policy-load-script
+
 # heavynodes will only load ILM policies for SO managed indices. (Indicies defined in elasticsearch/defaults.yaml)
 so-elasticsearch-ilm-policy-load:
   cmd.run:
@@ -115,8 +121,9 @@ so-elasticsearch-ilm-policy-load:
     - require:
       - docker_container: so-elasticsearch
       - file: so-elasticsearch-ilm-policy-load-script
-    - onchanges:
-      - file: so-elasticsearch-ilm-policy-load-script
+      - http: wait_for_so-elasticsearch
+      - file: so-elasticsearch-ilm-policy-reload
+    - unless: test -f /opt/so/state/esilm.txt
 
 so-elasticsearch-templates-reload:
   file.absent:
