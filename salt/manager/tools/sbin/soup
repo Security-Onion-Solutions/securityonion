@@ -121,9 +121,6 @@ check_err() {
       161)
         echo 'Required intermediate Elasticsearch upgrade not complete'
       ;;
-      162)
-        echo 'One or more Elastic Agent nodes do not support the x86-64-v3 CPU instruction set'
-      ;;
       170)
         echo "Intermediate upgrade completed successfully to $next_step_so_version, but next soup to Security Onion $originally_requested_so_version could not be started automatically."
         echo "Start soup again manually to continue the upgrade to Security Onion $originally_requested_so_version."
@@ -349,83 +346,6 @@ check_cluster_health() {
 
   printf "\nThe Elasticsearch cluster is not green. Resolve the cluster health issue so the cluster is green before running SOUP again.\n\n"
   exit 0
-}
-
-no_soup_for_you() {
-  echo ""
-  echo "No soup for you!"
-  exit 162
-}
-
-check_cpu_compatibility() {
-  # Roles running a container built from the so-elastic-agent image; mirrors the
-  # elasticagent and elasticfleet entries in salt/reactor/pillar_push_map.yaml.
-  local cpu_target='G@role:so-heavynode or G@role:so-eval or G@role:so-fleet or G@role:so-import or G@role:so-manager or G@role:so-managerhype or G@role:so-managersearch or G@role:so-standalone'
-  local expected_nodes cpu_results node result confirm
-  local -a unsupported=() offline=()
-
-  echo "Checking that Elastic Agent nodes support the x86-64-v3 CPU instruction set now required by Elastic."
-
-  if [[ "$SKIP_CPU_CHECK" == "true" ]]; then
-    printf "\nSkipping the x86-64-v3 CPU check because --skip-cpu-check was specified.\n\n"
-    return
-  fi
-
-  # Nodes that never answer are absent from the results, so diff against who should have.
-  expected_nodes=$(salt -C "$cpu_target" --preview-target --out=json 2>/dev/null | jq -r '.[]?') || true
-  if [[ -z "$expected_nodes" ]]; then
-    printf "\nCould not determine which nodes run the Elastic Agent, so the x86-64-v3 CPU check cannot run.\n"
-    no_soup_for_you
-  fi
-
-  cpu_results=$(salt -t 30 -C "$cpu_target" cmd.run "/lib64/ld-linux-x86-64.so.2 --help | grep x86-64-v3" --out=json 2>/dev/null) || true
-
-  while IFS= read -r node; do
-    [[ -z "$node" ]] && continue
-    result=$(jq -r --arg node "$node" '.[$node] // empty' <<< "$cpu_results" 2>/dev/null)
-    if [[ -z "$result" || "$result" == *"did not return"* ]]; then
-      offline+=("$node")
-    elif [[ "$result" != *"x86-64-v3 (supported"* ]]; then
-      # glibc appends "(supported, searched)" only when supported; the open paren keeps
-      # this from matching a future "(unsupported".
-      unsupported+=("$node")
-    fi
-  done <<< "$expected_nodes"
-
-  if [[ ${#unsupported[@]} -eq 0 && ${#offline[@]} -eq 0 ]]; then
-    printf "\nAll Elastic Agent nodes support x86-64-v3. We can proceed with SOUP.\n\n"
-    return
-  fi
-
-  echo ""
-  if [[ ${#unsupported[@]} -gt 0 ]]; then
-    echo "The following node(s) do NOT support the x86-64-v3 CPU instruction set:"
-    printf '  %s\n' "${unsupported[@]}"
-    echo ""
-    echo "Upstream Elastic now builds its binaries for x86-64-v3, so these nodes can no"
-    echo "longer run Elastic. Upgrading them WILL BREAK them."
-    echo ""
-  fi
-  if [[ ${#offline[@]} -gt 0 ]]; then
-    echo "The following node(s) did not respond and could not be checked:"
-    printf '  %s\n' "${offline[@]}"
-    echo ""
-    echo "These nodes are offline, so we cannot confirm they support x86-64-v3, which"
-    echo "upstream Elastic now requires."
-    echo ""
-  fi
-
-  if [[ -n $UNATTENDED ]]; then
-    echo "Unattended mode cannot prompt for an override. Re-run soup interactively, or pass --skip-cpu-check to bypass this check."
-    no_soup_for_you
-  fi
-
-  read -rp "Type 'override' to continue anyway, or press Enter to exit: " confirm
-  if [[ "${confirm,,}" == "override" ]]; then
-    printf "\nOverride accepted. Continuing at your own risk.\n\n"
-  else
-    no_soup_for_you
-  fi
 }
 
 check_fleet_server() {
@@ -1131,9 +1051,6 @@ post_to_3.2.0() {
 
 ### 3.3.0 Scripts ###
 up_to_3.3.0() {
-  # download 9.4.5 elastic agent packages
-  determine_elastic_agent_upgrade
-  
   # remove existing (patched) elasticsearch index template to match integration naming change
   if ! remove_elasticsearch_index_template "so-logs-sentinel_one_cloud_funnel.login" "sentinel_one_cloud_funnel.login changed to sentinel_one_cloud_funnel.logins"; then
     FINAL_MESSAGE_QUEUE+=("WARNING: Unable to automatically remove the so-logs-sentinel_one_cloud_funnel.login index template. This step can be performed manually using the following command:")
@@ -1165,11 +1082,7 @@ telegraf_repair() {
 post_to_3.3.0() {
   # Recollate again since some internal DBs were excluded during 3.2.0 soup
   recollate_postgres
-
-  # Generate 9.4.5 elastic agent installers
-  echo "Regenerating Elastic Agent Installers"
-  /sbin/so-elastic-agent-gen-installers
-
+  
   telegraf_repair
 
   set_postversion 3.3.0
@@ -1178,6 +1091,9 @@ post_to_3.3.0() {
 
 ### 3.4.0 Scripts ###
 up_to_3.4.0() {
+  # download 9.4.8 elastic agent packages
+  determine_elastic_agent_upgrade
+  
   set_soauth_range
 
   echo "Removing so-kratos, so-hydra and so-soc so they are recreated on the soauth network."
@@ -1255,11 +1171,34 @@ valid_soauth_range() {
 }
 
 post_to_3.4.0() {
+  # Generate 9.4.8 elastic agent installers
+  echo "Regenerating Elastic Agent Installers"
+  /sbin/so-elastic-agent-gen-installers
+  
   for idx in "metrics-logstash.node-default" "metrics-logstash.stack_monitoring.node-default"; do
     rollover_index "$idx"
   done
 
+  add_detection_runtime_fields
+
+  remove_frozen_ca_bundles
+
   set_postversion 3.4.0
+}
+
+remove_frozen_ca_bundles() {
+  rm -f /opt/so/saltstack/local/salt/elasticsearch/cacerts /opt/so/saltstack/local/salt/elasticsearch/tls-ca-bundle.pem >> $SOUP_LOG 2>&1
+}
+
+add_detection_runtime_fields() {
+  local template=$DEFAULT_SALT_DIR/salt/elasticsearch/templates/component/so/detection-mappings.json
+  local runtime
+
+  runtime=$(jq -c '{runtime: .template.mappings.runtime}' "$template")
+  if ! so-elasticsearch-query so-detection/_mapping -XPUT -d "$runtime" --retry 3 --retry-delay 5 --fail >> $SOUP_LOG 2>&1; then
+    FINAL_MESSAGE_QUEUE+=("WARNING: Unable to add the Sigma search fields to the so-detection index. Searches on so_detection.sigmaKind will match nothing until they are added:")
+    FINAL_MESSAGE_QUEUE+=("    - sudo so-elasticsearch-query so-detection/_mapping -XPUT -d \"\$(jq -c '{runtime: .template.mappings.runtime}' $template)\"")
+  fi
 }
 ### 3.4.0 End ###
 
@@ -1535,9 +1474,10 @@ verify_es_version_compatibility() {
       ["8.18.4"]="8.18.6 8.18.8 9.0.8"
 	    ["8.18.6"]="8.18.8 9.0.8"
 	    ["8.18.8"]="9.0.8"
-      ["9.0.8"]="9.3.3 9.3.7 9.4.5"
-      ["9.3.3"]="9.3.7 9.4.5"
-      ["9.3.7"]="9.4.5"
+      ["9.0.8"]="9.3.3 9.3.7 9.4.5 9.4.8"
+      ["9.3.3"]="9.3.7 9.4.5 9.4.8"
+      ["9.3.7"]="9.4.5 9.4.8"
+      ["9.4.5"]="9.4.8"
     )
 
     # Elasticsearch MUST upgrade through these versions
@@ -2148,8 +2088,6 @@ main() {
   echo "Let's see if we need to update Security Onion."
   upgrade_check
 
-  check_cpu_compatibility
-
   upgrade_space
 
   echo "Verifying Elasticsearch version compatibility across the grid before upgrading."
@@ -2428,17 +2366,6 @@ fi
   echo "### soup has been served at $(date) ###"
 }
 
-SKIP_CPU_CHECK=false
-declare -a SOUP_ARGS=()
-for arg in "$@"; do
-  if [[ "$arg" == "--skip-cpu-check" ]]; then
-    SKIP_CPU_CHECK=true
-  else
-    SOUP_ARGS+=("$arg")
-  fi
-done
-set -- "${SOUP_ARGS[@]}"
-
 while getopts ":b:f:y" opt; do
   case ${opt} in
     b )
@@ -2462,7 +2389,7 @@ while getopts ":b:f:y" opt; do
       ISOLOC="$OPTARG"
     ;;
     \? )
-      echo "Usage: soup [-b] [-y] [-f <iso location>] [--skip-cpu-check]"
+      echo "Usage: soup [-b] [-y] [-f <iso location>]"
       exit 1
     ;;
     : )

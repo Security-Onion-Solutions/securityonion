@@ -6,11 +6,13 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
+{%   from 'ca/trust.map.jinja' import CATRUST %}
 {%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   from 'suricata/map.jinja' import SURICATAMERGED %}
 
 
 include:
+  - ca.trust
   - suricata.config
   - suricata.sostatus
 
@@ -33,6 +35,7 @@ so-suricata:
     {%   endfor %}
     {% endif %}
     - binds:
+      - {{ CATRUST.dir }}
       - /opt/so/conf/suricata/suricata.yaml:/etc/suricata/suricata.yaml:ro
       - /opt/so/conf/suricata/threshold.conf:/etc/suricata/threshold.conf:ro
       - /opt/so/conf/suricata/classification.config:/etc/suricata/classification.config:ro
@@ -55,6 +58,7 @@ so-suricata:
       {% endfor %}
     {% endif %}
     - watch:
+      - cmd: ca_trust_extract
       - file: suriconfig
       - file: surithresholding
       - file: /opt/so/conf/suricata/bpf

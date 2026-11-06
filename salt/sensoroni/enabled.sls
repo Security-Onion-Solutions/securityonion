@@ -4,10 +4,12 @@
 # Elastic License 2.0.
 
 {% from 'vars/globals.map.jinja' import GLOBALS %}
+{% from 'ca/trust.map.jinja' import CATRUST %}
 {% from 'docker/docker.map.jinja' import DOCKERMERGED %}
 
 
 include:
+  - ca.trust
   - sensoroni.config
   - sensoroni.sostatus
 
@@ -17,6 +19,7 @@ so-sensoroni:
     - restart_policy: unless-stopped
     - network_mode: host
     - binds:
+      - {{ CATRUST.dir }}
       - /nsm/import:/nsm/import:rw
       - /nsm/pcapout:/nsm/pcapout:rw
       - /opt/so/conf/sensoroni/sensoroni.json:/opt/sensoroni/sensoroni.json:ro
@@ -48,6 +51,7 @@ so-sensoroni:
     {%   endfor %}
     {% endif %}
     - watch:
+      - cmd: ca_trust_extract
       - file: /opt/so/conf/sensoroni/sensoroni.json
     - require:
       - file: sensoroniagentconf

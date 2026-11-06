@@ -8,6 +8,7 @@
 {% from 'elasticsearch/config.map.jinja' import ELASTICSEARCH_NODES %}
 {% from 'manager/map.jinja' import MANAGERMERGED %}
 {% from 'telegraf/map.jinja' import TELEGRAFMERGED %}
+{% from 'elastalert/map.jinja' import ELASTALERTMERGED %}
 {%- set PG_ENTRY = salt['pillar.get']('telegraf:postgres_creds:' ~ grains.id, {}) %}
 {%- set PG_USER = PG_ENTRY.get('user', '') %}
 {%- set PG_PASS = PG_ENTRY.get('pass', '') %}
@@ -20,6 +21,43 @@
 {% do SOCMERGED.config.server.update({'proxy': MANAGERMERGED.proxy}) %}
 {% do SOCMERGED.config.server.update({'additionalCA': MANAGERMERGED.additionalCA}) %}
 {% do SOCMERGED.config.server.update({'insecureSkipVerify': MANAGERMERGED.insecureSkipVerify}) %}
+
+{# pillar.get replaces lists instead of merging them, so combine availableModels by id and alerts queries by name #}
+{% set default_models = {} %}
+{% for m in SOCDEFAULTS.config.server.client.assistant.availableModels %}
+{%   do default_models.setdefault(m.id, m) %}
+{% endfor %}
+{% set merged_models = [] %}
+{% set merged_ids = [] %}
+{% for m in SOCMERGED.config.server.client.assistant.availableModels or [] %}
+{%   set model = {} %}
+{%   do model.update(default_models.get(m.get('id'), {})) %}
+{%   do model.update(m) %}
+{%   do merged_models.append(model) %}
+{%   do merged_ids.append(m.get('id')) %}
+{% endfor %}
+{% for id, m in default_models.items() if id not in merged_ids %}
+{%   do merged_models.append(m) %}
+{% endfor %}
+{% do SOCMERGED.config.server.client.assistant.update({'availableModels': merged_models}) %}
+
+{% set default_queries = {} %}
+{% for q in SOCDEFAULTS.config.server.client.alerts.queries %}
+{%   do default_queries.setdefault(q.name, q) %}
+{% endfor %}
+{% set merged_queries = [] %}
+{% set merged_names = [] %}
+{% for q in SOCMERGED.config.server.client.alerts.queries or [] %}
+{%   set query = {} %}
+{%   do query.update(default_queries.get(q.get('name'), {})) %}
+{%   do query.update(q) %}
+{%   do merged_queries.append(query) %}
+{%   do merged_names.append(q.get('name')) %}
+{% endfor %}
+{% for name, q in default_queries.items() if name not in merged_names %}
+{%   do merged_queries.append(q) %}
+{% endfor %}
+{% do SOCMERGED.config.server.client.alerts.update({'queries': merged_queries}) %}
 
 {% if not SOCMERGED.config.server.modules.postgres.host %}
 {%   do SOCMERGED.config.server.modules.postgres.update({'host': GLOBALS.manager}) %}
@@ -63,6 +101,10 @@
 {%   do SOCMERGED.config.server.modules.elastalertengine.update({'enabledSigmaRules': SOCMERGED.config.server.modules.elastalertengine.enabledSigmaRules.default}) %}
 {% endif %}
 
+{# correlation schedules follow ElastAlert's run_every #}
+{% set run_every = ELASTALERTMERGED.config.run_every %}
+{% do SOCMERGED.config.server.modules.elastalertengine.update({'elastAlertRunEverySeconds': run_every.get('minutes', 0) * 60 + run_every.get('seconds', 0)}) %}
+
 {# set elastalertengine.rulesRepos, strelkaengine.rulesRepos, and suricataengine.rulesetSources based on airgap or not #}
 {% if GLOBALS.airgap %}
 {%   do SOCMERGED.config.server.modules.elastalertengine.update({'rulesRepos': SOCMERGED.config.server.modules.elastalertengine.rulesRepos.airgap}) %}
@@ -78,6 +120,12 @@
 {%     do SOCMERGED.config.server.modules.suricataengine.update({'rulesetSources': SOCMERGED.config.server.modules.suricataengine.rulesetSources.default}) %}
 {#%   endif %#}
 {%   do SOCMERGED.config.server.update({'airgapEnabled': false}) %}
+{% endif %}
+
+{# correlation authoring requires ES|QL #}
+{% if not SOCMERGED.config.server.modules.elastalertengine.useEsql %}
+{%   do SOCMERGED.config.server.client.detection.templateDetections.pop('elastalert_correlation', None) %}
+{%   do SOCMERGED.config.server.client.detections.update({'queries': SOCMERGED.config.server.client.detections.queries | rejectattr('name', 'equalto', 'Detection Type - Sigma (Elastalert) - Correlations') | list}) %}
 {% endif %}
 
 {# Define the postgresmetrics module if telegraf is setup to only use Postgres #}

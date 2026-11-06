@@ -6,9 +6,11 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
+{%   from 'ca/trust.map.jinja' import CATRUST %}
 {%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 
 include:
+  - ca.trust
   - idh.config
   - idh.sostatus
 
@@ -20,6 +22,7 @@ so-idh:
     - detach: True
     - network_mode: host
     - binds:
+      - {{ CATRUST.dir }}
       - /nsm/idh:/var/tmp:rw
       - /opt/so/conf/idh/http-skins:/opt/opencanary/http-skins:ro
       - /opt/so/conf/idh/opencanary.conf:/etc/opencanaryd/opencanary.conf:ro
@@ -34,12 +37,13 @@ so-idh:
       - {{ XTRAHOST }}
       {% endfor %}
     {% endif %}
-    {% if DOCKERMERGED.containers['so-idh'].extra_env %}
     - environment:
-      {% for XTRAENV in DOCKERMERGED.containers['so-idh'].extra_env %}
+      - REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt
+      {% if DOCKERMERGED.containers['so-idh'].extra_env %}
+        {% for XTRAENV in DOCKERMERGED.containers['so-idh'].extra_env %}
       - {{ XTRAENV }}
-      {% endfor %}
-    {% endif %}
+        {% endfor %}
+      {% endif %}
     {% if DOCKERMERGED.containers['so-idh'].ulimits %}
     - ulimits:
     {%   for ULIMIT in DOCKERMERGED.containers['so-idh'].ulimits %}
@@ -47,6 +51,7 @@ so-idh:
     {%   endfor %}
     {% endif %}
     - watch:
+      - cmd: ca_trust_extract
       - file: opencanary_config
     - require:
       - file: opencanary_config

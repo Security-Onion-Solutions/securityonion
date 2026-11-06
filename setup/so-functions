@@ -976,27 +976,50 @@ docker_seed_update() {
 	set_progress_str "$docker_seed_update_percent" "Downloading $name"
 }
 
+registry_tar_has_soversion() {
+	local tarfile=$1
+	local version=$2
+
+	[ -n "$version" ] || return 1
+	[ -f "$tarfile" ] || return 1
+	# grep -q in a pipe SIGPIPEs tar; under pipefail a match would look like failure.
+	grep -qF "/_manifests/tags/${version}/" < <(tar -tf "$tarfile" 2>/dev/null)
+}
+
 docker_seed_registry() {
 	local VERSION="$SOVERSION"
+	local REGISTRY_TAR=/nsm/docker-registry/docker/registry.tar
 
-	if [ -f /nsm/docker-registry/docker/registry.tar ]; then
-		logCmd "tar xvf /nsm/docker-registry/docker/registry.tar -C /nsm/docker-registry/docker"
-		logCmd "rm /nsm/docker-registry/docker/registry.tar"
+	if [ -f "$REGISTRY_TAR" ] && registry_tar_has_soversion "$REGISTRY_TAR" "$VERSION"; then
+		info "Extracting $REGISTRY_TAR"
+		if ! tar xvf "$REGISTRY_TAR" -C /nsm/docker-registry/docker >> "$setup_log" 2>&1; then
+			error "Failed to extract $REGISTRY_TAR"
+			return 1
+		fi
+		logCmd "rm -f $REGISTRY_TAR"
+		return 0
+	elif [ -f "$REGISTRY_TAR" ]; then
+		info "Not using $REGISTRY_TAR; it has no images tagged '${VERSION}'"
+		if [[ "$is_airgap" == true ]]; then
+			error "Airgap install: $REGISTRY_TAR does not match Security Onion version '${VERSION}'. Use the ISO for this version."
+			return 1
+		fi
 	elif [[ -d /nsm/docker-registry/docker/registry && ( -f /etc/SOCLOUD || "$is_airgap" == true ) ]]; then
 		echo "Using existing docker registry content"
-	else
-		if [ "$install_type" == 'IMPORT' ]; then
-			container_list 'so-import'	
-		else
-			container_list
-		fi
-
-		docker_seed_update_percent=25
-
-		update_docker_containers 'netinstall' '' 'docker_seed_update' '/dev/stdout' 2>&1 | tee -a "$setup_log"
-        # Use pipe exit status of 'update_docker_containers' for return code
-		return ${PIPESTATUS[0]}
+		return 0
 	fi
+
+	if [ "$install_type" == 'IMPORT' ]; then
+		container_list 'so-import'	
+	else
+		container_list
+	fi
+
+	docker_seed_update_percent=25
+
+	update_docker_containers 'netinstall' '' 'docker_seed_update' '/dev/stdout' 2>&1 | tee -a "$setup_log"
+        # Use pipe exit status of 'update_docker_containers' for return code
+	return ${PIPESTATUS[0]}
 }
 
 elasticfleet_pillar() {
@@ -1362,7 +1385,11 @@ create_global() {
 	echo "global:" >> $global_pillar_file
 	echo "  soversion: '$SOVERSION'" >> $global_pillar_file
 	echo "  managerip: '$MAINIP'" >> $global_pillar_file
-	echo "  mdengine: 'ZEEK'" >> $global_pillar_file
+	if [[ $is_eval ]] || [ "$install_type" = 'EVAL' ]; then
+		echo "  mdengine: 'SURICATA'" >> $global_pillar_file
+	else
+		echo "  mdengine: 'ZEEK'" >> $global_pillar_file
+	fi
 	echo "  ids: 'Suricata'" >> $global_pillar_file
 	echo "  url_base: '$REDIRECTIT'" >> $global_pillar_file
 	if [[ $is_airgap ]]; then

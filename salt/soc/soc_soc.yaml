@@ -370,6 +370,18 @@ soc:
             description: 'How often the ElastAlert integrity checker runs (in seconds). This verifies the integrity of deployed rules.'
             global: True
             advanced: True
+          partialSyncTimeoutSeconds:
+            description: 'How long to wait for Sigma rules to deploy after a detection is created, updated, or deleted. Must allow time for a scheduled rule sync already in progress to finish. Increase on systems with limited resources.'
+            global: True
+            advanced: True
+            forcedType: int
+            helpLink: sigma
+          bulkSyncTimeoutSeconds:
+            description: 'How long to wait for Sigma rules to deploy after a bulk enable, disable, or delete has saved its detections. Must allow time for a scheduled rule sync already in progress to finish. Increase on systems with limited resources.'
+            global: True
+            advanced: True
+            forcedType: int
+            helpLink: sigma
           rulesRepos:
             default: &eerulesRepos
               description: "Custom Git repositories to pull Sigma rules from. 'license' field is required, 'folder' is optional. 'community' disables some management options for the imported rules - they can't be deleted or edited, just tuned, duplicated and Enabled | Disabled. The new settings will be applied within 15 minutes. At that point, you will need to wait for the scheduled rule update to take place (by default, every 24 hours), or you can force the update by nagivating to Detections -->  Options dropdown menu --> Elastalert --> Full Update."
@@ -401,15 +413,27 @@ soc:
             advanced: False
             helpLink: sigma
           useEsql:
-            description: "(Pre-release) Use Elasticsearch Piped Query Language (ES|QL) instead of EQL (Elastic Query Language) for Elasticsearch queries. The Sigma converter will output ES|QL instead of EQL, allowing support for correlations."
+            description: "(Pre-release) Use Elasticsearch Piped Query Language (ES|QL) instead of EQL (Elastic Query Language) for Elasticsearch queries. The Sigma converter will output ES|QL instead of EQL, allowing support for correlations. Switching back to EQL is not supported for correlations."
             global: True
             advanced: True
             forcedType: bool
           esqlCaseInsensitive:
-            description: "Match string values case-insensitively when converting Sigma rules. Applies to ES|QL only"
+            description: "Match string values case-insensitively when converting Sigma rules, and group correlation values regardless of case. Applies to ES|QL only"
             global: True
             advanced: True
             forcedType: bool
+          esqlQueryDelaySeconds:
+            description: "Seconds ES|QL rules search behind now, so unsearchable events aren't missed. Delays alerts by the same amount. Set at least the longest index refresh interval. ES|QL only."
+            global: True
+            advanced: True
+            forcedType: int
+            helpLink: sigma
+          esqlCorrelationAllowanceSeconds:
+            description: "Extra seconds of arrivals each correlation run re-reads beyond its timespan, so a burst whose events arrive spread out is still counted together. Correlations below a threshold (lt, lte, eq, neq) and value_avg or value_percentile correlations count only the timespan ending this much plus esqlQueryDelaySeconds ago, so they alert this much later. ES|QL only."
+            global: True
+            advanced: True
+            forcedType: int
+            helpLink: sigma
         elastic:
           index:
             description: Comma-separated list of indices or index patterns (wildcard "*" supported) that SOC will search for records.
@@ -512,6 +536,10 @@ soc:
           enabled:
             description: Enables or disables the SOC notification module.
             forcedType: bool
+            global: True
+          connectionTimeoutSeconds:
+            description: Duration (in seconds) to wait for a response from the remote notification endpoint host before giving up.
+            forcedType: int
             global: True
         postgres:
           host:
@@ -633,6 +661,18 @@ soc:
             description: 'How often the Strelka integrity checker runs (in seconds). This verifies the integrity of deployed rules.'
             global: True
             advanced: True
+          partialSyncTimeoutSeconds:
+            description: 'How long to wait for YARA rules to deploy after a detection is created, updated, or deleted. Must allow time for a scheduled rule sync already in progress to finish. Increase on systems with limited resources.'
+            global: True
+            advanced: True
+            forcedType: int
+            helpLink: yara
+          bulkSyncTimeoutSeconds:
+            description: 'How long to wait for YARA rules to deploy after a bulk enable, disable, or delete has saved its detections. Must allow time for a scheduled rule sync already in progress to finish. Increase on systems with limited resources.'
+            global: True
+            advanced: True
+            forcedType: int
+            helpLink: yara
           rulesRepos:
             default: &serulesRepos
               description: "Custom Git repositories to pull YARA rules from. 'license' field is required, 'folder' is optional. 'community' disables some management options for the imported rules - they can't be deleted or edited, just tuned, duplicated and Enabled | Disabled. The new settings will be applied within 15 minutes. At that point, you will need to wait for the scheduled rule update to take place (by default, every 24 hours), or you can force the update by nagivating to Detections -->  Options dropdown menu --> Strelka --> Full Update."
@@ -697,6 +737,18 @@ soc:
             description: 'How often the Suricata integrity checker runs (in seconds). This verifies the integrity of deployed rules.'
             global: True
             advanced: True
+          partialSyncTimeoutSeconds:
+            description: 'How long to wait for Suricata rules to deploy after a detection is created, updated, or deleted. Must allow time for a scheduled rule sync already in progress to finish. Increase on systems with limited resources.'
+            global: True
+            advanced: True
+            forcedType: int
+            helpLink: suricata
+          bulkSyncTimeoutSeconds:
+            description: 'How long to wait for Suricata rules to deploy after a bulk enable, disable, or delete has saved its detections. Must allow time for a scheduled rule sync already in progress to finish. Increase on systems with limited resources.'
+            global: True
+            advanced: True
+            forcedType: int
+            helpLink: suricata
           customRulesets:
             description: 'This setting is no longer used. Use Ruleset Sources setting instead.'
             global: True
@@ -937,6 +989,9 @@ soc:
             DetectionEngineer:
               description: This agent manages detections and their overrides, including tuning noisy rules and authoring rule content.
               global: True
+            AlertTriage:
+              description: This agent triages alerts autonomously for the Alert Triage automation, ending each run with a report and an assessment of the alert. It can send a notification but cannot acknowledge alerts or escalate to cases.
+              global: True
           useMemory:
             description: Enables the Memory system for OnionAI
             global: True
@@ -1025,7 +1080,7 @@ soc:
             forcedType: int
           automationSettings:
             tickIntervalSeconds:
-              description: How often, in seconds, the automation scheduler checks for automations that are due to run. Must be greater than 0.
+              description: How often, in seconds, the automation scheduler checks for automations that are due to run. Must be greater than 0. This value is also the default interval for new automations, however admins can override individual automation intervals to a longer value via the Agent Studio.
               global: True
               advanced: True
               forcedType: int
@@ -1039,11 +1094,18 @@ soc:
               global: True
               advanced: True
               forcedType: int
+            turnTimeoutSeconds:
+              description: Maximum number of seconds a single model turn of an automation's agent session may run, even while the model is still producing output. A turn that exceeds this limit is abandoned and the session is recorded as failed. Set to 0 to disable the timeout. Edit this setting via the Agent Studio.
+              global: True
+              advanced: True
+              forcedType: int
+              readonlyUi: True
             alertTriageEpoch:
               description: The earliest alert time the Alert Triage automation will consider. Alerts before this time are never triaged, which keeps a first run on an existing deployment from working through old history. Must be in UTC format (2026-09-24T00:00:00Z).
               regex: '^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z)?$'
               regexFailureMessage: Expecting date in RFC3339 format (2026-09-24T00:00:00Z)
               global: True
+              readonlyUi: True
               advanced: True
           tools:
             filterEventFields:
@@ -1151,6 +1213,10 @@ soc:
           description: Set to true to enable the Detections module in SOC.
           global: True
           forcedType: bool
+        allowExternalMarkdownImages:
+          description: Set to true to let user-written Markdown, such as case descriptions and comments, load images from other servers. Loading an image sends a request to its server, so leave this disabled unless needed; Onion AI output never loads external images.
+          global: True
+          forcedType: bool
         inactiveTools:
           description: List of external tools to remove from the SOC UI.
           global: True
@@ -1203,6 +1269,8 @@ soc:
             - field: showSubtitle
               label: Show Query in Dropdown.
               forcedType: bool
+            - field: license
+              label: Only show on grids licensed for this feature, e.g. oai. An oai query also needs the assistant enabled and agentic. Leave blank to show everywhere.
           queryToggleFilters:
             description: Customize togglable query filters that apply to all queries. Exclusive toggles will invert the filter if toggled off rather than omitting the filter from the query.
             global: True

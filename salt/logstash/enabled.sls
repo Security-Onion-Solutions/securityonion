@@ -6,6 +6,7 @@
 {% from 'allowed_states.map.jinja' import allowed_states %}
 {% if sls.split('.')[0] in allowed_states %}
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
+{%   from 'ca/trust.map.jinja' import CATRUST %}
 {%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   from 'logstash/map.jinja' import LOGSTASH_MERGED %}
 {%   from 'logstash/map.jinja' import LOGSTASH_NODES %}
@@ -13,9 +14,6 @@
 
 include:
   - ca
-{%   if GLOBALS.role not in ['so-receiver','so-fleet'] %}
-  - elasticsearch.ca
-{%   endif %}
 {# Kafka ca runs on nodes that can run logstash for Kafka input / output. Only when Kafka is global pipeline #}
 {%   if GLOBALS.role in ['so-searchnode', 'so-manager', 'so-managerhype', 'so-managersearch', 'so-receiver', 'so-standalone'] and GLOBALS.pipeline == 'KAFKA' %}
   - kafka.ca
@@ -58,6 +56,8 @@ so-logstash:
       - {{ BINDING }}
       {% endfor %}
     - binds:
+      - {{ CATRUST.dir }}
+      - {{ CATRUST.java }}:/usr/share/logstash/jdk/lib/security/cacerts:ro
       - /opt/so/conf/elasticsearch/templates/:/templates/:ro
       - /opt/so/conf/logstash/etc/:/usr/share/logstash/config/:ro
       - /opt/so/conf/logstash/pipelines:/usr/share/logstash/pipelines:ro
@@ -77,10 +77,6 @@ so-logstash:
       - /etc/pki/filebeat.crt:/usr/share/logstash/filebeat.crt:ro
       - /etc/pki/filebeat.p8:/usr/share/logstash/filebeat.key:ro
           {% endif %}
-      {% endif %}
-      {% if GLOBALS.role not in ['so-receiver','so-fleet'] %}
-      - /opt/so/conf/ca/cacerts:/etc/pki/ca-trust/extracted/java/cacerts:ro
-      - /opt/so/conf/ca/tls-ca-bundle.pem:/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:ro
       {% endif %}
       {% if GLOBALS.pipeline == "KAFKA" and GLOBALS.role in ['so-manager', 'so-managerhype', 'so-managersearch', 'so-standalone', 'so-searchnode'] %}
       - /etc/pki/kafka-logstash.p12:/usr/share/logstash/kafka-logstash.p12:ro
@@ -104,14 +100,11 @@ so-logstash:
     {%   endfor %}
     {% endif %}
     - watch:
+      - cmd: ca_trust_extract
       - file: lsetcsync
       - file: lslog4j2
       - file: lspipelinesyml
       - file: trusttheca
-      {% if GLOBALS.is_manager %}
-      - file: elasticsearch_cacerts
-      - file: elasticsearch_capems
-      {% endif %}
       {% if GLOBALS.is_manager or GLOBALS.role in ['so-fleet', 'so-heavynode', 'so-receiver'] %}
       - x509: etc_elasticfleet_logstash_crt
       - x509: etc_elasticfleet_logstash_key
@@ -133,10 +126,6 @@ so-logstash:
       {% endif %}
     - require:
       - file: trusttheca
-      {% if GLOBALS.is_manager %}
-      - file: elasticsearch_cacerts
-      - file: elasticsearch_capems
-      {% endif %}
       {% if GLOBALS.is_manager or GLOBALS.role in ['so-fleet', 'so-heavynode', 'so-receiver'] %}
       - x509: etc_elasticfleet_logstash_crt
       - x509: etc_elasticfleet_logstash_key
