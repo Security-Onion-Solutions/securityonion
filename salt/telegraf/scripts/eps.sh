@@ -11,26 +11,39 @@
 if [[ ! "`pidof -x $(basename $0) -o %PPID`" ]]; then
 
     PREVCOUNTFILE='/tmp/eps.txt'
-    EVENTCOUNTCURRENT="$(curl -s localhost:9600/_node/stats | jq '.events.in')"
+    STATS="$(curl -s localhost:9600/_node/stats)"
 
-    if [ ! -z "$EVENTCOUNTCURRENT" ]; then
-
-      if [ -f "$PREVCOUNTFILE" ]; then
-        EVENTCOUNTPREVIOUS=`cat $PREVCOUNTFILE`
-      else
-        echo "${EVENTCOUNTCURRENT}" > $PREVCOUNTFILE
-        exit 0
-      fi
-
-      echo "${EVENTCOUNTCURRENT}" > $PREVCOUNTFILE
-      # the division by 30 is because the agent interval is 30 seconds
-      EVENTS=$(((EVENTCOUNTCURRENT - EVENTCOUNTPREVIOUS)/30))
-      if [ "$EVENTS" -lt 0 ]; then
-        EVENTS=0
-      fi
-
-      echo "consumptioneps eps=${EVENTS%%.*}"
+    if echo "$STATS" | jq -e '.pipelines.search' > /dev/null 2>&1; then
+      STAGE=search
+      COUNT="$(echo "$STATS" | jq '.pipelines.search.events.out')"
+    elif echo "$STATS" | jq -e '.pipelines.receiver' > /dev/null 2>&1; then
+      STAGE=receiver
+      COUNT="$(echo "$STATS" | jq '.pipelines.receiver.events.in')"
+    else
+      exit 0
     fi
+
+    if ! [[ "$COUNT" =~ ^[0-9]+$ ]]; then
+      exit 0
+    fi
+
+    NOW=$(date +%s)
+    read -r PREVEPOCH PREVCOUNT 2>/dev/null < "$PREVCOUNTFILE"
+    echo "${NOW} ${COUNT}" > "$PREVCOUNTFILE"
+
+    if ! [[ "$PREVEPOCH" =~ ^[0-9]+$ && "$PREVCOUNT" =~ ^[0-9]+$ ]]; then
+      exit 0
+    fi
+
+    ELAPSED=$((NOW - PREVEPOCH))
+    DELTA=$((COUNT - PREVCOUNT))
+    if [ "$ELAPSED" -le 0 ] || [ "$DELTA" -lt 0 ]; then
+      EPS=0
+    else
+      EPS=$((DELTA / ELAPSED))
+    fi
+
+    echo "consumptioneps,stage=${STAGE} eps=${EPS}"
 
 fi
 
