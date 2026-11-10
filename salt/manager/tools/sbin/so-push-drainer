@@ -16,6 +16,7 @@ For each intent file under /opt/so/state/push_pending/*.json whose last_touch
 is older than debounce_seconds, this script:
   * concatenates the actions lists from every ready intent
   * dedupes by (state or __highstate__, tgt, tgt_type)
+  * drops actions whose target matches no accepted minion (e.g. a role with no nodes yet)
   * dispatches a single `salt-run state.orchestrate orch.push_batch --async`
     with the deduped actions list passed as pillar kwargs
   * deletes the contributed intent files on successful dispatch
@@ -38,10 +39,13 @@ import sys
 import time
 
 import salt.client
+import salt.config
+import salt.utils.minions
 
 PENDING_DIR = '/opt/so/state/push_pending'
 LOCK_FILE = os.path.join(PENDING_DIR, '.lock')
 LOG_FILE = '/opt/so/log/salt/so-push-drainer.log'
+MASTER_CONFIG = '/etc/salt/master'
 
 DISPATCHED_DIR = '/opt/so/state/push_dispatched'
 
@@ -111,6 +115,29 @@ def _dedupe_actions(actions):
         seen.add(key)
         deduped.append(action)
     return deduped
+
+
+def _targeted(actions, log):
+    """Drops actions whose target matches no accepted minion (e.g. a role with no nodes yet), which
+    the orchestration would otherwise report as failed with 'No minions responded'."""
+    try:
+        ckminions = salt.utils.minions.CkMinions(salt.config.master_config(MASTER_CONFIG))
+    except Exception:
+        log.exception('cannot load master config; dispatching without checking targets')
+        return actions
+    targeted = []
+    for action in actions:
+        try:
+            matched = ckminions.check_minions(action['tgt'], action.get('tgt_type', 'compound')).get('minions')
+        except Exception:
+            log.exception('cannot resolve tgt=%s; dispatching it anyway', action.get('tgt'))
+            matched = True
+        if matched:
+            targeted.append(action)
+        else:
+            log.info('skipping %s: no minions match tgt=%s',
+                     'highstate' if action.get('highstate') else action.get('state'), action.get('tgt'))
+    return targeted
 
 
 def _dispatch(actions, log):
@@ -407,12 +434,16 @@ def main():
             log.info('action: %s tgt=%s', 'highstate' if action.get('highstate') else action.get('state'),
                      action.get('tgt'))
 
-        jid = _dispatch(deduped, log)
-        if jid is None:
-            log.warning('dispatch failed; leaving intent files in place for retry')
-            return 1
-        if jid:
-            _record_dispatch(jid, deduped, all_paths[:20], log)
+        targeted = _targeted(deduped, log)
+        if targeted:
+            jid = _dispatch(targeted, log)
+            if jid is None:
+                log.warning('dispatch failed; leaving intent files in place for retry')
+                return 1
+            if jid:
+                _record_dispatch(jid, targeted, all_paths[:20], log)
+        else:
+            log.info('no action matches a minion; nothing to dispatch')
 
         for path, _ in ready:
             try:
