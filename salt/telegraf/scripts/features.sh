@@ -10,8 +10,7 @@ if [[ ! "`pidof -x $(basename $0) -o %PPID`" ]]; then
     FPS_ENABLED=$(cat /var/log/sostatus/fps_enabled)
     LKS_ENABLED=$(cat /var/log/sostatus/lks_enabled)
 
-    echo "features fps=$FPS_ENABLED"
-    echo "features lks=$LKS_ENABLED"
+    echo "features fps=$FPS_ENABLED,lks=$LKS_ENABLED"
 fi
 
 exit 0
