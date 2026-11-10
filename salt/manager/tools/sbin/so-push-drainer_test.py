@@ -22,10 +22,11 @@ _loader = SourceFileLoader('so_push_drainer', SCRIPT)
 _spec = importlib.util.spec_from_loader('so_push_drainer', _loader)
 drainer = importlib.util.module_from_spec(_spec)
 
-# salt is not installed where these tests run; the drainer only needs salt.client.Caller.
+# salt is not installed where these tests run; the drainer only needs salt.client.Caller and CkMinions.
 # Mocked only while the drainer loads: run from the repo root, 'salt' is this repo's salt/ directory.
 _salt = MagicMock()
-with patch.dict(sys.modules, {'salt': _salt, 'salt.client': _salt.client}):
+with patch.dict(sys.modules, {'salt': _salt, 'salt.client': _salt.client, 'salt.config': _salt.config,
+                              'salt.utils': _salt.utils, 'salt.utils.minions': _salt.utils.minions}):
     _loader.exec_module(drainer)
 
 MASTER = 'manager.localdomain_master'
@@ -405,6 +406,49 @@ class TestResults(DrainerTestCase):
         self.assertIn('push succeeded jid=2_done', self.logged('info'))
 
 
+class TestTargeted(DrainerTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.ckminions = MagicMock()
+        patcher = patch.object(drainer.salt.utils.minions, 'CkMinions', return_value=self.ckminions)
+        self.CkMinions = patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_drops_unmatched(self):
+        matches = {'G@role:so-sensor': ['sensor_sensor'], 'manager_manager': ['manager_manager']}
+        self.ckminions.check_minions.side_effect = lambda tgt, tgt_type: {'minions': matches.get(tgt, [])}
+        actions = [
+            {'state': 'strelka', 'tgt': 'G@role:so-sensor'},
+            {'state': 'suricata', 'tgt': 'G@role:so-heavynode'},
+            {'highstate': True, 'tgt': 'G@role:so-idh'},
+            {'state': 'soc', 'tgt': 'manager_manager', 'tgt_type': 'list'},
+        ]
+        self.assertEqual(drainer._targeted(actions, self.log), [actions[0], actions[3]])
+        self.CkMinions.assert_called_once()
+        self.assertEqual([c.args for c in self.ckminions.check_minions.call_args_list], [
+            ('G@role:so-sensor', 'compound'), ('G@role:so-heavynode', 'compound'),
+            ('G@role:so-idh', 'compound'), ('manager_manager', 'list'),
+        ])
+        info = self.logged('info')
+        self.assertIn('skipping suricata: no minions match tgt=G@role:so-heavynode', info)
+        self.assertIn('skipping highstate: no minions match tgt=G@role:so-idh', info)
+        self.assertNotIn('strelka', info)
+
+    def test_master_config_error_keeps_actions(self):
+        actions = [{'state': 'soc', 'tgt': '*'}]
+        with patch.object(drainer.salt.config, 'master_config', side_effect=OSError('no config')):
+            self.assertEqual(drainer._targeted(actions, self.log), actions)
+        self.log.exception.assert_called_once()
+        self.CkMinions.assert_not_called()
+
+    def test_check_error_keeps_action(self):
+        actions = [{'state': 'soc', 'tgt': 'G@role:'}]
+        self.ckminions.check_minions.side_effect = RuntimeError('bad target')
+        self.assertEqual(drainer._targeted(actions, self.log), actions)
+        self.log.exception.assert_called_once()
+
+
 class TestMain(DrainerTestCase):
 
     def setUp(self):
@@ -414,6 +458,7 @@ class TestMain(DrainerTestCase):
             ('_make_logger', {'return_value': self.log}),
             ('_load_push_cfg', {'side_effect': lambda: self.cfg}),
             ('_check_dispatched', {}),
+            ('_targeted', {'side_effect': lambda actions, log: actions}),
         ):
             patcher = patch.object(drainer, name, **kwargs)
             setattr(self, name, patcher.start())
@@ -495,6 +540,29 @@ class TestMain(DrainerTestCase):
             self.assertEqual(drainer.main(), 0)
         record.assert_not_called()
         self.log.exception.assert_called_once()
+
+    def test_untargeted_not_dispatched(self):
+        path = self.intent('strelka.json', actions=[{'state': 'strelka', 'tgt': 'G@role:so-sensor'}])
+        self._targeted.side_effect = None
+        self._targeted.return_value = []
+        with patch.object(drainer, '_dispatch') as dispatch, \
+                patch.object(drainer, '_record_dispatch') as record:
+            self.assertEqual(drainer.main(), 0)
+        dispatch.assert_not_called()
+        record.assert_not_called()
+        self.assertFalse(os.path.exists(path))
+        self.assertIn('no action matches a minion; nothing to dispatch', self.logged('info'))
+
+    def test_dispatches_only_targeted(self):
+        kept = {'state': 'soc', 'tgt': '*'}
+        self.intent('mixed.json', actions=[kept, {'state': 'strelka', 'tgt': 'G@role:so-sensor'}])
+        self._targeted.side_effect = None
+        self._targeted.return_value = [kept]
+        with patch.object(drainer, '_dispatch', return_value=JID) as dispatch, \
+                patch.object(drainer, '_record_dispatch') as record:
+            self.assertEqual(drainer.main(), 0)
+        self.assertEqual(dispatch.call_args[0][0], [kept])
+        self.assertEqual(record.call_args[0][1], [kept])
 
 
 if __name__ == '__main__':
