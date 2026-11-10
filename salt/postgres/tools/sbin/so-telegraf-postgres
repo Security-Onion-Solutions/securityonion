@@ -12,7 +12,11 @@ set -e
 #   retention    Reconcile partman retention and premake on telegraf parents.
 #                Env: RETENTION_DAYS.
 #   maintenance  Drain default partitions and run partman maintenance.
-#   check        Report partition health. Non-zero if any parent is unhealthy.
+#   check        Report partition and maintenance health. Non-zero if any parent
+#                is unhealthy or the maintenance job has no successful run within
+#                the last MAINTENANCE_MAX_AGE_HOURS (default 3).
+#   status       Run check and write `ok` or `failed: <reason>` to
+#                /opt/so/log/postgres/maintenance.status for so-status.
 #
 # A default partition holding rows for a day blocks creating that day's child,
 # so maintenance drains defaults before calling partman. Use so-telegraf-repair
@@ -189,6 +193,11 @@ SELECT cron.schedule_in_database(
   'CALL so_admin.telegraf_maintenance()',
   'so_telegraf'
 );
+-- pg_cron copies cron.host into nodename only when a job is first created, so
+-- jobs registered before cron.host changed keep connecting to the old host.
+UPDATE cron.job SET nodename = current_setting('cron.host')
+ WHERE jobname = 'telegraf-partman-maintenance'
+   AND nodename IS DISTINCT FROM current_setting('cron.host');
 \else
 \echo 'pg_cron metadata database is not `postgres` yet; skipping job registration.'
 \endif
@@ -278,14 +287,78 @@ LIMIT 5;
 \echo 'pg_cron is not installed in this database.'
 \endif
 EOSQL
+    max_age="${MAINTENANCE_MAX_AGE_HOURS:-3}"
+    [[ "$max_age" =~ ^[0-9]+$ ]] || { echo "MAINTENANCE_MAX_AGE_HOURS must be an integer" >&2; exit 1; }
+    failures=()
     unhealthy=$(docker exec so-postgres psql -U postgres -d so_telegraf -tAc \
       "SELECT count(*) FROM so_admin.telegraf_partition_status()
        WHERE coalesce(default_rows, 0) > 0 OR coalesce(days_ahead, -1) < 1")
     if [ "${unhealthy:-1}" != "0" ]; then
-      echo "so-telegraf-postgres check: $unhealthy telegraf parent(s) unhealthy" >&2
+      failures+=("$unhealthy telegraf parent(s) unhealthy")
+    fi
+    has_cron=$(docker exec so-postgres psql -U postgres -d postgres -tAc \
+      "SELECT to_regclass('cron.job_run_details') IS NOT NULL")
+    if [ "$has_cron" != "t" ]; then
+      failures+=("pg_cron is not installed in the postgres database")
+    else
+      runs=$(docker exec so-postgres psql -U postgres -d postgres -tA -F '|' -c \
+        "SELECT (SELECT count(*) FROM cron.job WHERE jobname = 'telegraf-partman-maintenance'),
+                (SELECT count(*) FROM cron.job WHERE jobname = 'telegraf-partman-maintenance' AND active),
+                (SELECT count(*) FROM pg_stat_activity
+                  WHERE backend_type ILIKE '%pg_cron%' OR application_name ILIKE '%pg_cron%'),
+                (SELECT count(*) FROM pg_stat_activity
+                  WHERE (backend_type ILIKE '%pg_cron%' OR application_name ILIKE '%pg_cron%')
+                    AND backend_start < now() - make_interval(hours => $max_age)),
+                count(*),
+                count(*) FILTER (WHERE d.status = 'succeeded'
+                                   AND d.start_time > now() - make_interval(hours => $max_age)),
+                coalesce((array_agg(format('last run %s at %s: %s', d.status, d.start_time,
+                                           regexp_replace(coalesce(d.return_message, ''), '\s+', ' ', 'g'))
+                                    ORDER BY d.start_time DESC))[1], '')
+           FROM cron.job j
+           JOIN cron.job_run_details d ON d.jobid = j.jobid
+          WHERE j.jobname = 'telegraf-partman-maintenance'") || runs=""
+      IFS='|' read -r jobs active launchers old_launchers run_count recent_ok last_run <<< "$runs"
+      # With no runs recorded, a live launcher younger than N hours means the
+      # job was only just scheduled (fresh install or a restart for a config
+      # change) and has not reached its first :17 yet. A launcher older than
+      # that should have fired it by now. Tradeoff: a job first scheduled long
+      # after the launcher started reports failed until its first run.
+      if [ -z "$runs" ]; then
+        failures+=("could not read telegraf-partman-maintenance runs from cron.job_run_details")
+      elif [ "$jobs" = "0" ]; then
+        failures+=("telegraf-partman-maintenance is not scheduled")
+      elif [ "$active" = "0" ]; then
+        failures+=("telegraf-partman-maintenance is inactive")
+      elif [ "$launchers" = "0" ]; then
+        failures+=("pg_cron launcher is not running; telegraf-partman-maintenance cannot run")
+      elif [ "$run_count" = "0" ]; then
+        if [ "$old_launchers" != "0" ]; then
+          failures+=("telegraf-partman-maintenance has never run although pg_cron has been up for more than $max_age hour(s)")
+        fi
+      elif [ "$recent_ok" = "0" ]; then
+        failures+=("no successful telegraf-partman-maintenance run in the last $max_age hour(s); $last_run")
+      fi
+    fi
+    if [ "${#failures[@]}" -gt 0 ]; then
+      msg=$(printf '%s; ' "${failures[@]}")
+      echo "so-telegraf-postgres check: ${msg%; }" >&2
       exit 1
     fi
     echo "so-telegraf-postgres check: all telegraf parents healthy"
+    ;;
+
+  status)
+    status_file=/opt/so/log/postgres/maintenance.status
+    tmp=$(mktemp "$status_file.XXXXXX")
+    if reason=$("$0" check 2>&1 >/dev/null); then
+      echo ok > "$tmp"
+    else
+      reason=$(printf '%s\n' "$reason" | tail -n 1)
+      echo "failed: ${reason#so-telegraf-postgres check: }" > "$tmp"
+    fi
+    chmod 644 "$tmp"
+    mv -f "$tmp" "$status_file"
     ;;
 
   *)

@@ -546,6 +546,7 @@ postupgrade_changes() {
     [[ "$POSTVERSION" == "3.1.0" ]] && post_to_3.2.0
     [[ "$POSTVERSION" == "3.2.0" ]] && post_to_3.3.0
     [[ "$POSTVERSION" == "3.3.0" ]] && post_to_3.4.0
+    [[ "$POSTVERSION" == "3.4.0" ]] && post_to_3.5.0
     # All applicable post-upgrade steps completed; clear the resume marker.
     rm -f "$POSTVERSION_FILE"
     true
@@ -1069,11 +1070,14 @@ telegraf_repair() {
 
   echo "Checking Telegraf metric partitions."
   local status=0
-  "$repair" --check >> "$SOUP_LOG" 2>&1 || status=$?
+  local max_age
+  max_age=$(lookup_pillar maintenance_max_age_hours postgres:telegraf 2>/dev/null) || true
+  max_age=${max_age:-3}
+  MAINTENANCE_MAX_AGE_HOURS="$max_age" "$repair" --check >> "$SOUP_LOG" 2>&1 || status=$?
   case "$status" in
     0) echo "  Telegraf partitions are healthy; nothing to repair." ;;
     1) echo "  Repairing stalled Telegraf partitions."
-       "$repair" --yes \
+       MAINTENANCE_MAX_AGE_HOURS="$max_age" "$repair" --yes \
          || echo "  warning: so-telegraf-repair failed; run it manually" >&2 ;;
     *) echo "  Skipping; Telegraf is not storing metrics in Postgres on this host." ;;
   esac
@@ -1201,6 +1205,14 @@ add_detection_runtime_fields() {
   fi
 }
 ### 3.4.0 End ###
+
+### 3.5.0 Scripts ###
+post_to_3.5.0() {
+  telegraf_repair
+
+  set_postversion 3.5.0
+}
+### 3.5.0 End ###
 
 
 repo_sync() {

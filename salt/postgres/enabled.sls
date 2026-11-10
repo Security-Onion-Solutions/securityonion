@@ -8,6 +8,7 @@
 {%   from 'vars/globals.map.jinja' import GLOBALS %}
 {%   from 'ca/trust.map.jinja' import CATRUST %}
 {%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
+{%   from 'telegraf/map.jinja' import TELEGRAFMERGED %}
 {%   set SO_POSTGRES_USER = salt['pillar.get']('postgres:auth:users:so_postgres_user:user', 'so_postgres') %}
 
 include:
@@ -121,6 +122,29 @@ so_postgres_backup:
     - daymonth: '*'
     - month: '*'
     - dayweek: '*'
+
+{% if TELEGRAFMERGED.output | upper in ['POSTGRES', 'BOTH'] %}
+{%   set max_age = salt['pillar.get']('postgres:telegraf:maintenance_max_age_hours', 3) | int %}
+so_postgres_maintenance_status:
+  cron.present:
+    - name: MAINTENANCE_MAX_AGE_HOURS={{ max_age }} /usr/sbin/so-telegraf-postgres status > /dev/null 2>&1
+    - identifier: so_postgres_maintenance_status
+    - user: root
+    - minute: '*/15'
+    - hour: '*'
+    - daymonth: '*'
+    - month: '*'
+    - dayweek: '*'
+{% else %}
+so_postgres_maintenance_status:
+  cron.absent:
+    - identifier: so_postgres_maintenance_status
+    - user: root
+
+so_postgres_maintenance_status_file:
+  file.absent:
+    - name: /opt/so/log/postgres/maintenance.status
+{% endif %}
 
 {% else %}
 

@@ -17,6 +17,7 @@ import time
 EXPECTED_CONTAINERS_FILE = "/opt/so/conf/so-status/so-status.conf"
 HIGHSTATE_COMPLETE_FILE = "/opt/so/log/salt/lasthighstate"
 UPTIME_FILE = "/proc/uptime"
+POSTGRES_MAINTENANCE_STATUS_FILE = "/opt/so/log/postgres/maintenance.status"
 
 def showUsage(options, args):
   print('Usage: {} [OPTIONS]'.format(sys.argv[0]))
@@ -149,6 +150,20 @@ def check_container_status(options, console):
   return code, container_list
 
 
+def check_postgres_maintenance(code, container_list):
+  try:
+    with open(POSTGRES_MAINTENANCE_STATUS_FILE, "r") as status_file:
+      status = status_file.readline().strip()
+  except OSError:
+    return code
+  if status.startswith("failed"):
+    reason = status[len("failed"):].lstrip(":").strip()
+    container_list.append({ "Name": "so-postgres-maintenance", "Status": "failed", "Details": reason })
+    if code == 0:
+      code = 1
+  return code
+
+
 def check_status(options, console):
   container_list = []
   code = check_installation_status(options, console)
@@ -160,6 +175,7 @@ def check_status(options, console):
   # on the Grid until a highstate completes.
   if code == 0 or code == 2:
     container_code, container_list = check_container_status(options, console)
+    container_code = check_postgres_maintenance(container_code, container_list)
     if code == 0:
       code = container_code
   output(options, console, code, container_list)

@@ -2,6 +2,7 @@ postgres:
   enabled: True
   telegraf:
     retention_days: 14
+    maintenance_max_age_hours: 3
   config:
     listen_addresses: '*'
     port: 5432
@@ -17,3 +18,6 @@ postgres:
     log_min_messages: 'warning'
     shared_preload_libraries: pg_cron
     cron.database_name: postgres
+    # pg_hba.conf only trusts local socket connections; over TCP pg_cron has no
+    # password to send and every job fails to connect.
+    cron.host: /run/postgresql

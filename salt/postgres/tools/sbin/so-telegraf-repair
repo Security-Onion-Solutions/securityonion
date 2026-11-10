@@ -15,6 +15,9 @@
 #   --yes         Skip the confirmation prompt (for soup and other automation).
 #   --no-restart  Never restart so-postgres, even if pg_cron's launcher is dead.
 #
+# Env: MAINTENANCE_MAX_AGE_HOURS (default 3) is how long the maintenance job may
+# go without a successful run before repair is needed.
+#
 # Exit status:
 #   0  healthy, or repair completed
 #   1  repair is needed (--check only)
@@ -25,6 +28,8 @@ set -e
 # Matches p_premake in telegraf.conf's create_parent template.
 PREMAKE=7
 JOB_NAME=telegraf-partman-maintenance
+MAX_AGE_HOURS="${MAINTENANCE_MAX_AGE_HOURS:-3}"
+[[ "$MAX_AGE_HOURS" =~ ^[0-9]+$ ]] || { echo "MAINTENANCE_MAX_AGE_HOURS must be an integer" >&2; exit 2; }
 
 CHECK_ONLY=false
 ASSUME_YES=false
@@ -118,14 +123,30 @@ launcher=$(psql_pg -tAc \
 # so_telegraf before the postgres state lands, postgres after.
 cron_db=$(docker exec so-postgres psql -U postgres -tAc \
   "SELECT current_setting('cron.database_name', true)" | tr -d '[:space:]')
+run_count=0
+recent_ok=0
 last_run=never
-if [[ -n "$cron_db" ]]; then
-  last_run=$(docker exec so-postgres psql -U postgres -d "$cron_db" -tAc \
-    "SELECT coalesce(max(d.start_time)::text, 'never')
+has_run_details=$([[ -n "$cron_db" ]] && docker exec so-postgres psql -U postgres -d "$cron_db" -tAc \
+  "SELECT to_regclass('cron.job_run_details') IS NOT NULL" 2>/dev/null || echo f)
+if [[ "$has_run_details" == t ]]; then
+  runs=$(docker exec so-postgres psql -U postgres -d "$cron_db" -tA -F '|' -c \
+    "SELECT count(*),
+            count(*) FILTER (WHERE d.status = 'succeeded'
+                               AND d.start_time > now() - make_interval(hours => $MAX_AGE_HOURS)),
+            coalesce((array_agg(format('%s at %s', d.status, d.start_time)
+                                ORDER BY d.start_time DESC))[1], 'never')
        FROM cron.job_run_details d JOIN cron.job j USING (jobid)
-      WHERE j.jobname = '$JOB_NAME'" 2>/dev/null | tr -d '[:space:]' || echo unknown)
-  [[ -n "$last_run" ]] || last_run=never
+      WHERE j.jobname = '$JOB_NAME'" 2>/dev/null) \
+    || { echo "Could not read $JOB_NAME runs from cron.job_run_details; cannot judge maintenance health." >&2; exit 2; }
+  IFS='|' read -r run_count recent_ok last_run <<< "$runs"
 fi
+# An unreadable run history exits 2 rather than 1: soup repairs on 1, which
+# truncates the default partitions, and a transient query error must not do that.
+# No runs at all means a freshly scheduled job (or pg_cron not loaded, handled
+# by restart_needed); the partition checks catch a job that never fires. Runs
+# with no recent success mean the job fires but fails, e.g. cannot connect.
+maintenance_failing=false
+[[ "$run_count" -gt 0 && "$recent_ok" -eq 0 ]] && maintenance_failing=true
 
 # A grid that has never written a metric has nothing to recover, and an empty
 # cron_db means pg_cron is not loaded at all, which no restart fixes.
@@ -137,6 +158,7 @@ repair_needed=false
 [[ "$behind" -gt 0 ]] && repair_needed=true
 [[ "$misconfigured" -gt 0 ]] && repair_needed=true
 $restart_needed && repair_needed=true
+$maintenance_failing && repair_needed=true
 
 echo "Telegraf partition status:"
 psql_tg -c "$REPORT"
@@ -157,6 +179,7 @@ if $CHECK_ONLY; then
   [[ "$behind" -gt 0 ]]      && echo "  * $behind parent(s) with no partition for the current window"
   [[ "$misconfigured" -gt 0 ]] && echo "  * $misconfigured parent(s) with stale partman settings"
   $restart_needed            && echo "  * pg_cron's launcher is dead; maintenance is not running at all"
+  $maintenance_failing       && echo "  * no successful $JOB_NAME run in the last $MAX_AGE_HOURS hour(s)"
   echo
   echo "Re-run without --check to repair."
   exit 1
@@ -241,5 +264,6 @@ EOSQL
 echo
 echo "Telegraf partition status after repair:"
 psql_tg -c "$REPORT"
-echo "The $JOB_NAME job runs hourly at :17. Confirm it fired with:"
+echo "The $JOB_NAME job runs hourly at :17. Until its next run succeeds, grid status"
+echo "may still report so-postgres-maintenance as failed. Confirm it fired with:"
 echo "  so-telegraf-repair --check"

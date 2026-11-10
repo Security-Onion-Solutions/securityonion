@@ -24,6 +24,15 @@ so_postgres_backup:
     - identifier: so_postgres_backup
     - user: root
 
+so_postgres_maintenance_status:
+  cron.absent:
+    - identifier: so_postgres_maintenance_status
+    - user: root
+
+so_postgres_maintenance_status_file:
+  file.absent:
+    - name: /opt/so/log/postgres/maintenance.status
+
 {% else %}
 
 {{sls}}_state_not_allowed:
