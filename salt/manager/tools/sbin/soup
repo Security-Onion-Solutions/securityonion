@@ -527,6 +527,7 @@ preupgrade_changes() {
     [[ "$INSTALLEDVERSION" == "3.1.0" ]] && up_to_3.2.0
     [[ "$INSTALLEDVERSION" == "3.2.0" ]] && up_to_3.3.0
     [[ "$INSTALLEDVERSION" == "3.3.0" ]] && up_to_3.4.0
+    [[ "$INSTALLEDVERSION" == "3.4.0" ]] && up_to_3.5.0
     true
 }
 
@@ -1201,6 +1202,25 @@ add_detection_runtime_fields() {
   fi
 }
 ### 3.4.0 End ###
+
+### 3.5.0 Scripts ###
+up_to_3.5.0() {
+  remove_localrules_portgroup
+
+  INSTALLEDVERSION=3.5.0
+}
+
+remove_localrules_portgroup() {
+  local pillar_file
+
+  for pillar_file in /opt/so/saltstack/local/pillar/firewall/{soc,adv}_firewall.sls; do
+    grep -qs localrules "$pillar_file" || continue
+    echo "Removing the localrules portgroup from $pillar_file."
+    so-yaml.py remove "$pillar_file" firewall.portgroups.localrules
+    so-yaml.py purgelistitem "$pillar_file" firewall.role localrules
+  done
+}
+### 3.5.0 End ###
 
 
 repo_sync() {

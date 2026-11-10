@@ -709,6 +709,223 @@ class TestRemoveListItem(unittest.TestCase):
                 self.assertEqual("The existing value for the given key is not a list. No action was taken on the file.\n", mock_stderr.getvalue())
 
 
+class TestPurgeListItem(unittest.TestCase):
+
+    def test_purgelistitem_missing_arg(self):
+        with patch('sys.exit', new=MagicMock()) as sysmock:
+            with patch('sys.stderr', new=StringIO()) as mock_stderr:
+                sys.argv = ["cmd", "help"]
+                soyaml.purgelistitem(["file", "key"])
+                sysmock.assert_called()
+                self.assertIn("Missing filename, key arg, or list item to purge", mock_stderr.getvalue())
+
+    def test_purgelistitem(self):
+        filename = "/tmp/so-yaml_test-purgelistitem.yaml"
+        file = open(filename, "w")
+        file.write("{key1: [a,b,c], key2: false}")
+        file.close()
+
+        soyaml.purgelistitem([filename, "key1", "b"])
+
+        file = open(filename, "r")
+        actual = file.read()
+        file.close()
+
+        expected = "key1:\n- a\n- c\nkey2: false\n"
+        self.assertEqual(actual, expected)
+
+    def test_purgelistitem_nested_lists(self):
+        filename = "/tmp/so-yaml_test-purgelistitem.yaml"
+        file = open(filename, "w")
+        file.write("{key1: { child1: [a,b,c], child2: { deep1: [b,d], deep2: 45 } }, key2: [b,e]}")
+        file.close()
+
+        soyaml.purgelistitem([filename, "key1", "b"])
+
+        file = open(filename, "r")
+        actual = file.read()
+        file.close()
+
+        expected = "key1:\n  child1:\n  - a\n  - c\n  child2:\n    deep1:\n    - d\n    deep2: 45\nkey2:\n- b\n- e\n"
+        self.assertEqual(actual, expected)
+
+    def test_purgelistitem_duplicates(self):
+        filename = "/tmp/so-yaml_test-purgelistitem.yaml"
+        file = open(filename, "w")
+        file.write("{key1: [b,a,b,c,b]}")
+        file.close()
+
+        soyaml.purgelistitem([filename, "key1", "b"])
+
+        file = open(filename, "r")
+        actual = file.read()
+        file.close()
+
+        expected = "key1:\n- a\n- c\n"
+        self.assertEqual(actual, expected)
+
+    def test_purgelistitem_list_of_objects(self):
+        filename = "/tmp/so-yaml_test-purgelistitem.yaml"
+        file = open(filename, "w")
+        file.write("{key1: [{name: item1, values: [a,b]}, b, {name: item2, values: [b,c]}]}")
+        file.close()
+
+        soyaml.purgelistitem([filename, "key1", "b"])
+
+        file = open(filename, "r")
+        actual = file.read()
+        file.close()
+
+        expected = "key1:\n- name: item1\n  values:\n  - a\n- name: item2\n  values:\n  - c\n"
+        self.assertEqual(actual, expected)
+
+    def test_purgelistitem_typed(self):
+        filename = "/tmp/so-yaml_test-purgelistitem.yaml"
+        file = open(filename, "w")
+        file.write("{key1: [1, '1', 2]}")
+        file.close()
+
+        soyaml.purgelistitem([filename, "key1", "1"])
+
+        file = open(filename, "r")
+        actual = file.read()
+        file.close()
+
+        expected = "key1:\n- '1'\n- 2\n"
+        self.assertEqual(actual, expected)
+
+    def test_purgelistitem_item_not_in_list(self):
+        filename = "/tmp/so-yaml_test-purgelistitem.yaml"
+        file = open(filename, "w")
+        file.write("{key1: { child1: [a,b,c] }}")
+        file.close()
+
+        soyaml.purgelistitem([filename, "key1", "d"])
+
+        file = open(filename, "r")
+        actual = file.read()
+        file.close()
+
+        expected = "key1:\n  child1:\n  - a\n  - b\n  - c\n"
+        self.assertEqual(actual, expected)
+
+    def test_purgelistitem_key_noexist(self):
+        filename = "/tmp/so-yaml_test-purgelistitem.yaml"
+        file = open(filename, "w")
+        file.write("{key1: [a,b,c]}")
+        file.close()
+
+        result = soyaml.purgelistitem([filename, "key2.child1", "b"])
+        self.assertEqual(result, 0)
+
+        file = open(filename, "r")
+        actual = file.read()
+        file.close()
+
+        expected = "key1:\n- a\n- b\n- c\n"
+        self.assertEqual(actual, expected)
+
+    def test_purgelistitem_key_noexist_deep(self):
+        filename = "/tmp/so-yaml_test-purgelistitem.yaml"
+        file = open(filename, "w")
+        file.write("{key1: { child1: [a,b,c] }}")
+        file.close()
+
+        result = soyaml.purgelistitem([filename, "key1.child2.deep1", "b"])
+        self.assertEqual(result, 0)
+
+        file = open(filename, "r")
+        actual = file.read()
+        file.close()
+
+        expected = "key1:\n  child1:\n  - a\n  - b\n  - c\n"
+        self.assertEqual(actual, expected)
+
+    def test_purgelistitem_scalar_and_null_values(self):
+        filename = "/tmp/so-yaml_test-purgelistitem.yaml"
+        file = open(filename, "w")
+        file.write("{key1: { child1: b, child2: null, child3: [b] }}")
+        file.close()
+
+        soyaml.purgelistitem([filename, "key1", "b"])
+
+        file = open(filename, "r")
+        actual = file.read()
+        file.close()
+
+        expected = "key1:\n  child1: b\n  child2: null\n  child3: []\n"
+        self.assertEqual(actual, expected)
+
+    def test_purgelistitem_lists_of_lists(self):
+        filename = "/tmp/so-yaml_test-purgelistitem.yaml"
+        file = open(filename, "w")
+        file.write("{key1: [[a,b], [b,[b,c]], b]}")
+        file.close()
+
+        soyaml.purgelistitem([filename, "key1", "b"])
+
+        file = open(filename, "r")
+        actual = file.read()
+        file.close()
+
+        expected = "key1:\n- - a\n- - - c\n"
+        self.assertEqual(actual, expected)
+
+    def test_purgelistitem_file_object(self):
+        filename = "/tmp/so-yaml_test-purgelistitem.yaml"
+        file = open(filename, "w")
+        file.write("{key1: [{name: x}, a, {name: y}, {name: x}]}")
+        file.close()
+
+        itemfile = "/tmp/so-yaml_test-purgelistitem-item.yaml"
+        file = open(itemfile, "w")
+        file.write("name: x\n")
+        file.close()
+
+        soyaml.purgelistitem([filename, "key1", "file:" + itemfile])
+
+        file = open(filename, "r")
+        actual = file.read()
+        file.close()
+
+        expected = "key1:\n- a\n- name: y\n"
+        self.assertEqual(actual, expected)
+
+    def test_purgelistitem_main(self):
+        filename = "/tmp/so-yaml_test-purgelistitem.yaml"
+        file = open(filename, "w")
+        file.write("{key1: { child1: [a,b,c] }, key2: [b]}")
+        file.close()
+
+        with patch('sys.exit', new=MagicMock()) as sysmock:
+            sys.argv = ["cmd", "purgelistitem", filename, "key1", "b"]
+            soyaml.main()
+            sysmock.assert_called_once_with(0)
+
+        file = open(filename, "r")
+        actual = file.read()
+        file.close()
+
+        expected = "key1:\n  child1:\n  - a\n  - c\nkey2:\n- b\n"
+        self.assertEqual(actual, expected)
+
+    def test_purgelistitem_with_remove(self):
+        filename = "/tmp/so-yaml_test-purgelistitem.yaml"
+        file = open(filename, "w")
+        file.write("{key1: { child1: { deep1: [a] }, child2: [b] }, key2: { group1: { items: [x,child1,y] }, group2: { items: [child1] } }}")
+        file.close()
+
+        soyaml.remove([filename, "key1.child1"])
+        soyaml.purgelistitem([filename, "key2", "child1"])
+
+        file = open(filename, "r")
+        actual = file.read()
+        file.close()
+
+        expected = "key1:\n  child2:\n  - b\nkey2:\n  group1:\n    items:\n    - x\n    - y\n  group2:\n    items: []\n"
+        self.assertEqual(actual, expected)
+
+
 class TestAppendListObject(unittest.TestCase):
 
     def test_appendlistobject_missing_arg(self):

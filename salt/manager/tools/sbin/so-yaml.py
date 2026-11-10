@@ -20,6 +20,7 @@ def showUsage(args):
     print('    append           - Append a list item to a yaml key, if it exists and is a list. Requires KEY and LISTITEM args.', file=sys.stderr)
     print('    appendlistobject - Append an object to a yaml list key. Requires KEY and JSON_OBJECT args.', file=sys.stderr)
     print('    removelistitem   - Remove a list item from a yaml key, if it exists and is a list. Requires KEY and LISTITEM args.', file=sys.stderr)
+    print('    purgelistitem    - Remove every occurrence of a list item from all lists nested under a yaml key, if it exists. Requires KEY and LISTITEM args.', file=sys.stderr)
     print('    replacelistobject  - Replace a list object based on a condition. Requires KEY, CONDITION_FIELD, CONDITION_VALUE, and JSON_OBJECT args.', file=sys.stderr)
     print('    add              - Add a new key and set its value. Fails if key already exists. Requires KEY and VALUE args.', file=sys.stderr)
     print('    get [-r]         - Displays (to stdout) the value stored in the given key. Requires KEY arg. Use -r for raw output without YAML formatting.', file=sys.stderr)
@@ -194,6 +195,33 @@ def removelistitem(args):
 
     content = loadYaml(filename)
     removeListItem(content, key, convertType(listItem))
+    writeYaml(filename, content)
+
+    return 0
+
+
+def purgeListItem(content, listItem):
+    if isinstance(content, dict):
+        for value in content.values():
+            purgeListItem(value, listItem)
+    elif isinstance(content, list):
+        content[:] = [item for item in content if item != listItem]
+        for item in content:
+            purgeListItem(item, listItem)
+
+
+def purgelistitem(args):
+    if len(args) != 3:
+        print('Missing filename, key arg, or list item to purge', file=sys.stderr)
+        showUsage(None)
+        return 1
+
+    filename = args[0]
+    key = args[1]
+    listItem = args[2]
+
+    content = loadYaml(filename)
+    purgeListItem(getKeyValue(content, key), convertType(listItem))
     writeYaml(filename, content)
 
     return 0
@@ -385,6 +413,7 @@ def main():
         "append": append,
         "appendlistobject": appendlistobject,
         "removelistitem": removelistitem,
+        "purgelistitem": purgelistitem,
         "replacelistobject": replacelistobject,
         "get": get,
         "remove": remove,
