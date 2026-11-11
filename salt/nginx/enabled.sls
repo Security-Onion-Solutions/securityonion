@@ -54,9 +54,9 @@ so-nginx:
       - /opt/so/log/nginx/:/var/log/nginx:rw
       - /opt/so/tmp/nginx/:/var/lib/nginx:rw
       - /opt/so/tmp/nginx/:/run:rw
-      - /nsm/elastic-fleet/so_agent-installers/:/opt/socore/html/packages
-      - /nsm/elastic-fleet/artifacts/:/opt/socore/html/artifacts 
+      - /nsm/elastic-fleet/artifacts/:/opt/socore/elastic-artifacts/artifacts:ro
       {% if GLOBALS.is_manager %}
+      - /nsm/elastic-fleet/so_agent-installers/:/opt/socore/html/packages
       - /etc/pki/managerssl.crt:/etc/pki/nginx/server.crt:ro
       - /etc/pki/managerssl.key:/etc/pki/nginx/server.key:ro
       # ATT&CK Navigator binds

@@ -12,8 +12,9 @@ if [[ ! "`pidof -x $(basename $0) -o %PPID`" ]]; then
 
     CONTAINERSLOG=/var/log/somon/containers.log
     # the collector rewrites this every minute; report nothing rather than repeating a stale
-    # file as if it were current, in case a run was skipped or the collector is wedged
-    MAXAGE=150
+    # file as if it were current, in case a run was skipped or the collector is wedged.
+    # Kept under two collector cycles so a 60s telegraf interval can't emit the same snapshot twice.
+    MAXAGE=90
 
     if [ -r "$CONTAINERSLOG" ]; then
         AGE=$(( $(date +%s) - $(stat -c %Y "$CONTAINERSLOG") ))
