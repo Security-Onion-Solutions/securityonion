@@ -16,6 +16,12 @@ include:
   - nginx.config
   - nginx.sostatus
 
+fleet_beats_dir_nginx:
+  file.directory:
+    - name: /nsm/elastic-fleet/artifacts/beats
+    - makedirs: True
+    - show_changes: False
+
 {%   if GLOBALS.role != 'so-fleet' %}
 {%     set container_config = 'so-nginx' %}
 make-rule-dir-nginx:
@@ -54,7 +60,7 @@ so-nginx:
       - /opt/so/log/nginx/:/var/log/nginx:rw
       - /opt/so/tmp/nginx/:/var/lib/nginx:rw
       - /opt/so/tmp/nginx/:/run:rw
-      - /nsm/elastic-fleet/artifacts/:/opt/socore/elastic-artifacts/artifacts:ro
+      - /nsm/elastic-fleet/artifacts/beats/:/opt/socore/elastic-artifacts/artifacts/beats:ro
       {% if GLOBALS.is_manager %}
       - /nsm/elastic-fleet/so_agent-installers/:/opt/socore/html/packages
       - /etc/pki/managerssl.crt:/etc/pki/nginx/server.crt:ro
@@ -106,6 +112,7 @@ so-nginx:
       {% endif %}
     - require:
       - file: nginxconf
+      - file: fleet_beats_dir_nginx
       {% if GLOBALS.is_manager %}
       {%   if NGINXMERGED.ssl.replace_cert %}
       - file: managerssl_key
