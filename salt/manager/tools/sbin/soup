@@ -17,7 +17,9 @@ INSTALLEDVERSION=$(cat /etc/soversion)
 # not finish its post-upgrade steps; its contents are the resume point. It is read
 # here before preupgrade_changes mutates INSTALLEDVERSION and before any highstate
 # stamps /etc/soversion from the pillar.
+
 POSTVERSION_FILE=/etc/sopostversion
+
 if [ -f "$POSTVERSION_FILE" ]; then
   POSTVERSION=$(cat "$POSTVERSION_FILE")
 else
@@ -546,6 +548,7 @@ postupgrade_changes() {
     [[ "$POSTVERSION" == "3.1.0" ]] && post_to_3.2.0
     [[ "$POSTVERSION" == "3.2.0" ]] && post_to_3.3.0
     [[ "$POSTVERSION" == "3.3.0" ]] && post_to_3.4.0
+    [[ "$POSTVERSION" == "3.4.0" ]] && post_to_3.5.0
     # All applicable post-upgrade steps completed; clear the resume marker.
     rm -f "$POSTVERSION_FILE"
     true
@@ -1065,17 +1068,31 @@ telegraf_repair() {
   # when there is something to repair, so everyone else is left alone.
   local repair=/usr/sbin/so-telegraf-repair
   [[ -x "$repair" ]] || return 0
-  docker ps --format '{{.Names}}' | grep -qx so-postgres || return 0
+  local state
+  state=$(docker inspect -f '{{.State.Running}} {{.State.Restarting}}' so-postgres 2>/dev/null) || return 0
+  if [[ "$state" != "true false" ]]; then
+    echo "  so-postgres is not running; skipping the Telegraf partition check."
+    FINAL_MESSAGE_QUEUE+=("WARNING: so-postgres is not running, so Telegraf partitions were not checked. If /nsm is full, follow \"Telegraf Partition Repair\" at:")
+    FINAL_MESSAGE_QUEUE+=("    - https://securityonion.net/docs/postgresql")
+    return 0
+  fi
 
   echo "Checking Telegraf metric partitions."
-  local status=0
-  "$repair" --check >> "$SOUP_LOG" 2>&1 || status=$?
+  local out status=0
+  out=$("$repair" --check 2>&1) || status=$?
+  echo "$out" >> "$SOUP_LOG"
   case "$status" in
     0) echo "  Telegraf partitions are healthy; nothing to repair." ;;
     1) echo "  Repairing stalled Telegraf partitions."
-       "$repair" --yes \
-         || echo "  warning: so-telegraf-repair failed; run it manually" >&2 ;;
-    *) echo "  Skipping; Telegraf is not storing metrics in Postgres on this host." ;;
+       if ! "$repair" --yes; then
+         echo "  warning: so-telegraf-repair failed; run it manually" >&2
+         FINAL_MESSAGE_QUEUE+=("WARNING: Telegraf partition repair failed; Postgres metrics will keep filling /nsm until it is repaired:")
+         FINAL_MESSAGE_QUEUE+=("    - sudo so-telegraf-repair")
+       fi ;;
+    2) echo "  Skipping: $(tail -n 1 <<<"$out")" ;;
+    *) echo "  warning: could not check Telegraf partitions" >&2
+       FINAL_MESSAGE_QUEUE+=("WARNING: Telegraf partitions could not be checked during the upgrade; run:")
+       FINAL_MESSAGE_QUEUE+=("    - sudo so-telegraf-repair --check") ;;
   esac
 }
 
@@ -1201,6 +1218,15 @@ add_detection_runtime_fields() {
   fi
 }
 ### 3.4.0 End ###
+
+### 3.5.0 Scripts ###
+
+post_to_3.5.0() {
+  telegraf_repair
+
+  set_postversion 3.5.0
+}
+### 3.5.0 End ###
 
 
 repo_sync() {
