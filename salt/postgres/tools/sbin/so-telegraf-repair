@@ -11,26 +11,38 @@
 # maintenance once. Healthy grids are reported and left alone.
 #
 # Usage: so-telegraf-repair [--check] [--yes] [--no-restart]
-#   --check       Report health and change nothing.
+#   --check       Report health and change nothing. Also reports a missing
+#                 so_maint_telegraf role and a maintenance job that is missing
+#                 or inactive.
 #   --yes         Skip the confirmation prompt (for soup and other automation).
 #   --no-restart  Never restart so-postgres, even if pg_cron's launcher is dead.
 #
+# Repair mode (without --check) registers the so_maint_telegraf role and the
+# maintenance job if they are missing, pauses the job while it repairs, and
+# always leaves it active afterwards. Data work runs as so_maint_telegraf.
+#
 # Exit status:
 #   0  healthy, or repair completed
-#   1  repair is needed (--check only)
-#   2  cannot run here: so-postgres, so_telegraf or pg_partman is missing
+#   1  repair is needed (--check), or the repair failed after it started
+#   2  skipped: Telegraf output is not Postgres, or so-postgres, so_telegraf or pg_partman is missing
+#   3  could not check, for example a connection error
 
-set -e
+set -eE
 
 # Matches p_premake in telegraf.conf's create_parent template.
 PREMAKE=7
 JOB_NAME=telegraf-partman-maintenance
+MAINT_ROLE=so_maint_telegraf
+# Long enough for an hourly maintenance run to release its locks, short enough
+# that soup and admins are not left hanging.
+LOCK_TIMEOUT=60s
+PG_OPTS="-c lock_timeout=$LOCK_TIMEOUT -c application_name=so-telegraf-repair"
 
 CHECK_ONLY=false
 ASSUME_YES=false
 NO_RESTART=false
 
-usage() { sed -n '/^# Usage:/,/^#   2 /p' "$0" | sed 's/^# \?//'; }
+usage() { sed -n '/^# Usage:/,/^#   3 /p' "$0" | sed 's/^# \?//'; }
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -38,70 +50,153 @@ while [[ $# -gt 0 ]]; do
     --yes|-y)          ASSUME_YES=true ;;
     --no-restart)      NO_RESTART=true ;;
     -h|--help)         usage; exit 0 ;;
-    *) echo "Unknown option: $1" >&2; usage >&2; exit 2 ;;
+    *) echo "Unknown option: $1" >&2; usage >&2; exit 3 ;;
   esac
   shift
 done
 
-skip() { echo "$*"; exit 2; }
+# Strips C0 (except tab and newline), DEL and C1 characters, so names and
+# messages written with Telegraf credentials can't drive the terminal.
+sanitise() { LC_ALL=C tr -d '\000-\010\013-\037\177' | LC_ALL=C sed 's/\xc2[\x80-\x9f]//g'; }
 
-psql_tg() { docker exec -i so-postgres psql -U postgres -d so_telegraf "$@"; }
-psql_pg() { docker exec -i so-postgres psql -U postgres -d postgres "$@"; }
+ERR_FILE=$(mktemp)
+ERR_STATUS=3
+ERR_PREFIX="Could not check Telegraf partitions"
+job_id=
+restore_active=
 
-# query_to_xml so the per-table row counts need no helper function installed.
+on_err() {
+  # Command substitutions inherit this trap; only the top level reports.
+  [[ $BASH_SUBSHELL -eq 0 ]] || exit "$ERR_STATUS"
+  local line
+  line=$(tail -n 1 "$ERR_FILE" | sanitise)
+  echo "$ERR_PREFIX: ${line:-command failed}" >&2
+  exit "$ERR_STATUS"
+}
+
+on_exit() {
+  if [[ -n "$restore_active" ]]; then
+    psql_cron -tAc "SELECT cron.alter_job($job_id, active := $restore_active)" >/dev/null || true
+  fi
+  rm -f "$ERR_FILE"
+}
+
+trap on_err ERR
+trap on_exit EXIT
+
+finish() { trap - ERR; exit "$1"; }
+skip() { echo "$*"; finish 2; }
+
+# Keeps the last stderr line for on_err while still showing all of it.
+capture() {
+  local rc=0
+  : >"$ERR_FILE"
+  "$@" 2>"$ERR_FILE" || rc=$?
+  sanitise <"$ERR_FILE" >&2
+  return "$rc"
+}
+
+psql_tg() {
+  capture docker exec -i -e PGOPTIONS="$PG_OPTS" so-postgres psql -U "$MAINT_ROLE" -d so_telegraf "$@"
+}
+psql_pg() {
+  capture docker exec -i -e PGOPTIONS="$PG_OPTS" so-postgres psql -U postgres -d postgres "$@"
+}
+psql_cron() {
+  capture docker exec -i -e PGOPTIONS="$PG_OPTS" so-postgres psql -U postgres -d "$cron_db" "$@"
+}
+
 REPORT="
-WITH parents AS (
-    SELECT pc.parent_table,
-           pc.premake,
-           split_part(pc.parent_table, '.', 1) AS sch,
-           split_part(pc.parent_table, '.', 2) AS tbl
-    FROM partman.part_config pc
-    WHERE pc.parent_table LIKE 'telegraf.%'
-), children AS (
-    SELECT p.parent_table,
-           max(to_date(substring(c.relname FROM '_p(\d{8})\$'), 'YYYYMMDD')) AS newest_child
-    FROM parents p
-    JOIN pg_class pt ON pt.oid = p.parent_table::regclass
-    JOIN pg_inherits i ON i.inhparent = pt.oid
-    JOIN pg_class c ON c.oid = i.inhrelid
-    WHERE pg_get_expr(c.relpartbound, c.oid) <> 'DEFAULT'
-    GROUP BY p.parent_table
-), defaults AS (
-    SELECT p.parent_table,
-           p.premake,
-           format('%I.%I', p.sch, p.tbl || '_default') AS default_table,
-           to_regclass(format('%I.%I', p.sch, p.tbl || '_default')) AS default_oid
-    FROM parents p
-)
 SELECT d.parent_table,
        c.newest_child,
        (c.newest_child - current_date) AS days_ahead,
-       d.premake,
-       CASE WHEN d.default_oid IS NULL THEN NULL ELSE
-            (xpath('/row/cnt/text()',
-                   query_to_xml(format('SELECT count(*) AS cnt FROM %s', d.default_table),
-                                false, true, '')))[1]::text::bigint
-       END AS default_rows,
-       CASE WHEN d.default_oid IS NULL THEN NULL
-            ELSE pg_size_pretty(pg_total_relation_size(d.default_oid)) END AS default_size
-FROM defaults d
-LEFT JOIN children c ON c.parent_table = d.parent_table
-ORDER BY 1
+       pc.premake,
+       d.has_rows AS default_has_rows,
+       pg_size_pretty(d.default_size) AS default_size
+FROM so_admin.telegraf_defaults() d
+JOIN partman.part_config pc ON to_regclass(pc.parent_table) = d.parent_table
+LEFT JOIN LATERAL (
+    SELECT max(to_date(substring(ch.relname FROM '_p(\d{8})\$'), 'YYYYMMDD')) AS newest_child
+    FROM pg_inherits i
+    JOIN pg_class ch ON ch.oid = i.inhrelid
+    WHERE i.inhparent = d.parent_table
+      AND pg_get_expr(ch.relpartbound, ch.oid) <> 'DEFAULT'
+) c ON true
+ORDER BY d.parent_table::text
 "
 
-docker ps --format '{{.Names}}' | grep -qx so-postgres \
+print_report() {
+  local report
+  report=$(psql_tg -c "$REPORT")
+  sanitise <<<"$report"
+}
+
+has_cron() {
+  [[ -n "$cron_db" ]] || return 0
+  psql_cron -tAc "SELECT 1 FROM pg_extension WHERE extname = 'pg_cron'"
+}
+
+lookup_job() {
+  local cron
+  cron=$(has_cron)
+  [[ -n "$cron" ]] || return 0
+  psql_cron -tA -F '|' -c \
+    "SELECT jobid, active FROM cron.job
+      WHERE jobname = '$JOB_NAME' AND username = '$MAINT_ROLE'
+      ORDER BY jobid LIMIT 1"
+}
+
+output=$(capture salt-call pillar.get telegraf:output --out=newline_values_only)
+output=$(tr -d '[:space:]' <<<"$output" | tr '[:lower:]' '[:upper:]')
+output=${output:-INFLUXDB}
+case "$output" in
+  POSTGRES|BOTH) ;;
+  *) skip "Telegraf output is $(sanitise <<<"$output"); not checking Postgres partitions." ;;
+esac
+
+containers=$(capture docker ps --format '{{.Names}}')
+grep -qx so-postgres <<<"$containers" \
   || skip "so-postgres is not running; nothing to repair."
-docker exec so-postgres psql -U postgres -tAc \
-  "SELECT 1 FROM pg_database WHERE datname='so_telegraf'" | grep -q 1 \
+has_db=$(psql_pg -tAc "SELECT 1 FROM pg_database WHERE datname = 'so_telegraf'")
+[[ -n "$has_db" ]] \
   || skip "The so_telegraf database does not exist; Telegraf is not writing to Postgres."
-psql_tg -tAc "SELECT 1 FROM pg_extension WHERE extname='pg_partman'" | grep -q 1 \
+
+# so_telegraf before the postgres state lands, postgres after.
+cron_db=$(psql_pg -tAc "SELECT current_setting('cron.database_name', true)")
+cron_db=$(tr -d '[:space:]' <<<"$cron_db")
+
+has_role=$(psql_pg -tAc "SELECT 1 FROM pg_roles WHERE rolname = '$MAINT_ROLE'")
+job=
+[[ "$cron_db" == postgres ]] && job=$(lookup_job)
+
+if [[ -z "$has_role" ]] && $CHECK_ONLY; then
+  echo "Repair is needed:"
+  echo "  * maintenance role $MAINT_ROLE is missing"
+  echo
+  echo "Re-run without --check to repair."
+  finish 1
+fi
+
+if ! $CHECK_ONLY && [[ -z "$has_role" || ( "$cron_db" == postgres && -z "$job" ) ]]; then
+  echo "Registering the maintenance role and job."
+  if ! /usr/sbin/so-telegraf-postgres group_role; then
+    echo "Could not register the maintenance job; run a highstate and try again." >&2
+    finish 3
+  fi
+  [[ "$cron_db" == postgres ]] && job=$(lookup_job)
+fi
+
+has_partman=$(psql_tg -tAc "SELECT 1 FROM pg_extension WHERE extname = 'pg_partman'")
+[[ -n "$has_partman" ]] \
   || skip "pg_partman is not installed in so_telegraf; nothing to repair."
 
 parents=$(psql_tg -tAc \
   "SELECT count(*) FROM partman.part_config WHERE parent_table LIKE 'telegraf.%'")
-stranded=$(psql_tg -tAc "SELECT coalesce(sum(default_rows), 0) FROM ( $REPORT ) t")
-behind=$(psql_tg -tAc \
-  "SELECT count(*) FROM ( $REPORT ) t WHERE coalesce(days_ahead, -1) < 1")
+counts=$(psql_tg -tAc \
+  "SELECT count(*) FILTER (WHERE default_has_rows) || '|' ||
+          count(*) FILTER (WHERE coalesce(days_ahead, -1) < 1)
+     FROM ( $REPORT ) t")
+IFS='|' read -r stranded behind <<<"$counts"
 # premake < 7, or infinite_time_partitions off: without the latter partman
 # refuses to premake forward across the gap the stall left behind.
 misconfigured=$(psql_tg -tAc \
@@ -115,16 +210,24 @@ launcher=$(psql_pg -tAc \
   "SELECT count(*) FROM pg_stat_activity
     WHERE backend_type ILIKE '%pg_cron%' OR application_name ILIKE '%pg_cron%'")
 
-# so_telegraf before the postgres state lands, postgres after.
-cron_db=$(docker exec so-postgres psql -U postgres -tAc \
-  "SELECT current_setting('cron.database_name', true)" | tr -d '[:space:]')
 last_run=never
-if [[ -n "$cron_db" ]]; then
-  last_run=$(docker exec so-postgres psql -U postgres -d "$cron_db" -tAc \
-    "SELECT coalesce(max(d.start_time)::text, 'never')
+cron_installed=$(has_cron)
+if [[ -n "$cron_installed" ]]; then
+  run=$(psql_cron -tAc \
+    "SELECT d.status || ' at ' || d.start_time
        FROM cron.job_run_details d JOIN cron.job j USING (jobid)
-      WHERE j.jobname = '$JOB_NAME'" 2>/dev/null | tr -d '[:space:]' || echo unknown)
-  [[ -n "$last_run" ]] || last_run=never
+      WHERE j.jobname = '$JOB_NAME'
+      ORDER BY d.start_time DESC LIMIT 1")
+  if [[ -n "$run" ]]; then
+    message=$(psql_cron -tAc \
+      "SELECT coalesce(d.return_message, '')
+         FROM cron.job_run_details d JOIN cron.job j USING (jobid)
+        WHERE j.jobname = '$JOB_NAME'
+        ORDER BY d.start_time DESC LIMIT 1")
+    message=$(sanitise <<<"$message")
+    message=${message//$'\n'/ }
+    last_run="$(sanitise <<<"$run"): ${message:0:200}"
+  fi
 fi
 
 # A grid that has never written a metric has nothing to recover, and an empty
@@ -132,43 +235,67 @@ fi
 restart_needed=false
 [[ "$launcher" -eq 0 && "$parents" -gt 0 && -n "$cron_db" ]] && restart_needed=true
 
+# group_role registers the job only in the postgres database.
+job_inactive=false
+if [[ "$cron_db" == postgres ]]; then
+  [[ -z "$job" || "${job##*|}" == f ]] && job_inactive=true
+fi
+
 repair_needed=false
 [[ "$stranded" -gt 0 ]] && repair_needed=true
 [[ "$behind" -gt 0 ]] && repair_needed=true
 [[ "$misconfigured" -gt 0 ]] && repair_needed=true
 $restart_needed && repair_needed=true
+$job_inactive && repair_needed=true
 
 echo "Telegraf partition status:"
-psql_tg -c "$REPORT"
-echo "Rows stranded in default partitions: $stranded"
-echo "pg_cron metadata database: ${cron_db:-unset}"
+print_report
+echo "Default partitions with rows: $stranded"
+echo "pg_cron metadata database: $(sanitise <<<"${cron_db:-unset}")"
+[[ "$cron_db" == postgres ]] \
+  || echo "pg_cron metadata database is $(sanitise <<<"${cron_db:-unset}"); not checking the maintenance job."
 echo "pg_cron launcher running: $([[ "$launcher" -gt 0 ]] && echo yes || echo no)"
 echo "Last $JOB_NAME run: $last_run"
 echo
 
 if ! $repair_needed; then
   echo "Telegraf partitions are healthy. Nothing to do."
-  exit 0
+  finish 0
 fi
 
 if $CHECK_ONLY; then
   echo "Repair is needed:"
-  [[ "$stranded" -gt 0 ]]    && echo "  * $stranded row(s) stranded in default partitions"
+  [[ "$stranded" -gt 0 ]]    && echo "  * $stranded default partition(s) hold rows"
   [[ "$behind" -gt 0 ]]      && echo "  * $behind parent(s) with no partition for the current window"
   [[ "$misconfigured" -gt 0 ]] && echo "  * $misconfigured parent(s) with stale partman settings"
   $restart_needed            && echo "  * pg_cron's launcher is dead; maintenance is not running at all"
+  $job_inactive              && echo "  * the maintenance job is missing or inactive"
   echo
   echo "Re-run without --check to repair."
-  exit 1
+  finish 1
 fi
 
 if [[ "$stranded" -gt 0 ]] && ! $ASSUME_YES; then
-  echo "This will permanently discard the $stranded stranded row(s) above."
+  echo "This will permanently discard the rows in the $stranded default partition(s) above."
   $restart_needed && ! $NO_RESTART && \
     echo "so-postgres will also be restarted, which briefly interrupts SOC."
-  [[ -t 0 ]] || { echo "Not a terminal; re-run with --yes to confirm." >&2; exit 2; }
+  [[ -t 0 ]] || { echo "Not a terminal; re-run with --yes to confirm." >&2; finish 1; }
   read -r -p "Continue? [y/N] " answer
-  [[ "$answer" =~ ^[Yy]$ ]] || { echo "Aborted."; exit 0; }
+  [[ "$answer" =~ ^[Yy]$ ]] || { echo "Aborted."; finish 0; }
+fi
+
+ERR_STATUS=1
+ERR_PREFIX="Telegraf partition repair failed"
+
+if [[ "$cron_db" == postgres ]]; then
+  if [[ -z "$job" ]]; then
+    echo "Could not register the maintenance job; run a highstate and try again." >&2
+    finish 3
+  fi
+  job_id=${job%%|*}
+  [[ "${job##*|}" == t ]] && restore_active=true || restore_active=false
+  echo "Pausing the $JOB_NAME job during the repair."
+  psql_cron -tAc "SELECT cron.alter_job($job_id, active := false)" >/dev/null
 fi
 
 if [[ "$misconfigured" -gt 0 ]]; then
@@ -186,27 +313,24 @@ if [[ "$stranded" -gt 0 ]]; then
   # One transaction: Telegraf is still writing, so a default emptied without
   # its partition in place is refilled before maintenance can attach one.
   psql_tg -v ON_ERROR_STOP=1 <<'EOSQL'
+BEGIN;
 DO $$
 DECLARE
     r record;
 BEGIN
     FOR r IN
-        SELECT pc.parent_table,
-               format('%I.%I', n.nspname, c.relname) AS default_table
-        FROM partman.part_config pc
-        JOIN pg_class p ON p.oid = pc.parent_table::regclass
-        JOIN pg_inherits i ON i.inhparent = p.oid
-        JOIN pg_class c ON c.oid = i.inhrelid
-        JOIN pg_namespace n ON n.oid = c.relnamespace
-        WHERE pc.parent_table LIKE 'telegraf.%'
-          AND pg_get_expr(c.relpartbound, c.oid) = 'DEFAULT'
+        SELECT pc.parent_table, d.default_part
+        FROM so_admin.telegraf_defaults() d
+        JOIN partman.part_config pc ON to_regclass(pc.parent_table) = d.parent_table
+        WHERE d.default_part IS NOT NULL
     LOOP
-        EXECUTE format('TRUNCATE TABLE %s', r.default_table);
+        EXECUTE format('TRUNCATE TABLE %s', r.default_part);
         PERFORM partman.create_partition_time(
             r.parent_table, ARRAY[date_trunc('day', now())]::timestamptz[]);
     END LOOP;
 END
 $$;
+COMMIT;
 EOSQL
 fi
 
@@ -222,7 +346,7 @@ if $restart_needed; then
       sleep 2
     done
     docker exec so-postgres pg_isready -U postgres -q \
-      || { echo "so-postgres did not come back; check 'docker logs so-postgres'." >&2; exit 1; }
+      || { echo "so-postgres did not come back; check 'docker logs so-postgres'." >&2; finish 1; }
   fi
 fi
 
@@ -238,8 +362,14 @@ CALL partman.run_maintenance_proc();
 \endif
 EOSQL
 
+if [[ -n "$job_id" ]]; then
+  psql_cron -tAc "SELECT cron.alter_job($job_id, active := true)" >/dev/null
+  restore_active=
+  echo "The $JOB_NAME job is active."
+fi
+
 echo
 echo "Telegraf partition status after repair:"
-psql_tg -c "$REPORT"
+print_report
 echo "The $JOB_NAME job runs hourly at :17. Confirm it fired with:"
 echo "  so-telegraf-repair --check"

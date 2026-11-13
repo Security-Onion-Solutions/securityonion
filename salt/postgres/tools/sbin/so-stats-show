@@ -52,12 +52,17 @@ if [ -n "$FILTER_HOST" ] && ! [[ "$FILTER_HOST" =~ $HOST_RE ]]; then
 fi
 
 so_psql() {
-  docker exec so-postgres psql -U postgres -d so_telegraf -At -F $'\t' "$@"
+  docker exec -e PGOPTIONS='-c application_name=so-stats-show' so-postgres psql -U so_maint_telegraf -d so_telegraf -At -F $'\t' "$@"
 }
 
 if ! docker exec so-postgres psql -U postgres -lqt 2>/dev/null | cut -d\| -f1 | grep -qw so_telegraf; then
   echo "Database so_telegraf not found. Is telegraf.output set to POSTGRES or BOTH?"
   exit 2
+fi
+
+if ! docker exec so-postgres psql -U postgres -tAc "SELECT 1 FROM pg_roles WHERE rolname = 'so_maint_telegraf'" 2>/dev/null | grep -q 1; then
+  echo "The so_maint_telegraf role is missing; run a highstate."
+  exit 1
 fi
 
 table_exists() {
