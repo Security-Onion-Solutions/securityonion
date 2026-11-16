@@ -1215,6 +1215,7 @@ remove_localrules_portgroup() {
 
   for pillar_file in /opt/so/saltstack/local/pillar/firewall/{soc,adv}_firewall.sls; do
     grep -qs localrules "$pillar_file" || continue
+    so-yaml.py get "$pillar_file" firewall 2>/dev/null | grep -q '\<localrules\>' || continue
     echo "Removing the localrules portgroup from $pillar_file."
     so-yaml.py remove "$pillar_file" firewall.portgroups.localrules
     so-yaml.py purgelistitem "$pillar_file" firewall.role localrules
