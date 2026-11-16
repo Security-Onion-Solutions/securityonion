@@ -10,6 +10,13 @@
 {%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   from 'nginx/map.jinja' import NGINXMERGED %}
 
+{%   if GLOBALS.role != 'so-fleet' %}
+{%     set container_config = 'so-nginx' %}
+{%   else %}
+{#     if this is an so-fleet node then we want to use the port bindings, custom bind mounts defined for fleet #}
+{%     set container_config = 'so-nginx-fleet-node' %}
+{%   endif %}
+
 include:
   - ca.trust
   - nginx.ssl
@@ -21,23 +28,6 @@ fleet_beats_dir_nginx:
     - name: /nsm/elastic-fleet/artifacts/beats
     - makedirs: True
     - show_changes: False
-
-{%   if GLOBALS.role != 'so-fleet' %}
-{%     set container_config = 'so-nginx' %}
-make-rule-dir-nginx:
-  file.directory:
-    - name: /nsm/rules
-    - user: socore
-    - group: socore
-    - recurse:
-      - user
-      - group
-    - show_changes: False
-
-{%   else %}
-{#     if this is an so-fleet node then we want to use the port bindings, custom bind mounts defined for fleet #}
-{%     set container_config = 'so-nginx-fleet-node' %}
-{%   endif %}
 
 so-nginx:
   docker_container.running:
@@ -70,7 +60,6 @@ so-nginx:
       - /opt/so/conf/navigator/config.json:/opt/socore/html/navigator/assets/config.json:ro
       - /nsm/repo:/opt/socore/html/repo:ro
       - /nsm/kernelrepo:/opt/socore/html/kernelrepo:ro
-      - /nsm/rules:/nsm/rules:ro
       {%   if NGINXMERGED.external_suricata %}
       - /opt/so/rules/nids/suri:/surirules:ro
       {%   endif %}
