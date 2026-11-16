@@ -10,18 +10,6 @@
 {%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   from 'nginx/map.jinja' import NGINXMERGED %}
 
-include:
-  - ca.trust
-  - nginx.ssl
-  - nginx.config
-  - nginx.sostatus
-
-fleet_beats_dir_nginx:
-  file.directory:
-    - name: /nsm/elastic-fleet/artifacts/beats
-    - makedirs: True
-    - show_changes: False
-
 {%   if GLOBALS.role != 'so-fleet' %}
 {%     set container_config = 'so-nginx' %}
 {%   else %}
@@ -34,6 +22,12 @@ include:
   - nginx.ssl
   - nginx.config
   - nginx.sostatus
+
+fleet_beats_dir_nginx:
+  file.directory:
+    - name: /nsm/elastic-fleet/artifacts/beats
+    - makedirs: True
+    - show_changes: False
 
 so-nginx:
   docker_container.running:
