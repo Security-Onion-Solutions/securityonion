@@ -319,6 +319,8 @@ def add(args):
 
 
 def removeKey(content, key):
+    if not isinstance(content, dict):
+        return
     pieces = key.split(".", 1)
     if len(pieces) > 1:
         if pieces[0] in content:
@@ -362,6 +364,8 @@ def replace(args):
 
 
 def getKeyValue(content, key):
+    if not isinstance(content, dict):
+        return None
     pieces = key.split(".", 1)
     if len(pieces) > 1 and pieces[0] in content:
         return getKeyValue(content[pieces[0]], pieces[1])

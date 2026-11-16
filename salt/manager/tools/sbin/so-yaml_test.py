@@ -128,6 +128,22 @@ class TestRemove(unittest.TestCase):
                 sysmock.assert_called_once_with(1)
                 self.assertIn("Missing filename or key arg\n", mock_stderr.getvalue())
 
+    def test_remove_null_parent(self):
+        filename = "/tmp/so-yaml_test-remove.yaml"
+        file = open(filename, "w")
+        file.write("key1: null\n")
+        file.close()
+
+        result = soyaml.remove([filename, "key1.child1.deep1"])
+        self.assertEqual(result, 0)
+
+        file = open(filename, "r")
+        actual = file.read()
+        file.close()
+
+        expected = "key1: null\n"
+        self.assertEqual(actual, expected)
+
     def test_append_missing_arg(self):
         with patch('sys.exit', new=MagicMock()) as sysmock:
             with patch('sys.stderr', new=StringIO()) as mock_stderr:
@@ -565,6 +581,19 @@ class TestRemove(unittest.TestCase):
             self.assertEqual(result, 2)
             self.assertEqual("", mock_stdout.getvalue())
 
+    def test_get_null_parent(self):
+        with patch('sys.stdout', new=StringIO()) as mock_stdout:
+            with patch('sys.stderr', new=StringIO()) as mock_stderr:
+                filename = "/tmp/so-yaml_test-get.yaml"
+                file = open(filename, "w")
+                file.write("key1: null\n")
+                file.close()
+
+                result = soyaml.get([filename, "key1.child1"])
+                self.assertEqual(result, 2)
+                self.assertEqual("", mock_stdout.getvalue())
+                self.assertIn("Key 'key1.child1' not found by so-yaml.py", mock_stderr.getvalue())
+
     def test_get_empty_file(self):
         with patch('sys.stdout', new=StringIO()) as mock_stdout:
             with patch('sys.stderr', new=StringIO()) as mock_stderr:
@@ -923,6 +952,38 @@ class TestPurgeListItem(unittest.TestCase):
         file.close()
 
         expected = "key1:\n  child2:\n  - b\nkey2:\n  group1:\n    items:\n    - x\n    - y\n  group2:\n    items: []\n"
+        self.assertEqual(actual, expected)
+
+    def test_purgelistitem_null_parent(self):
+        filename = "/tmp/so-yaml_test-purgelistitem.yaml"
+        file = open(filename, "w")
+        file.write("key1: null\n")
+        file.close()
+
+        result = soyaml.purgelistitem([filename, "key1.child1", "b"])
+        self.assertEqual(result, 0)
+
+        file = open(filename, "r")
+        actual = file.read()
+        file.close()
+
+        expected = "key1: null\n"
+        self.assertEqual(actual, expected)
+
+    def test_purgelistitem_non_dict_parent(self):
+        filename = "/tmp/so-yaml_test-purgelistitem.yaml"
+        file = open(filename, "w")
+        file.write("key1:\n- a\n- b\n")
+        file.close()
+
+        result = soyaml.purgelistitem([filename, "key1.child1", "b"])
+        self.assertEqual(result, 0)
+
+        file = open(filename, "r")
+        actual = file.read()
+        file.close()
+
+        expected = "key1:\n- a\n- b\n"
         self.assertEqual(actual, expected)
 
 
