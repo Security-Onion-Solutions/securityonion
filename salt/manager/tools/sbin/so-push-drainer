@@ -301,9 +301,15 @@ def _check_dispatched(log, now):
         if not isinstance(record, dict) or not record.get('jid'):
             _unlink(path, log)
             continue
-        age = now - record.get('dispatched_at', 0)
-        last_check = record.get('checked_at', record.get('dispatched_at', 0))
-        if now - last_check >= _recheck_delay(age):
+        try:
+            age = now - record.get('dispatched_at', 0)
+            last_check = record.get('checked_at', record.get('dispatched_at', 0))
+            is_due = now - last_check >= _recheck_delay(age)
+        except TypeError:
+            log.warning('malformed record for jid=%s; no longer tracking', record.get('jid'))
+            _unlink(path, log)
+            continue
+        if is_due:
             due.append((last_check, path, record, age))
     # Least recently checked first, so pushes that are still running can't starve finished ones.
     for _, path, record, age in sorted(due, key=lambda item: item[:2])[:RESULT_CHECKS_PER_PASS]:
@@ -332,6 +338,7 @@ def _report_result(record, age, log):
         return False
     failures = _orch_failures(ret)
     if failures and _result_unknown(ret):
+        # so-log-check excludes this message by its text.
         log.warning('push result unknown jid=%s paths=%s; the orchestration lost track of the state run, which may '
                     'still have completed (if not, the change will be applied at the next scheduled highstate): %s',
                     jid, paths, ' | '.join(failures))

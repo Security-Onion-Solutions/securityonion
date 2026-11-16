@@ -369,6 +369,22 @@ class TestResults(DrainerTestCase):
         self.assertIn('jid=1_bad', self.log.exception.call_args[0][0] % self.log.exception.call_args[0][1:])
         self.assertIn('push succeeded jid=2_ok', self.logged('info'))
 
+    def test_check_dispatched_drops_malformed_record(self):
+        now = time.time()
+        bad_dispatched = self.write_json(self.dispatched, '1_bad.json', {'jid': '1_bad', 'dispatched_at': 'soon'})
+        bad_checked = self.write_json(self.dispatched, '2_bad.json', {
+            'jid': '2_bad', 'dispatched_at': now - 60, 'checked_at': None,
+        })
+        good = self.record('3_ok', 60, now)
+        with patch.object(drainer, '_lookup_jid', return_value=SUCCESS_RET) as lookup:
+            drainer._check_dispatched(self.log, now)
+        for path in (bad_dispatched, bad_checked, good):
+            self.assertFalse(os.path.exists(path), path)
+        self.assertEqual([c.args[0] for c in lookup.call_args_list], ['3_ok'])
+        self.assertIn('malformed record for jid=1_bad', self.logged('warning'))
+        self.assertIn('malformed record for jid=2_bad', self.logged('warning'))
+        self.assertIn('push succeeded jid=3_ok', self.logged('info'))
+
     def test_recheck_delay(self):
         self.assertEqual(drainer._recheck_delay(10), drainer.RESULT_CHECK_DELAY)
         self.assertEqual(drainer._recheck_delay(400), 100)
