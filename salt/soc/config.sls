@@ -251,6 +251,16 @@ socsensoronirepos:
     - mode: 775
     - makedirs: True
 
+nsm_rules_dir:
+  file.directory:
+    - name: /nsm/rules
+    - user: socore
+    - group: socore
+    - recurse:
+      - user
+      - group
+    - show_changes: False
+
 create_custom_local_yara_repo_template:
   git.present:
     - name: /nsm/rules/custom-local-repos/local-yara

@@ -9,29 +9,18 @@
 {%   from 'ca/trust.map.jinja' import CATRUST %}
 {%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   from 'nginx/map.jinja' import NGINXMERGED %}
+{%   if GLOBALS.role != 'so-fleet' %}
+{%     set container_config = 'so-nginx' %}
+{%   else %}
+{#     if this is an so-fleet node then we want to use the port bindings, custom bind mounts defined for fleet #}
+{%     set container_config = 'so-nginx-fleet-node' %}
+{%   endif %}
 
 include:
   - ca.trust
   - nginx.ssl
   - nginx.config
   - nginx.sostatus
-
-{%   if GLOBALS.role != 'so-fleet' %}
-{%     set container_config = 'so-nginx' %}
-make-rule-dir-nginx:
-  file.directory:
-    - name: /nsm/rules
-    - user: socore
-    - group: socore
-    - recurse:
-      - user
-      - group
-    - show_changes: False
-
-{%   else %}
-{#     if this is an so-fleet node then we want to use the port bindings, custom bind mounts defined for fleet #}
-{%     set container_config = 'so-nginx-fleet-node' %}
-{%   endif %}
 
 so-nginx:
   docker_container.running:
