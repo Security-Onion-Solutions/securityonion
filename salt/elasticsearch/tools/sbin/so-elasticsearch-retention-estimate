@@ -58,6 +58,9 @@ Usage: $(basename "$0") [OPTIONS]
 
 Estimate remaining days until Elasticsearch cluster reaches low watermark threshold.
 
+Index growth history follows telegraf.output: in POSTGRES mode it is read from Postgres, limited to
+postgres.telegraf.retention_days, and the script must run on the manager; otherwise from InfluxDB.
+
 OPTIONS:
     --json          Output results in JSON format
     -v, --verbose   Show additional output
@@ -168,10 +171,24 @@ run_indices_growth() {
     fi
 }
 
+fetch_postgres_total_bytes() {
+    local total
+
+    total=$(so_es_index_size_growth so-elasticsearch-retention-estimate "$1" "$2") || return 1
+    echo "$total" | awk -F'|' '{ sum += $3 } END { print sum + 0 }'
+}
+
 fetch_total_bytes() {
     local start="$1"
     local stop="$2"
+    local pg_start="$3"
+    local pg_stop="$4"
     local range_line
+
+    if [ "$TG_OUTPUT" = "POSTGRES" ]; then
+        fetch_postgres_total_bytes "$pg_start" "$pg_stop"
+        return
+    fi
 
     if [ -n "$stop" ]; then
         range_line="  |> range(start: ${start}, stop: ${stop})"
@@ -208,8 +225,13 @@ fail() {
 
 echo -e "\nDISCLAIMER: Script output is based on current data patterns, but are approximations solely intended to assist with getting a general ILM policy configured."
 
-ORG_ID=$(lookup_org_id)
-[ -n "$ORG_ID" ] || fail "Unable to resolve InfluxDB org id"
+TG_OUTPUT=$(so_telegraf_output) || fail "Unable to read telegraf.output from pillar."
+if [ "$TG_OUTPUT" = "POSTGRES" ]; then
+    pg_check_error=$(so_telegraf_pg_check so-elasticsearch-retention-estimate 2>&1) || fail "$pg_check_error"
+else
+    ORG_ID=$(lookup_org_id)
+    [ -n "$ORG_ID" ] || fail "Unable to resolve InfluxDB org id"
+fi
 
 cluster_storage_size=0
 indexed_storage_source="elasticsearch"
@@ -221,10 +243,11 @@ if [ -n "$cluster_storage_size_output" ]; then
     fi
 fi
 
-# historical data from influxdb for growth calculation
-one_day_total=$(fetch_total_bytes "-25h" "-23h")
-seven_day_total=$(fetch_total_bytes "-7d8h" "-7d")
-thirty_day_total=$(fetch_total_bytes "-30d8h" "-30d")
+# historical index sizes for growth calculation
+query_error="Failed to query telegraf.elasticsearch_index_size in so_telegraf."
+one_day_total=$(fetch_total_bytes "-25h" "-23h" "25 hours" "23 hours") || fail "$query_error"
+seven_day_total=$(fetch_total_bytes "-7d8h" "-7d" "7 days 8 hours" "7 days") || fail "$query_error"
+thirty_day_total=$(fetch_total_bytes "-30d8h" "-30d" "30 days 8 hours" "30 days") || fail "$query_error"
 
 # available historical windows (prefer 30d/7d when available, to avoid using recent 24h traffic spike as true daily ingest rate)
 history_days=0
@@ -244,7 +267,12 @@ elif [ "$one_day_total" -gt 0 ]; then
     historical_total=$one_day_total
 fi
 
-[ "$history_days" -gt 0 ] || fail "Historical InfluxDB data unavailable for growth calculation. If this a newer grid try re-running this script in a few days. Otherwise review /opt/so/log/telegraf/telegraf.log for errors with collecting required ES metrics."
+if [ "$TG_OUTPUT" = "POSTGRES" ]; then
+    history_unavailable="Historical Postgres data unavailable for growth calculation. Postgres keeps postgres.telegraf.retention_days days of history; if this is a newer grid try re-running this script in a few days. Otherwise review /opt/so/log/telegraf/telegraf.log for errors with collecting required ES metrics."
+else
+    history_unavailable="Historical InfluxDB data unavailable for growth calculation. If this a newer grid try re-running this script in a few days. Otherwise review /opt/so/log/telegraf/telegraf.log for errors with collecting required ES metrics."
+fi
+[ "$history_days" -gt 0 ] || fail "$history_unavailable"
 
 # Daily growth rate
 growth_bytes=$(( cluster_storage_size - historical_total ))
@@ -729,6 +757,7 @@ if [ "$should_trigger_recommendations" = true ]; then
             [ -n "$index" ] || continue
 
             growth_24h_gb=$(echo "$line" | awk '{print $(NF-2)}')
+            [[ "$growth_24h_gb" =~ ^[0-9]+(\.[0-9]+)?$ ]] || growth_24h_gb=0
 
             creation_date_display=""
             retention_days=""
