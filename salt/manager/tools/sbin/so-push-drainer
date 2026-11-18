@@ -17,6 +17,7 @@ is older than debounce_seconds, this script:
   * concatenates the actions lists from every ready intent
   * dedupes by (state or __highstate__, tgt, tgt_type)
   * drops actions whose target matches no accepted minion (e.g. a role with no nodes yet)
+  * holds everything for a later pass while salt-master has only just started
   * dispatches a single `salt-run state.orchestrate orch.push_batch --async`
     with the deduped actions list passed as pillar kwargs
   * deletes the contributed intent files on successful dispatch
@@ -46,6 +47,12 @@ PENDING_DIR = '/opt/so/state/push_pending'
 LOCK_FILE = os.path.join(PENDING_DIR, '.lock')
 LOG_FILE = '/opt/so/log/salt/so-push-drainer.log'
 MASTER_CONFIG = '/etc/salt/master'
+MASTER_PIDFILE = '/var/run/salt-master.pid'
+
+# Minions rejoin a restarted master's publisher up to ~22s after it returns (zmq reconnect interval
+# plus jitter, each up to recon_default + recon_max) and a job published before then reaches nobody.
+# Doubled to allow for a slow master start.
+MASTER_SETTLE_SECONDS = 45
 
 DISPATCHED_DIR = '/opt/so/state/push_dispatched'
 
@@ -138,6 +145,14 @@ def _targeted(actions, log):
             log.info('skipping %s: no minions match tgt=%s',
                      'highstate' if action.get('highstate') else action.get('state'), action.get('tgt'))
     return targeted
+
+
+def _master_settling(now):
+    try:
+        age = now - os.path.getmtime(MASTER_PIDFILE)
+    except OSError:
+        return False
+    return 0 <= age < MASTER_SETTLE_SECONDS
 
 
 def _dispatch(actions, log):
@@ -408,6 +423,10 @@ def main():
         if not ready:
             if skipped:
                 log.debug('no ready intents (%d still in debounce window)', skipped)
+            return 0
+
+        if _master_settling(now):
+            log.info('salt-master just started; holding %d intent(s) until minions reconnect', len(ready))
             return 0
 
         combined_actions = []

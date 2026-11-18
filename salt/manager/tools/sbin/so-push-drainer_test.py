@@ -199,6 +199,17 @@ class TestHelpers(DrainerTestCase):
         drainer._unlink(self.tmpdir, self.log)
         self.log.exception.assert_called_once()
 
+    def test_master_settling(self):
+        pidfile = os.path.join(self.tmpdir, 'salt-master.pid')
+        now = time.time()
+        with patch.object(drainer, 'MASTER_PIDFILE', pidfile):
+            self.assertFalse(drainer._master_settling(now))
+            self.write_json(self.tmpdir, 'salt-master.pid', '1100')
+            for age, settling in ((0, True), (drainer.MASTER_SETTLE_SECONDS - 1, True),
+                                  (drainer.MASTER_SETTLE_SECONDS, False), (-60, False)):
+                os.utime(pidfile, (now - age, now - age))
+                self.assertIs(drainer._master_settling(now), settling, age)
+
 
 class TestDispatch(DrainerTestCase):
 
@@ -475,6 +486,7 @@ class TestMain(DrainerTestCase):
             ('_load_push_cfg', {'side_effect': lambda: self.cfg}),
             ('_check_dispatched', {}),
             ('_targeted', {'side_effect': lambda actions, log: actions}),
+            ('_master_settling', {'return_value': False}),
         ):
             patcher = patch.object(drainer, name, **kwargs)
             setattr(self, name, patcher.start())
@@ -527,6 +539,16 @@ class TestMain(DrainerTestCase):
         self.intent('empty.json', actions=[{'state': 'soc'}])
         with patch.object(drainer.os, 'unlink', side_effect=OSError('busy')):
             self.assertEqual(drainer.main(), 0)
+
+    def test_holds_while_master_settling(self):
+        path = self.intent('pillar_soc.json')
+        self._master_settling.return_value = True
+        with patch.object(drainer, '_dispatch') as dispatch:
+            self.assertEqual(drainer.main(), 0)
+        dispatch.assert_not_called()
+        self._check_dispatched.assert_called_once()
+        self.assertTrue(os.path.exists(path))
+        self.assertIn('holding 1 intent(s)', self.logged('info'))
 
     def test_dispatch_failure_keeps_intents(self):
         path = self.intent('pillar_soc.json')
