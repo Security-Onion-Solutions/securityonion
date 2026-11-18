@@ -67,6 +67,8 @@ TEXT_LIMIT = 500
 # Lead-in salt puts on the comment of an orchestration step that raised.
 STEP_RAISED = 'An exception occurred in this state:'
 
+NO_RETURN = 'no return received'
+
 # salt-run --async reports the jid only in a log line (stderr by default).
 JID_RE = re.compile(r'salt/run/(\d{20})')
 
@@ -236,6 +238,10 @@ def _lookup_jid(jid, log):
 
 
 def _minion_failure(minion_ret):
+    # What salt.state records for a minion it stopped waiting on: no reply to a saltutil.find_job
+    # poll within gather_job_timeout, though the state run may still be queued or running.
+    if minion_ret == {}:
+        return NO_RETURN
     if isinstance(minion_ret, dict):
         return '; '.join(
             '{}: {}'.format(state.get('__id__', state_key), _trim(state.get('comment', '')))
@@ -298,11 +304,21 @@ def _failed_steps(ret):
     return steps
 
 
+def _lost_track(step):
+    changes = step.get('changes')
+    minion_rets = changes.get('ret') if isinstance(changes, dict) else None
+    if not isinstance(minion_rets, dict):
+        return False
+    failed = [text for text in map(_minion_failure, minion_rets.values()) if text]
+    return bool(failed) and all(text == NO_RETURN for text in failed)
+
+
 def _result_unknown(ret):
-    # A step that raised (e.g. salt-master restarted while it waited on a queued state run)
-    # never collected the minion's return, so the state run may still have completed.
+    # A step that raised (e.g. salt-master restarted while it waited on a queued state run) or
+    # stopped waiting never collected the minion's return, so the state run may still have completed.
     steps = _failed_steps(ret)
-    return bool(steps) and all(str(step.get('comment', '')).startswith(STEP_RAISED) for step in steps)
+    return bool(steps) and all(
+        str(step.get('comment', '')).startswith(STEP_RAISED) or _lost_track(step) for step in steps)
 
 
 def _recheck_delay(age):

@@ -88,6 +88,22 @@ RAISED_RET = _orch_ret(dict(REFRESH_STEP, **{
     },
 }), success=False)
 
+LOST_RET = _orch_ret(dict(REFRESH_STEP, **{
+    'salt_|-apply_soc_1_|-apply_soc_1_|-state': {
+        '__id__': 'apply_soc_1', 'result': False,
+        'changes': {'out': 'highstate', 'ret': {'manager_standalone': {}}},
+        'comment': 'Run failed on minions: manager_standalone',
+    },
+}), success=False)
+
+LOST_AND_FAILED_RET = _orch_ret({
+    'salt_|-apply_soc_1_|-apply_soc_1_|-state': {
+        '__id__': 'apply_soc_1', 'result': False,
+        'changes': {'out': 'highstate', 'ret': {'manager_standalone': {}, 'sensor1_sensor': [CONFLICT]}},
+        'comment': 'Run failed on minions: manager_standalone, sensor1_sensor',
+    },
+}, success=False)
+
 SUCCESS_RET = _orch_ret(dict(REFRESH_STEP, **{
     'salt_|-apply_telegraf_1_|-apply_telegraf_1_|-state': {
         '__id__': 'apply_telegraf_1', 'result': True,
@@ -276,6 +292,13 @@ class TestResults(DrainerTestCase):
         self.assertEqual(drainer._minion_failure('Rendering SLS failed'), 'Rendering SLS failed')
         self.assertEqual(drainer._minion_failure(True), '')
         self.assertEqual(drainer._minion_failure({'a': {'result': True}}), '')
+        self.assertEqual(drainer._minion_failure({}), drainer.NO_RETURN)
+
+    def test_orch_failures_lost(self):
+        self.assertEqual(drainer._orch_failures(LOST_RET), [
+            'apply_soc_1: Run failed on minions: manager_standalone',
+            'manager_standalone: no return received',
+        ])
 
     def test_orch_failures_conflict(self):
         failures = drainer._orch_failures(CONFLICT_RET)
@@ -319,7 +342,17 @@ class TestResults(DrainerTestCase):
 
     def test_result_unknown(self):
         self.assertTrue(drainer._result_unknown(RAISED_RET))
-        for ret in (CONFLICT_RET, STATE_FAIL_RET, SUCCESS_RET, ['No minions matched'], {MASTER: 'odd'},
+        self.assertTrue(drainer._result_unknown(LOST_RET))
+        changed = json.loads(json.dumps(LOST_RET))
+        changed[MASTER]['return']['data'][MASTER]['salt_|-apply_soc_1_|-apply_soc_1_|-state']['changes']['ret'][
+            'sensor1_sensor'] = {'file_|-a_|-a_|-managed': {'result': True, 'changes': {'diff': 'x'}}}
+        self.assertTrue(drainer._result_unknown(changed))
+        odd = _orch_ret({'salt_|-apply_soc_1_|-apply_soc_1_|-state': {
+            '__id__': 'apply_soc_1', 'result': False, 'changes': 'Run failed', 'comment': 'Run failed on minions',
+        }}, success=False)
+        self.assertFalse(drainer._result_unknown(odd))
+        for ret in (CONFLICT_RET, STATE_FAIL_RET, SUCCESS_RET, LOST_AND_FAILED_RET, ['No minions matched'],
+                    {MASTER: 'odd'},
                     {MASTER: {'return': {'data': {MASTER: ['Rendering SLS failed']}}, 'success': False}}):
             self.assertFalse(drainer._result_unknown(ret), ret)
         mixed = _orch_ret(dict(RAISED_RET[MASTER]['return']['data'][MASTER],
@@ -360,6 +393,21 @@ class TestResults(DrainerTestCase):
         self.assertIn('push result unknown jid=6_unknown', self.logged('warning'))
         self.assertIn('AuthenticationError: Authentication error occurred.', self.logged('warning'))
         self.assertNotIn('6_unknown', self.logged('error'))
+
+    def test_check_dispatched_lost(self):
+        now = time.time()
+        results = {'1_lost': LOST_RET, '2_lost_and_failed': LOST_AND_FAILED_RET}
+        paths = [self.record(jid, 60, now) for jid in results]
+        with patch.object(drainer, '_lookup_jid', side_effect=lambda jid, log: results[jid]):
+            drainer._check_dispatched(self.log, now)
+
+        for path in paths:
+            self.assertFalse(os.path.exists(path), path)
+        self.assertIn('push result unknown jid=1_lost', self.logged('warning'))
+        self.assertIn('manager_standalone: no return received', self.logged('warning'))
+        self.assertNotIn('1_lost', self.logged('error'))
+        self.assertIn('push failed jid=2_lost_and_failed', self.logged('error'))
+        self.assertIn('is running as PID 372218', self.logged('error'))
 
     def test_check_dispatched_survives_bad_result(self):
         now = time.time()
