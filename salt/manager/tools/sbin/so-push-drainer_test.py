@@ -34,6 +34,7 @@ JID = '20260930171554259426'
 ASYNC_STDERR = ('[WARNING ] Running in asynchronous mode. Results of this execution may be collected '
                 'by attaching to the master event bus or by examining the master job cache, if '
                 'configured. This execution is running under tag salt/run/{}\n'.format(JID))
+NOT_PENDING = ' and not G@first_highstate_pending:True'
 CONFLICT = ('The function "state.sls" is running as PID 372218 and was started at '
             '2026, Sep 30 17:15:40.466233 with jid 20260930171540466233')
 
@@ -490,8 +491,19 @@ class TestTargeted(DrainerTestCase):
         self.CkMinions = patcher.start()
         self.addCleanup(patcher.stop)
 
+    def test_skip_pending(self):
+        self.assertEqual(drainer._skip_pending({'state': 'soc', 'tgt': 'G@role:so-eval or G@role:so-manager'}),
+                         {'state': 'soc', 'tgt': '( G@role:so-eval or G@role:so-manager )' + NOT_PENDING})
+        self.assertEqual(drainer._skip_pending({'highstate': True, 'tgt': '*', 'tgt_type': 'compound'}),
+                         {'highstate': True, 'tgt': '( * )' + NOT_PENDING, 'tgt_type': 'compound'})
+        listed = {'state': 'soc', 'tgt': 'manager_manager', 'tgt_type': 'list'}
+        self.assertEqual(drainer._skip_pending(listed), listed)
+
     def test_drops_unmatched(self):
-        matches = {'G@role:so-sensor': ['sensor_sensor'], 'manager_manager': ['manager_manager']}
+        sensor = '( G@role:so-sensor )' + NOT_PENDING
+        heavynode = '( G@role:so-heavynode )' + NOT_PENDING
+        idh = '( G@role:so-idh )' + NOT_PENDING
+        matches = {sensor: ['sensor_sensor'], 'manager_manager': ['manager_manager']}
         self.ckminions.check_minions.side_effect = lambda tgt, tgt_type: {'minions': matches.get(tgt, [])}
         actions = [
             {'state': 'strelka', 'tgt': 'G@role:so-sensor'},
@@ -499,28 +511,27 @@ class TestTargeted(DrainerTestCase):
             {'highstate': True, 'tgt': 'G@role:so-idh'},
             {'state': 'soc', 'tgt': 'manager_manager', 'tgt_type': 'list'},
         ]
-        self.assertEqual(drainer._targeted(actions, self.log), [actions[0], actions[3]])
+        self.assertEqual(drainer._targeted(actions, self.log), [{'state': 'strelka', 'tgt': sensor}, actions[3]])
         self.CkMinions.assert_called_once()
         self.assertEqual([c.args for c in self.ckminions.check_minions.call_args_list], [
-            ('G@role:so-sensor', 'compound'), ('G@role:so-heavynode', 'compound'),
-            ('G@role:so-idh', 'compound'), ('manager_manager', 'list'),
+            (sensor, 'compound'), (heavynode, 'compound'), (idh, 'compound'), ('manager_manager', 'list'),
         ])
         info = self.logged('info')
-        self.assertIn('skipping suricata: no minions match tgt=G@role:so-heavynode', info)
-        self.assertIn('skipping highstate: no minions match tgt=G@role:so-idh', info)
+        self.assertIn('skipping suricata: no minions match tgt=' + heavynode, info)
+        self.assertIn('skipping highstate: no minions match tgt=' + idh, info)
         self.assertNotIn('strelka', info)
 
     def test_master_config_error_keeps_actions(self):
         actions = [{'state': 'soc', 'tgt': '*'}]
         with patch.object(drainer.salt.config, 'master_config', side_effect=OSError('no config')):
-            self.assertEqual(drainer._targeted(actions, self.log), actions)
+            self.assertEqual(drainer._targeted(actions, self.log), [{'state': 'soc', 'tgt': '( * )' + NOT_PENDING}])
         self.log.exception.assert_called_once()
         self.CkMinions.assert_not_called()
 
     def test_check_error_keeps_action(self):
         actions = [{'state': 'soc', 'tgt': 'G@role:'}]
         self.ckminions.check_minions.side_effect = RuntimeError('bad target')
-        self.assertEqual(drainer._targeted(actions, self.log), actions)
+        self.assertEqual(drainer._targeted(actions, self.log), [{'state': 'soc', 'tgt': '( G@role: )' + NOT_PENDING}])
         self.log.exception.assert_called_once()
 
 

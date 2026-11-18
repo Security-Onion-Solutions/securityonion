@@ -16,6 +16,7 @@ For each intent file under /opt/so/state/push_pending/*.json whose last_touch
 is older than debounce_seconds, this script:
   * concatenates the actions lists from every ready intent
   * dedupes by (state or __highstate__, tgt, tgt_type)
+  * narrows each target to minions that have completed a highstate
   * drops actions whose target matches no accepted minion (e.g. a role with no nodes yet)
   * holds everything for a later pass while salt-master has only just started
   * dispatches a single `salt-run state.orchestrate orch.push_batch --async`
@@ -57,6 +58,9 @@ MASTER_SETTLE_SECONDS = 45
 DISPATCHED_DIR = '/opt/so/state/push_dispatched'
 
 HIGHSTATE_SENTINEL = '__highstate__'
+
+# Grain written by setup and removed by salt.lasthighstate at the end of the node's first highstate.
+PENDING_GRAIN = 'first_highstate_pending'
 
 RESULT_CHECK_DELAY = 30
 RESULT_RECHECK_MAX = 300
@@ -126,9 +130,18 @@ def _dedupe_actions(actions):
     return deduped
 
 
+def _skip_pending(action):
+    """Narrows a compound target to minions that have completed a highstate. A newly accepted node matches
+    its role's targets before orch.deploy_newnode has highstated it, and a single state fails there."""
+    if action.get('tgt_type', 'compound') != 'compound':
+        return action
+    return dict(action, tgt='( {} ) and not G@{}:True'.format(action.get('tgt'), PENDING_GRAIN))
+
+
 def _targeted(actions, log):
     """Drops actions whose target matches no accepted minion (e.g. a role with no nodes yet), which
     the orchestration would otherwise report as failed with 'No minions responded'."""
+    actions = [_skip_pending(action) for action in actions]
     try:
         ckminions = salt.utils.minions.CkMinions(salt.config.master_config(MASTER_CONFIG))
     except Exception:
