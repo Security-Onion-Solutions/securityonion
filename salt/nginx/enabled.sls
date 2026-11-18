@@ -10,28 +10,24 @@
 {%   from 'docker/docker.map.jinja' import DOCKERMERGED %}
 {%   from 'nginx/map.jinja' import NGINXMERGED %}
 
+{%   if GLOBALS.role != 'so-fleet' %}
+{%     set container_config = 'so-nginx' %}
+{%   else %}
+{#     if this is an so-fleet node then we want to use the port bindings, custom bind mounts defined for fleet #}
+{%     set container_config = 'so-nginx-fleet-node' %}
+{%   endif %}
+
 include:
   - ca.trust
   - nginx.ssl
   - nginx.config
   - nginx.sostatus
 
-{%   if GLOBALS.role != 'so-fleet' %}
-{%     set container_config = 'so-nginx' %}
-make-rule-dir-nginx:
+fleet_beats_dir_nginx:
   file.directory:
-    - name: /nsm/rules
-    - user: socore
-    - group: socore
-    - recurse:
-      - user
-      - group
+    - name: /nsm/elastic-fleet/artifacts/beats
+    - makedirs: True
     - show_changes: False
-
-{%   else %}
-{#     if this is an so-fleet node then we want to use the port bindings, custom bind mounts defined for fleet #}
-{%     set container_config = 'so-nginx-fleet-node' %}
-{%   endif %}
 
 so-nginx:
   docker_container.running:
@@ -54,9 +50,9 @@ so-nginx:
       - /opt/so/log/nginx/:/var/log/nginx:rw
       - /opt/so/tmp/nginx/:/var/lib/nginx:rw
       - /opt/so/tmp/nginx/:/run:rw
-      - /nsm/elastic-fleet/so_agent-installers/:/opt/socore/html/packages
-      - /nsm/elastic-fleet/artifacts/:/opt/socore/html/artifacts 
+      - /nsm/elastic-fleet/artifacts/beats/:/opt/socore/elastic-artifacts/artifacts/beats:ro
       {% if GLOBALS.is_manager %}
+      - /nsm/elastic-fleet/so_agent-installers/:/opt/socore/html/packages
       - /etc/pki/managerssl.crt:/etc/pki/nginx/server.crt:ro
       - /etc/pki/managerssl.key:/etc/pki/nginx/server.key:ro
       # ATT&CK Navigator binds
@@ -64,7 +60,6 @@ so-nginx:
       - /opt/so/conf/navigator/config.json:/opt/socore/html/navigator/assets/config.json:ro
       - /nsm/repo:/opt/socore/html/repo:ro
       - /nsm/kernelrepo:/opt/socore/html/kernelrepo:ro
-      - /nsm/rules:/nsm/rules:ro
       {%   if NGINXMERGED.external_suricata %}
       - /opt/so/rules/nids/suri:/surirules:ro
       {%   endif %}
@@ -106,6 +101,7 @@ so-nginx:
       {% endif %}
     - require:
       - file: nginxconf
+      - file: fleet_beats_dir_nginx
       {% if GLOBALS.is_manager %}
       {%   if NGINXMERGED.ssl.replace_cert %}
       - file: managerssl_key
