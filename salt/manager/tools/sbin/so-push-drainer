@@ -16,6 +16,7 @@ For each intent file under /opt/so/state/push_pending/*.json whose last_touch
 is older than debounce_seconds, this script:
   * concatenates the actions lists from every ready intent
   * dedupes by (state or __highstate__, tgt, tgt_type)
+  * narrows each target to minions that have completed a highstate
   * drops actions whose target matches no accepted minion (e.g. a role with no nodes yet)
   * holds everything for a later pass while salt-master has only just started
   * dispatches a single `salt-run state.orchestrate orch.push_batch --async`
@@ -58,6 +59,9 @@ DISPATCHED_DIR = '/opt/so/state/push_dispatched'
 
 HIGHSTATE_SENTINEL = '__highstate__'
 
+# Grain written by setup and removed by salt.lasthighstate at the end of the node's first highstate.
+PENDING_GRAIN = 'first_highstate_pending'
+
 RESULT_CHECK_DELAY = 30
 RESULT_RECHECK_MAX = 300
 RESULT_MAX_AGE = 7200
@@ -66,6 +70,8 @@ TEXT_LIMIT = 500
 
 # Lead-in salt puts on the comment of an orchestration step that raised.
 STEP_RAISED = 'An exception occurred in this state:'
+
+NO_RETURN = 'no return received'
 
 # salt-run --async reports the jid only in a log line (stderr by default).
 JID_RE = re.compile(r'salt/run/(\d{20})')
@@ -124,9 +130,18 @@ def _dedupe_actions(actions):
     return deduped
 
 
+def _skip_pending(action):
+    """Narrows a compound target to minions that have completed a highstate. A newly accepted node matches
+    its role's targets before orch.deploy_newnode has highstated it, and a single state fails there."""
+    if action.get('tgt_type', 'compound') != 'compound':
+        return action
+    return dict(action, tgt='( {} ) and not G@{}:True'.format(action.get('tgt'), PENDING_GRAIN))
+
+
 def _targeted(actions, log):
     """Drops actions whose target matches no accepted minion (e.g. a role with no nodes yet), which
     the orchestration would otherwise report as failed with 'No minions responded'."""
+    actions = [_skip_pending(action) for action in actions]
     try:
         ckminions = salt.utils.minions.CkMinions(salt.config.master_config(MASTER_CONFIG))
     except Exception:
@@ -236,6 +251,10 @@ def _lookup_jid(jid, log):
 
 
 def _minion_failure(minion_ret):
+    # What salt.state records for a minion it stopped waiting on: no reply to a saltutil.find_job
+    # poll within gather_job_timeout, though the state run may still be queued or running.
+    if minion_ret == {}:
+        return NO_RETURN
     if isinstance(minion_ret, dict):
         return '; '.join(
             '{}: {}'.format(state.get('__id__', state_key), _trim(state.get('comment', '')))
@@ -298,11 +317,21 @@ def _failed_steps(ret):
     return steps
 
 
+def _lost_track(step):
+    changes = step.get('changes')
+    minion_rets = changes.get('ret') if isinstance(changes, dict) else None
+    if not isinstance(minion_rets, dict):
+        return False
+    failed = [text for text in map(_minion_failure, minion_rets.values()) if text]
+    return bool(failed) and all(text == NO_RETURN for text in failed)
+
+
 def _result_unknown(ret):
-    # A step that raised (e.g. salt-master restarted while it waited on a queued state run)
-    # never collected the minion's return, so the state run may still have completed.
+    # A step that raised (e.g. salt-master restarted while it waited on a queued state run) or
+    # stopped waiting never collected the minion's return, so the state run may still have completed.
     steps = _failed_steps(ret)
-    return bool(steps) and all(str(step.get('comment', '')).startswith(STEP_RAISED) for step in steps)
+    return bool(steps) and all(
+        str(step.get('comment', '')).startswith(STEP_RAISED) or _lost_track(step) for step in steps)
 
 
 def _recheck_delay(age):

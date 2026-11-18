@@ -34,6 +34,7 @@ JID = '20260930171554259426'
 ASYNC_STDERR = ('[WARNING ] Running in asynchronous mode. Results of this execution may be collected '
                 'by attaching to the master event bus or by examining the master job cache, if '
                 'configured. This execution is running under tag salt/run/{}\n'.format(JID))
+NOT_PENDING = ' and not G@first_highstate_pending:True'
 CONFLICT = ('The function "state.sls" is running as PID 372218 and was started at '
             '2026, Sep 30 17:15:40.466233 with jid 20260930171540466233')
 
@@ -87,6 +88,22 @@ RAISED_RET = _orch_ret(dict(REFRESH_STEP, **{
         '__id__': 'apply_hydra_1', 'result': False, 'changes': {}, 'comment': RAISED,
     },
 }), success=False)
+
+LOST_RET = _orch_ret(dict(REFRESH_STEP, **{
+    'salt_|-apply_soc_1_|-apply_soc_1_|-state': {
+        '__id__': 'apply_soc_1', 'result': False,
+        'changes': {'out': 'highstate', 'ret': {'manager_standalone': {}}},
+        'comment': 'Run failed on minions: manager_standalone',
+    },
+}), success=False)
+
+LOST_AND_FAILED_RET = _orch_ret({
+    'salt_|-apply_soc_1_|-apply_soc_1_|-state': {
+        '__id__': 'apply_soc_1', 'result': False,
+        'changes': {'out': 'highstate', 'ret': {'manager_standalone': {}, 'sensor1_sensor': [CONFLICT]}},
+        'comment': 'Run failed on minions: manager_standalone, sensor1_sensor',
+    },
+}, success=False)
 
 SUCCESS_RET = _orch_ret(dict(REFRESH_STEP, **{
     'salt_|-apply_telegraf_1_|-apply_telegraf_1_|-state': {
@@ -276,6 +293,13 @@ class TestResults(DrainerTestCase):
         self.assertEqual(drainer._minion_failure('Rendering SLS failed'), 'Rendering SLS failed')
         self.assertEqual(drainer._minion_failure(True), '')
         self.assertEqual(drainer._minion_failure({'a': {'result': True}}), '')
+        self.assertEqual(drainer._minion_failure({}), drainer.NO_RETURN)
+
+    def test_orch_failures_lost(self):
+        self.assertEqual(drainer._orch_failures(LOST_RET), [
+            'apply_soc_1: Run failed on minions: manager_standalone',
+            'manager_standalone: no return received',
+        ])
 
     def test_orch_failures_conflict(self):
         failures = drainer._orch_failures(CONFLICT_RET)
@@ -319,7 +343,17 @@ class TestResults(DrainerTestCase):
 
     def test_result_unknown(self):
         self.assertTrue(drainer._result_unknown(RAISED_RET))
-        for ret in (CONFLICT_RET, STATE_FAIL_RET, SUCCESS_RET, ['No minions matched'], {MASTER: 'odd'},
+        self.assertTrue(drainer._result_unknown(LOST_RET))
+        changed = json.loads(json.dumps(LOST_RET))
+        changed[MASTER]['return']['data'][MASTER]['salt_|-apply_soc_1_|-apply_soc_1_|-state']['changes']['ret'][
+            'sensor1_sensor'] = {'file_|-a_|-a_|-managed': {'result': True, 'changes': {'diff': 'x'}}}
+        self.assertTrue(drainer._result_unknown(changed))
+        odd = _orch_ret({'salt_|-apply_soc_1_|-apply_soc_1_|-state': {
+            '__id__': 'apply_soc_1', 'result': False, 'changes': 'Run failed', 'comment': 'Run failed on minions',
+        }}, success=False)
+        self.assertFalse(drainer._result_unknown(odd))
+        for ret in (CONFLICT_RET, STATE_FAIL_RET, SUCCESS_RET, LOST_AND_FAILED_RET, ['No minions matched'],
+                    {MASTER: 'odd'},
                     {MASTER: {'return': {'data': {MASTER: ['Rendering SLS failed']}}, 'success': False}}):
             self.assertFalse(drainer._result_unknown(ret), ret)
         mixed = _orch_ret(dict(RAISED_RET[MASTER]['return']['data'][MASTER],
@@ -360,6 +394,21 @@ class TestResults(DrainerTestCase):
         self.assertIn('push result unknown jid=6_unknown', self.logged('warning'))
         self.assertIn('AuthenticationError: Authentication error occurred.', self.logged('warning'))
         self.assertNotIn('6_unknown', self.logged('error'))
+
+    def test_check_dispatched_lost(self):
+        now = time.time()
+        results = {'1_lost': LOST_RET, '2_lost_and_failed': LOST_AND_FAILED_RET}
+        paths = [self.record(jid, 60, now) for jid in results]
+        with patch.object(drainer, '_lookup_jid', side_effect=lambda jid, log: results[jid]):
+            drainer._check_dispatched(self.log, now)
+
+        for path in paths:
+            self.assertFalse(os.path.exists(path), path)
+        self.assertIn('push result unknown jid=1_lost', self.logged('warning'))
+        self.assertIn('manager_standalone: no return received', self.logged('warning'))
+        self.assertNotIn('1_lost', self.logged('error'))
+        self.assertIn('push failed jid=2_lost_and_failed', self.logged('error'))
+        self.assertIn('is running as PID 372218', self.logged('error'))
 
     def test_check_dispatched_survives_bad_result(self):
         now = time.time()
@@ -442,8 +491,19 @@ class TestTargeted(DrainerTestCase):
         self.CkMinions = patcher.start()
         self.addCleanup(patcher.stop)
 
+    def test_skip_pending(self):
+        self.assertEqual(drainer._skip_pending({'state': 'soc', 'tgt': 'G@role:so-eval or G@role:so-manager'}),
+                         {'state': 'soc', 'tgt': '( G@role:so-eval or G@role:so-manager )' + NOT_PENDING})
+        self.assertEqual(drainer._skip_pending({'highstate': True, 'tgt': '*', 'tgt_type': 'compound'}),
+                         {'highstate': True, 'tgt': '( * )' + NOT_PENDING, 'tgt_type': 'compound'})
+        listed = {'state': 'soc', 'tgt': 'manager_manager', 'tgt_type': 'list'}
+        self.assertEqual(drainer._skip_pending(listed), listed)
+
     def test_drops_unmatched(self):
-        matches = {'G@role:so-sensor': ['sensor_sensor'], 'manager_manager': ['manager_manager']}
+        sensor = '( G@role:so-sensor )' + NOT_PENDING
+        heavynode = '( G@role:so-heavynode )' + NOT_PENDING
+        idh = '( G@role:so-idh )' + NOT_PENDING
+        matches = {sensor: ['sensor_sensor'], 'manager_manager': ['manager_manager']}
         self.ckminions.check_minions.side_effect = lambda tgt, tgt_type: {'minions': matches.get(tgt, [])}
         actions = [
             {'state': 'strelka', 'tgt': 'G@role:so-sensor'},
@@ -451,28 +511,27 @@ class TestTargeted(DrainerTestCase):
             {'highstate': True, 'tgt': 'G@role:so-idh'},
             {'state': 'soc', 'tgt': 'manager_manager', 'tgt_type': 'list'},
         ]
-        self.assertEqual(drainer._targeted(actions, self.log), [actions[0], actions[3]])
+        self.assertEqual(drainer._targeted(actions, self.log), [{'state': 'strelka', 'tgt': sensor}, actions[3]])
         self.CkMinions.assert_called_once()
         self.assertEqual([c.args for c in self.ckminions.check_minions.call_args_list], [
-            ('G@role:so-sensor', 'compound'), ('G@role:so-heavynode', 'compound'),
-            ('G@role:so-idh', 'compound'), ('manager_manager', 'list'),
+            (sensor, 'compound'), (heavynode, 'compound'), (idh, 'compound'), ('manager_manager', 'list'),
         ])
         info = self.logged('info')
-        self.assertIn('skipping suricata: no minions match tgt=G@role:so-heavynode', info)
-        self.assertIn('skipping highstate: no minions match tgt=G@role:so-idh', info)
+        self.assertIn('skipping suricata: no minions match tgt=' + heavynode, info)
+        self.assertIn('skipping highstate: no minions match tgt=' + idh, info)
         self.assertNotIn('strelka', info)
 
     def test_master_config_error_keeps_actions(self):
         actions = [{'state': 'soc', 'tgt': '*'}]
         with patch.object(drainer.salt.config, 'master_config', side_effect=OSError('no config')):
-            self.assertEqual(drainer._targeted(actions, self.log), actions)
+            self.assertEqual(drainer._targeted(actions, self.log), [{'state': 'soc', 'tgt': '( * )' + NOT_PENDING}])
         self.log.exception.assert_called_once()
         self.CkMinions.assert_not_called()
 
     def test_check_error_keeps_action(self):
         actions = [{'state': 'soc', 'tgt': 'G@role:'}]
         self.ckminions.check_minions.side_effect = RuntimeError('bad target')
-        self.assertEqual(drainer._targeted(actions, self.log), actions)
+        self.assertEqual(drainer._targeted(actions, self.log), [{'state': 'soc', 'tgt': '( G@role: )' + NOT_PENDING}])
         self.log.exception.assert_called_once()
 
 
