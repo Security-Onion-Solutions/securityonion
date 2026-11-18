@@ -2,6 +2,9 @@
 {% set actions = salt['pillar.get']('actions', []) %}
 {% set BATCH = AUTOAPPLY.batch %}
 {% set BATCH_WAIT = AUTOAPPLY.batch_wait %}
+{# Must exceed gather_job_timeout (10s): at the 5s default, one saltutil.find_job reply slower than that abandons
+   a queued state run, and a master slow to accept the publish gets it a second time. #}
+{% set STATE_TIMEOUT = 60 %}
 
 {# queue must be a top-level salt.state arg (kwarg is ignored); an int is max_queue and still fails on conflict #}
 {# refresh_pillar doubles as the reachability check: minions take up to ~22s to rejoin a restarted master's
@@ -26,6 +29,7 @@ apply_highstate_{{ loop.index }}:
     - batch: {{ action.get('batch', BATCH) }}
     - batch_wait: {{ action.get('batch_wait', BATCH_WAIT) }}
     - queue: True
+    - timeout: {{ STATE_TIMEOUT }}
     - require:
       - salt: refresh_pillar_{{ loop.index }}
 {%   else %}
@@ -38,6 +42,7 @@ apply_{{ action.state | replace('.', '_') }}_{{ loop.index }}:
     - batch: {{ action.get('batch', BATCH) }}
     - batch_wait: {{ action.get('batch_wait', BATCH_WAIT) }}
     - queue: True
+    - timeout: {{ STATE_TIMEOUT }}
     - require:
       - salt: refresh_pillar_{{ loop.index }}
 {%   endif %}
