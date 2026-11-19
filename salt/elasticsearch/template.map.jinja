@@ -11,7 +11,8 @@
 {% set DATA_RETENTION_METHOD = ELASTICSEARCHMERGED.data_retention_method %}
 
 {% set PILLAR_GLOBAL_OVERRIDES = {} %}
-{% set ES_INDEX_PILLAR = salt['pillar.get']('elasticsearch:index_settings', {}) %}
+{# merge into a copy: pillar.get returns a live reference and this map pops/updates ES_INDEX_PILLAR #}
+{% set ES_INDEX_PILLAR = salt['defaults.merge'](salt['pillar.get']('elasticsearch:index_settings', {}), {}, in_place=False) %}
 {% if ES_INDEX_PILLAR.global_overrides is defined %}
 {%   set PILLAR_GLOBAL_OVERRIDES = ES_INDEX_PILLAR.pop('global_overrides') %}
 {% endif %}
