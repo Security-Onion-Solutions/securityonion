@@ -514,12 +514,68 @@ class TestTargeted(DrainerTestCase):
         self.assertEqual(drainer._targeted(actions, self.log), [{'state': 'strelka', 'tgt': sensor}, actions[3]])
         self.CkMinions.assert_called_once()
         self.assertEqual([c.args for c in self.ckminions.check_minions.call_args_list], [
-            (sensor, 'compound'), (heavynode, 'compound'), (idh, 'compound'), ('manager_manager', 'list'),
+            (sensor, 'compound'), (heavynode, 'compound'), ('G@role:so-heavynode', 'compound'),
+            (idh, 'compound'), ('G@role:so-idh', 'compound'), ('manager_manager', 'list'),
         ])
         info = self.logged('info')
-        self.assertIn('skipping suricata: no minions match tgt=' + heavynode, info)
-        self.assertIn('skipping highstate: no minions match tgt=' + idh, info)
+        self.assertIn('skipping suricata: no minions match tgt=G@role:so-heavynode', info)
+        self.assertIn('skipping highstate: no minions match tgt=G@role:so-idh', info)
         self.assertNotIn('strelka', info)
+
+    def test_skips_pending_only(self):
+        narrowed = '( G@role:so-sensor )' + NOT_PENDING
+        matches = {'G@role:so-sensor': ['sensor_new'], narrowed: []}
+        self.ckminions.check_minions.side_effect = lambda tgt, tgt_type: {'minions': matches.get(tgt, [])}
+        self.assertEqual(drainer._targeted([{'state': 'suricata', 'tgt': 'G@role:so-sensor'}], self.log), [])
+        self.assertEqual([c.args for c in self.ckminions.check_minions.call_args_list], [
+            (narrowed, 'compound'), ('G@role:so-sensor', 'compound'),
+        ])
+        self.assertIn('skipping suricata: only nodes still in their first highstate match tgt=G@role:so-sensor; '
+                      'their first highstate applies the change', self.logged('info'))
+
+    def test_skips_pending_only_highstate(self):
+        narrowed = '( * )' + NOT_PENDING
+        matches = {'*': ['sensor_new']}
+        self.ckminions.check_minions.side_effect = lambda tgt, tgt_type: {'minions': matches.get(tgt, [])}
+        self.assertEqual(drainer._targeted([{'highstate': True, 'tgt': '*'}], self.log), [])
+        self.assertEqual([c.args for c in self.ckminions.check_minions.call_args_list], [
+            (narrowed, 'compound'), ('*', 'compound'),
+        ])
+        info = self.logged('info')
+        self.assertIn('skipping highstate: only nodes still in their first highstate match tgt=*; '
+                      'their first highstate applies the change', info)
+        self.assertNotIn('error', info.lower())
+
+    def test_list_target_unmatched(self):
+        self.ckminions.check_minions.return_value = {'minions': []}
+        actions = [{'state': 'soc', 'tgt': 'gone_manager', 'tgt_type': 'list'}]
+        self.assertEqual(drainer._targeted(actions, self.log), [])
+        self.assertEqual([c.args for c in self.ckminions.check_minions.call_args_list], [
+            ('gone_manager', 'list'), ('gone_manager', 'list'),
+        ])
+        info = self.logged('info')
+        self.assertIn('skipping soc: no minions match tgt=gone_manager', info)
+        self.assertNotIn('first highstate', info)
+
+    def test_narrowed_match_checks_once(self):
+        self.ckminions.check_minions.return_value = {'minions': ['sensor_sensor']}
+        actions = [{'state': 'suricata', 'tgt': 'G@role:so-sensor'}]
+        self.assertEqual(drainer._targeted(actions, self.log),
+                         [{'state': 'suricata', 'tgt': '( G@role:so-sensor )' + NOT_PENDING}])
+        self.ckminions.check_minions.assert_called_once()
+
+    def test_original_check_error_keeps_action(self):
+        narrowed = '( G@role:so-sensor )' + NOT_PENDING
+        results = {narrowed: {'minions': []}}
+
+        def check(tgt, tgt_type):
+            if tgt not in results:
+                raise RuntimeError('boom')
+            return results[tgt]
+        self.ckminions.check_minions.side_effect = check
+        actions = [{'state': 'suricata', 'tgt': 'G@role:so-sensor'}]
+        self.assertEqual(drainer._targeted(actions, self.log), [{'state': 'suricata', 'tgt': narrowed}])
+        self.log.exception.assert_called_once()
 
     def test_master_config_error_keeps_actions(self):
         actions = [{'state': 'soc', 'tgt': '*'}]

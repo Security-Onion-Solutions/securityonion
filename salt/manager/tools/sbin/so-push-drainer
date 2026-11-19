@@ -18,6 +18,7 @@ is older than debounce_seconds, this script:
   * dedupes by (state or __highstate__, tgt, tgt_type)
   * narrows each target to minions that have completed a highstate
   * drops actions whose target matches no accepted minion (e.g. a role with no nodes yet)
+    or only nodes still in their first highstate
   * holds everything for a later pass while salt-master has only just started
   * dispatches a single `salt-run state.orchestrate orch.push_batch --async`
     with the deduped actions list passed as pillar kwargs
@@ -140,29 +141,41 @@ def _skip_pending(action):
 
 def _targeted(actions, log):
     """Drops actions whose target matches no accepted minion (e.g. a role with no nodes yet), which
-    the orchestration would otherwise report as failed with 'No minions responded'."""
-    actions = [_skip_pending(action) for action in actions]
+    the orchestration would otherwise report as failed with 'No minions responded'. An action that matches
+    only nodes still in their first highstate is dropped too: that highstate applies the current config."""
     try:
         ckminions = salt.utils.minions.CkMinions(salt.config.master_config(MASTER_CONFIG))
     except Exception:
         log.exception('cannot load master config; dispatching without checking targets')
-        return actions
+        return [_skip_pending(action) for action in actions]
     targeted = []
     for action in actions:
+        narrowed = _skip_pending(action)
+        tgt_type = action.get('tgt_type', 'compound')
         try:
-            matched = ckminions.check_minions(action['tgt'], action.get('tgt_type', 'compound')).get('minions')
+            matched = ckminions.check_minions(narrowed['tgt'], tgt_type).get('minions')
+            pending_only = not matched and ckminions.check_minions(action['tgt'], tgt_type).get('minions')
         except Exception:
-            log.exception('cannot resolve tgt=%s; dispatching it anyway', action.get('tgt'))
+            log.exception('cannot resolve tgt=%s; dispatching it anyway', narrowed.get('tgt'))
             matched = True
         if matched:
-            targeted.append(action)
+            targeted.append(narrowed)
+            continue
+        name = 'highstate' if action.get('highstate') else action.get('state')
+        if pending_only:
+            log.info('skipping %s: only nodes still in their first highstate match tgt=%s; '
+                     'their first highstate applies the change', name, action['tgt'])
         else:
-            log.info('skipping %s: no minions match tgt=%s',
-                     'highstate' if action.get('highstate') else action.get('state'), action.get('tgt'))
+            log.info('skipping %s: no minions match tgt=%s', name, action['tgt'])
     return targeted
 
 
 def _master_settling(now):
+    """True while salt-master started less than MASTER_SETTLE_SECONDS ago. salt-master writes its pidfile
+    when it starts, so the file's mtime is the master's start time. Minions take up to ~22s to rejoin a
+    restarted master's publisher and a job published before then reaches nobody, so dispatch is held;
+    held intents stay in push_pending and are drained on a later pass. A missing or unreadable pidfile
+    returns False: the master is then normally not running, so _dispatch fails and keeps the intents."""
     try:
         age = now - os.path.getmtime(MASTER_PIDFILE)
     except OSError:
