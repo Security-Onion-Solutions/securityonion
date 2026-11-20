@@ -135,8 +135,6 @@ mount_shared_blobs() {
     if [ -z "$source_repo" ] || [ "$source_repo" == "$target_repo" ]; then
       continue
     fi
-    # 201 means the blob is linked into the target repository. A 202 starts an
-    # empty upload session that the registry's upload purge removes on its own.
     code=$(curl -sk --connect-timeout 5 --max-time 30 -o /dev/null -w '%{http_code}' -X POST \
       "https://${host}:5000/v2/${IMAGEREPO}/${target_repo}/blobs/uploads/?mount=${digest}&from=${IMAGEREPO}/${source_repo}" \
       2>> "$log_file")
@@ -156,6 +154,208 @@ record_shared_blobs() {
       blob_repo["$digest"]=$target_repo
     fi
   done < <(manifest_blob_digests "$manifest_file")
+}
+
+verify_trusted_image() {
+  local i=$1
+  local IMAGE_LOG=$SIGNPATH/$i.verify.log
+
+  local image sig_url
+  if [[ " ${IMAGES_USING_ES_VERSION[*]} " =~ [[:space:]]${i}[[:space:]] ]]; then
+    # this is an es container so use version defined in elasticsearch defaults.yaml
+    local UPDATE_DIR='/tmp/sogh/securityonion'
+    if [ ! -d "$UPDATE_DIR" ]; then
+      UPDATE_DIR=/securityonion
+    fi
+    local v1=0
+    local v2=0
+    if [[ -f "$UPDATE_DIR/salt/elasticsearch/defaults.yaml" ]]; then
+      v1=$(egrep " +version: " "$UPDATE_DIR/salt/elasticsearch/defaults.yaml" | awk -F: '{print $2}' | tr -d '[:space:]')
+    fi
+    if [[ -f "$DEFAULT_SALT_DIR/salt/elasticsearch/defaults.yaml" ]]; then
+      v2=$(egrep " +version: " "$DEFAULT_SALT_DIR/salt/elasticsearch/defaults.yaml" | awk -F: '{print $2}' | tr -d '[:space:]')
+    fi
+    local highest_es_version=$(compare_es_versions "$v1" "$v2")
+    image=$i:$highest_es_version$IMAGE_TAG_SUFFIX
+    sig_url=https://sigs.securityonion.net/es-$highest_es_version/$image.sig
+  else
+    # this is not an es container so use the so version for the version
+    image=$i:$VERSION$IMAGE_TAG_SUFFIX
+    sig_url=https://sigs.securityonion.net/$VERSION/$image.sig
+  fi
+
+  local image_name=$i
+  local image_tag=${image#*:}
+  local token_file=$SIGNPATH/$image.token
+  local auth_file=$SIGNPATH/$image.auth
+  local manifest_file=$SIGNPATH/$image.manifest
+  local config_file=$SIGNPATH/$image.config
+
+  local manifest_url=https://$CONTAINER_REGISTRY/v2/$IMAGEREPO/$image_name/manifests/$image_tag
+  local manifest_accept='application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.manifest.v1+json'
+
+  # Probe anonymously first; only fetch a token on a 401 challenge, since a
+  # pull-through mirror may serve /v2/ without auth and have no /token at all.
+  : >"$auth_file"
+  local challenge
+  challenge=$(curl -sS --retry 5 --retry-delay 60 --retry-all-errors -o /dev/null -D - \
+    -H "Accept: $manifest_accept" "$manifest_url" 2>>"$IMAGE_LOG" |
+    tr -d '\r' | grep -i '^www-authenticate: *bearer ')
+  if [ -n "$challenge" ]; then
+    local realm service scope
+    realm=$(sed -n 's/.*realm="\([^"]*\)".*/\1/p' <<<"$challenge")
+    service=$(sed -n 's/.*service="\([^"]*\)".*/\1/p' <<<"$challenge")
+    scope=$(sed -n 's/.*scope="\([^"]*\)".*/\1/p' <<<"$challenge")
+    if [ -z "$realm" ]; then
+      echo "Unable to parse registry auth challenge for $image" >>"$IMAGE_LOG" 2>&1
+      return 1
+    fi
+    run_check_net_err \
+      "curl --fail --retry 5 --retry-delay 60 --retry-all-errors -sSL -G --data-urlencode 'service=$service' --data-urlencode 'scope=$scope' '$realm' -o $token_file" \
+      "Could not obtain registry token for $image, please ensure connectivity to $CONTAINER_REGISTRY" \
+      noretry >>"$IMAGE_LOG" 2>&1
+    local registry_token
+    registry_token=$(jq -r '.token // .access_token // empty' "$token_file")
+    rm -f "$token_file"
+    if [ -z "$registry_token" ] || [ "$registry_token" = "null" ]; then
+      echo "Unable to parse registry token for $image" >>"$IMAGE_LOG" 2>&1
+      return 1
+    fi
+    printf 'Authorization: Bearer %s\n' "$registry_token" >"$auth_file"
+    unset registry_token
+  fi
+
+  run_check_net_err \
+    "curl --fail --retry 5 --retry-delay 60 --retry-all-errors -sSL -H '@$auth_file' -H 'Accept: $manifest_accept' -o $manifest_file $manifest_url" \
+    "Could not fetch manifest for $image, please ensure connectivity to $CONTAINER_REGISTRY" \
+    noretry >>"$IMAGE_LOG" 2>&1
+  if [ ! -s "$manifest_file" ]; then
+    echo "Unable to inspect $image" >>"$IMAGE_LOG" 2>&1
+    return 1
+  fi
+
+  local manifest_digest
+  manifest_digest=$(sha256sum "$manifest_file" | awk '{print $1}')
+  local config_digest
+  config_digest=$(jq -r '.config.digest // empty' "$manifest_file")
+  if [ -z "$manifest_digest" ] || [ -z "$config_digest" ] || [ "$config_digest" = "null" ]; then
+    echo "Unable to inspect $image" >>"$IMAGE_LOG" 2>&1
+    return 1
+  fi
+
+  run_check_net_err \
+    "curl --fail --retry 5 --retry-delay 60 --retry-all-errors -sSL -H '@$auth_file' -o $config_file https://$CONTAINER_REGISTRY/v2/$IMAGEREPO/$image_name/blobs/$config_digest" \
+    "Could not fetch image config for $image, please ensure connectivity to $CONTAINER_REGISTRY" \
+    noretry >>"$IMAGE_LOG" 2>&1
+  rm -f "$auth_file"
+  if [ ! -s "$config_file" ]; then
+    echo "Unable to inspect $image" >>"$IMAGE_LOG" 2>&1
+    return 1
+  fi
+
+  # Get signature
+  run_check_net_err \
+    "curl --retry 5 --retry-delay 60 -A '$CURLTYPE/$CURRENTVERSION/$OS/$(uname -r)' $sig_url --output $SIGNPATH/$image.sig" \
+    "Could not pull signature file for $image, please ensure connectivity to https://sigs.securityonion.net " \
+    noretry >>"$IMAGE_LOG" 2>&1
+
+  # .txt layout must stay byte-identical to the old `docker inspect | jq` output
+  # because the gpg signature is verified against it.
+  local VERIFIED_REF="${CONTAINER_REGISTRY}/${IMAGEREPO}/${image_name}@sha256:${manifest_digest}"
+  printf '%s\n' "\"${VERIFIED_REF}\"" >"$SIGNPATH/$image.txt"
+  if ! jq ".created, .rootfs.diff_ids" "$config_file" >>"$SIGNPATH/$image.txt"; then
+    echo "Unable to inspect $image" >>"$IMAGE_LOG" 2>&1
+    return 1
+  fi
+  local GPGTEST
+  GPGTEST=$(gpg --verify "$SIGNPATH/$image.sig" "$SIGNPATH/$image.txt" 2>&1)
+  if [[ $? -ne 0 ]]; then
+    echo "There is a problem downloading the $image image. Details: " >>"$IMAGE_LOG" 2>&1
+    echo "" >>"$IMAGE_LOG" 2>&1
+    echo $GPGTEST >>"$IMAGE_LOG" 2>&1
+    return 1
+  fi
+
+  printf '%s\n%s\n%s\n' "$image" "$VERIFIED_REF" "$manifest_file" >"$SIGNPATH/$i.ref"
+  return 0
+}
+
+copy_verified_image() {
+  local i=$1
+  local IMAGE_LOG=$SIGNPATH/$i.copy.log
+  local image VERIFIED_REF manifest_file
+  {
+    read -r image
+    read -r VERIFIED_REF
+    read -r manifest_file
+  } <"$SIGNPATH/$i.ref"
+
+  local host
+  host=$(registry_host)
+  mount_shared_blobs "$host" "$i" "$manifest_file" "$IMAGE_LOG" pushed_blob_repo
+  # imagetools create, not docker push: Docker 29's containerd store cannot push a
+  # freshly pulled image. GODEBUG prefix keeps http2client=0 local (#16342).
+  retry 3 10 "GODEBUG=\"${GODEBUG:+${GODEBUG},}http2client=0\" docker buildx imagetools create --tag ${host}:5000/${IMAGEREPO}/${image} ${VERIFIED_REF}" >>"$IMAGE_LOG" 2>&1 || {
+    echo "Unable to copy $image to embedded registry" >>"$IMAGE_LOG" 2>&1
+    return 1
+  }
+  return 0
+}
+
+pull_verified_image() {
+  local i=$1
+  local IMAGE_LOG=$SIGNPATH/$i.pull.log
+  local image
+  read -r image <"$SIGNPATH/$i.ref"
+
+  local host
+  host=$(registry_host)
+  retry 3 10 "docker pull ${host}:5000/${IMAGEREPO}/${image}" >>"$IMAGE_LOG" 2>&1 || {
+    echo "Unable to pull $image from embedded registry" >>"$IMAGE_LOG" 2>&1
+    return 1
+  }
+  return 0
+}
+
+log_downloading() {
+  echo "Downloading $1" >> "$LOG_FILE" 2>&1
+}
+
+# Only wait on PIDs started here: soup may run its own background jobs in this
+# shell (e.g. the grid highstate), and a bare `wait` would block on those.
+launch_pool() {
+  local func=$1
+  local phase=$2
+  local jobs=$3
+  local hook=$4
+  shift 4
+  local -a active=() pids=() still=()
+  local img pid
+  for img in "$@"; do
+    if [ -n "$hook" ]; then
+      "$hook" "$img"
+    fi
+    (
+      ("$func" "$img") >>"$SIGNPATH/$img.$phase.log" 2>&1
+      echo $? >"$SIGNPATH/$img.$phase.rc"
+    ) &
+    pid=$!
+    pids+=("$pid")
+    active+=("$pid")
+    while [ ${#active[@]} -ge "$jobs" ]; do
+      wait -n "${active[@]}" 2>/dev/null || true
+      still=()
+      for pid in "${active[@]}"; do
+        if kill -0 "$pid" 2>/dev/null; then
+          still+=("$pid")
+        fi
+      done
+      active=("${still[@]}")
+    done
+  done
+  if [ ${#pids[@]} -gt 0 ]; then
+    wait "${pids[@]}" 2>/dev/null || true
+  fi
 }
 
 update_docker_containers() {
@@ -211,144 +411,102 @@ update_docker_containers() {
   
   local -A pushed_blob_repo=()
 
-  # Download the containers from the interwebs
-  for i in "${TRUSTED_CONTAINERS[@]}"
-  do
-    if [ -z "$PROGRESS_CALLBACK" ]; then
-      echo "Downloading $i" >> "$LOG_FILE" 2>&1
-    else
-      $PROGRESS_CALLBACK $i
-    fi
+  local jobs=${SO_IMAGE_PARALLEL:-4}
+  if ! [[ "$jobs" =~ ^[1-9][0-9]*$ ]]; then
+    jobs=4
+  fi
 
-    if [[ " ${IMAGES_USING_ES_VERSION[*]} " =~ [[:space:]]${i}[[:space:]] ]]; then
-      # this is an es container so use version defined in elasticsearch defaults.yaml
-      local UPDATE_DIR='/tmp/sogh/securityonion'
-      if [ ! -d "$UPDATE_DIR" ]; then
-        UPDATE_DIR=/securityonion
-      fi
-      local v1=0
-      local v2=0
-      if [[ -f "$UPDATE_DIR/salt/elasticsearch/defaults.yaml" ]]; then
-        v1=$(egrep " +version: " "$UPDATE_DIR/salt/elasticsearch/defaults.yaml" | awk -F: '{print $2}' | tr -d '[:space:]')
-      fi
-      if [[ -f "$DEFAULT_SALT_DIR/salt/elasticsearch/defaults.yaml" ]]; then
-        v2=$(egrep " +version: " "$DEFAULT_SALT_DIR/salt/elasticsearch/defaults.yaml" | awk -F: '{print $2}' | tr -d '[:space:]')
-      fi
-      local highest_es_version=$(compare_es_versions "$v1" "$v2")
-      local image=$i:$highest_es_version$IMAGE_TAG_SUFFIX
-      local sig_url=https://sigs.securityonion.net/es-$highest_es_version/$image.sig
-    else
-      # this is not an es container so use the so version for the version
-      local image=$i:$VERSION$IMAGE_TAG_SUFFIX
-      local sig_url=https://sigs.securityonion.net/$VERSION/$image.sig
-    fi
+  # Nothing is copied or pulled unless every image verified (a bad signature
+  # publishes nothing). The hook runs in the parent: it mutates caller globals.
+  local progress_hook
+  if [ -z "$PROGRESS_CALLBACK" ]; then
+    progress_hook=log_downloading
+  else
+    progress_hook=$PROGRESS_CALLBACK
+  fi
+  launch_pool verify_trusted_image verify "$jobs" "$progress_hook" "${TRUSTED_CONTAINERS[@]}"
 
-    local image_name=$i
-    local image_tag=${image#*:}
-    local token_file=$SIGNPATH/$image.token
-    local auth_file=$SIGNPATH/$image.auth
-    local manifest_file=$SIGNPATH/$image.manifest
-    local config_file=$SIGNPATH/$image.config
-
-    local manifest_url=https://$CONTAINER_REGISTRY/v2/$IMAGEREPO/$image_name/manifests/$image_tag
-    local manifest_accept='application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.manifest.v1+json'
-
-    # Probe anonymously first; only fetch a token on a 401 challenge, since a
-    # pull-through mirror may serve /v2/ without auth and have no /token at all.
-    : > "$auth_file"
-    local challenge
-    challenge=$(curl -sS --retry 5 --retry-delay 60 --retry-all-errors -o /dev/null -D - \
-      -H "Accept: $manifest_accept" "$manifest_url" 2>> "$LOG_FILE" \
-      | tr -d '\r' | grep -i '^www-authenticate: *bearer ')
-    if [ -n "$challenge" ]; then
-      local realm service scope
-      realm=$(sed -n 's/.*realm="\([^"]*\)".*/\1/p' <<< "$challenge")
-      service=$(sed -n 's/.*service="\([^"]*\)".*/\1/p' <<< "$challenge")
-      scope=$(sed -n 's/.*scope="\([^"]*\)".*/\1/p' <<< "$challenge")
-      if [ -z "$realm" ]; then
-        echo "Unable to parse registry auth challenge for $image" >> "$LOG_FILE" 2>&1
-        exit 1
-      fi
-      run_check_net_err \
-      "curl --fail --retry 5 --retry-delay 60 --retry-all-errors -sSL -G --data-urlencode 'service=$service' --data-urlencode 'scope=$scope' '$realm' -o $token_file" \
-      "Could not obtain registry token for $image, please ensure connectivity to $CONTAINER_REGISTRY" \
-      noretry >> "$LOG_FILE" 2>&1
-      local registry_token
-      registry_token=$(jq -r '.token // .access_token // empty' "$token_file")
-      rm -f "$token_file"
-      if [ -z "$registry_token" ] || [ "$registry_token" = "null" ]; then
-        echo "Unable to parse registry token for $image" >> "$LOG_FILE" 2>&1
-        exit 1
-      fi
-      printf 'Authorization: Bearer %s\n' "$registry_token" > "$auth_file"
-      unset registry_token
-    fi
-
-    run_check_net_err \
-    "curl --fail --retry 5 --retry-delay 60 --retry-all-errors -sSL -H '@$auth_file' -H 'Accept: $manifest_accept' -o $manifest_file $manifest_url" \
-    "Could not fetch manifest for $image, please ensure connectivity to $CONTAINER_REGISTRY" \
-    noretry >> "$LOG_FILE" 2>&1
-    if [ ! -s "$manifest_file" ]; then
-      echo "Unable to inspect $image" >> "$LOG_FILE" 2>&1
-      exit 1
-    fi
-
-    local manifest_digest
-    manifest_digest=$(sha256sum "$manifest_file" | awk '{print $1}')
-    local config_digest
-    config_digest=$(jq -r '.config.digest // empty' "$manifest_file")
-    if [ -z "$manifest_digest" ] || [ -z "$config_digest" ] || [ "$config_digest" = "null" ]; then
-      echo "Unable to inspect $image" >> "$LOG_FILE" 2>&1
-      exit 1
-    fi
-
-    run_check_net_err \
-    "curl --fail --retry 5 --retry-delay 60 --retry-all-errors -sSL -H '@$auth_file' -o $config_file https://$CONTAINER_REGISTRY/v2/$IMAGEREPO/$image_name/blobs/$config_digest" \
-    "Could not fetch image config for $image, please ensure connectivity to $CONTAINER_REGISTRY" \
-    noretry >> "$LOG_FILE" 2>&1
-    rm -f "$auth_file"
-    if [ ! -s "$config_file" ]; then
-      echo "Unable to inspect $image" >> "$LOG_FILE" 2>&1
-      exit 1
-    fi
-
-    # Get signature
-    run_check_net_err \
-    "curl --retry 5 --retry-delay 60 -A '$CURLTYPE/$CURRENTVERSION/$OS/$(uname -r)' $sig_url --output $SIGNPATH/$image.sig" \
-    "Could not pull signature file for $image, please ensure connectivity to https://sigs.securityonion.net " \
-    noretry >> "$LOG_FILE" 2>&1
-
-    # .txt layout must stay byte-identical to the old `docker inspect | jq` output
-    # because the gpg signature is verified against it.
-    local VERIFIED_REF="${CONTAINER_REGISTRY}/${IMAGEREPO}/${image_name}@sha256:${manifest_digest}"
-    printf '%s\n' "\"${VERIFIED_REF}\"" > "$SIGNPATH/$image.txt"
-    if ! jq ".created, .rootfs.diff_ids" "$config_file" >> "$SIGNPATH/$image.txt"; then
-      echo "Unable to inspect $image" >> "$LOG_FILE" 2>&1
-      exit 1
-    fi
-    GPGTEST=$(gpg --verify $SIGNPATH/$image.sig $SIGNPATH/$image.txt 2>&1)
-    if [[ $? -eq 0 ]]; then
-      if [[ -z "$SKIP_TAGPUSH" ]]; then
-        local host
-        host=$(registry_host)
-        mount_shared_blobs "$host" "$image_name" "$manifest_file" "$LOG_FILE" pushed_blob_repo
-        # imagetools create, not docker push: Docker 29's containerd store cannot push a
-        # freshly pulled image. GODEBUG prefix keeps http2client=0 local (#16342).
-        retry 3 10 "GODEBUG=\"${GODEBUG:+${GODEBUG},}http2client=0\" docker buildx imagetools create --tag ${host}:5000/${IMAGEREPO}/${image} ${VERIFIED_REF}" >> "$LOG_FILE" 2>&1 || {
-          echo "Unable to copy $image to embedded registry" >> "$LOG_FILE" 2>&1
-          exit 1
-        }
-        record_shared_blobs "$image_name" "$manifest_file" pushed_blob_repo
-        retry 3 10 "docker pull ${host}:5000/${IMAGEREPO}/${image}" >> "$LOG_FILE" 2>&1 || {
-          echo "Unable to pull $image from embedded registry" >> "$LOG_FILE" 2>&1
-          exit 1
-        }
-      fi
-    else
-      echo "There is a problem downloading the $image image. Details: " >> "$LOG_FILE" 2>&1 
-      echo "" >> "$LOG_FILE" 2>&1 
-      echo $GPGTEST >> "$LOG_FILE" 2>&1 
-      exit 1
+  local verify_failed=0
+  for i in "${TRUSTED_CONTAINERS[@]}"; do
+    cat "$SIGNPATH/$i.verify.log" >> "$LOG_FILE" 2>/dev/null
+    if [ "$(cat "$SIGNPATH/$i.verify.rc" 2>/dev/null)" != "0" ]; then
+      verify_failed=1
     fi
   done
+  if [ "$verify_failed" -ne 0 ]; then
+    exit 1
+  fi
+
+  if [[ -n "$SKIP_TAGPUSH" ]]; then
+    return 0
+  fi
+
+  local -A ref_manifest=()
+  for i in "${TRUSTED_CONTAINERS[@]}"; do
+    { read -r _; read -r _; read -r ref_manifest["$i"]; } < "$SIGNPATH/$i.ref"
+  done
+
+  # Copy in waves: a wave's images share no unstored blob, so each layer is
+  # downloaded once. The parent must record the blob map (subshells can't).
+  local -a remaining=("${TRUSTED_CONTAINERS[@]}")
+  local wave_no=0
+  while [ ${#remaining[@]} -gt 0 ]; do
+    wave_no=$((wave_no + 1))
+    local -a wave=() deferred=()
+    local -A claimed=()
+    local img digest conflict
+    for img in "${remaining[@]}"; do
+      conflict=0
+      while IFS= read -r digest; do
+        [ -z "$digest" ] && continue
+        [ -n "${pushed_blob_repo[$digest]:-}" ] && continue
+        if [ -n "${claimed[$digest]:-}" ]; then
+          conflict=1
+          break
+        fi
+      done < <(manifest_blob_digests "${ref_manifest[$img]}")
+      if [ "$conflict" -eq 0 ]; then
+        wave+=("$img")
+        while IFS= read -r digest; do
+          [ -n "$digest" ] && claimed["$digest"]=1
+        done < <(manifest_blob_digests "${ref_manifest[$img]}")
+      else
+        deferred+=("$img")
+      fi
+    done
+    if [ ${#wave[@]} -eq 0 ]; then
+      wave=("${remaining[0]}")
+      deferred=("${remaining[@]:1}")
+    fi
+
+    echo "Copy wave $wave_no: ${wave[*]}" >> "$LOG_FILE" 2>&1
+    launch_pool copy_verified_image copy "$jobs" "" "${wave[@]}"
+
+    local wave_failed=0
+    for img in "${wave[@]}"; do
+      cat "$SIGNPATH/$img.copy.log" >> "$LOG_FILE" 2>/dev/null
+      if [ "$(cat "$SIGNPATH/$img.copy.rc" 2>/dev/null)" != "0" ]; then
+        wave_failed=1
+      fi
+    done
+    if [ "$wave_failed" -ne 0 ]; then
+      exit 1
+    fi
+    for img in "${wave[@]}"; do
+      record_shared_blobs "$img" "${ref_manifest[$img]}" pushed_blob_repo
+    done
+    remaining=("${deferred[@]}")
+  done
+
+  launch_pool pull_verified_image pull "$jobs" "" "${TRUSTED_CONTAINERS[@]}"
+  local pull_failed=0
+  for i in "${TRUSTED_CONTAINERS[@]}"; do
+    cat "$SIGNPATH/$i.pull.log" >> "$LOG_FILE" 2>/dev/null
+    if [ "$(cat "$SIGNPATH/$i.pull.rc" 2>/dev/null)" != "0" ]; then
+      pull_failed=1
+    fi
+  done
+  if [ "$pull_failed" -ne 0 ]; then
+    exit 1
+  fi
 }
