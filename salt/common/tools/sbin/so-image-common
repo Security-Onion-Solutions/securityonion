@@ -114,6 +114,50 @@ pull_from_embedded_registry() {
   docker pull "${host}:5000/${IMAGEREPO}/${image_name}:${image_tag}"
 }
 
+manifest_blob_digests() {
+  jq -r '(.config.digest // empty), (.layers[]? | .digest)' "$1"
+}
+
+# Registries link blobs per repo and buildx cannot mount across registries, so
+# pre-link shared layers or every image re-downloads them from ghcr.io.
+mount_shared_blobs() {
+  local host=$1
+  local target_repo=$2
+  local manifest_file=$3
+  local log_file=$4
+  local -n blob_repo=$5
+  local digest source_repo code
+  while IFS= read -r digest; do
+    if [ -z "$digest" ]; then
+      continue
+    fi
+    source_repo="${blob_repo[$digest]:-}"
+    if [ -z "$source_repo" ] || [ "$source_repo" == "$target_repo" ]; then
+      continue
+    fi
+    # 201 means the blob is linked into the target repository. A 202 starts an
+    # empty upload session that the registry's upload purge removes on its own.
+    code=$(curl -sk --connect-timeout 5 --max-time 30 -o /dev/null -w '%{http_code}' -X POST \
+      "https://${host}:5000/v2/${IMAGEREPO}/${target_repo}/blobs/uploads/?mount=${digest}&from=${IMAGEREPO}/${source_repo}" \
+      2>> "$log_file")
+    if [ "$code" != "201" ]; then
+      echo "Could not pre-link $digest from $source_repo into $target_repo (HTTP ${code:-error}), buildx will download it" >> "$log_file"
+    fi
+  done < <(manifest_blob_digests "$manifest_file")
+}
+
+record_shared_blobs() {
+  local target_repo=$1
+  local manifest_file=$2
+  local -n blob_repo=$3
+  local digest
+  while IFS= read -r digest; do
+    if [ -n "$digest" ] && [ -z "${blob_repo[$digest]:-}" ]; then
+      blob_repo["$digest"]=$target_repo
+    fi
+  done < <(manifest_blob_digests "$manifest_file")
+}
+
 update_docker_containers() {
   local CURLTYPE=$1
   local IMAGE_TAG_SUFFIX=$2
@@ -165,6 +209,8 @@ update_docker_containers() {
     grep -q "so-logscan" "$STATUS_CONF" && TRUSTED_CONTAINERS+=("so-logscan")
   fi
   
+  local -A pushed_blob_repo=()
+
   # Download the containers from the interwebs
   for i in "${TRUSTED_CONTAINERS[@]}"
   do
@@ -285,12 +331,14 @@ update_docker_containers() {
       if [[ -z "$SKIP_TAGPUSH" ]]; then
         local host
         host=$(registry_host)
+        mount_shared_blobs "$host" "$image_name" "$manifest_file" "$LOG_FILE" pushed_blob_repo
         # imagetools create, not docker push: Docker 29's containerd store cannot push a
         # freshly pulled image. GODEBUG prefix keeps http2client=0 local (#16342).
         retry 3 10 "GODEBUG=\"${GODEBUG:+${GODEBUG},}http2client=0\" docker buildx imagetools create --tag ${host}:5000/${IMAGEREPO}/${image} ${VERIFIED_REF}" >> "$LOG_FILE" 2>&1 || {
           echo "Unable to copy $image to embedded registry" >> "$LOG_FILE" 2>&1
           exit 1
         }
+        record_shared_blobs "$image_name" "$manifest_file" pushed_blob_repo
         retry 3 10 "docker pull ${host}:5000/${IMAGEREPO}/${image}" >> "$LOG_FILE" 2>&1 || {
           echo "Unable to pull $image from embedded registry" >> "$LOG_FILE" 2>&1
           exit 1
