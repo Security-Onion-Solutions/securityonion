@@ -79,6 +79,41 @@ container_list() {
   fi
 }
 
+registry_host() {
+  if [ -z "$HOSTNAME" ]; then
+    HOSTNAME=$(hostname)
+  fi
+  printf '%s' "$HOSTNAME"
+}
+
+local_registry_image_present() {
+  local image_name=$1
+  local image_tag=$2
+  local host
+  host=$(registry_host)
+  docker images --format '{{.Repository}}:{{.Tag}}' | grep -qx "${host}:5000/${IMAGEREPO}/${image_name}:${image_tag}"
+}
+
+registry_has_image() {
+  local image_name=$1
+  local image_tag=$2
+  local host
+  host=$(registry_host)
+
+  curl -sk --fail --max-time 10 \
+    -H "Accept: application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.index.v1+json" \
+    -o /dev/null \
+    "https://${host}:5000/v2/${IMAGEREPO}/${image_name}/manifests/${image_tag}"
+}
+
+pull_from_embedded_registry() {
+  local image_name=$1
+  local image_tag=$2
+  local host
+  host=$(registry_host)
+  docker pull "${host}:5000/${IMAGEREPO}/${image_name}:${image_tag}"
+}
+
 update_docker_containers() {
   local CURLTYPE=$1
   local IMAGE_TAG_SUFFIX=$2
@@ -161,54 +196,103 @@ update_docker_containers() {
       local image=$i:$VERSION$IMAGE_TAG_SUFFIX
       local sig_url=https://sigs.securityonion.net/$VERSION/$image.sig
     fi
-    # Pull down the trusted docker image
+
+    local image_name=$i
+    local image_tag=${image#*:}
+    local token_file=$SIGNPATH/$image.token
+    local auth_file=$SIGNPATH/$image.auth
+    local manifest_file=$SIGNPATH/$image.manifest
+    local config_file=$SIGNPATH/$image.config
+
+    local manifest_url=https://$CONTAINER_REGISTRY/v2/$IMAGEREPO/$image_name/manifests/$image_tag
+    local manifest_accept='application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.manifest.v1+json'
+
+    # Probe anonymously first; only fetch a token on a 401 challenge, since a
+    # pull-through mirror may serve /v2/ without auth and have no /token at all.
+    : > "$auth_file"
+    local challenge
+    challenge=$(curl -sS --retry 5 --retry-delay 60 --retry-all-errors -o /dev/null -D - \
+      -H "Accept: $manifest_accept" "$manifest_url" 2>> "$LOG_FILE" \
+      | tr -d '\r' | grep -i '^www-authenticate: *bearer ')
+    if [ -n "$challenge" ]; then
+      local realm service scope
+      realm=$(sed -n 's/.*realm="\([^"]*\)".*/\1/p' <<< "$challenge")
+      service=$(sed -n 's/.*service="\([^"]*\)".*/\1/p' <<< "$challenge")
+      scope=$(sed -n 's/.*scope="\([^"]*\)".*/\1/p' <<< "$challenge")
+      if [ -z "$realm" ]; then
+        echo "Unable to parse registry auth challenge for $image" >> "$LOG_FILE" 2>&1
+        exit 1
+      fi
+      run_check_net_err \
+      "curl --fail --retry 5 --retry-delay 60 --retry-all-errors -sSL -G --data-urlencode 'service=$service' --data-urlencode 'scope=$scope' '$realm' -o $token_file" \
+      "Could not obtain registry token for $image, please ensure connectivity to $CONTAINER_REGISTRY" \
+      noretry >> "$LOG_FILE" 2>&1
+      local registry_token
+      registry_token=$(jq -r '.token // .access_token // empty' "$token_file")
+      rm -f "$token_file"
+      if [ -z "$registry_token" ] || [ "$registry_token" = "null" ]; then
+        echo "Unable to parse registry token for $image" >> "$LOG_FILE" 2>&1
+        exit 1
+      fi
+      printf 'Authorization: Bearer %s\n' "$registry_token" > "$auth_file"
+      unset registry_token
+    fi
+
     run_check_net_err \
-    "docker pull $CONTAINER_REGISTRY/$IMAGEREPO/$image" \
-    "Could not pull $image, please ensure connectivity to $CONTAINER_REGISTRY" >> "$LOG_FILE" 2>&1
+    "curl --fail --retry 5 --retry-delay 60 --retry-all-errors -sSL -H '@$auth_file' -H 'Accept: $manifest_accept' -o $manifest_file $manifest_url" \
+    "Could not fetch manifest for $image, please ensure connectivity to $CONTAINER_REGISTRY" \
+    noretry >> "$LOG_FILE" 2>&1
+    if [ ! -s "$manifest_file" ]; then
+      echo "Unable to inspect $image" >> "$LOG_FILE" 2>&1
+      exit 1
+    fi
+
+    local manifest_digest
+    manifest_digest=$(sha256sum "$manifest_file" | awk '{print $1}')
+    local config_digest
+    config_digest=$(jq -r '.config.digest // empty' "$manifest_file")
+    if [ -z "$manifest_digest" ] || [ -z "$config_digest" ] || [ "$config_digest" = "null" ]; then
+      echo "Unable to inspect $image" >> "$LOG_FILE" 2>&1
+      exit 1
+    fi
+
+    run_check_net_err \
+    "curl --fail --retry 5 --retry-delay 60 --retry-all-errors -sSL -H '@$auth_file' -o $config_file https://$CONTAINER_REGISTRY/v2/$IMAGEREPO/$image_name/blobs/$config_digest" \
+    "Could not fetch image config for $image, please ensure connectivity to $CONTAINER_REGISTRY" \
+    noretry >> "$LOG_FILE" 2>&1
+    rm -f "$auth_file"
+    if [ ! -s "$config_file" ]; then
+      echo "Unable to inspect $image" >> "$LOG_FILE" 2>&1
+      exit 1
+    fi
 
     # Get signature
     run_check_net_err \
     "curl --retry 5 --retry-delay 60 -A '$CURLTYPE/$CURRENTVERSION/$OS/$(uname -r)' $sig_url --output $SIGNPATH/$image.sig" \
     "Could not pull signature file for $image, please ensure connectivity to https://sigs.securityonion.net " \
     noretry >> "$LOG_FILE" 2>&1
-    # Dump our hash values
-    DOCKERINSPECT=$(docker inspect $CONTAINER_REGISTRY/$IMAGEREPO/$image)
-       
-    echo "$DOCKERINSPECT" | jq ".[0].RepoDigests[] | select(. | contains(\"$CONTAINER_REGISTRY\"))" > $SIGNPATH/$image.txt
-    echo "$DOCKERINSPECT" | jq ".[0].Created, .[0].RootFS.Layers" >> $SIGNPATH/$image.txt
-        
-    if [[ $? -ne 0 ]]; then
-      echo "Unable to inspect $image" >> "$LOG_FILE" 2>&1 
+
+    # .txt layout must stay byte-identical to the old `docker inspect | jq` output
+    # because the gpg signature is verified against it.
+    local VERIFIED_REF="${CONTAINER_REGISTRY}/${IMAGEREPO}/${image_name}@sha256:${manifest_digest}"
+    printf '%s\n' "\"${VERIFIED_REF}\"" > "$SIGNPATH/$image.txt"
+    if ! jq ".created, .rootfs.diff_ids" "$config_file" >> "$SIGNPATH/$image.txt"; then
+      echo "Unable to inspect $image" >> "$LOG_FILE" 2>&1
       exit 1
     fi
     GPGTEST=$(gpg --verify $SIGNPATH/$image.sig $SIGNPATH/$image.txt 2>&1)
     if [[ $? -eq 0 ]]; then
       if [[ -z "$SKIP_TAGPUSH" ]]; then
-        # Tag it with the new registry destination
-        if [ -z "$HOSTNAME" ]; then
-          HOSTNAME=$(hostname)
-        fi
-        docker tag $CONTAINER_REGISTRY/$IMAGEREPO/$image $HOSTNAME:5000/$IMAGEREPO/$image >> "$LOG_FILE" 2>&1 || {
-          echo "Unable to tag $image" >> "$LOG_FILE" 2>&1
-          exit 1
-        }
-        # Push to the embedded registry via a registry-to-registry copy. Avoids
-        # `docker push`, which on Docker 29.x with the containerd image store
-        # represents freshly-pulled images as an index whose layer content
-        # isn't reachable through the push path. The local `docker tag` above
-        # is preserved so so-image-pull's `:5000` existence check still works.
-        # Pin to the digest already gpg-verified above so we copy exactly the
-        # bytes we approved.
-        local VERIFIED_REF
-        VERIFIED_REF=$(echo "$DOCKERINSPECT" | jq -r ".[0].RepoDigests[] | select(. | contains(\"$CONTAINER_REGISTRY\"))" | head -n 1)
-        if [ -z "$VERIFIED_REF" ] || [ "$VERIFIED_REF" = "null" ]; then
-          echo "Unable to determine verified digest for $image" >> "$LOG_FILE" 2>&1
-          exit 1
-        fi
+        local host
+        host=$(registry_host)
         # imagetools create, not docker push: Docker 29's containerd store cannot push a
         # freshly pulled image. GODEBUG prefix keeps http2client=0 local (#16342).
-        retry 3 10 "GODEBUG=\"${GODEBUG:+${GODEBUG},}http2client=0\" docker buildx imagetools create --tag $HOSTNAME:5000/$IMAGEREPO/$image $VERIFIED_REF" >> "$LOG_FILE" 2>&1 || {
+        retry 3 10 "GODEBUG=\"${GODEBUG:+${GODEBUG},}http2client=0\" docker buildx imagetools create --tag ${host}:5000/${IMAGEREPO}/${image} ${VERIFIED_REF}" >> "$LOG_FILE" 2>&1 || {
           echo "Unable to copy $image to embedded registry" >> "$LOG_FILE" 2>&1
+          exit 1
+        }
+        retry 3 10 "docker pull ${host}:5000/${IMAGEREPO}/${image}" >> "$LOG_FILE" 2>&1 || {
+          echo "Unable to pull $image from embedded registry" >> "$LOG_FILE" 2>&1
           exit 1
         }
       fi
