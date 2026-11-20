@@ -1222,6 +1222,7 @@ add_detection_runtime_fields() {
 ### 3.5.0 Scripts ###
 up_to_3.5.0() {
   remove_localrules_portgroup
+  remove_auto_apply_batch_wait
 
   INSTALLEDVERSION=3.5.0
 }
@@ -1238,8 +1239,26 @@ remove_localrules_portgroup() {
   done
 }
 
+remove_auto_apply_batch_wait() {
+  local pillar_file
+
+  for pillar_file in /opt/so/saltstack/local/pillar/salt/{soc,adv}_salt.sls; do
+    grep -qs batch_wait "$pillar_file" || continue
+    so-yaml.py get -r "$pillar_file" salt.auto_apply.batch_wait >/dev/null 2>&1 || continue
+    echo "Removing salt.auto_apply.batch_wait from $pillar_file."
+    if ! so-yaml.py remove "$pillar_file" salt.auto_apply.batch_wait; then
+      FINAL_MESSAGE_QUEUE+=("WARNING: Unable to remove the unused salt.auto_apply.batch_wait setting from $pillar_file. It has no effect and can be removed manually:")
+      FINAL_MESSAGE_QUEUE+=("    - sudo so-yaml.py remove $pillar_file salt.auto_apply.batch_wait")
+    fi
+  done
+}
+
 post_to_3.5.0() {
   telegraf_repair
+  # ensure manager has new version of socloud.conf
+  if [[ $SALT_CLOUD_CONFIGURED == true ]]; then
+    salt-call state.apply salt.cloud.config concurrent=True || FINAL_MESSAGE_QUEUE+=("WARNING: Unable to update the salt-cloud profile. Run: sudo salt-call state.apply salt.cloud.config")
+  fi
 
   set_postversion 3.5.0
 }
@@ -2414,7 +2433,7 @@ while getopts ":b:f:y" opt; do
     b )
       BATCHSIZE="$OPTARG"
       # Accept either a plain count (e.g. 5) or a percentage (e.g. 25%); passed through
-      # to so-soup-grid-highstate --batch, which salt's batch/batch_wait accepts in both forms.
+      # to so-soup-grid-highstate --batch, which salt's batch accepts in both forms.
       if ! [[ "$BATCHSIZE" =~ ^[1-9][0-9]*%?$ ]]; then
         echo "Batch size must be a number greater than 0, optionally with a trailing % (e.g. 5 or 25%)."
         exit 1
