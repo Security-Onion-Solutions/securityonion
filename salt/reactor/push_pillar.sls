@@ -117,7 +117,7 @@ def _app_from_setting(setting_id):
 
 def _node_actions(entry, node_id):
     # Copy the app's mapped actions but narrow each one to the single node.
-    # Preserves the state/highstate selection and any batch/batch_wait overrides.
+    # Preserves the state/highstate selection and any batch override.
     # The app's own target is kept so the state is not applied to a node that does not
     # run the app (e.g. an elasticsearch setting saved for a sensor fails to render there).
     actions = []

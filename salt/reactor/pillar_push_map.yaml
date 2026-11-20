@@ -3,7 +3,8 @@
 #
 # One pillar directory can map to multiple (state, tgt) actions.
 # tgt is a raw salt compound expression. tgt_type is always "compound".
-# Per-action `batch` / `batch_wait` override the orch defaults (10% / 15s).
+# so-push-drainer keeps pushes for nodes still in their first highstate and applies them after it completes.
+# Per-action `batch` overrides the orch default (10%).
 # An action with `highstate: True` triggers state.highstate instead of
 # state.apply -- see salt/orch/push_batch.sls.
 #
@@ -98,7 +99,7 @@ elasticfleet:
 # global: fanout to a fleetwide highstate. The global pillar (soc_global.sls)
 # carries cross-cutting settings (pipeline, url_base, imagerepo, mdengine, ...)
 # that are consumed by virtually every state, so a targeted re-apply isn't
-# meaningful. The drainer's batch/batch_wait throttling controls blast radius.
+# meaningful. The drainer's batch throttling controls blast radius.
 global:
   - highstate: True
     tgt: '*'
