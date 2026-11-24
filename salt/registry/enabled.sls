@@ -18,7 +18,7 @@ include:
 # Install the registry container
 so-dockerregistry:
   docker_container.running:
-    - image: ghcr.io/security-onion-solutions/registry:3.1.1
+    - image: ghcr.io/security-onion-solutions/registry:3.1.2
     # Intentionally `always`-- registry is critical and must
     # come back up even if it was manually stopped.
     - restart_policy: always
