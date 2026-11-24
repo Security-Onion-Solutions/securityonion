@@ -7,7 +7,7 @@
 # Two branches, keyed on node_id:
 #   A) node_id populated -> the change is scoped to that one minion. Look up the
 #      app in pillar_push_map.yaml and write an intent that runs the app's mapped
-#      state(s) targeted to just that node.
+#      state(s) on just that node, and only if the node is in the app's target.
 #   B) node_id empty -> grid-wide app change. Look up the app in
 #      pillar_push_map.yaml and write an intent with the entry's actions as-is.
 #
@@ -116,15 +116,17 @@ def _app_from_setting(setting_id):
 
 
 def _node_actions(entry, node_id):
-    # Copy the app's mapped actions but retarget each one to the single node.
+    # Copy the app's mapped actions but narrow each one to the single node.
     # Preserves the state/highstate selection and any batch/batch_wait overrides.
+    # The app's own target is kept so the state is not applied to a node that does not
+    # run the app (e.g. an elasticsearch setting saved for a sensor fails to render there).
     actions = []
     for action in entry:
         if not isinstance(action, dict):
             continue
         node_action = dict(action)
-        node_action['tgt'] = node_id
-        node_action['tgt_type'] = 'glob'
+        node_action['tgt'] = 'L@{} and ( {} )'.format(node_id, action.get('tgt', '*'))
+        node_action['tgt_type'] = 'compound'
         actions.append(node_action)
     return actions
 
@@ -138,6 +140,7 @@ def run():
     # top level so the reactor is robust to either shape.
     event = data.get('data', data)  # noqa: F821 -- data provided by reactor
     setting_id = event.get('setting_id', '')
+    audit_id = event.get('id')
     node_id = (event.get('node_id') or '').strip()
 
     app = _app_from_setting(setting_id)
@@ -150,8 +153,8 @@ def run():
     if not entry:
         LOG.warning(
             'push_pillar: app "%s" is not in pillar_push_map.yaml; change will be '
-            'picked up at the next scheduled highstate (setting_id=%s)',
-            app, setting_id,
+            'picked up at the next scheduled highstate (setting_id=%s audit_id=%s)',
+            app, setting_id, audit_id,
         )
         return {}
 
@@ -165,12 +168,12 @@ def run():
             'node_{}_{}'.format(node_id, app), actions,
             'audit:{}@{}'.format(setting_id, node_id),
         )
-        LOG.info('push_pillar: per-node intent updated for %s on %s (setting_id=%s)',
-                 app, node_id, setting_id)
+        LOG.info('push_pillar: per-node intent updated for %s on %s (setting_id=%s audit_id=%s)',
+                 app, node_id, setting_id, audit_id)
         return {}
 
     # Branch B: grid-wide app change -> use the map entry's actions as-is.
     actions = list(entry)  # copy to avoid mutating the cache
     _write_intent('pillar_{}'.format(app), actions, 'audit:{}'.format(setting_id))
-    LOG.info('push_pillar: app intent updated for %s (setting_id=%s)', app, setting_id)
+    LOG.info('push_pillar: app intent updated for %s (setting_id=%s audit_id=%s)', app, setting_id, audit_id)
     return {}

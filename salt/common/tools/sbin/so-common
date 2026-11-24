@@ -656,6 +656,108 @@ set_version() {
 	fi
 }
 
+so_telegraf_output() {
+	local defaultsfile="${DEFAULT_SALT_DIR}/salt/telegraf/defaults.yaml"
+	local output
+
+	output=$(lookup_pillar output telegraf) || return 1
+	if [ -z "$output" ]; then
+		if [ ! -f "$defaultsfile" ]; then
+			echo "Could not find $defaultsfile" >&2
+			return 1
+		fi
+		output=$(grep -E "^  output: " "$defaultsfile" | awk -F: '{print $2}' | tr -d '[:space:]')
+	fi
+	echo "${output^^}"
+}
+
+so_telegraf_pg_check() {
+	local app="$1"
+	local databases role_ok
+
+	if ! docker_check_running postgres; then
+		echo "so-postgres is not running. Run $app on the manager." >&2
+		return 1
+	fi
+	if ! databases=$(docker exec so-postgres psql -U postgres -lqt 2>/dev/null); then
+		echo "Unable to list the so-postgres databases." >&2
+		return 1
+	fi
+	if ! echo "$databases" | cut -d\| -f1 | grep -qw so_telegraf; then
+		echo "Database so_telegraf not found. Is telegraf.output set to POSTGRES or BOTH?" >&2
+		return 1
+	fi
+	if ! role_ok=$(docker exec so-postgres psql -U postgres -tAc "SELECT rolcanlogin AND NOT (rolsuper OR rolcreatedb OR rolcreaterole OR rolreplication OR rolbypassrls) FROM pg_roles WHERE rolname = 'so_maint_telegraf'" 2>/dev/null); then
+		echo "Unable to query the so-postgres roles." >&2
+		return 1
+	fi
+	if [ -z "$role_ok" ]; then
+		echo "The so_maint_telegraf role is missing; run a highstate." >&2
+		return 1
+	elif [ "$role_ok" != t ]; then
+		echo "The so_maint_telegraf role is misconfigured; run a highstate." >&2
+		return 1
+	fi
+}
+
+so_telegraf_psql() {
+	local app="$1"
+	local sql="$2"
+
+	docker exec -e PGOPTIONS="-c application_name=${app} -c default_transaction_read_only=on -c client_min_messages=error" \
+		so-postgres psql -U so_maint_telegraf -d so_telegraf -v ON_ERROR_STOP=1 -At -F '|' -c "$sql"
+}
+
+# Prints one stream|current|then line per data stream, in bytes summed across hosts. current is
+# each host's newest size in the past 4 hours; then is that host's newest size in the window
+# [now - start, now - stop), or its current size when it has none there, so a host missing from the
+# window adds no growth. Empty output means the window has no rows at all. Values over 15 digits
+# (1 PB) are skipped so the sums here and in the callers stay far below the 64-bit limit; such a
+# value can only come from a forged Telegraf writer.
+so_es_index_size_growth() {
+	local app="$1"
+	local start="$2"
+	local stop="$3"
+	local relkind
+
+	relkind=$(so_telegraf_psql "$app" "SELECT c.relkind FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'telegraf' AND c.relname = 'elasticsearch_index_size'") || return 1
+	[[ "$relkind" == "r" || "$relkind" == "p" ]] || return 0
+
+	so_telegraf_psql "$app" "$(cat <<EOF
+WITH sizes AS (
+  SELECT d.tag_id, d.time, f.key AS stream, f.value::bigint AS bytes
+  FROM telegraf.elasticsearch_index_size d
+  CROSS JOIN LATERAL pg_catalog.jsonb_each_text(d.fields) f
+  WHERE d.time >= now() - interval '${start}'
+    AND f.key ~ '^[^|"''[:space:][:cntrl:]]+$'
+    AND pg_catalog.strpos(f.key, pg_catalog.chr(92)) = 0
+    AND f.value ~ '^[0-9]{1,15}$'
+),
+cur AS (
+  SELECT DISTINCT ON (tag_id, stream) tag_id, stream, bytes
+  FROM sizes
+  WHERE time >= now() - interval '4 hours'
+  ORDER BY tag_id, stream, time DESC
+),
+past AS (
+  SELECT DISTINCT ON (tag_id, stream) tag_id, stream, bytes
+  FROM sizes
+  WHERE time < now() - interval '${stop}'
+  ORDER BY tag_id, stream, time DESC
+)
+SELECT c.stream, sum(c.bytes), sum(coalesce(p.bytes, c.bytes))
+FROM cur c
+LEFT JOIN past p USING (tag_id, stream)
+WHERE EXISTS (
+  SELECT 1 FROM telegraf.elasticsearch_index_size
+  WHERE time >= now() - interval '${start}' AND time < now() - interval '${stop}'
+)
+GROUP BY c.stream
+ORDER BY c.stream
+EOF
+)"
+}
+
 status () {
     printf "\n=========================================================================\n$(date) | $1\n=========================================================================\n"
 }

@@ -24,6 +24,8 @@ so-telegraf:
     - environment:
       - HOST_ETC=/host/etc
       - HOST_SYS=/host/sys
+      - HOST_PROC=/host/proc
+      - HOST_PROC_MOUNTINFO=/proc/1
       - HOST_MOUNT_PREFIX=/host
       - GODEBUG=x509ignoreCN=0
       {% if DOCKERMERGED.containers['so-telegraf'].extra_env %}

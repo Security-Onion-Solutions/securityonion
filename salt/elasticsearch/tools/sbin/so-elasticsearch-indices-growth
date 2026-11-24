@@ -5,6 +5,10 @@
 # https://securityonion.net/license; you may not use this file except in compliance with the
 # Elastic License 2.0.
 
+# Reports per data stream Elasticsearch growth over the last 24 hours, 7 days and 30 days. The data
+# source follows telegraf.output: Postgres in POSTGRES mode, where history is limited to
+# postgres.telegraf.retention_days and the script must run on the manager; InfluxDB otherwise.
+
 INFLUX_URL="https://localhost:8086/api/v2"
 
 . /usr/sbin/so-common
@@ -17,8 +21,6 @@ lookup_org_id() {
   response=$(request orgs?org=Security+Onion)
   echo "$response" | jq -r ".orgs[] | select(.name == \"Security Onion\").id"
 }
-
-ORG_ID=$(lookup_org_id)
 
 run_flux_query() {
     local query=$1
@@ -39,75 +41,137 @@ bytes_to_gb() {
     fi
 }
 
-indexes_query='from(bucket: "telegraf/so_long_term")
-|> range(start: -7d)
-|> filter(fn: (r) => r._measurement == "elasticsearch_index_size")
-|> distinct(column: "_field")
-|> keep(columns: ["_field"])'
+influxdb_indices_growth() {
+  ORG_ID=$(lookup_org_id)
 
-indexes_result=$(run_flux_query "$indexes_query")
-indexes=$(echo "$indexes_result" | tail -n +2 | cut -d',' -f4 | grep -v '^$' | grep -v '^_field$' | sed 's/\r$//' | sort -u)
+  indexes_query='from(bucket: "telegraf/so_long_term")
+  |> range(start: -7d)
+  |> filter(fn: (r) => r._measurement == "elasticsearch_index_size")
+  |> distinct(column: "_field")
+  |> keep(columns: ["_field"])'
 
-printf "%-50s %15s %15s %15s\n" "Index Name" "Last 24hr (GB)" "Last 7d (GB)" "Last 30d (GB)"
-printf "%-50s %15s %15s %15s\n" "$(printf '%.0s-' {1..50})" "$(printf '%.0s-' {1..15})" "$(printf '%.0s-' {1..15})" "$(printf '%.0s-' {1..15})"
+  indexes_result=$(run_flux_query "$indexes_query")
+  indexes=$(echo "$indexes_result" | tail -n +2 | cut -d',' -f4 | grep -v '^$' | grep -v '^_field$' | sed 's/\r$//' | sort -u)
 
-for index in $indexes; do
-  [[ -z "$index" ]] && continue
-  current_query="from(bucket: \"telegraf/so_long_term\")
-    |> range(start: -4h)
-    |> filter(fn: (r) => r._measurement == \"elasticsearch_index_size\" and r._field == \"$index\")
-    |> last()
-    |> keep(columns: [\"_value\"])"
-  current_result=$(run_flux_query "$current_query")
-  current_size=$(read_csv_result "$current_result")
-  current_size=${current_size:-0}
+  printf "%-50s %15s %15s %15s\n" "Index Name" "Last 24hr (GB)" "Last 7d (GB)" "Last 30d (GB)"
+  printf "%-50s %15s %15s %15s\n" "$(printf '%.0s-' {1..50})" "$(printf '%.0s-' {1..15})" "$(printf '%.0s-' {1..15})" "$(printf '%.0s-' {1..15})"
 
-  size_24h_query="from(bucket: \"telegraf/so_long_term\")
-    |> range(start: -25h, stop: -23h)
-    |> filter(fn: (r) => r._measurement == \"elasticsearch_index_size\" and r._field == \"$index\")
-    |> last()
-    |> keep(columns: [\"_value\"])"
-  size_24h_result=$(run_flux_query "$size_24h_query")
-  size_24h_ago=$(read_csv_result "$size_24h_result")
-  size_24h_ago=${size_24h_ago:-$current_size}
+  for index in $indexes; do
+    [[ -z "$index" ]] && continue
+    current_query="from(bucket: \"telegraf/so_long_term\")
+      |> range(start: -4h)
+      |> filter(fn: (r) => r._measurement == \"elasticsearch_index_size\" and r._field == \"$index\")
+      |> last()
+      |> keep(columns: [\"_value\"])"
+    current_result=$(run_flux_query "$current_query")
+    current_size=$(read_csv_result "$current_result")
+    current_size=${current_size:-0}
 
-  size_7d_query="from(bucket: \"telegraf/so_long_term\")
-    |> range(start: -7d8h, stop: -7d)
-    |> filter(fn: (r) => r._measurement == \"elasticsearch_index_size\" and r._field == \"$index\")
-    |> last()
-    |> keep(columns: [\"_value\"])"
-  size_7d_result=$(run_flux_query "$size_7d_query")
-  size_7d_ago=$(read_csv_result "$size_7d_result")
-  size_7d_ago=${size_7d_ago:-$current_size}
+    size_24h_query="from(bucket: \"telegraf/so_long_term\")
+      |> range(start: -25h, stop: -23h)
+      |> filter(fn: (r) => r._measurement == \"elasticsearch_index_size\" and r._field == \"$index\")
+      |> last()
+      |> keep(columns: [\"_value\"])"
+    size_24h_result=$(run_flux_query "$size_24h_query")
+    size_24h_ago=$(read_csv_result "$size_24h_result")
+    size_24h_ago=${size_24h_ago:-$current_size}
 
-  size_30d_query="from(bucket: \"telegraf/so_long_term\")
-    |> range(start: -30d8h, stop: -30d)
-    |> filter(fn: (r) => r._measurement == \"elasticsearch_index_size\" and r._field == \"$index\")
-    |> last()
-    |> keep(columns: [\"_value\"])"
-  size_30d_result=$(run_flux_query "$size_30d_query")
-  size_30d_ago=$(read_csv_result "$size_30d_result")
-  size_30d_ago=${size_30d_ago:-$current_size}
+    size_7d_query="from(bucket: \"telegraf/so_long_term\")
+      |> range(start: -7d8h, stop: -7d)
+      |> filter(fn: (r) => r._measurement == \"elasticsearch_index_size\" and r._field == \"$index\")
+      |> last()
+      |> keep(columns: [\"_value\"])"
+    size_7d_result=$(run_flux_query "$size_7d_query")
+    size_7d_ago=$(read_csv_result "$size_7d_result")
+    size_7d_ago=${size_7d_ago:-$current_size}
 
-  # if an index was recently cleaned up by ilm it will result in a negative number for 'index growth'.
-  growth_24h=$(( current_size > size_24h_ago ? current_size - size_24h_ago : 0 ))
+    size_30d_query="from(bucket: \"telegraf/so_long_term\")
+      |> range(start: -30d8h, stop: -30d)
+      |> filter(fn: (r) => r._measurement == \"elasticsearch_index_size\" and r._field == \"$index\")
+      |> last()
+      |> keep(columns: [\"_value\"])"
+    size_30d_result=$(run_flux_query "$size_30d_query")
+    size_30d_ago=$(read_csv_result "$size_30d_result")
+    size_30d_ago=${size_30d_ago:-$current_size}
 
-  growth_7d=$(( current_size > size_7d_ago ? current_size - size_7d_ago : 0 ))
+    # if an index was recently cleaned up by ilm it will result in a negative number for 'index growth'.
+    growth_24h=$(( current_size > size_24h_ago ? current_size - size_24h_ago : 0 ))
 
-  growth_30d=$(( current_size > size_30d_ago ? current_size - size_30d_ago : 0 ))
+    growth_7d=$(( current_size > size_7d_ago ? current_size - size_7d_ago : 0 ))
 
-  growth_24h_gb=$(bytes_to_gb "$growth_24h")
-  growth_7d_gb=$(bytes_to_gb "$growth_7d")
-  growth_30d_gb=$(bytes_to_gb "$growth_30d")
+    growth_30d=$(( current_size > size_30d_ago ? current_size - size_30d_ago : 0 ))
 
-  # Only results for indices with atleast 1 metric above 0.00
-  if [[ "$growth_24h_gb" != "0.00" ]] || [[ "$growth_7d_gb" != "0.00" ]] || [[ "$growth_30d_gb" != "0.00" ]]; then
-    printf "%020.2f|%-50s %15s %15s %15s\n" \
-      "$growth_24h" \
-      "$index" \
-      "$growth_24h_gb" \
-      "$growth_7d_gb" \
-      "$growth_30d_gb"
-  fi
-done | sort -t'|' -k1,1nr | cut -d'|' -f2-
+    growth_24h_gb=$(bytes_to_gb "$growth_24h")
+    growth_7d_gb=$(bytes_to_gb "$growth_7d")
+    growth_30d_gb=$(bytes_to_gb "$growth_30d")
 
+    # Only results for indices with atleast 1 metric above 0.00
+    if [[ "$growth_24h_gb" != "0.00" ]] || [[ "$growth_7d_gb" != "0.00" ]] || [[ "$growth_30d_gb" != "0.00" ]]; then
+      printf "%020.2f|%-50s %15s %15s %15s\n" \
+        "$growth_24h" \
+        "$index" \
+        "$growth_24h_gb" \
+        "$growth_7d_gb" \
+        "$growth_30d_gb"
+    fi
+  done | sort -t'|' -k1,1nr | cut -d'|' -f2-
+}
+
+postgres_indices_growth() {
+  local app="so-elasticsearch-indices-growth"
+  local -a starts=("25 hours" "7 days 8 hours" "30 days 8 hours")
+  local -a stops=("23 hours" "7 days" "30 days")
+  local -A current past window_has_data
+  local i rows stream current_size past_size growth growth_gb sort_key show
+  local -a columns
+
+  for i in 0 1 2; do
+    if ! rows=$(so_es_index_size_growth "$app" "${starts[i]}" "${stops[i]}"); then
+      echo "Failed to query telegraf.elasticsearch_index_size in so_telegraf." >&2
+      exit 1
+    fi
+    [[ -z "$rows" ]] && continue
+    window_has_data[$i]=1
+    while IFS='|' read -r stream current_size past_size; do
+      current[$stream]=$current_size
+      past[$i,$stream]=$past_size
+    done <<< "$rows"
+  done
+
+  printf "%-50s %15s %15s %15s\n" "Index Name" "Last 24hr (GB)" "Last 7d (GB)" "Last 30d (GB)"
+  printf "%-50s %15s %15s %15s\n" "$(printf '%.0s-' {1..50})" "$(printf '%.0s-' {1..15})" "$(printf '%.0s-' {1..15})" "$(printf '%.0s-' {1..15})"
+
+  for stream in "${!current[@]}"; do
+    columns=()
+    sort_key=0
+    show=false
+    for i in 0 1 2; do
+      if [[ -z "${window_has_data[$i]}" ]]; then
+        columns+=("n/a")
+        continue
+      fi
+      current_size=${current[$stream]}
+      past_size=${past[$i,$stream]-$current_size}
+      growth=$(( current_size > past_size ? current_size - past_size : 0 ))
+      growth_gb=$(bytes_to_gb "$growth")
+      [[ "$growth_gb" != "0.00" ]] && show=true
+      [[ $i -eq 0 ]] && sort_key=$growth
+      columns+=("$growth_gb")
+    done
+    if [[ "$show" == true ]]; then
+      printf "%020.2f|%-50s %15s %15s %15s\n" "$sort_key" "$stream" "${columns[@]}"
+    fi
+  done | sort -t'|' -k1,1nr | cut -d'|' -f2-
+}
+
+if ! TG_OUTPUT=$(so_telegraf_output); then
+  echo "Unable to read telegraf.output from pillar." >&2
+  exit 1
+fi
+
+if [[ "$TG_OUTPUT" == "POSTGRES" ]]; then
+  so_telegraf_pg_check so-elasticsearch-indices-growth || exit 1
+  postgres_indices_growth
+else
+  influxdb_indices_growth
+fi
