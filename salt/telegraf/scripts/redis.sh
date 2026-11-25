@@ -9,9 +9,9 @@ export REDISCLI_AUTH={{ REDIS_PASS }}
 # if this script isn't already running
 if [[ ! "`pidof -x $(basename $0) -o %PPID`" ]]; then
 
-    UNPARSED=$(redis-cli llen logstash:unparsed | awk '{print $1}')
-    PARSED=$(redis-cli llen logstash:parsed | awk '{print $1}')
-    MEM_USED=$(redis-cli info memory | grep used_memory_peak_perc | cut -d ":" -f2 | sed "s/%//")
+    UNPARSED=$(valkey-cli llen logstash:unparsed | awk '{print $1}')
+    PARSED=$(valkey-cli llen logstash:parsed | awk '{print $1}')
+    MEM_USED=$(valkey-cli info memory | grep used_memory_peak_perc | cut -d ":" -f2 | sed "s/%//")
     
     echo "redisqueue unparsed=$UNPARSED,parsed=$PARSED,mem_used=$MEM_USED"
 

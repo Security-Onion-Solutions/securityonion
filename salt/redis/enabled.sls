@@ -19,6 +19,8 @@ so-redis:
   docker_container.running:
     - image: {{ GLOBALS.registry_host }}:5000/{{ GLOBALS.image_repo }}/so-redis:{{ GLOBALS.so_version }}
     - restart_policy: unless-stopped
+    - shutdown_timeout: 180
+    - stop_timeout: 180
     - hostname: so-redis
     - user: socore
     - networks:
@@ -60,7 +62,7 @@ so-redis:
       - {{ ULIMIT.name }}={{ ULIMIT.soft }}:{{ ULIMIT.hard }}
     {%   endfor %}
     {% endif %}
-    - entrypoint: "redis-server /usr/local/etc/redis/redis.conf"
+    - entrypoint: "redis-server /usr/local/etc/redis/redis.conf --rdb-version-check relaxed"
     - watch:
       - cmd: ca_trust_extract
       - file: trusttheca
