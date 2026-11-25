@@ -39,13 +39,15 @@ if ! docker ps | grep -q so-tcpreplay; then
 
   if is_manager_node; then
   	set_version
-  	if ! docker images | grep so-tcpreplay | grep ":5000" | grep -q $VERSION ; then
+  	if local_registry_image_present so-tcpreplay "$VERSION" ; then
+			echo "so-tcpreplay image exists."
+		elif registry_has_image so-tcpreplay "$VERSION" && pull_from_embedded_registry so-tcpreplay "$VERSION" ; then
+			echo "Loaded so-tcpreplay image from embedded registry"
+		else
   		echo "Pulling so-tcpreplay image"
 		  TRUSTED_CONTAINERS=("so-tcpreplay")
 		  mkdir -p /opt/so/log/tcpreplay
 		  update_docker_containers "tcpreplay" "" "" "/opt/so/log/tcpreplay/init.log"
-		else
-			echo "so-tcpreplay image exists."
 		fi
 	fi
 	if is_sensor_node; then

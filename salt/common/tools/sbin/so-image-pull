@@ -38,13 +38,20 @@ TRUSTED_CONTAINERS=("$@")
 set_version
 
 for image in "${TRUSTED_CONTAINERS[@]}"; do
-	if ! docker images | grep "$image" | grep ":5000" | grep -q "$VERSION"; then
-		if [[ $quiet == true ]]; then
-			update_docker_containers "$image" "" "" "/dev/null"
-		else
-			update_docker_containers "$image" "" "" "" 
-		fi
-	else
+	if local_registry_image_present "$image" "$VERSION"; then
 		echo "$image:$VERSION image exists."
+		continue
+	fi
+	if registry_has_image "$image" "$VERSION"; then
+		if [[ $quiet == true ]]; then
+			pull_from_embedded_registry "$image" "$VERSION" >/dev/null && continue
+		else
+			pull_from_embedded_registry "$image" "$VERSION" && continue
+		fi
+	fi
+	if [[ $quiet == true ]]; then
+		update_docker_containers "$image" "" "" "/dev/null"
+	else
+		update_docker_containers "$image" "" "" "" 
 	fi
 done
