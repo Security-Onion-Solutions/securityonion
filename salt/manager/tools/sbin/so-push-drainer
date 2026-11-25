@@ -16,7 +16,11 @@ For each intent file under /opt/so/state/push_pending/*.json whose last_touch
 is older than debounce_seconds, this script:
   * concatenates the actions lists from every ready intent
   * dedupes by (state or __highstate__, tgt, tgt_type)
+  * narrows each target to minions that have completed a highstate
+  * keeps the part of an action that would reach a node still in its first highstate in
+    push_pending/pending_<id>.json, which drains like any other intent once that highstate completes
   * drops actions whose target matches no accepted minion (e.g. a role with no nodes yet)
+  * holds everything for a later pass while salt-master has only just started
   * dispatches a single `salt-run state.orchestrate orch.push_batch --async`
     with the deduped actions list passed as pillar kwargs
   * deletes the contributed intent files on successful dispatch
@@ -46,10 +50,24 @@ PENDING_DIR = '/opt/so/state/push_pending'
 LOCK_FILE = os.path.join(PENDING_DIR, '.lock')
 LOG_FILE = '/opt/so/log/salt/so-push-drainer.log'
 MASTER_CONFIG = '/etc/salt/master'
+MASTER_PIDFILE = '/var/run/salt-master.pid'
+MINION_KEYS_DIR = '/etc/salt/pki/master/minions'
+MAX_PATHS = 20
+
+# Minions rejoin a restarted master's publisher up to ~22s after it returns (zmq reconnect interval
+# plus jitter, each up to recon_default + recon_max) and a job published before then reaches nobody.
+# Doubled to allow for a slow master start.
+MASTER_SETTLE_SECONDS = 45
 
 DISPATCHED_DIR = '/opt/so/state/push_dispatched'
 
 HIGHSTATE_SENTINEL = '__highstate__'
+
+# Grain written by setup and removed by salt.lasthighstate at the end of the node's first highstate.
+PENDING_GRAIN = 'first_highstate_pending'
+
+# Node ids from the master's cache go into kept intent file names and targets.
+ID_RE = re.compile(r'[A-Za-z0-9._-]{1,253}')
 
 RESULT_CHECK_DELAY = 30
 RESULT_RECHECK_MAX = 300
@@ -59,6 +77,8 @@ TEXT_LIMIT = 500
 
 # Lead-in salt puts on the comment of an orchestration step that raised.
 STEP_RAISED = 'An exception occurred in this state:'
+
+NO_RETURN = 'no return received'
 
 # salt-run --async reports the jid only in a log line (stderr by default).
 JID_RE = re.compile(r'salt/run/(\d{20})')
@@ -117,27 +137,134 @@ def _dedupe_actions(actions):
     return deduped
 
 
-def _targeted(actions, log):
-    """Drops actions whose target matches no accepted minion (e.g. a role with no nodes yet), which
-    the orchestration would otherwise report as failed with 'No minions responded'."""
+def _skip_pending(action):
+    """Narrows a compound target to minions that have completed a highstate. A newly accepted node matches
+    its role's targets before orch.deploy_newnode has highstated it, and a single state fails there."""
+    if action.get('tgt_type', 'compound') != 'compound':
+        return action
+    return dict(action, tgt='( {} ) and not G@{}:True'.format(action.get('tgt'), PENDING_GRAIN))
+
+
+def _ckminions():
+    return salt.utils.minions.CkMinions(salt.config.master_config(MASTER_CONFIG))
+
+
+def _pending_minions(ckminions, log):
     try:
-        ckminions = salt.utils.minions.CkMinions(salt.config.master_config(MASTER_CONFIG))
+        return set(ckminions.check_minions('G@{}:True'.format(PENDING_GRAIN), 'compound').get('minions') or [])
+    except Exception as exc:
+        log.warning('cannot list nodes still in their first highstate; keeping no pushes for them: %s', exc)
+        return set()
+
+
+def _targeted(actions, log):
+    """Returns (targeted, kept). Drops actions whose target matches no accepted minion (e.g. a role with no
+    nodes yet), which the orchestration would otherwise report as failed with 'No minions responded'. The part
+    of a compound action that would reach a node still in its first highstate is returned in kept, by node id,
+    narrowed to that node, so it can be applied once that highstate completes."""
+    try:
+        ckminions = _ckminions()
     except Exception:
         log.exception('cannot load master config; dispatching without checking targets')
-        return actions
+        return [_skip_pending(action) for action in actions], {}
+    pending = _pending_minions(ckminions, log)
     targeted = []
+    kept = {}
     for action in actions:
+        narrowed = _skip_pending(action)
+        tgt_type = action.get('tgt_type', 'compound')
+        name = 'highstate' if action.get('highstate') else action.get('state')
         try:
-            matched = ckminions.check_minions(action['tgt'], action.get('tgt_type', 'compound')).get('minions')
+            matched = ckminions.check_minions(narrowed['tgt'], tgt_type).get('minions')
+            unwrapped = []
+            if pending and tgt_type == 'compound':
+                unwrapped = ckminions.check_minions(action['tgt'], tgt_type).get('minions')
         except Exception:
-            log.exception('cannot resolve tgt=%s; dispatching it anyway', action.get('tgt'))
-            matched = True
+            log.exception('cannot resolve tgt=%s; dispatching it anyway', narrowed.get('tgt'))
+            matched, unwrapped = True, []
+        held = False
+        for minion in sorted(pending.intersection(unwrapped or [])):
+            if not ID_RE.fullmatch(minion):
+                log.warning('not keeping %s for %r: not a valid node id', name, minion)
+                continue
+            kept.setdefault(minion, []).append(
+                dict(action, tgt='L@{} and ( {} )'.format(minion, action['tgt']), tgt_type='compound'))
+            held = True
         if matched:
-            targeted.append(action)
-        else:
-            log.info('skipping %s: no minions match tgt=%s',
-                     'highstate' if action.get('highstate') else action.get('state'), action.get('tgt'))
-    return targeted
+            targeted.append(narrowed)
+        elif not held:
+            log.info('skipping %s: no minions match tgt=%s', name, action['tgt'])
+    return targeted, kept
+
+
+def _kept_path(node):
+    return os.path.join(PENDING_DIR, 'pending_{}.json'.format(node))
+
+
+def _keep_for_pending(kept, paths, log):
+    """Merges each node's kept actions into its pending_<id>.json. The caller already holds the lock, which
+    flock would not grant a second time. Returns False if any write failed."""
+    now = time.time()
+    written = True
+    for node, actions in kept.items():
+        path = _kept_path(node)
+        intent = _read_intent(path, log) if os.path.exists(path) else {}
+        if not isinstance(intent, dict):
+            intent = {}
+        known = intent.get('paths') or []
+        intent.update(
+            actions=_dedupe_actions((intent.get('actions') or []) + actions),
+            pending=node,
+            last_touch=now,
+            paths=(known + [p for p in paths if p not in known])[-MAX_PATHS:],
+        )
+        intent.setdefault('first_touch', now)
+        try:
+            tmp_path = path + '.tmp'
+            with open(tmp_path, 'w') as f:
+                json.dump(intent, f)
+            os.rename(tmp_path, path)
+        except (OSError, ValueError) as exc:
+            log.error('cannot keep pushes for %s until its first highstate completes: %s', node, exc)
+            written = False
+            continue
+        prefix = 'L@{} and ( '.format(node)
+        for action in actions:
+            tgt = action['tgt']
+            if tgt.startswith(prefix) and tgt.endswith(' )'):
+                tgt = tgt[len(prefix):-len(' )')]
+            log.info('push kept for %s until its first highstate completes: %s tgt=%s', node,
+                     'highstate' if action.get('highstate') else action.get('state'), tgt)
+    return written
+
+
+def _still_pending(ckminions, ids, log):
+    """Ids whose first highstate has not completed. A node with no cache entry has not compiled pillar yet."""
+    pending = set()
+    for node in ids:
+        try:
+            data = ckminions.cache.fetch('minions/{}'.format(node), 'data')
+        except Exception as exc:
+            log.warning('cannot read the cached grains of %s; holding its kept pushes: %s', node, exc)
+            pending.add(node)
+            continue
+        grains = data.get('grains') if isinstance(data, dict) else None
+        if not isinstance(grains, dict) or PENDING_GRAIN in grains:
+            pending.add(node)
+    return pending
+
+
+def _master_settling(now):
+    """True while salt-master started less than MASTER_SETTLE_SECONDS ago. salt-master writes its pidfile
+    when it starts, so the file's mtime is the master's start time. Minions take up to ~22s to rejoin a
+    restarted master's publisher and a job published before then reaches nobody, so dispatch is held;
+    held intents stay in push_pending and are drained on a later pass. A missing or unreadable pidfile
+    returns False: the master is then normally not running, so _dispatch fails and keeps the intents."""
+    try:
+        age = now - os.path.getmtime(MASTER_PIDFILE)
+    except OSError:
+        return False
+    return 0 <= age < MASTER_SETTLE_SECONDS
 
 
 def _dispatch(actions, log):
@@ -221,6 +348,10 @@ def _lookup_jid(jid, log):
 
 
 def _minion_failure(minion_ret):
+    # What salt.state records for a minion it stopped waiting on: no reply to a saltutil.find_job
+    # poll within gather_job_timeout, though the state run may still be queued or running.
+    if minion_ret == {}:
+        return NO_RETURN
     if isinstance(minion_ret, dict):
         return '; '.join(
             '{}: {}'.format(state.get('__id__', state_key), _trim(state.get('comment', '')))
@@ -283,11 +414,21 @@ def _failed_steps(ret):
     return steps
 
 
+def _lost_track(step):
+    changes = step.get('changes')
+    minion_rets = changes.get('ret') if isinstance(changes, dict) else None
+    if not isinstance(minion_rets, dict):
+        return False
+    failed = [text for text in map(_minion_failure, minion_rets.values()) if text]
+    return bool(failed) and all(text == NO_RETURN for text in failed)
+
+
 def _result_unknown(ret):
-    # A step that raised (e.g. salt-master restarted while it waited on a queued state run)
-    # never collected the minion's return, so the state run may still have completed.
+    # A step that raised (e.g. salt-master restarted while it waited on a queued state run) or
+    # stopped waiting never collected the minion's return, so the state run may still have completed.
     steps = _failed_steps(ret)
-    return bool(steps) and all(str(step.get('comment', '')).startswith(STEP_RAISED) for step in steps)
+    return bool(steps) and all(
+        str(step.get('comment', '')).startswith(STEP_RAISED) or _lost_track(step) for step in steps)
 
 
 def _recheck_delay(age):
@@ -387,10 +528,20 @@ def main():
         now = time.time()
         ready = []
         skipped = 0
+        held = 0
         broken = []
         for path in intent_files:
             intent = _read_intent(path, log)
             if not isinstance(intent, dict):
+                broken.append(path)
+                continue
+            node = intent.get('pending')
+            if node is not None and not (isinstance(node, str) and ID_RE.fullmatch(node)):
+                log.warning('removing kept intent %s: %r is not a valid node id', path, node)
+                broken.append(path)
+                continue
+            if node is not None and not os.path.exists(os.path.join(MINION_KEYS_DIR, node)):
+                log.info('removing kept pushes for %s: its key is no longer accepted', node)
                 broken.append(path)
                 continue
             last_touch = intent.get('last_touch', 0)
@@ -399,6 +550,17 @@ def main():
                 continue
             ready.append((path, intent))
 
+        kept_nodes = {intent['pending'] for _, intent in ready if intent.get('pending') is not None}
+        if kept_nodes:
+            try:
+                still_pending = _still_pending(_ckminions(), kept_nodes, log)
+            except Exception as exc:
+                log.warning('cannot load master config; holding kept pushes: %s', exc)
+                still_pending = kept_nodes
+            waiting = {path for path, intent in ready if intent.get('pending') in still_pending}
+            held = len(waiting)
+            ready = [(path, intent) for path, intent in ready if path not in waiting]
+
         for path in broken:
             try:
                 os.unlink(path)
@@ -406,8 +568,13 @@ def main():
                 pass
 
         if not ready:
-            if skipped:
-                log.debug('no ready intents (%d still in debounce window)', skipped)
+            if skipped or held:
+                log.debug('no ready intents (%d still in debounce window, %d for nodes still in their first highstate)',
+                          skipped, held)
+            return 0
+
+        if _master_settling(now):
+            log.info('salt-master just started; holding %d intent(s) until minions reconnect', len(ready))
             return 0
 
         combined_actions = []
@@ -435,24 +602,32 @@ def main():
             'draining %d intent(s): %d action(s) after dedupe (raw=%d), '
             'debounce_duration=%.1fs, paths=%s',
             len(ready), len(deduped), len(combined_actions),
-            debounce_duration, all_paths[:20],
+            debounce_duration, all_paths[:MAX_PATHS],
         )
         for action in deduped:
             log.info('action: %s tgt=%s', 'highstate' if action.get('highstate') else action.get('state'),
                      action.get('tgt'))
 
-        targeted = _targeted(deduped, log)
+        targeted, kept = _targeted(deduped, log)
+        if kept and not _keep_for_pending(kept, all_paths, log):
+            log.warning('cannot keep pushes for nodes still in their first highstate; '
+                        'leaving intent files in place for retry')
+            return 1
+        written = {_kept_path(node) for node in kept}
+
         if targeted:
             jid = _dispatch(targeted, log)
             if jid is None:
                 log.warning('dispatch failed; leaving intent files in place for retry')
                 return 1
             if jid:
-                _record_dispatch(jid, targeted, all_paths[:20], log)
-        else:
+                _record_dispatch(jid, targeted, all_paths[:MAX_PATHS], log)
+        elif not kept:
             log.info('no action matches a minion; nothing to dispatch')
 
         for path, _ in ready:
+            if path in written:
+                continue
             try:
                 os.unlink(path)
             except OSError:

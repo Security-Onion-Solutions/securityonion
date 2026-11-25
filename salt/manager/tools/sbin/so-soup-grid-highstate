@@ -39,8 +39,8 @@ SETTLE_STABLE_CHECKS=3
 SETTLE_INITIAL_WAIT=${GRID_HIGHSTATE_SETTLE_INITIAL_WAIT:-45}
 
 BATCH=""
-BATCH_WAIT=""
 SALT_UPGRADED=false
+IGNORED_BATCH_WAIT=false
 REASON="manual"
 
 log() {
@@ -48,14 +48,14 @@ log() {
 }
 
 usage() {
-  echo "Usage: so-soup-grid-highstate [--batch <spec>] [--batch-wait <sec>] [--salt-upgraded] [--reason <text>]"
+  echo "Usage: so-soup-grid-highstate [--batch <spec>] [--salt-upgraded] [--reason <text>]"
   exit 1
 }
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --batch)        BATCH="$2"; shift 2 ;;
-    --batch-wait)   BATCH_WAIT="$2"; shift 2 ;;
+    --batch-wait)   IGNORED_BATCH_WAIT=true; shift 2 ;;
     --salt-upgraded) SALT_UPGRADED=true; shift ;;
     --reason)       REASON="$2"; shift 2 ;;
     -h|--help)      usage ;;
@@ -64,6 +64,7 @@ while [ $# -gt 0 ]; do
 done
 
 mkdir -p "$(dirname "$LOG_FILE")" "$(dirname "$LOCK_FILE")"
+[ "$IGNORED_BATCH_WAIT" = "true" ] && log "--batch-wait is no longer supported and is ignored"
 
 # Serialize: a second invocation (e.g. two soups, or a manual run overlapping soup's)
 # should not dispatch a competing set of batches.
@@ -78,10 +79,6 @@ fi
 if [ -z "$BATCH" ]; then
   BATCH=$(salt-call --out=newline_values_only pillar.get salt:auto_apply:batch 2>/dev/null)
   [ -z "$BATCH" ] && BATCH='10%'
-fi
-if [ -z "$BATCH_WAIT" ]; then
-  BATCH_WAIT=$(salt-call --out=newline_values_only pillar.get salt:auto_apply:batch_wait 2>/dev/null)
-  [ -z "$BATCH_WAIT" ] && BATCH_WAIT=15
 fi
 
 MINIONID=$(salt-call --local --out=newline_values_only grains.get id 2>/dev/null)
@@ -100,7 +97,7 @@ if [ "$NUM_ACCEPTED" -le 1 ]; then
   exit 0
 fi
 
-log "starting grid highstate: reason=$REASON minion=$MINIONID accepted=$NUM_ACCEPTED batch=$BATCH batch_wait=$BATCH_WAIT salt_upgraded=$SALT_UPGRADED"
+log "starting grid highstate: reason=$REASON minion=$MINIONID accepted=$NUM_ACCEPTED batch=$BATCH salt_upgraded=$SALT_UPGRADED"
 
 # Count minions currently responsive on the bus (includes this manager).
 count_up() {
@@ -171,7 +168,7 @@ if [ "$SALT_UPGRADED" = "true" ]; then
   PRE_UP=$(count_up); PRE_UP=${PRE_UP:-1}
   log "pre-upgrade reachable minions (incl. this manager): $PRE_UP"
   dispatch "salt-upgrade pass (all remote minions)" \
-    "[{\"highstate\": true, \"tgt\": \"not $MINIONID\", \"tgt_type\": \"compound\", \"batch\": \"$BATCH\", \"batch_wait\": $BATCH_WAIT}]" \
+    "[{\"highstate\": true, \"tgt\": \"not $MINIONID\", \"tgt_type\": \"compound\", \"batch\": \"$BATCH\"}]" \
     true
   log "waiting for minions to reconnect on the new salt version"
   wait_for_settle "$PRE_UP"
@@ -202,7 +199,7 @@ for tgt in "${TIER_TGTS[@]}"; do
   n=$(tier_count "$tgt"); n=${n:-0}
   if [ "$n" -ge 1 ]; then
     [ -n "$actions" ] && actions="$actions, "
-    actions="$actions{\"highstate\": true, \"tgt\": \"$tgt\", \"tgt_type\": \"compound\", \"batch\": \"$BATCH\", \"batch_wait\": $BATCH_WAIT}"
+    actions="$actions{\"highstate\": true, \"tgt\": \"$tgt\", \"tgt_type\": \"compound\", \"batch\": \"$BATCH\"}"
     log "tier matched $n minion(s): $tgt"
   else
     log "tier matched 0 minions, skipping: $tgt"
