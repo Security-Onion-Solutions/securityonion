@@ -128,7 +128,7 @@ lookup_org_id_with_wait() {
   wait=10
   while [[ $attempts -lt $max_attempts ]]; do
     response=$(request orgs?org=Security+Onion)
-    oid=$(echo "$response" | jq -r ".orgs[] | select(.name == \"Security Onion\").id")
+    oid=$(echo "$response" | jq -r ".orgs[]? | select(.name == \"Security Onion\").id")
     if [[ -z $oid ]]; then
       attempts=$((attempts+1))
       log "Server does not appear to be running or fully initialized - will try again in $wait seconds ($attempts / $max_attempts)"
